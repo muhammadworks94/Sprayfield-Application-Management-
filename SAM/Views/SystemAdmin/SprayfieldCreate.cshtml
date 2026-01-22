@@ -1,0 +1,140 @@
+@model SAM.ViewModels.SystemAdmin.SprayfieldCreateViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Create Sprayfield";
+    var soils = ViewBag.Soils as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var crops = ViewBag.Crops as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var nozzles = ViewBag.Nozzles as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var user = await UserManager.GetUserAsync(User);
+    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Add a new sprayfield to the system</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="SprayfieldCreate" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title">Company Information</div>
+                
+                <div class="mb-3">
+                    <label asp-for="CompanyId" class="form-label required"></label>
+                    @if (isGlobalAdmin && companies != null)
+                    {
+                        <select asp-for="CompanyId" asp-items="companies" class="form-select" id="companySelect">
+                            <option value="">-- Select Company --</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="hidden" asp-for="CompanyId" />
+                        <input type="text" class="form-control" value="@companies?.FirstOrDefault(c => c.Value == Model.CompanyId.ToString())?.Text" disabled />
+                    }
+                    <span asp-validation-for="CompanyId" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Sprayfield Information</div>
+                
+                <div class="mb-3">
+                    <label asp-for="FieldId" class="form-label required"></label>
+                    <input asp-for="FieldId" class="form-control" />
+                    <span asp-validation-for="FieldId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="SizeAcres" class="form-label required"></label>
+                    <input asp-for="SizeAcres" type="number" step="0.01" min="0" class="form-control" />
+                    <span asp-validation-for="SizeAcres" class="text-danger"></span>
+                    <small class="form-text text-muted">Size in acres</small>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="SoilId" class="form-label required"></label>
+                            <select asp-for="SoilId" asp-items="soils" class="form-select">
+                                <option value="">-- Select Soil --</option>
+                            </select>
+                            <span asp-validation-for="SoilId" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="CropId" class="form-label required"></label>
+                            <select asp-for="CropId" asp-items="crops" class="form-select">
+                                <option value="">-- Select Crop --</option>
+                            </select>
+                            <span asp-validation-for="CropId" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="NozzleId" class="form-label required"></label>
+                            <select asp-for="NozzleId" asp-items="nozzles" class="form-select">
+                                <option value="">-- Select Nozzle --</option>
+                            </select>
+                            <span asp-validation-for="NozzleId" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="FacilityId" class="form-label"></label>
+                            <select asp-for="FacilityId" asp-items="facilities" class="form-select">
+                                <option value="">-- Select Facility (Optional) --</option>
+                            </select>
+                            <span asp-validation-for="FacilityId" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="HydraulicLoadingLimitInPerYr" class="form-label required"></label>
+                    <input asp-for="HydraulicLoadingLimitInPerYr" type="number" step="0.01" min="0" class="form-control" />
+                    <span asp-validation-for="HydraulicLoadingLimitInPerYr" class="text-danger"></span>
+                    <small class="form-text text-muted">Annual hydraulic loading limit in inches per year</small>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="Sprayfields" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Sprayfield
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    @if (isGlobalAdmin)
+    {
+        <script>
+            // Reload dropdowns when company changes
+            document.getElementById('companySelect')?.addEventListener('change', function() {
+                var companyId = this.value;
+                if (companyId) {
+                    // Reload page with companyId to refresh dropdowns
+                    window.location.href = '@Url.Action("SprayfieldCreate")' + '?companyId=' + companyId;
+                }
+            });
+        </script>
+    }
+}
+

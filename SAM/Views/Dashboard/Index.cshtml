@@ -1,0 +1,277 @@
+@model SAM.ViewModels.Dashboard.DashboardViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Dashboard";
+    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
+    var user = await UserManager.GetUserAsync(User);
+    var canManageUsers = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Overview of your facilities, compliance status, and recent activity</p>
+    </div>
+    <div>
+        @if (canManageUsers && Model.PendingUserRequests > 0)
+        {
+            <a asp-controller="UserManagement" asp-action="UserRequests" class="btn btn-warning">
+                <i class="bi bi-exclamation-circle"></i> @Model.PendingUserRequests Pending User Request(s)
+            </a>
+        }
+        @if (isGlobalAdmin && Model.PendingAdminRequests > 0)
+        {
+            <a asp-controller="UserManagement" asp-action="AdminRequests" class="btn btn-warning">
+                <i class="bi bi-exclamation-circle"></i> @Model.PendingAdminRequests Pending Admin Request(s)
+            </a>
+        }
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card stat-card-primary">
+            <div class="stat-icon-container">
+                <i class="bi bi-building stat-icon"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">@Model.TotalFacilities</div>
+                <div class="stat-label">Facilities</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card-success">
+            <div class="stat-icon-container">
+                <i class="bi bi-grid-3x3-gap stat-icon"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">@Model.TotalSprayfields</div>
+                <div class="stat-label">Sprayfields</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-card-info">
+            <div class="stat-icon-container">
+                <i class="bi bi-droplet stat-icon"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">@Model.TotalMonitoringWells</div>
+                <div class="stat-label">Monitoring Wells</div>
+            </div>
+        </div>
+    </div>
+    @if (isGlobalAdmin)
+    {
+        <div class="col-md-3">
+            <div class="stat-card stat-card-warning">
+                <div class="stat-icon-container">
+                    <i class="bi bi-briefcase stat-icon"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">@Model.TotalCompanies</div>
+                    <div class="stat-label">Companies</div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Compliance Status -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-shield-check"></i> Compliance Status (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="stat-card stat-card-success p-3">
+                            <div class="stat-icon-container">
+                                <i class="bi bi-check-circle stat-icon"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@Model.CompliantReports</div>
+                                <div class="stat-label">Compliant Reports</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card stat-card-warning p-3">
+                            <div class="stat-icon-container">
+                                <i class="bi bi-hourglass-split stat-icon"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@Model.UnderReviewReports</div>
+                                <div class="stat-label">Under Review</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card stat-card-danger p-3">
+                            <div class="stat-icon-container">
+                                <i class="bi bi-x-circle stat-icon"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@Model.NonCompliantReports</div>
+                                <div class="stat-label">Non-Compliant Reports</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity and Compliance Summaries -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.RecentActivities.Any())
+                {
+                    <div class="list-group">
+                        @foreach (var activity in Model.RecentActivities)
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="bi bi-@(activity.Type == "Operator Log" ? "journal-text" : activity.Type == "Irrigation" ? "droplet" : "file-earmark-text") me-2 text-primary"></i>
+                                            <h6 class="mb-0">@activity.Type</h6>
+                                        </div>
+                                        <p class="mb-1">@activity.Description</p>
+                                        <small class="text-muted"><i class="bi bi-person"></i> @activity.User</small>
+                                    </div>
+                                    <small class="text-muted ms-3">@activity.Date.ToString("MM/dd/yyyy HH:mm")</small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted text-center py-3"><i class="bi bi-inbox"></i> No recent activity</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-check"></i> Recent Compliance Reports</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.ComplianceSummaries.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Facility</th>
+                                    <th>Period</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var summary in Model.ComplianceSummaries)
+                                {
+                                    <tr>
+                                        <td><i class="bi bi-building me-1"></i>@summary.FacilityName</td>
+                                        <td>@summary.Period</td>
+                                        <td>
+                                            <span class="badge badge-@(summary.ComplianceStatus == "Compliant" ? "compliant" : summary.ComplianceStatus == "NonCompliant" ? "non-compliant" : "under-review")">
+                                                @summary.ComplianceStatus
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted text-center py-3"><i class="bi bi-inbox"></i> No compliance reports available</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Recent Data Entry (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="stat-card stat-card-primary p-3">
+                            <div class="stat-icon-container">
+                                <i class="bi bi-journal-text stat-icon"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@Model.RecentOperatorLogs</div>
+                                <div class="stat-label">Operator Logs</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card stat-card-success p-3">
+                            <div class="stat-icon-container">
+                                <i class="bi bi-droplet stat-icon"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@Model.RecentIrrigations</div>
+                                <div class="stat-label">Irrigation Records</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card stat-card-info p-3">
+                            <div class="stat-icon-container">
+                                <i class="bi bi-water stat-icon"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@Model.RecentWWCharRecords</div>
+                                <div class="stat-label">Wastewater Records</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card stat-card-warning p-3">
+                            <div class="stat-icon-container">
+                                <i class="bi bi-droplet-half stat-icon"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@Model.RecentGWMonitRecords</div>
+                                <div class="stat-label">Groundwater Records</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

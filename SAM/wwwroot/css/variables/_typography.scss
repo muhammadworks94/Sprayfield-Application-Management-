@@ -1,0 +1,42 @@
+// ============================================
+// Typography - Single Source of Truth
+// ============================================
+
+// Font Families
+$font-family-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+$font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+// Font Sizes (rem-based scale)
+$font-size-xs: 0.75rem;    // 12px
+$font-size-sm: 0.875rem;   // 14px
+$font-size-base: 1rem;     // 16px
+$font-size-lg: 1.125rem;   // 18px
+$font-size-xl: 1.25rem;    // 20px
+$font-size-2xl: 1.5rem;    // 24px
+$font-size-3xl: 1.875rem;  // 30px
+$font-size-4xl: 2.25rem;   // 36px
+
+// Font Weights
+$font-weight-light: 300;
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// Line Heights
+$line-height-tight: 1.25;
+$line-height-normal: 1.5;
+$line-height-relaxed: 1.75;
+
+// Headings
+$h1-font-size: $font-size-4xl;
+$h2-font-size: $font-size-3xl;
+$h3-font-size: $font-size-2xl;
+$h4-font-size: $font-size-xl;
+$h5-font-size: $font-size-lg;
+$h6-font-size: $font-size-base;
+
+$headings-font-weight: $font-weight-semibold;
+$headings-line-height: $line-height-tight;
+$headings-color: $text-primary;
+

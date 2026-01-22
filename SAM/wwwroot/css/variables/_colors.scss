@@ -1,0 +1,75 @@
+// ============================================
+// Color Palette - Single Source of Truth
+// ============================================
+
+// Primary Colors
+$primary: #2563eb;
+$primary-dark: #1e40af;
+$primary-light: #3b82f6;
+$primary-lighter: #dbeafe;
+
+// Secondary Colors
+$secondary: #64748b;
+$secondary-dark: #475569;
+$secondary-light: #94a3b8;
+
+// Status Colors
+$success: #10b981;
+$success-dark: #059669;
+$success-light: #34d399;
+$success-lighter: #d1fae5;
+
+$warning: #f59e0b;
+$warning-dark: #d97706;
+$warning-light: #fbbf24;
+$warning-lighter: #fef3c7;
+
+$danger: #ef4444;
+$danger-dark: #dc2626;
+$danger-light: #f87171;
+$danger-lighter: #fee2e2;
+
+$info: #06b6d4;
+$info-dark: #0891b2;
+$info-light: #22d3ee;
+$info-lighter: #cffafe;
+
+// Compliance Status Colors
+$compliant: $success;
+$non-compliant: $danger;
+$under-review: $warning;
+
+// Neutral Colors
+$white: #ffffff;
+$gray-50: #f9fafb;
+$gray-100: #f3f4f6;
+$gray-200: #e5e7eb;
+$gray-300: #d1d5db;
+$gray-400: #9ca3af;
+$gray-500: #6b7280;
+$gray-600: #4b5563;
+$gray-700: #374151;
+$gray-800: #1f2937;
+$gray-900: #111827;
+$black: #000000;
+
+// Background Colors
+$body-bg: $gray-50;
+$sidebar-bg: $white;
+$header-bg: $white;
+$card-bg: $white;
+
+// Border Colors
+$border-color: $gray-200;
+$border-color-dark: $gray-300;
+
+// Text Colors
+$text-primary: $gray-900;
+$text-secondary: $gray-600;
+$text-muted: $gray-500;
+$text-light: $gray-400;
+
+// Link Colors
+$link-color: $primary;
+$link-hover-color: $primary-dark;
+

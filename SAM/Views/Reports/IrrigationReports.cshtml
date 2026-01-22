@@ -1,0 +1,156 @@
+@model IEnumerable<SAM.ViewModels.Reports.IrrRprtViewModel>
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Irrigation Reports";
+    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+    var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
+    var user = await UserManager.GetUserAsync(User);
+    var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Generate and view irrigation compliance reports</p>
+    </div>
+    @if (canEdit)
+    {
+        <a asp-action="GenerateIrrigationReport" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Generate New Report
+        </a>
+    }
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            @if (isGlobalAdmin)
+            {
+                <div class="col-md-4">
+                    <label for="companyId" class="form-label"><i class="bi bi-building me-1"></i>Company:</label>
+                    <input type="hidden" name="companyId" value="@selectedCompanyId" />
+                    <input type="text" class="form-control" value="@selectedCompanyId" disabled />
+                </div>
+            }
+            <div class="col-md-4">
+                <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
+                <select name="facilityId" id="facilityId" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Facilities</option>
+                    @if (facilities != null)
+                    {
+                        @foreach (var facility in facilities)
+                        {
+                            <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
+                                @facility.Text
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Irrigation Report List</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-calendar"></i> Period</th>
+                            <th><i class="bi bi-building"></i> Facility</th>
+                            <th><i class="bi bi-water"></i> Total Volume (gallons)</th>
+                            <th><i class="bi bi-speedometer2"></i> Application Rate (inches)</th>
+                            <th><i class="bi bi-graph-up"></i> Hydraulic Loading (in/yr)</th>
+                            <th><i class="bi bi-percent"></i> Efficiency (%)</th>
+                            <th><i class="bi bi-shield-check"></i> Compliance Status</th>
+                            @if (isGlobalAdmin)
+                            {
+                                <th><i class="bi bi-briefcase"></i> Company</th>
+                            }
+                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var report in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-action="IrrigationReportDetails" asp-route-id="@report.Id">
+                                        @report.Month @report.Year
+                                    </a>
+                                </td>
+                                <td>@report.FacilityName</td>
+                                <td>@report.TotalVolumeApplied.ToString("N0")</td>
+                                <td>@report.TotalApplicationRate.ToString("F2")</td>
+                                <td>@report.HydraulicLoadingRate.ToString("F2")</td>
+                                <td>@report.ApplicationEfficiency.ToString("F1")</td>
+                                <td>
+                                    <span class="badge badge-@(report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant ? "compliant" : report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant ? "non-compliant" : "under-review")">
+                                        @report.ComplianceStatus
+                                    </span>
+                                </td>
+                                @if (isGlobalAdmin)
+                                {
+                                    <td>@report.CompanyName</td>
+                                }
+                                <td class="table-actions">
+                                    <a asp-action="IrrigationReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    @if (canEdit)
+                                    {
+                                        <a asp-action="IrrigationReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <p class="text-muted mt-3">No irrigation reports found.</p>
+                @if (canEdit)
+                {
+                    <a asp-action="GenerateIrrigationReport" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle"></i> Generate First Report
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
+

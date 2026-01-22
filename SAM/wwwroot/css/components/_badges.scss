@@ -1,0 +1,85 @@
+// ============================================
+// Badge Styles
+// ============================================
+
+.badge {
+  display: inline-block;
+  padding: $spacing-1 $spacing-2;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 0.375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-primary {
+  color: $white;
+  background-color: $primary;
+}
+
+.badge-success {
+  color: $white;
+  background-color: $success;
+}
+
+.badge-danger {
+  color: $white;
+  background-color: $danger;
+}
+
+.badge-warning {
+  color: $white;
+  background-color: $warning;
+}
+
+.badge-info {
+  color: $white;
+  background-color: $info;
+}
+
+.badge-secondary {
+  color: $white;
+  background-color: $secondary;
+}
+
+// Compliance Status Badges
+.badge-compliant {
+  color: $white;
+  background-color: $compliant;
+}
+
+.badge-non-compliant {
+  color: $white;
+  background-color: $non-compliant;
+}
+
+.badge-under-review {
+  color: $white;
+  background-color: $under-review;
+}
+
+// System Status Badges
+.badge-normal {
+  color: $white;
+  background-color: $success;
+}
+
+.badge-alert {
+  color: $white;
+  background-color: $warning;
+}
+
+.badge-maintenance {
+  color: $white;
+  background-color: $info;
+}
+
+.badge-emergency {
+  color: $white;
+  background-color: $danger;
+}
+

@@ -1,0 +1,169 @@
+@model SAM.ViewModels.OperationalData.WWCharCreateViewModel
+@using SAM.Domain.Enums
+@{
+    ViewData["Title"] = "Create Wastewater Characteristics Record";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var orcOnSiteOptions = ViewBag.ORCOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Add a new wastewater characteristics record</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="WWCharCreate" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title">Basic Information</div>
+                
+                <input type="hidden" asp-for="CompanyId" />
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="FacilityId" class="form-label required"></label>
+                            <select asp-for="FacilityId" asp-items="facilities" class="form-select">
+                                <option value="">-- Select Facility --</option>
+                            </select>
+                            <span asp-validation-for="FacilityId" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Month" class="form-label required"></label>
+                            <select asp-for="Month" asp-items="months" class="form-select">
+                                <option value="">-- Select Month --</option>
+                            </select>
+                            <span asp-validation-for="Month" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Year" class="form-label required"></label>
+                            <input asp-for="Year" type="number" class="form-control" min="2000" max="2100" />
+                            <span asp-validation-for="Year" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Daily Data (Days 1-31)</div>
+                <p class="text-muted small">Enter daily values for each parameter. Leave blank if no data available.</p>
+                
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>BOD5<br/>(mg/L)</th>
+                                <th>TSS<br/>(mg/L)</th>
+                                <th>Flow Rate<br/>(GPM)</th>
+                                <th>pH</th>
+                                <th>NH3-N<br/>(mg/L)</th>
+                                <th>Fecal Coliform<br/>(CFU/100mL)</th>
+                                <th>Total Coliform<br/>(CFU/100mL)</th>
+                                <th>Chloride<br/>(mg/L)</th>
+                                <th>TDS<br/>(mg/L)</th>
+                                <th>Composite<br/>Time</th>
+                                <th>ORC<br/>On Site</th>
+                                <th>Lagoon<br/>Freeboard<br/>(inches)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < 31; i++)
+                            {
+                                <tr>
+                                    <td><strong>@(i + 1)</strong></td>
+                                    <td>
+                                        <input asp-for="BOD5Daily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="TSSDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="FlowRateDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="PHDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="NH3NDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="FecalColiformDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="TotalColiformDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="ChlorideDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="TDSDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="CompositeTime[i]" type="time" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <select asp-for="ORCOnSite[i]" asp-items="orcOnSiteOptions" class="form-select form-select-sm">
+                                            <option value="">-</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input asp-for="LagoonFreeboard[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Lab Information</div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="LabCertification" class="form-label"></label>
+                            <input asp-for="LabCertification" class="form-control" />
+                            <span asp-validation-for="LabCertification" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="CollectedBy" class="form-label"></label>
+                            <input asp-for="CollectedBy" class="form-control" />
+                            <span asp-validation-for="CollectedBy" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="AnalyzedBy" class="form-label"></label>
+                            <input asp-for="AnalyzedBy" class="form-control" />
+                            <span asp-validation-for="AnalyzedBy" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="WWChars" asp-route-companyId="@Model.CompanyId" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Record
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

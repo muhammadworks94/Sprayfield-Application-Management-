@@ -1,0 +1,54 @@
+@model SAM.ViewModels.SystemAdmin.CompanyCreateViewModel
+@{
+    ViewData["Title"] = "Create Company";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Add a new company to the system</p>
+    </div>
+    <a asp-action="Companies" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Company Information</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="CompanyCreate" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title"><i class="bi bi-building me-2"></i>Company Details</div>
+                
+                <div class="mb-3">
+                    <label asp-for="Name" class="form-label required"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="ContactEmail" class="form-label required"></label>
+                    <input asp-for="ContactEmail" type="email" class="form-control" />
+                    <span asp-validation-for="ContactEmail" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="Companies" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Company
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

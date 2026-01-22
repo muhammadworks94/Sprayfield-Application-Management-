@@ -1,0 +1,26 @@
+// ============================================
+// Header Styles
+// ============================================
+
+.app-header {
+  background-color: $header-bg;
+  border-bottom: 1px solid $border-color;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  padding: $spacing-3 $spacing-4;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .user-menu {
+    display: flex;
+    align-items: center;
+    gap: $spacing-4;
+  }
+}
+

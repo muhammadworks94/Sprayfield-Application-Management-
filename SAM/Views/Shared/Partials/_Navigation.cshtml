@@ -1,0 +1,199 @@
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    var user = await UserManager.GetUserAsync(User);
+    var isAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+    var isCompanyAdmin = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
+    var isOperator = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "operator"));
+    var isTechnician = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
+}
+
+<nav class="app-sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+    <div class="sidebar-header">
+        <div class="sidebar-brand-wrapper">
+            <a class="sidebar-brand" asp-controller="Dashboard" asp-action="Index" aria-label="SAM Dashboard">
+                <i class="bi bi-shield-check sidebar-brand-icon"></i>
+                <span class="sidebar-brand-text">SAM</span>
+            </a>
+        </div>
+        <button class="sidebar-toggle d-none d-md-flex" id="sidebarCollapseToggle" type="button" aria-label="Toggle sidebar" aria-expanded="true">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+    </div>
+    
+    <ul class="sidebar-nav" role="menubar">
+        <li class="nav-item" role="none">
+            <a class="nav-link" asp-controller="Dashboard" asp-action="Index" role="menuitem" data-tooltip="Dashboard">
+                <i class="bi bi-speedometer2"></i>
+                <span class="nav-link-text">Dashboard</span>
+            </a>
+        </li>
+
+        @if (isCompanyAdmin)
+        {
+            <li class="nav-item nav-dropdown-item" role="none">
+                <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-system-admin" data-dropdown="system-admin" data-tooltip="System Administration">
+                    <i class="bi bi-gear"></i>
+                    <span class="nav-link-text">System Administration</span>
+                    <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
+                </button>
+                <ul class="nav-dropdown" id="dropdown-system-admin" role="menu">
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Companies" role="menuitem" data-tooltip="Companies">
+                            <i class="bi bi-building"></i>
+                            <span class="nav-link-text">Companies</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Facilities" role="menuitem" data-tooltip="Facilities">
+                            <i class="bi bi-building-fill"></i>
+                            <span class="nav-link-text">Facilities</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Soils" role="menuitem" data-tooltip="Soils">
+                            <i class="bi bi-circle"></i>
+                            <span class="nav-link-text">Soils</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Crops" role="menuitem" data-tooltip="Crops">
+                            <i class="bi bi-flower1"></i>
+                            <span class="nav-link-text">Crops</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Nozzles" role="menuitem" data-tooltip="Nozzles">
+                            <i class="bi bi-droplet"></i>
+                            <span class="nav-link-text">Nozzles</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Sprayfields" role="menuitem" data-tooltip="Sprayfields">
+                            <i class="bi bi-grid"></i>
+                            <span class="nav-link-text">Sprayfields</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="MonitoringWells" role="menuitem" data-tooltip="Monitoring Wells">
+                            <i class="bi bi-water"></i>
+                            <span class="nav-link-text">Monitoring Wells</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+
+        @if (isTechnician)
+        {
+            <li class="nav-item nav-dropdown-item" role="none">
+                <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-monitoring" data-dropdown="monitoring" data-tooltip="Monitoring">
+                    <i class="bi bi-clipboard-data"></i>
+                    <span class="nav-link-text">Monitoring</span>
+                    <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
+                </button>
+                <ul class="nav-dropdown" id="dropdown-monitoring" role="menu">
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="OperationalData" asp-action="WWChars" role="menuitem" data-tooltip="Wastewater Monitoring">
+                            <i class="bi bi-droplet-half"></i>
+                            <span class="nav-link-text">Wastewater Monitoring</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="OperationalData" asp-action="GWMonits" role="menuitem" data-tooltip="Groundwater Monitoring">
+                            <i class="bi bi-water"></i>
+                            <span class="nav-link-text">Groundwater Monitoring</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+
+        @if (isOperator)
+        {
+            <li class="nav-item nav-dropdown-item" role="none">
+                <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-operations" data-dropdown="operations" data-tooltip="Operations">
+                    <i class="bi bi-tools"></i>
+                    <span class="nav-link-text">Operations</span>
+                    <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
+                </button>
+                <ul class="nav-dropdown" id="dropdown-operations" role="menu">
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="OperationalData" asp-action="Irrigates" role="menuitem" data-tooltip="Irrigation Logs">
+                            <i class="bi bi-sprout"></i>
+                            <span class="nav-link-text">Irrigation Logs</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="OperationalData" asp-action="OperatorLogs" role="menuitem" data-tooltip="Operator Logs">
+                            <i class="bi bi-journal-text"></i>
+                            <span class="nav-link-text">Operator Logs</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+
+        @if (isCompanyAdmin)
+        {
+            <li class="nav-item nav-dropdown-item" role="none">
+                <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-reports" data-dropdown="reports" data-tooltip="Reports">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span class="nav-link-text">Reports</span>
+                    <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
+                </button>
+                <ul class="nav-dropdown" id="dropdown-reports" role="menu">
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="Reports" asp-action="IrrigationReports" role="menuitem" data-tooltip="Irrigation Reports">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span class="nav-link-text">Irrigation Reports</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+
+        @if (isCompanyAdmin)
+        {
+            <li class="nav-item nav-dropdown-item" role="none">
+                <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-user-management" data-dropdown="user-management" data-tooltip="User Management">
+                    <i class="bi bi-people"></i>
+                    <span class="nav-link-text">User Management</span>
+                    <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
+                </button>
+                <ul class="nav-dropdown" id="dropdown-user-management" role="menu">
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="UserManagement" asp-action="UserRequests" role="menuitem" data-tooltip="User Requests">
+                            <i class="bi bi-person-plus"></i>
+                            <span class="nav-link-text">User Requests</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+
+        @if (isAdmin)
+        {
+            <li class="nav-item nav-dropdown-item" role="none">
+                <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-administration" data-dropdown="administration" data-tooltip="Administration">
+                    <i class="bi bi-shield-check"></i>
+                    <span class="nav-link-text">Administration</span>
+                    <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
+                </button>
+                <ul class="nav-dropdown" id="dropdown-administration" role="menu">
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="UserManagement" asp-action="AdminRequests" role="menuitem" data-tooltip="Admin Requests">
+                            <i class="bi bi-shield-check"></i>
+                            <span class="nav-link-text">Admin Requests</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+    </ul>
+</nav>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+

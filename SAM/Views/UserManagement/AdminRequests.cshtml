@@ -1,0 +1,124 @@
+@model IEnumerable<SAM.ViewModels.UserManagement.AdminRequestViewModel>
+@{
+    ViewData["Title"] = "Admin Requests";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Review and manage administrator access requests</p>
+    </div>
+    <a asp-action="AdminRequestCreate" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create New Request
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Admin Request List</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-tag"></i> Request Type</th>
+                            <th><i class="bi bi-envelope"></i> Target Email</th>
+                            <th><i class="bi bi-person"></i> Full Name</th>
+                            <th><i class="bi bi-file-text"></i> Justification</th>
+                            <th><i class="bi bi-person-check"></i> Requested By</th>
+                            <th><i class="bi bi-flag"></i> Status</th>
+                            <th><i class="bi bi-calendar"></i> Created Date</th>
+                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var request in Model)
+                        {
+                            <tr>
+                                <td>@request.RequestType.ToString().Replace("Admin", " Admin")</td>
+                                <td>@request.TargetEmail</td>
+                                <td>@request.TargetFullName</td>
+                                <td>@(string.IsNullOrEmpty(request.Justification) ? "-" : (request.Justification.Length > 50 ? request.Justification.Substring(0, 50) + "..." : request.Justification))</td>
+                                <td>@request.RequestedByEmail</td>
+                                <td>
+                                    <span class="badge badge-@(request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending ? "warning" : "success")">
+                                        @request.Status
+                                    </span>
+                                </td>
+                                <td>@request.CreatedDate.ToString("MM/dd/yyyy")</td>
+                                <td class="table-actions">
+                                    @if (request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                    {
+                                        <a asp-action="AdminRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                            <i class="bi bi-check-circle"></i> Approve
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal@request.Id">
+                                            <i class="bi bi-x-circle"></i> Reject
+                                        </button>
+                                        
+                                        <div class="modal fade" id="rejectModal@request.Id" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Reject Admin Request</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <form asp-action="AdminRequestReject" asp-route-id="@request.Id" method="post">
+                                                        @Html.AntiForgeryToken()
+                                                        <div class="modal-body">
+                                                            <div class="mb-3">
+                                                                <label for="reason@request.Id" class="form-label">Reason (optional):</label>
+                                                                <textarea name="reason" id="reason@request.Id" class="form-control" rows="3"></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                            <button type="submit" class="btn btn-danger">Reject Request</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <p class="text-muted mt-3">No admin requests found.</p>
+                <a asp-action="AdminRequestCreate" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Create First Request
+                </a>
+            </div>
+        }
+    </div>
+</div>
+

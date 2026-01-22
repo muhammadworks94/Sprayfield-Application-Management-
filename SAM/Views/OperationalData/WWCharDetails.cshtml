@@ -1,0 +1,103 @@
+@model SAM.ViewModels.OperationalData.WWCharViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Wastewater Characteristics Details";
+    var user = await UserManager.GetUserAsync(User);
+    var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">View detailed information for wastewater characteristics record</p>
+    </div>
+    <div>
+        @if (canEdit)
+        {
+            <a asp-action="WWCharEdit" asp-route-id="@Model.Id" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+        }
+        <a asp-action="WWChars" asp-route-companyId="@Model.CompanyId" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Basic Information</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Facility:</dt>
+            <dd class="col-sm-9">@Model.FacilityName</dd>
+
+            <dt class="col-sm-3">Company:</dt>
+            <dd class="col-sm-9">@Model.CompanyName</dd>
+
+            <dt class="col-sm-3">Period:</dt>
+            <dd class="col-sm-9">@Model.Month @Model.Year</dd>
+
+            <dt class="col-sm-3">Lab Certification:</dt>
+            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.LabCertification) ? "N/A" : Model.LabCertification)</dd>
+
+            <dt class="col-sm-3">Collected By:</dt>
+            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.CollectedBy) ? "N/A" : Model.CollectedBy)</dd>
+
+            <dt class="col-sm-3">Analyzed By:</dt>
+            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.AnalyzedBy) ? "N/A" : Model.AnalyzedBy)</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0">Daily Data</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>BOD5<br/>(mg/L)</th>
+                        <th>TSS<br/>(mg/L)</th>
+                        <th>Flow Rate<br/>(GPM)</th>
+                        <th>pH</th>
+                        <th>NH3-N<br/>(mg/L)</th>
+                        <th>Fecal Coliform<br/>(CFU/100mL)</th>
+                        <th>Total Coliform<br/>(CFU/100mL)</th>
+                        <th>Chloride<br/>(mg/L)</th>
+                        <th>TDS<br/>(mg/L)</th>
+                        <th>Composite<br/>Time</th>
+                        <th>ORC<br/>On Site</th>
+                        <th>Lagoon<br/>Freeboard<br/>(inches)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < 31; i++)
+                    {
+                        <tr>
+                            <td><strong>@(i + 1)</strong></td>
+                            <td>@(Model.BOD5Daily != null && i < Model.BOD5Daily.Count && Model.BOD5Daily[i].HasValue ? Model.BOD5Daily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.TSSDaily != null && i < Model.TSSDaily.Count && Model.TSSDaily[i].HasValue ? Model.TSSDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.FlowRateDaily != null && i < Model.FlowRateDaily.Count && Model.FlowRateDaily[i].HasValue ? Model.FlowRateDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.PHDaily != null && i < Model.PHDaily.Count && Model.PHDaily[i].HasValue ? Model.PHDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.NH3NDaily != null && i < Model.NH3NDaily.Count && Model.NH3NDaily[i].HasValue ? Model.NH3NDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.FecalColiformDaily != null && i < Model.FecalColiformDaily.Count && Model.FecalColiformDaily[i].HasValue ? Model.FecalColiformDaily[i].Value.ToString("F0") : "-")</td>
+                            <td>@(Model.TotalColiformDaily != null && i < Model.TotalColiformDaily.Count && Model.TotalColiformDaily[i].HasValue ? Model.TotalColiformDaily[i].Value.ToString("F0") : "-")</td>
+                            <td>@(Model.ChlorideDaily != null && i < Model.ChlorideDaily.Count && Model.ChlorideDaily[i].HasValue ? Model.ChlorideDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.TDSDaily != null && i < Model.TDSDaily.Count && Model.TDSDaily[i].HasValue ? Model.TDSDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.CompositeTime != null && i < Model.CompositeTime.Count && !string.IsNullOrEmpty(Model.CompositeTime[i]) ? Model.CompositeTime[i] : "-")</td>
+                            <td>@(Model.ORCOnSite != null && i < Model.ORCOnSite.Count && Model.ORCOnSite[i].HasValue ? Model.ORCOnSite[i].Value.ToString() : "-")</td>
+                            <td>@(Model.LagoonFreeboard != null && i < Model.LagoonFreeboard.Count && Model.LagoonFreeboard[i].HasValue ? Model.LagoonFreeboard[i].Value.ToString("F2") : "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+

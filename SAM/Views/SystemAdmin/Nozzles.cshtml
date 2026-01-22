@@ -1,0 +1,140 @@
+@model IEnumerable<SAM.ViewModels.SystemAdmin.NozzleViewModel>
+@{
+    ViewData["Title"] = "Nozzles";
+    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Configure nozzle specifications and settings</p>
+    </div>
+    <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create New Nozzle
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (isGlobalAdmin && companies != null)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="companyId" class="form-label"><i class="bi bi-building me-1"></i>Filter by Company:</label>
+                    <select name="companyId" id="companyId" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Companies</option>
+                        @foreach (var company in companies)
+                        {
+                            <option value="@company.Value" selected="@(selectedCompanyId.HasValue && selectedCompanyId.Value.ToString() == company.Value)">
+                                @company.Text
+                            </option>
+                        }
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Nozzle List</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-building"></i> Manufacturer</th>
+                            <th><i class="bi bi-tag"></i> Model</th>
+                            <th><i class="bi bi-speedometer2"></i> Flow Rate (GPM)</th>
+                            <th><i class="bi bi-circle"></i> Spray Arc (°)</th>
+                            @if (isGlobalAdmin)
+                            {
+                                <th><i class="bi bi-briefcase"></i> Company</th>
+                            }
+                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var nozzle in Model)
+                        {
+                            <tr>
+                                <td><i class="bi bi-building me-1"></i>@nozzle.Manufacturer</td>
+                                <td><i class="bi bi-tag me-1"></i>@nozzle.Model</td>
+                                <td><i class="bi bi-speedometer2 me-1"></i>@nozzle.FlowRateGpm.ToString("F2")</td>
+                                <td><i class="bi bi-circle me-1"></i>@nozzle.SprayArc</td>
+                                @if (isGlobalAdmin)
+                                {
+                                    <td><i class="bi bi-briefcase me-1"></i>@nozzle.CompanyName</td>
+                                }
+                                <td class="table-actions">
+                                    <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@nozzle.Id">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                    
+                                    <div class="modal fade" id="deleteModal@nozzle.Id" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Confirm Delete</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    Are you sure you want to delete nozzle <strong>@nozzle.Manufacturer @nozzle.Model</strong>?
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <form asp-action="NozzleDelete" asp-route-id="@nozzle.Id" method="post" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <p class="text-muted mt-3">No nozzles found.</p>
+                <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Create First Nozzle
+                </a>
+            </div>
+        }
+    </div>
+</div>
+

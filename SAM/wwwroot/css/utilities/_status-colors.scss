@@ -1,0 +1,40 @@
+// ============================================
+// Status Color Utilities
+// ============================================
+
+.text-compliant {
+  color: $compliant !important;
+}
+
+.text-non-compliant {
+  color: $non-compliant !important;
+}
+
+.text-under-review {
+  color: $under-review !important;
+}
+
+.bg-compliant {
+  background-color: $compliant-lighter !important;
+}
+
+.bg-non-compliant {
+  background-color: $danger-lighter !important;
+}
+
+.bg-under-review {
+  background-color: $warning-lighter !important;
+}
+
+.border-compliant {
+  border-color: $compliant !important;
+}
+
+.border-non-compliant {
+  border-color: $non-compliant !important;
+}
+
+.border-under-review {
+  border-color: $under-review !important;
+}
+

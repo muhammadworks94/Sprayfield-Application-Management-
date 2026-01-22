@@ -1,0 +1,31 @@
+// ============================================
+// Base Reset Styles
+// ============================================
+
+html {
+  position: relative;
+  min-height: 100%;
+  font-size: $font-size-base;
+}
+
+body {
+  font-family: $font-family-sans-serif;
+  font-size: $font-size-base;
+  font-weight: $font-weight-normal;
+  line-height: $line-height-normal;
+  color: $text-primary;
+  background-color: $body-bg;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// Focus styles for accessibility
+:focus-visible {
+  outline: 2px solid $primary;
+  outline-offset: 2px;
+}
+
