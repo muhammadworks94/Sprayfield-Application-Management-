@@ -17,3 +17,4 @@ public interface IOperatorLogService
     Task<IEnumerable<OperatorLog>> GetByDateRangeAsync(Guid? companyId, DateTime startDate, DateTime endDate);
 }
 
+

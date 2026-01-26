@@ -82,3 +82,4 @@ public class Irrigate : CompanyScopedEntity
     public Sprayfield? Sprayfield { get; set; }
 }
 
+

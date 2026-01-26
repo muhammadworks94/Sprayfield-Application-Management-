@@ -31,3 +31,4 @@ public class Nozzle : CompanyScopedEntity
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
 }
 
+

@@ -16,3 +16,4 @@ public interface IMonitoringWellService
     Task<IEnumerable<MonitoringWell>> GetByCompanyIdAsync(Guid companyId);
 }
 
+

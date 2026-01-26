@@ -31,3 +31,4 @@ public class MonitoringWell : CompanyScopedEntity
     public ICollection<GWMonit> GWMonits { get; set; } = new List<GWMonit>();
 }
 
+

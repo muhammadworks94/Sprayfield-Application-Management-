@@ -32,3 +32,4 @@ public class NozzleConfiguration : IEntityTypeConfiguration<Nozzle>
     }
 }
 
+

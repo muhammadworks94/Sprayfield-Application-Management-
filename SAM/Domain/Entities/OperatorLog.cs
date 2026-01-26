@@ -67,3 +67,4 @@ public class OperatorLog : CompanyScopedEntity
     public Facility? Facility { get; set; }
 }
 
+

@@ -17,3 +17,4 @@ public interface IGWMonitService
     Task<IEnumerable<GWMonit>> GetByDateRangeAsync(Guid? companyId, DateTime startDate, DateTime endDate);
 }
 
+

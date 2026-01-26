@@ -17,3 +17,4 @@ public interface IWWCharService
     Task<IEnumerable<WWChar>> GetByFacilityIdAsync(Guid facilityId);
 }
 
+

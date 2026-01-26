@@ -162,3 +162,4 @@ public class OperatorLogEditViewModel
     public string NextShiftNotes { get; set; } = string.Empty;
 }
 
+

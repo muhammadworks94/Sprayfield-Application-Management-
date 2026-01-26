@@ -26,3 +26,4 @@ public class Crop : CompanyScopedEntity
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
 }
 
+

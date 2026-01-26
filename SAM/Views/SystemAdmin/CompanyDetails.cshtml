@@ -1,46 +1,719 @@
-@model SAM.ViewModels.SystemAdmin.CompanyViewModel
+@model SAM.ViewModels.SystemAdmin.CompanyDetailsViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Company Details";
+    var isGlobalAdmin = Model.IsGlobalAdmin;
+    var currentUser = await UserManager.GetUserAsync(User);
+    var canCreate = isGlobalAdmin || (currentUser != null && await UserManager.IsInRoleAsync(currentUser, "company_admin"));
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <p class="text-muted mb-0">View detailed information for company</p>
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-    <div>
-        <a asp-action="CompanyEdit" asp-route-id="@Model.Id" class="btn btn-primary">
-            <i class="bi bi-pencil"></i> Edit
-        </a>
-        <a asp-action="Companies" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Back to List
-        </a>
-    </div>
-</div>
+}
 
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-building me-2"></i>@Model.Name</h5>
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+}
+
+<!-- Company Header Section -->
+<div class="card mb-4">
     <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3"><i class="bi bi-building me-1"></i>Company Name:</dt>
-            <dd class="col-sm-9">@Model.Name</dd>
-
-            <dt class="col-sm-3"><i class="bi bi-envelope me-1"></i>Contact Email:</dt>
-            <dd class="col-sm-9">@Model.ContactEmail</dd>
-
-            <dt class="col-sm-3"><i class="bi bi-calendar-plus me-1"></i>Created Date:</dt>
-            <dd class="col-sm-9">@Model.CreatedDate.ToString("MM/dd/yyyy HH:mm") UTC</dd>
-
-            @if (Model.UpdatedDate.HasValue)
-            {
-                <dt class="col-sm-3"><i class="bi bi-calendar-check me-1"></i>Updated Date:</dt>
-                <dd class="col-sm-9">@Model.UpdatedDate.Value.ToString("MM/dd/yyyy HH:mm") UTC</dd>
-            }
-
-            <dt class="col-sm-3"><i class="bi bi-person me-1"></i>Created By:</dt>
-            <dd class="col-sm-9">@Model.CreatedBy</dd>
-        </dl>
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="flex-grow-1">
+                <h2 class="mb-2">
+                    <i class="bi bi-building me-2 text-primary"></i>@Model.Name
+                </h2>
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <p class="text-muted mb-3">@Model.Description</p>
+                }
+                <div class="d-flex gap-2 flex-wrap">
+                    @if (Model.IsActive)
+                    {
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Inactive</span>
+                    }
+                    @if (Model.IsVerified)
+                    {
+                        <span class="badge bg-success"><i class="bi bi-shield-check me-1"></i>Verified</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning"><i class="bi bi-shield-exclamation me-1"></i>Unverified</span>
+                    }
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a asp-action="CompanyEdit" asp-route-id="@Model.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Edit Company
+                </a>
+                @if (isGlobalAdmin)
+                {
+                    <a asp-action="CompanyDelete" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+                        <i class="bi bi-trash"></i> Delete
+                    </a>
+                }
+                <a asp-action="Companies" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- Tabbed Interface -->
+<ul class="nav nav-tabs mb-4" id="companyTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab">
+            <i class="bi bi-info-circle me-2"></i>Company Details
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
+            <i class="bi bi-people me-2"></i>Users
+            @if (Model.UsersCount > 0)
+            {
+                <span class="text-primary">(@Model.UsersCount)</span>
+            }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="facilities-tab" data-bs-toggle="tab" data-bs-target="#facilities" type="button" role="tab">
+            <i class="bi bi-building me-2"></i>Facilities
+            @if (Model.FacilitiesCount > 0)
+            {
+                <span class="text-primary">(@Model.FacilitiesCount)</span>
+            }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="soils-tab" data-bs-toggle="tab" data-bs-target="#soils" type="button" role="tab">
+            <i class="bi bi-circle me-2"></i>Soils
+            @if (Model.SoilsCount > 0)
+            {
+                <span class="text-primary">(@Model.SoilsCount)</span>
+            }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="crops-tab" data-bs-toggle="tab" data-bs-target="#crops" type="button" role="tab">
+            <i class="bi bi-flower1 me-2"></i>Crops
+            @if (Model.CropsCount > 0)
+            {
+                <span class="text-primary">(@Model.CropsCount)</span>
+            }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="nozzles-tab" data-bs-toggle="tab" data-bs-target="#nozzles" type="button" role="tab">
+            <i class="bi bi-droplet me-2"></i>Nozzles
+            @if (Model.NozzlesCount > 0)
+            {
+                <span class="text-primary">(@Model.NozzlesCount)</span>
+            }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sprayfields-tab" data-bs-toggle="tab" data-bs-target="#sprayfields" type="button" role="tab">
+            <i class="bi bi-grid me-2"></i>Sprayfields
+            @if (Model.SprayfieldsCount > 0)
+            {
+                <span class="text-primary">(@Model.SprayfieldsCount)</span>
+            }
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="monitoringwells-tab" data-bs-toggle="tab" data-bs-target="#monitoringwells" type="button" role="tab">
+            <i class="bi bi-water me-2"></i>Monitoring Wells
+            @if (Model.MonitoringWellsCount > 0)
+            {
+                <span class="text-primary">(@Model.MonitoringWellsCount)</span>
+            }
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="companyTabsContent">
+    <!-- Company Details Tab -->
+    <div class="tab-pane fade show active" id="details" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Company Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    
+                    <dt class="col-sm-3"><i class="bi bi-envelope me-1"></i>Contact Email:</dt>
+                    <dd class="col-sm-9">@Model.ContactEmail</dd>
+
+                    <dt class="col-sm-3"><i class="bi bi-telephone me-1"></i>Phone Number:</dt>
+                    <dd class="col-sm-9">@Model.PhoneNumber</dd>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.FaxNumber))
+                    {
+                        <dt class="col-sm-3"><i class="bi bi-printer me-1"></i>Fax Number:</dt>
+                        <dd class="col-sm-9">@Model.FaxNumber</dd>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Website))
+                    {
+                        <dt class="col-sm-3"><i class="bi bi-globe me-1"></i>Website:</dt>
+                        <dd class="col-sm-9"><a href="@Model.Website" target="_blank" rel="noopener noreferrer">@Model.Website</a></dd>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.TaxId))
+                    {
+                        <dt class="col-sm-3"><i class="bi bi-receipt me-1"></i>Tax ID:</dt>
+                        <dd class="col-sm-9">@Model.TaxId</dd>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.LicenseNumber))
+                    {
+                        <dt class="col-sm-3"><i class="bi bi-card-text me-1"></i>License Number:</dt>
+                        <dd class="col-sm-9">@Model.LicenseNumber</dd>
+                    }
+
+                    <dt class="col-sm-3"><i class="bi bi-calendar-plus me-1"></i>Created Date:</dt>
+                    <dd class="col-sm-9">@Model.CreatedDate.ToString("MM/dd/yyyy HH:mm") UTC</dd>
+
+                    @if (Model.UpdatedDate.HasValue)
+                    {
+                        <dt class="col-sm-3"><i class="bi bi-calendar-check me-1"></i>Updated Date:</dt>
+                        <dd class="col-sm-9">@Model.UpdatedDate.Value.ToString("MM/dd/yyyy HH:mm") UTC</dd>
+                    }
+
+                    <dt class="col-sm-3"><i class="bi bi-person me-1"></i>Created By:</dt>
+                    <dd class="col-sm-9">@Model.CreatedBy</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Tab -->
+    <div class="tab-pane fade" id="users" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Users</h5>
+                @if (canCreate)
+                {
+                    <a asp-controller="UserManagement" asp-action="UserRequestCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create User Request
+                    </a>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.Users.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-person"></i> Name</th>
+                                    <th><i class="bi bi-envelope"></i> Email</th>
+                                    <th><i class="bi bi-shield"></i> Roles</th>
+                                    <th><i class="bi bi-toggle-on"></i> Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in Model.Users)
+                                {
+                                    <tr>
+                                        <td>@user.FullName</td>
+                                        <td>@user.Email</td>
+                                        <td>
+                                            @foreach (var role in user.Roles)
+                                            {
+                                                <span class="badge bg-secondary me-1">@role</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (user.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Inactive</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3">
+                        <a asp-controller="UserManagement" asp-action="UserRequests" asp-route-companyId="@Model.Id" class="btn btn-outline-primary">
+                            <i class="bi bi-list"></i> View All User Requests
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-people" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3">No users found for this company.</p>
+                        @if (canCreate)
+                        {
+                            <a asp-controller="UserManagement" asp-action="UserRequestCreate" asp-route-companyId="@Model.Id" class="btn btn-primary mt-2">
+                                <i class="bi bi-plus-circle"></i> Create First User Request
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Facilities Tab -->
+    <div class="tab-pane fade" id="facilities" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-building me-2"></i>Facilities</h5>
+                @if (canCreate)
+                {
+                    <a asp-action="FacilityCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Facility
+                    </a>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.Facilities.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-building"></i> Name</th>
+                                    <th><i class="bi bi-file-text"></i> Permit Number</th>
+                                    <th><i class="bi bi-geo-alt"></i> Address</th>
+                                    <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var facility in Model.Facilities)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-action="FacilityDetails" asp-route-id="@facility.Id" class="text-decoration-none">
+                                                @facility.Name
+                                            </a>
+                                        </td>
+                                        <td>@facility.PermitNumber</td>
+                                        <td>@facility.Address, @facility.City, @facility.State @facility.ZipCode</td>
+                                        <td class="table-actions">
+                                            <a asp-action="FacilityEdit" asp-route-id="@facility.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            @if (isGlobalAdmin)
+                                            {
+                                                <a asp-action="FacilityDelete" asp-route-id="@facility.Id" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-building" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3">No facilities found for this company.</p>
+                        @if (canCreate)
+                        {
+                            <a asp-action="FacilityCreate" asp-route-companyId="@Model.Id" class="btn btn-primary mt-2">
+                                <i class="bi bi-plus-circle"></i> Create First Facility
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Soils Tab -->
+    <div class="tab-pane fade" id="soils" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-circle me-2"></i>Soils</h5>
+                @if (canCreate)
+                {
+                    <a asp-action="SoilCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Soil
+                    </a>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.Soils.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-circle"></i> Type Name</th>
+                                    <th><i class="bi bi-file-text"></i> Description</th>
+                                    <th><i class="bi bi-speedometer"></i> Permeability</th>
+                                    <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var soil in Model.Soils)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-action="SoilDetails" asp-route-id="@soil.Id" class="text-decoration-none">
+                                                @soil.TypeName
+                                            </a>
+                                        </td>
+                                        <td>@(string.IsNullOrWhiteSpace(soil.Description) ? "-" : soil.Description)</td>
+                                        <td>@soil.Permeability.ToString("F2") in/hr</td>
+                                        <td class="table-actions">
+                                            <a asp-action="SoilEdit" asp-route-id="@soil.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            @if (isGlobalAdmin)
+                                            {
+                                                <a asp-action="SoilDelete" asp-route-id="@soil.Id" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3">No soils found for this company.</p>
+                        @if (canCreate)
+                        {
+                            <a asp-action="SoilCreate" asp-route-companyId="@Model.Id" class="btn btn-primary mt-2">
+                                <i class="bi bi-plus-circle"></i> Create First Soil
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Crops Tab -->
+    <div class="tab-pane fade" id="crops" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi-flower1 me-2"></i>Crops</h5>
+                @if (canCreate)
+                {
+                    <a asp-action="CropCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Crop
+                    </a>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.Crops.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-circle"></i> Name</th>
+                                    <th><i class="bi bi-percent"></i> PAN Factor</th>
+                                    <th><i class="bi bi-arrow-up"></i> N Uptake</th>
+                                    <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var crop in Model.Crops)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-action="CropDetails" asp-route-id="@crop.Id" class="text-decoration-none">
+                                                @crop.Name
+                                            </a>
+                                        </td>
+                                        <td>@crop.PanFactor.ToString("F2")</td>
+                                        <td>@crop.NUptake.ToString("F2") lbs/acre/year</td>
+                                        <td class="table-actions">
+                                            <a asp-action="CropEdit" asp-route-id="@crop.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            @if (isGlobalAdmin)
+                                            {
+                                                <a asp-action="CropDelete" asp-route-id="@crop.Id" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3">No crops found for this company.</p>
+                        @if (canCreate)
+                        {
+                            <a asp-action="CropCreate" asp-route-companyId="@Model.Id" class="btn btn-primary mt-2">
+                                <i class="bi bi-plus-circle"></i> Create First Crop
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Nozzles Tab -->
+    <div class="tab-pane fade" id="nozzles" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-droplet me-2"></i>Nozzles</h5>
+                @if (canCreate)
+                {
+                    <a asp-action="NozzleCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Nozzle
+                    </a>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.Nozzles.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-circle"></i> Model</th>
+                                    <th><i class="bi bi-building"></i> Manufacturer</th>
+                                    <th><i class="bi bi-droplet"></i> Flow Rate</th>
+                                    <th><i class="bi bi-circle-half"></i> Spray Arc</th>
+                                    <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var nozzle in Model.Nozzles)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-action="NozzleDetails" asp-route-id="@nozzle.Id" class="text-decoration-none">
+                                                @nozzle.Model
+                                            </a>
+                                        </td>
+                                        <td>@nozzle.Manufacturer</td>
+                                        <td>@nozzle.FlowRateGpm.ToString("F2") GPM</td>
+                                        <td>@nozzle.SprayArc°</td>
+                                        <td class="table-actions">
+                                            <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            @if (isGlobalAdmin)
+                                            {
+                                                <a asp-action="NozzleDelete" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3">No nozzles found for this company.</p>
+                        @if (canCreate)
+                        {
+                            <a asp-action="NozzleCreate" asp-route-companyId="@Model.Id" class="btn btn-primary mt-2">
+                                <i class="bi bi-plus-circle"></i> Create First Nozzle
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Sprayfields Tab -->
+    <div class="tab-pane fade" id="sprayfields" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-circle me-2"></i>Sprayfields</h5>
+                @if (canCreate)
+                {
+                    <a asp-action="SprayfieldCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-grid-circle"></i> Create Sprayfield
+                    </a>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.Sprayfields.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-circle"></i> Field ID</th>
+                                    <th><i class="bi bi-rulers"></i> Size</th>
+                                    <th><i class="bi bi-building"></i> Facility</th>
+                                    <th><i class="bi bi-circle"></i> Soil</th>
+                                    <th><i class="bi bi-circle"></i> Crop</th>
+                                    <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sprayfield in Model.Sprayfields)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="text-decoration-none">
+                                                @sprayfield.FieldId
+                                            </a>
+                                        </td>
+                                        <td>@sprayfield.SizeAcres.ToString("F2") acres</td>
+                                        <td>@(sprayfield.FacilityName ?? "-")</td>
+                                        <td>@(sprayfield.SoilName ?? "-")</td>
+                                        <td>@(sprayfield.CropName ?? "-")</td>
+                                        <td class="table-actions">
+                                            <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            @if (isGlobalAdmin)
+                                            {
+                                                <a asp-action="SprayfieldDelete" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3">No sprayfields found for this company.</p>
+                        @if (canCreate)
+                        {
+                            <a asp-action="SprayfieldCreate" asp-route-companyId="@Model.Id" class="btn btn-primary mt-2">
+                                <i class="bi bi-plus-circle"></i> Create First Sprayfield
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Monitoring Wells Tab -->
+    <div class="tab-pane fade" id="monitoringwells" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-water me-2"></i>Monitoring Wells</h5>
+                @if (canCreate)
+                {
+                    <a asp-action="MonitoringWellCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Monitoring Well
+                    </a>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.MonitoringWells.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-circle"></i> Well ID</th>
+                                    <th><i class="bi bi-geo-alt"></i> Location</th>
+                                    <th><i class="bi bi-geo"></i> Coordinates</th>
+                                    <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var well in Model.MonitoringWells)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-action="MonitoringWellDetails" asp-route-id="@well.Id" class="text-decoration-none">
+                                                @well.WellId
+                                            </a>
+                                        </td>
+                                        <td>@(string.IsNullOrWhiteSpace(well.LocationDescription) ? "-" : well.LocationDescription)</td>
+                                        <td>@well.Latitude.ToString("F6"), @well.Longitude.ToString("F6")</td>
+                                        <td class="table-actions">
+                                            <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            @if (isGlobalAdmin)
+                                            {
+                                                <a asp-action="MonitoringWellDelete" asp-route-id="@well.Id" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3">No monitoring wells found for this company.</p>
+                        @if (canCreate)
+                        {
+                            <a asp-action="MonitoringWellCreate" asp-route-companyId="@Model.Id" class="btn btn-primary mt-2">
+                                <i class="bi bi-plus-circle"></i> Create First Monitoring Well
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Initialize Bootstrap tabs
+        var triggerTabList = [].slice.call(document.querySelectorAll('#companyTabs button'));
+        triggerTabList.forEach(function (triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl);
+            triggerEl.addEventListener('click', function (event) {
+                event.preventDefault();
+                tabTrigger.show();
+            });
+        });
+    </script>
+}

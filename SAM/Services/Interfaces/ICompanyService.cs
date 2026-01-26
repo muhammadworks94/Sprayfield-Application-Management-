@@ -15,3 +15,4 @@ public interface ICompanyService
     Task<bool> ExistsAsync(Guid id);
 }
 
+

@@ -16,3 +16,4 @@ public interface ICropService
     Task<IEnumerable<Crop>> GetByCompanyIdAsync(Guid companyId);
 }
 
+

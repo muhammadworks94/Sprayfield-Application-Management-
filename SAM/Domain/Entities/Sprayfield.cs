@@ -47,3 +47,4 @@ public class Sprayfield : CompanyScopedEntity
     public ICollection<Irrigate> Irrigates { get; set; } = new List<Irrigate>();
 }
 
+

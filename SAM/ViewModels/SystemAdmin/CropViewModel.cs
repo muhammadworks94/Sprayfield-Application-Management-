@@ -70,3 +70,4 @@ public class CropEditViewModel
     public decimal NUptake { get; set; }
 }
 
+

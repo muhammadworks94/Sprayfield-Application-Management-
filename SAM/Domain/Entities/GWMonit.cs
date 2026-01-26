@@ -132,3 +132,4 @@ public class GWMonit : CompanyScopedEntity
     public MonitoringWell? MonitoringWell { get; set; }
 }
 
+

@@ -45,3 +45,4 @@ public class UserRequestConfiguration : IEntityTypeConfiguration<UserRequest>
     }
 }
 
+

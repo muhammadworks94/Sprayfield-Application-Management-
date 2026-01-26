@@ -21,6 +21,37 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
             .HasMaxLength(256);
 
         builder.HasIndex(c => c.ContactEmail);
+
+        builder.Property(c => c.PhoneNumber)
+            .IsRequired()
+            .HasMaxLength(20);
+
+        builder.Property(c => c.Website)
+            .HasMaxLength(500);
+
+        builder.Property(c => c.Description)
+            .HasMaxLength(1000);
+
+        builder.Property(c => c.TaxId)
+            .HasMaxLength(50);
+
+        builder.Property(c => c.FaxNumber)
+            .HasMaxLength(20);
+
+        builder.Property(c => c.LicenseNumber)
+            .HasMaxLength(100);
+
+        builder.Property(c => c.IsActive)
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        builder.Property(c => c.IsVerified)
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        builder.HasIndex(c => c.TaxId);
+        builder.HasIndex(c => c.LicenseNumber);
     }
 }
+
 

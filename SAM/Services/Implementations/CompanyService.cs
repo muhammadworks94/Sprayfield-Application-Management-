@@ -71,6 +71,14 @@ public class CompanyService : ICompanyService
 
         existing.Name = company.Name;
         existing.ContactEmail = company.ContactEmail;
+        existing.PhoneNumber = company.PhoneNumber;
+        existing.Website = company.Website;
+        existing.Description = company.Description;
+        existing.TaxId = company.TaxId;
+        existing.FaxNumber = company.FaxNumber;
+        existing.LicenseNumber = company.LicenseNumber;
+        existing.IsActive = company.IsActive;
+        existing.IsVerified = company.IsVerified;
 
         await _context.SaveChangesAsync();
 
@@ -97,4 +105,5 @@ public class CompanyService : ICompanyService
         return await _context.Companies.AnyAsync(c => c.Id == id);
     }
 }
+
 

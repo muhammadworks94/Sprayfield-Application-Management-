@@ -29,3 +29,4 @@ public class ApplicationUser : IdentityUser
     public Company? Company { get; set; }
 }
 
+

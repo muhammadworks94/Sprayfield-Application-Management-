@@ -17,3 +17,4 @@ public interface IIrrigateService
     Task<IEnumerable<Irrigate>> GetByDateRangeAsync(Guid? companyId, DateTime startDate, DateTime endDate);
 }
 
+

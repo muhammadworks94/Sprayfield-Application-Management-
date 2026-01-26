@@ -17,3 +17,4 @@ public abstract class CompanyScopedEntity : AuditableEntity
     public Company? Company { get; set; }
 }
 
+

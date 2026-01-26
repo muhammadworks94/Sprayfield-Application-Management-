@@ -31,6 +31,14 @@ public static class CompanySeeder
             Id = Guid.NewGuid(),
             Name = "Acme Environmental Services",
             ContactEmail = "contact@acme-env.com",
+            PhoneNumber = "+1-555-0101",
+            Website = "https://www.acme-env.com",
+            Description = "Leading environmental services provider specializing in wastewater treatment and sprayfield management.",
+            TaxId = "12-3456789",
+            FaxNumber = "+1-555-0102",
+            LicenseNumber = "ENV-LIC-2024-001",
+            IsActive = true,
+            IsVerified = true,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
@@ -197,6 +205,14 @@ public static class CompanySeeder
             Id = Guid.NewGuid(),
             Name = "Green Valley Waste Management",
             ContactEmail = "info@greenvalley-wm.com",
+            PhoneNumber = "+1-555-0201",
+            Website = "https://www.greenvalley-wm.com",
+            Description = "Comprehensive waste management solutions with focus on sustainable practices and regulatory compliance.",
+            TaxId = "98-7654321",
+            FaxNumber = "+1-555-0202",
+            LicenseNumber = "WM-LIC-2024-002",
+            IsActive = true,
+            IsVerified = true,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
@@ -305,4 +321,5 @@ public static class CompanySeeder
         logger.LogInformation("Successfully seeded 2 companies with reference data.");
     }
 }
+
 

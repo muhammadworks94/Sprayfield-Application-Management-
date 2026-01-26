@@ -71,6 +71,14 @@ public class SystemAdminController : BaseController
             Id = c.Id,
             Name = c.Name,
             ContactEmail = c.ContactEmail,
+            PhoneNumber = c.PhoneNumber,
+            Website = c.Website,
+            Description = c.Description,
+            TaxId = c.TaxId,
+            FaxNumber = c.FaxNumber,
+            LicenseNumber = c.LicenseNumber,
+            IsActive = c.IsActive,
+            IsVerified = c.IsVerified,
             CreatedDate = c.CreatedDate,
             UpdatedDate = c.UpdatedDate,
             CreatedBy = c.CreatedBy
@@ -90,16 +98,141 @@ public class SystemAdminController : BaseController
         // Check company access
         await EnsureCompanyAccessAsync(company.Id);
 
-        var viewModel = new CompanyViewModel
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+
+        // Load Users with roles
+        var users = await _context.Users
+            .Where(u => u.CompanyId == id)
+            .ToListAsync();
+
+        var userViewModels = new List<UserListItemViewModel>();
+        foreach (var user in users)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            userViewModels.Add(new UserListItemViewModel
+            {
+                Id = user.Id,
+                Email = user.Email ?? string.Empty,
+                FullName = user.FullName,
+                IsActive = user.IsActive,
+                Roles = roles.ToList()
+            });
+        }
+
+        // Load Facilities
+        var facilities = await _facilityService.GetAllAsync(id);
+        var facilityViewModels = facilities.Select(f => new FacilityViewModel
+        {
+            Id = f.Id,
+            CompanyId = f.CompanyId,
+            CompanyName = f.Company?.Name,
+            Name = f.Name,
+            PermitNumber = f.PermitNumber,
+            Permittee = f.Permittee,
+            FacilityClass = f.FacilityClass,
+            Address = f.Address,
+            City = f.City,
+            State = f.State,
+            ZipCode = f.ZipCode
+        }).ToList();
+
+        // Load Soils
+        var soils = await _soilService.GetAllAsync(id);
+        var soilViewModels = soils.Select(s => new SoilViewModel
+        {
+            Id = s.Id,
+            CompanyId = s.CompanyId,
+            CompanyName = s.Company?.Name,
+            TypeName = s.TypeName,
+            Description = s.Description,
+            Permeability = s.Permeability
+        }).ToList();
+
+        // Load Crops
+        var crops = await _cropService.GetAllAsync(id);
+        var cropViewModels = crops.Select(c => new CropViewModel
+        {
+            Id = c.Id,
+            CompanyId = c.CompanyId,
+            CompanyName = c.Company?.Name,
+            Name = c.Name,
+            PanFactor = c.PanFactor,
+            NUptake = c.NUptake
+        }).ToList();
+
+        // Load Nozzles
+        var nozzles = await _nozzleService.GetAllAsync(id);
+        var nozzleViewModels = nozzles.Select(n => new NozzleViewModel
+        {
+            Id = n.Id,
+            CompanyId = n.CompanyId,
+            CompanyName = n.Company?.Name,
+            Model = n.Model,
+            Manufacturer = n.Manufacturer,
+            FlowRateGpm = n.FlowRateGpm,
+            SprayArc = n.SprayArc
+        }).ToList();
+
+        // Load Sprayfields
+        var sprayfields = await _sprayfieldService.GetAllAsync(id);
+        var sprayfieldViewModels = sprayfields.Select(s => new SprayfieldViewModel
+        {
+            Id = s.Id,
+            CompanyId = s.CompanyId,
+            CompanyName = s.Company?.Name,
+            FieldId = s.FieldId,
+            SizeAcres = s.SizeAcres,
+            SoilId = s.SoilId,
+            SoilName = s.Soil?.TypeName,
+            CropId = s.CropId,
+            CropName = s.Crop?.Name,
+            NozzleId = s.NozzleId,
+            NozzleName = $"{s.Nozzle?.Manufacturer} {s.Nozzle?.Model}",
+            FacilityId = s.FacilityId,
+            FacilityName = s.Facility?.Name,
+            HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr
+        }).ToList();
+
+        // Load Monitoring Wells
+        var monitoringWells = await _monitoringWellService.GetAllAsync(id);
+        var monitoringWellViewModels = monitoringWells.Select(m => new MonitoringWellViewModel
+        {
+            Id = m.Id,
+            CompanyId = m.CompanyId,
+            CompanyName = m.Company?.Name,
+            WellId = m.WellId,
+            LocationDescription = m.LocationDescription,
+            Latitude = m.Latitude,
+            Longitude = m.Longitude
+        }).ToList();
+
+        var viewModel = new CompanyDetailsViewModel
         {
             Id = company.Id,
             Name = company.Name,
             ContactEmail = company.ContactEmail,
+            PhoneNumber = company.PhoneNumber,
+            Website = company.Website,
+            Description = company.Description,
+            TaxId = company.TaxId,
+            FaxNumber = company.FaxNumber,
+            LicenseNumber = company.LicenseNumber,
+            IsActive = company.IsActive,
+            IsVerified = company.IsVerified,
             CreatedDate = company.CreatedDate,
             UpdatedDate = company.UpdatedDate,
-            CreatedBy = company.CreatedBy
+            CreatedBy = company.CreatedBy,
+            Users = userViewModels,
+            Facilities = facilityViewModels,
+            Soils = soilViewModels,
+            Crops = cropViewModels,
+            Nozzles = nozzleViewModels,
+            Sprayfields = sprayfieldViewModels,
+            MonitoringWells = monitoringWellViewModels,
+            IsGlobalAdmin = isGlobalAdmin
         };
 
+        ViewBag.IsGlobalAdmin = isGlobalAdmin;
         return View(viewModel);
     }
 
@@ -123,7 +256,15 @@ public class SystemAdminController : BaseController
             var company = new Company
             {
                 Name = viewModel.Name,
-                ContactEmail = viewModel.ContactEmail
+                ContactEmail = viewModel.ContactEmail,
+                PhoneNumber = viewModel.PhoneNumber,
+                Website = viewModel.Website,
+                Description = viewModel.Description,
+                TaxId = viewModel.TaxId,
+                FaxNumber = viewModel.FaxNumber,
+                LicenseNumber = viewModel.LicenseNumber,
+                IsActive = viewModel.IsActive,
+                IsVerified = viewModel.IsVerified
             };
 
             await _companyService.CreateAsync(company);
@@ -149,7 +290,15 @@ public class SystemAdminController : BaseController
         {
             Id = company.Id,
             Name = company.Name,
-            ContactEmail = company.ContactEmail
+            ContactEmail = company.ContactEmail,
+            PhoneNumber = company.PhoneNumber,
+            Website = company.Website,
+            Description = company.Description,
+            TaxId = company.TaxId,
+            FaxNumber = company.FaxNumber,
+            LicenseNumber = company.LicenseNumber,
+            IsActive = company.IsActive,
+            IsVerified = company.IsVerified
         };
 
         return View(viewModel);
@@ -171,6 +320,14 @@ public class SystemAdminController : BaseController
 
             company.Name = viewModel.Name;
             company.ContactEmail = viewModel.ContactEmail;
+            company.PhoneNumber = viewModel.PhoneNumber;
+            company.Website = viewModel.Website;
+            company.Description = viewModel.Description;
+            company.TaxId = viewModel.TaxId;
+            company.FaxNumber = viewModel.FaxNumber;
+            company.LicenseNumber = viewModel.LicenseNumber;
+            company.IsActive = viewModel.IsActive;
+            company.IsVerified = viewModel.IsVerified;
 
             await _companyService.UpdateAsync(company);
             TempData["SuccessMessage"] = $"Company '{company.Name}' updated successfully.";
@@ -183,10 +340,100 @@ public class SystemAdminController : BaseController
         }
     }
 
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public async Task<IActionResult> CompanyDelete(Guid id)
+    {
+        var company = await _context.Companies
+            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+
+        if (company == null)
+            return NotFound();
+
+        // Count related entities
+        var usersCount = await _context.Users
+            .CountAsync(u => u.CompanyId == id);
+        
+        var facilitiesCount = await _context.Facilities
+            .CountAsync(f => f.CompanyId == id && !f.IsDeleted);
+        
+        var soilsCount = await _context.Soils
+            .CountAsync(s => s.CompanyId == id && !s.IsDeleted);
+        
+        var cropsCount = await _context.Crops
+            .CountAsync(c => c.CompanyId == id && !c.IsDeleted);
+        
+        var nozzlesCount = await _context.Nozzles
+            .CountAsync(n => n.CompanyId == id && !n.IsDeleted);
+        
+        var sprayfieldsCount = await _context.Sprayfields
+            .CountAsync(s => s.CompanyId == id && !s.IsDeleted);
+        
+        var monitoringWellsCount = await _context.MonitoringWells
+            .CountAsync(m => m.CompanyId == id && !m.IsDeleted);
+        
+        var userRequestsCount = await _context.UserRequests
+            .CountAsync(u => u.CompanyId == id && !u.IsDeleted);
+
+        // Get detailed lists for critical entities
+        var users = await _context.Users
+            .Where(u => u.CompanyId == id)
+            .Select(u => new ViewModels.SystemAdmin.UserInfo
+            {
+                Email = u.Email ?? string.Empty,
+                FullName = u.FullName
+            })
+            .ToListAsync();
+
+        var facilities = await _context.Facilities
+            .Where(f => f.CompanyId == id && !f.IsDeleted)
+            .Select(f => new ViewModels.SystemAdmin.FacilityInfo
+            {
+                Name = f.Name,
+                PermitNumber = f.PermitNumber
+            })
+            .ToListAsync();
+
+        var userRequests = await _context.UserRequests
+            .Where(u => u.CompanyId == id && !u.IsDeleted)
+            .Select(u => new ViewModels.SystemAdmin.UserRequestInfo
+            {
+                Email = u.Email,
+                FullName = u.FullName,
+                Status = u.Status.ToString()
+            })
+            .ToListAsync();
+
+        var viewModel = new CompanyDeleteViewModel
+        {
+            Id = company.Id,
+            Name = company.Name,
+            ContactEmail = company.ContactEmail,
+            PhoneNumber = company.PhoneNumber,
+            Website = company.Website,
+            Description = company.Description,
+            CreatedDate = company.CreatedDate,
+            UsersCount = usersCount,
+            FacilitiesCount = facilitiesCount,
+            SoilsCount = soilsCount,
+            CropsCount = cropsCount,
+            NozzlesCount = nozzlesCount,
+            SprayfieldsCount = sprayfieldsCount,
+            MonitoringWellsCount = monitoringWellsCount,
+            UserRequestsCount = userRequestsCount,
+            Users = users,
+            Facilities = facilities,
+            UserRequests = userRequests
+        };
+
+        return View(viewModel);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> CompanyDelete(Guid id)
+    [ActionName("CompanyDelete")]
+    public async Task<IActionResult> CompanyDeletePost(Guid id)
     {
         try
         {

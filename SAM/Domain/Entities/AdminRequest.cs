@@ -39,3 +39,4 @@ public class AdminRequest : AuditableEntity
     public RequestStatusEnum Status { get; set; } = RequestStatusEnum.Pending;
 }
 
+

@@ -56,3 +56,4 @@ public class IrrRprtConfiguration : IEntityTypeConfiguration<IrrRprt>
     }
 }
 
+

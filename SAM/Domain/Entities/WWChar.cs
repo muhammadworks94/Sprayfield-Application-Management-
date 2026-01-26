@@ -103,3 +103,4 @@ public class WWChar : CompanyScopedEntity
     public Facility? Facility { get; set; }
 }
 
+

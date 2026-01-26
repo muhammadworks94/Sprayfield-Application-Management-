@@ -35,3 +35,4 @@ public class MonitoringWellConfiguration : IEntityTypeConfiguration<MonitoringWe
     }
 }
 
+

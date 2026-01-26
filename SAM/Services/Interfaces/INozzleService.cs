@@ -16,3 +16,4 @@ public interface INozzleService
     Task<IEnumerable<Nozzle>> GetByCompanyIdAsync(Guid companyId);
 }
 
+

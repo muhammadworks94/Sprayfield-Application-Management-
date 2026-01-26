@@ -85,3 +85,4 @@ public class NozzleEditViewModel
     public int SprayArc { get; set; }
 }
 
+

@@ -16,3 +16,4 @@ public interface IFacilityService
     Task<IEnumerable<Facility>> GetByCompanyIdAsync(Guid companyId);
 }
 
+

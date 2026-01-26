@@ -31,3 +31,4 @@ public class CropConfiguration : IEntityTypeConfiguration<Crop>
     }
 }
 
+

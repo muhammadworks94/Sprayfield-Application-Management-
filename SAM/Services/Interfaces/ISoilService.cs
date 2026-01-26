@@ -16,3 +16,4 @@ public interface ISoilService
     Task<IEnumerable<Soil>> GetByCompanyIdAsync(Guid companyId);
 }
 
+

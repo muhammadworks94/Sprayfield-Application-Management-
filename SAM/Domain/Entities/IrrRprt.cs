@@ -72,3 +72,4 @@ public class IrrRprt : CompanyScopedEntity
     public Facility? Facility { get; set; }
 }
 
+

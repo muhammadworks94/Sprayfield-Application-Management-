@@ -56,3 +56,4 @@ public class Facility : CompanyScopedEntity
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
 }
 
+

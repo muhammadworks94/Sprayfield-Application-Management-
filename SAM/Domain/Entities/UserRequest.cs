@@ -47,3 +47,4 @@ public class UserRequest : AuditableEntity
     public Company? Company { get; set; }
 }
 
+

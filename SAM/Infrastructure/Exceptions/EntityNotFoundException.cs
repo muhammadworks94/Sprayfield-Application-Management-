@@ -28,3 +28,4 @@ public class EntityNotFoundException : Exception
     public object? Key { get; }
 }
 
+

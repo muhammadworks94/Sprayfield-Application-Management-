@@ -10,9 +10,7 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <p class="text-muted mb-0">Overview of your facilities, compliance status, and recent activity</p>
-    </div>
+   
     <div>
         @if (canManageUsers && Model.PendingUserRequests > 0)
         {
@@ -89,6 +87,18 @@
 </div>
 
 <!-- Compliance Status -->
+@{
+    var totalReports = Model.CompliantReports + Model.UnderReviewReports + Model.NonCompliantReports;
+    var compliantPercent = totalReports > 0 ? (Model.CompliantReports * 100.0 / totalReports) : 0;
+    var underReviewPercent = totalReports > 0 ? (Model.UnderReviewReports * 100.0 / totalReports) : 0;
+    var nonCompliantPercent = totalReports > 0 ? (Model.NonCompliantReports * 100.0 / totalReports) : 0;
+    
+    // Calculate circumference for SVG (radius = 64, so circumference = 2 * PI * 64 ≈ 402)
+    var circumference = 2 * Math.PI * 64;
+    var compliantOffset = circumference - (compliantPercent / 100 * circumference);
+    var underReviewOffset = circumference - (underReviewPercent / 100 * circumference);
+    var nonCompliantOffset = circumference - (nonCompliantPercent / 100 * circumference);
+}
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -98,36 +108,54 @@
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col-md-4">
-                        <div class="stat-card stat-card-success p-3">
-                            <div class="stat-icon-container">
-                                <i class="bi bi-check-circle stat-icon"></i>
+                        <div class="progress-circle-container">
+                            <div class="progress-circle-wrapper">
+                                <svg class="progress-circle-svg" viewBox="0 0 140 140">
+                                    <circle class="progress-circle-bg" cx="70" cy="70" r="64"></circle>
+                                    <circle class="progress-circle-fill compliant" 
+                                            cx="70" cy="70" r="64"
+                                            stroke-dasharray="@circumference"
+                                            stroke-dashoffset="@compliantOffset"
+                                            data-percent="@compliantPercent"></circle>
+                                </svg>
+                                <div class="progress-circle-value">@compliantPercent.ToString("F0")%</div>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-value">@Model.CompliantReports</div>
-                                <div class="stat-label">Compliant Reports</div>
-                            </div>
+                            <div class="progress-circle-count">@Model.CompliantReports</div>
+                            <div class="progress-circle-label">Compliant Reports</div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="stat-card stat-card-warning p-3">
-                            <div class="stat-icon-container">
-                                <i class="bi bi-hourglass-split stat-icon"></i>
+                        <div class="progress-circle-container">
+                            <div class="progress-circle-wrapper">
+                                <svg class="progress-circle-svg" viewBox="0 0 140 140">
+                                    <circle class="progress-circle-bg" cx="70" cy="70" r="64"></circle>
+                                    <circle class="progress-circle-fill under-review" 
+                                            cx="70" cy="70" r="64"
+                                            stroke-dasharray="@circumference"
+                                            stroke-dashoffset="@underReviewOffset"
+                                            data-percent="@underReviewPercent"></circle>
+                                </svg>
+                                <div class="progress-circle-value">@underReviewPercent.ToString("F0")%</div>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-value">@Model.UnderReviewReports</div>
-                                <div class="stat-label">Under Review</div>
-                            </div>
+                            <div class="progress-circle-count">@Model.UnderReviewReports</div>
+                            <div class="progress-circle-label">Under Review</div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="stat-card stat-card-danger p-3">
-                            <div class="stat-icon-container">
-                                <i class="bi bi-x-circle stat-icon"></i>
+                        <div class="progress-circle-container">
+                            <div class="progress-circle-wrapper">
+                                <svg class="progress-circle-svg" viewBox="0 0 140 140">
+                                    <circle class="progress-circle-bg" cx="70" cy="70" r="64"></circle>
+                                    <circle class="progress-circle-fill non-compliant" 
+                                            cx="70" cy="70" r="64"
+                                            stroke-dasharray="@circumference"
+                                            stroke-dashoffset="@nonCompliantOffset"
+                                            data-percent="@nonCompliantPercent"></circle>
+                                </svg>
+                                <div class="progress-circle-value">@nonCompliantPercent.ToString("F0")%</div>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-value">@Model.NonCompliantReports</div>
-                                <div class="stat-label">Non-Compliant Reports</div>
-                            </div>
+                            <div class="progress-circle-count">@Model.NonCompliantReports</div>
+                            <div class="progress-circle-label">Non-Compliant Reports</div>
                         </div>
                     </div>
                 </div>
@@ -137,29 +165,33 @@
 </div>
 
 <!-- Recent Activity and Compliance Summaries -->
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
+<div class="row mb-4">
+    <div class="col-md-6 mb-4 mb-md-0">
+        <div class="card h-100">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i> Recent Activity</h5>
             </div>
             <div class="card-body">
                 @if (Model.RecentActivities.Any())
                 {
-                    <div class="list-group">
+                    <div class="list-group list-group-flush">
                         @foreach (var activity in Model.RecentActivities)
                         {
-                            <div class="list-group-item">
+                            <div class="list-group-item border-0 border-bottom px-0 py-3">
                                 <div class="d-flex w-100 justify-content-between align-items-start">
                                     <div class="flex-grow-1">
-                                        <div class="d-flex align-items-center mb-1">
-                                            <i class="bi bi-@(activity.Type == "Operator Log" ? "journal-text" : activity.Type == "Irrigation" ? "droplet" : "file-earmark-text") me-2 text-primary"></i>
-                                            <h6 class="mb-0">@activity.Type</h6>
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="me-2">
+                                                <i class="bi bi-@(activity.Type == "Operator Log" ? "journal-text" : activity.Type == "Irrigation" ? "droplet" : "file-earmark-text") text-primary" style="font-size: 1.25rem;"></i>
+                                            </div>
+                                            <h6 class="mb-0 fw-semibold">@activity.Type</h6>
                                         </div>
-                                        <p class="mb-1">@activity.Description</p>
-                                        <small class="text-muted"><i class="bi bi-person"></i> @activity.User</small>
+                                        <p class="mb-2 text-muted small">@activity.Description</p>
+                                        <small class="text-muted">
+                                            <i class="bi bi-person me-1"></i>@activity.User
+                                        </small>
                                     </div>
-                                    <small class="text-muted ms-3">@activity.Date.ToString("MM/dd/yyyy HH:mm")</small>
+                                    <small class="text-muted ms-3 text-nowrap">@activity.Date.ToString("MM/dd/yyyy HH:mm")</small>
                                 </div>
                             </div>
                         }
@@ -167,37 +199,42 @@
                 }
                 else
                 {
-                    <p class="text-muted text-center py-3"><i class="bi bi-inbox"></i> No recent activity</p>
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3 mb-0">No recent activity</p>
+                    </div>
                 }
             </div>
         </div>
     </div>
 
     <div class="col-md-6">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-file-earmark-check"></i> Recent Compliance Reports</h5>
+                <h5 class="mb-0"><i class="bi bi-file-earmark-check me-2"></i> Recent Compliance Reports</h5>
             </div>
             <div class="card-body">
                 @if (Model.ComplianceSummaries.Any())
                 {
                     <div class="table-responsive">
-                        <table class="table table-hover table-sm">
+                        <table class="table table-hover table-sm mb-0">
                             <thead>
                                 <tr>
-                                    <th>Facility</th>
-                                    <th>Period</th>
-                                    <th>Status</th>
+                                    <th class="border-0"><i class="bi bi-building me-1"></i>Facility</th>
+                                    <th class="border-0">Period</th>
+                                    <th class="border-0 text-end">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var summary in Model.ComplianceSummaries)
                                 {
                                     <tr>
-                                        <td><i class="bi bi-building me-1"></i>@summary.FacilityName</td>
-                                        <td>@summary.Period</td>
-                                        <td>
-                                            <span class="badge badge-@(summary.ComplianceStatus == "Compliant" ? "compliant" : summary.ComplianceStatus == "NonCompliant" ? "non-compliant" : "under-review")">
+                                        <td class="align-middle">
+                                            <i class="bi bi-building me-1 text-muted"></i>@summary.FacilityName
+                                        </td>
+                                        <td class="align-middle text-muted">@summary.Period</td>
+                                        <td class="align-middle text-end">
+                                            <span class="badge badge-@(summary.ComplianceStatus == "Compliant" ? "success" : summary.ComplianceStatus == "NonCompliant" ? "danger" : "warning")">
                                                 @summary.ComplianceStatus
                                             </span>
                                         </td>
@@ -209,14 +246,17 @@
                 }
                 else
                 {
-                    <p class="text-muted text-center py-3"><i class="bi bi-inbox"></i> No compliance reports available</p>
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-3 mb-0">No compliance reports available</p>
+                    </div>
                 }
             </div>
         </div>
     </div>
 </div>
 
-<!-- Quick Stats -->
+<!-- Recent Data Entry -->
 <div class="row mt-4">
     <div class="col-md-12">
         <div class="card">
@@ -224,48 +264,48 @@
                 <h5 class="mb-0"><i class="bi bi-graph-up"></i> Recent Data Entry (Last 30 Days)</h5>
             </div>
             <div class="card-body">
-                <div class="row">
+                <div class="row g-3">
                     <div class="col-md-3">
-                        <div class="stat-card stat-card-primary p-3">
-                            <div class="stat-icon-container">
-                                <i class="bi bi-journal-text stat-icon"></i>
+                        <div class="metric-card-mini">
+                            <div class="metric-card-mini-icon icon-primary">
+                                <i class="bi bi-journal-text"></i>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-value">@Model.RecentOperatorLogs</div>
-                                <div class="stat-label">Operator Logs</div>
+                            <div class="metric-card-mini-content">
+                                <div class="metric-card-mini-value">@Model.RecentOperatorLogs</div>
+                                <div class="metric-card-mini-label">Operator Logs</div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="stat-card stat-card-success p-3">
-                            <div class="stat-icon-container">
-                                <i class="bi bi-droplet stat-icon"></i>
+                        <div class="metric-card-mini">
+                            <div class="metric-card-mini-icon icon-success">
+                                <i class="bi bi-droplet"></i>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-value">@Model.RecentIrrigations</div>
-                                <div class="stat-label">Irrigation Records</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card stat-card-info p-3">
-                            <div class="stat-icon-container">
-                                <i class="bi bi-water stat-icon"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value">@Model.RecentWWCharRecords</div>
-                                <div class="stat-label">Wastewater Records</div>
+                            <div class="metric-card-mini-content">
+                                <div class="metric-card-mini-value">@Model.RecentIrrigations</div>
+                                <div class="metric-card-mini-label">Irrigation Records</div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="stat-card stat-card-warning p-3">
-                            <div class="stat-icon-container">
-                                <i class="bi bi-droplet-half stat-icon"></i>
+                        <div class="metric-card-mini">
+                            <div class="metric-card-mini-icon icon-info">
+                                <i class="bi bi-water"></i>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-value">@Model.RecentGWMonitRecords</div>
-                                <div class="stat-label">Groundwater Records</div>
+                            <div class="metric-card-mini-content">
+                                <div class="metric-card-mini-value">@Model.RecentWWCharRecords</div>
+                                <div class="metric-card-mini-label">Wastewater Records</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card-mini">
+                            <div class="metric-card-mini-icon icon-warning">
+                                <i class="bi bi-droplet-half"></i>
+                            </div>
+                            <div class="metric-card-mini-content">
+                                <div class="metric-card-mini-value">@Model.RecentGWMonitRecords</div>
+                                <div class="metric-card-mini-label">Groundwater Records</div>
                             </div>
                         </div>
                     </div>
@@ -274,4 +314,28 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Animate circular progress indicators on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const progressCircles = document.querySelectorAll('.progress-circle-fill');
+            const circumference = 2 * Math.PI * 64;
+            
+            progressCircles.forEach(function(circle, index) {
+                const percent = parseFloat(circle.getAttribute('data-percent')) || 0;
+                const offset = circumference - (percent / 100 * circumference);
+                
+                // Reset to full circumference for animation start
+                circle.style.strokeDashoffset = circumference;
+                
+                // Animate to target value with staggered delay
+                setTimeout(function() {
+                    circle.style.transition = 'stroke-dashoffset 1.2s ease-out';
+                    circle.style.strokeDashoffset = offset;
+                }, 150 + (index * 100));
+            });
+        });
+    </script>
+}
 

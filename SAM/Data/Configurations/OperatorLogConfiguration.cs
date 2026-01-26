@@ -54,3 +54,4 @@ public class OperatorLogConfiguration : IEntityTypeConfiguration<OperatorLog>
     }
 }
 
+

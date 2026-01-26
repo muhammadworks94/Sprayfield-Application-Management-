@@ -39,3 +39,4 @@ public class ComplianceSummaryViewModel
     public DateTime ReportDate { get; set; }
 }
 
+
