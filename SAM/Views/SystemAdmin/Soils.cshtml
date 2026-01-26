@@ -34,9 +34,7 @@
 @if (isGlobalAdmin && companies != null)
 {
     <div class="card mb-3">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
-        </div>
+       
         <div class="card-body">
             <form method="get" class="row g-3">
                 <div class="col-md-4">
@@ -56,11 +54,11 @@
     </div>
 }
 
-<div class="card">
+<div class="card card-primary">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Soil Types List</h5>
     </div>
-    <div class="card-body">
+    <div class="">
         @if (Model.Any())
         {
             <div class="table-responsive">
@@ -81,12 +79,12 @@
                         @foreach (var soil in Model)
                         {
                             <tr>
-                                <td><i class="bi bi-tag me-1"></i>@soil.TypeName</td>
-                                <td><i class="bi bi-file-text me-1"></i>@(string.IsNullOrEmpty(soil.Description) ? "-" : soil.Description)</td>
-                                <td><i class="bi bi-speedometer me-1"></i>@soil.Permeability.ToString("F2")</td>
+                                <td>@soil.TypeName</td>
+                                <td>@(string.IsNullOrEmpty(soil.Description) ? "-" : soil.Description)</td>
+                                <td>@soil.Permeability.ToString("F2")</td>
                                 @if (isGlobalAdmin)
                                 {
-                                    <td><i class="bi bi-briefcase me-1"></i>@soil.CompanyName</td>
+                                    <td>@soil.CompanyName</td>
                                 }
                                 <td class="table-actions">
                                     <a asp-action="SoilEdit" asp-route-id="@soil.Id" class="btn btn-sm btn-outline-primary">

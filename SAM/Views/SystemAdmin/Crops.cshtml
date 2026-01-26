@@ -34,9 +34,6 @@
 @if (isGlobalAdmin && companies != null)
 {
     <div class="card mb-3">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
-        </div>
         <div class="card-body">
             <form method="get" class="row g-3">
                 <div class="col-md-4">
@@ -56,11 +53,11 @@
     </div>
 }
 
-<div class="card">
+<div class="card card-primary">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Crop List</h5>
     </div>
-    <div class="card-body">
+    <div class="">
         @if (Model.Any())
         {
             <div class="table-responsive">
@@ -81,12 +78,12 @@
                         @foreach (var crop in Model)
                         {
                             <tr>
-                                <td><i class="bi bi-flower1 me-1"></i>@crop.Name</td>
-                                <td><i class="bi bi-calculator me-1"></i>@crop.PanFactor.ToString("F2")</td>
-                                <td><i class="bi bi-graph-up me-1"></i>@crop.NUptake.ToString("F2")</td>
+                                <td>@crop.Name</td>
+                                <td>@crop.PanFactor.ToString("F2")</td>
+                                <td>@crop.NUptake.ToString("F2")</td>
                                 @if (isGlobalAdmin)
                                 {
-                                    <td><i class="bi bi-briefcase me-1"></i>@crop.CompanyName</td>
+                                    <td>@crop.CompanyName</td>
                                 }
                                 <td class="table-actions">
                                     <a asp-action="CropEdit" asp-route-id="@crop.Id" class="btn btn-sm btn-outline-primary">

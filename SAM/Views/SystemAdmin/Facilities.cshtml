@@ -34,9 +34,7 @@
 @if (isGlobalAdmin && companies != null)
 {
     <div class="card mb-3">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
-        </div>
+      
         <div class="card-body">
             <form method="get" class="row g-3">
                 <div class="col-md-4">
@@ -56,11 +54,11 @@
     </div>
 }
 
-<div class="card">
+<div class="card card-primary">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Facility List</h5>
     </div>
-    <div class="card-body">
+    <div class="">
         @if (Model.Any())
         {
             <div class="table-responsive">

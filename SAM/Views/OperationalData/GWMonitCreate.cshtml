@@ -222,21 +222,21 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="LabCertification" class="form-label"></label>
+                            <label asp-for="LabCertification" class="form-label required"></label>
                             <input asp-for="LabCertification" class="form-control" />
                             <span asp-validation-for="LabCertification" class="text-danger"></span>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="CollectedBy" class="form-label"></label>
+                            <label asp-for="CollectedBy" class="form-label required"></label>
                             <input asp-for="CollectedBy" class="form-control" />
                             <span asp-validation-for="CollectedBy" class="text-danger"></span>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="AnalyzedBy" class="form-label"></label>
+                            <label asp-for="AnalyzedBy" class="form-label required"></label>
                             <input asp-for="AnalyzedBy" class="form-control" />
                             <span asp-validation-for="AnalyzedBy" class="text-danger"></span>
                         </div>
@@ -248,7 +248,7 @@
                 <div class="form-section-title">Additional Information</div>
                 
                 <div class="mb-3">
-                    <label asp-for="Comments" class="form-label"></label>
+                    <label asp-for="Comments" class="form-label required"></label>
                     <textarea asp-for="Comments" class="form-control" rows="3"></textarea>
                     <span asp-validation-for="Comments" class="text-danger"></span>
                 </div>

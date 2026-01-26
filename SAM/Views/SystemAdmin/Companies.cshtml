@@ -32,11 +32,11 @@
     </div>
 }
 
-<div class="card">
+<div class="card card-primary">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Company List</h5>
     </div>
-    <div class="card-body">
+    <div class="">
         @if (Model.Any())
         {
             <div class="table-responsive">
@@ -58,11 +58,11 @@
                             <tr>
                                 <td>
                                     <a asp-action="CompanyDetails" asp-route-id="@company.Id" class="text-decoration-none">
-                                        <i class="bi bi-building me-1"></i>@company.Name
+                                        @* <i class="bi bi-building me-1"></i> *@@company.Name
                                     </a>
                                 </td>
-                                <td><i class="bi bi-envelope me-1"></i>@company.ContactEmail</td>
-                                <td><i class="bi bi-calendar me-1"></i>@company.CreatedDate.ToString("MM/dd/yyyy")</td>
+                                <td>@* <i class="bi bi-envelope me-1"></i> *@@company.ContactEmail</td>
+                                <td>@* <i class="bi bi-calendar me-1"></i> *@@company.CreatedDate.ToString("MM/dd/yyyy")</td>
                                 @if (isGlobalAdmin)
                                 {
                                     <td class="table-actions">
