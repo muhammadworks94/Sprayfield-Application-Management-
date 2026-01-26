@@ -7,47 +7,47 @@
    CSS Custom Properties (Variables)
    ============================================ */
 :root {
-  /* Colors */
-  --primary: #2563eb;
-  --primary-dark: #1e40af;
-  --primary-light: #3b82f6;
-  --primary-lighter: #dbeafe;
-  --secondary: #64748b;
+    /* Colors */
+    --primary: #2563eb;
+    --primary-dark: #1e40af;
+    --primary-light: #3b82f6;
+    --primary-lighter: #ebf3fd;
+    --secondary: #64748b;
     --secondary-dark: #475569;
     --secondary-light: #94a3b8;
-  --success: #10b981;
+    --success: #10b981;
     --success-dark: #059669;
     --success-light: #34d399;
-    --success-lighter: #d1fae5;
-  --warning: #f59e0b;
+    --success-lighter: #eefef6;
+    --warning: #f59e0b;
     --warning-dark: #d97706;
     --warning-light: #fbbf24;
-    --warning-lighter: #fef3c7;
-  --danger: #ef4444;
+    --warning-lighter: #fffdf7;
+    --danger: #ef4444;
     --danger-dark: #dc2626;
     --danger-light: #f87171;
     --danger-lighter: #fee2e2;
-  --info: #06b6d4;
+    --info: #06b6d4;
     --info-dark: #0891b2;
     --info-light: #22d3ee;
-    --info-lighter: #cffafe;
+    --info-lighter: #f0f9fa;
     /* Compliance Status Colors */
-  --compliant: #10b981;
-  --non-compliant: #ef4444;
-  --under-review: #f59e0b;
+    --compliant: #10b981;
+    --non-compliant: #ef4444;
+    --under-review: #f59e0b;
     /* Neutral Colors */
     --white: #ffffff;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
     --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
     --gray-700: #374151;
     --gray-800: #1f2937;
-  --gray-900: #111827;
-  --black: #000000;
+    --gray-900: #111827;
+    --black: #000000;
     /* Background Colors */
     --body-bg: #f7f8fa;
     --sidebar-bg: #fafbfc;
@@ -62,8 +62,8 @@
     --divider-color: rgba(0, 0, 0, 0.06);
     /* Text Colors */
     --text-primary: #51585f;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
     --text-light: #9ca3af;
     /* Link Colors */
     --link-color: #2563eb;
@@ -737,6 +737,254 @@ small {
   background: linear-gradient(90deg, transparent, var(--divider-color), transparent);
 }
 
+/* ============================================
+   Card Variant Classes
+   ============================================ */
+
+/* Card Primary Variant */
+.card.card-primary {
+    /*  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);*/
+    border-color: var(--primary);
+    box-shadow: var(--elevation-3);
+/*    color: var(--white);*/
+}
+
+.card.card-primary:hover {
+  box-shadow: var(--elevation-4);
+/*  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);*/
+}
+
+/* Card Success Variant */
+.card.card-success {
+    /*  background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);*/
+    border-color: var(--success);
+    box-shadow: var(--elevation-3);
+    color: var(--white);
+}
+
+.card.card-success:hover {
+  box-shadow: var(--elevation-4);
+/*  background: linear-gradient(135deg, var(--success-dark) 0%, var(--success) 100%);*/
+}
+
+/* Card Info Variant */
+.card.card-info {
+    /*  background: linear-gradient(135deg, var(--info) 0%, var(--info-dark) 100%);*/
+    border-color: var(--info);
+    box-shadow: var(--elevation-3);
+    color: var(--white);
+}
+
+.card.card-info:hover {
+  box-shadow: var(--elevation-4);
+/*  background: linear-gradient(135deg, var(--info-dark) 0%, var(--info) 100%);*/
+}
+
+/* Card Warning Variant */
+.card.card-warning {
+    /*  background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);*/
+    border-color: var(--warning);
+    box-shadow: var(--elevation-3);
+    color: var(--text-primary);
+}
+
+.card.card-warning:hover {
+  box-shadow: var(--elevation-4);
+/*  background: linear-gradient(135deg, var(--warning-dark) 0%, var(--warning) 100%);*/
+}
+
+/* Card Header Variants */
+.card-primary .card-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+}
+
+.card-primary .card-header::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.card-success .card-header {
+  background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+}
+
+.card-success .card-header::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.card-info .card-header {
+  background: linear-gradient(135deg, var(--info) 0%, var(--info-dark) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+}
+
+.card-info .card-header::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.card-warning .card-header {
+  background: linear-gradient(135deg, var(--warning) 0%, var(--warning-dark) 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+}
+
+.card-warning .card-header::after {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent);
+}
+
+/* Card Body Variants */
+/*.card-primary .card-body {
+  background-color: var(--primary-lighter);
+  color: var(--text-primary);
+}
+
+.card-success .card-body {
+  background-color: var(--success-lighter);
+  color: var(--text-primary);
+}*/
+
+/*.card-info .card-body {
+  background-color: var(--info-lighter);
+  color: var(--text-primary);
+}*/
+
+/*.card-warning .card-body {
+  background-color: var(--warning-lighter);
+  color: var(--text-primary);
+}*/
+
+/* Nested Text Elements in Card Headers */
+.card-primary .card-header h1,
+.card-primary .card-header h2,
+.card-primary .card-header h3,
+.card-primary .card-header h4,
+.card-primary .card-header h5,
+.card-primary .card-header h6,
+.card-primary .card-header .card-title {
+  color: var(--white);
+}
+
+.card-primary .card-header p,
+.card-primary .card-header small,
+.card-primary .card-header .text-muted {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.card-success .card-header h1,
+.card-success .card-header h2,
+.card-success .card-header h3,
+.card-success .card-header h4,
+.card-success .card-header h5,
+.card-success .card-header h6,
+.card-success .card-header .card-title {
+  color: var(--white);
+}
+
+.card-success .card-header p,
+.card-success .card-header small,
+.card-success .card-header .text-muted {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.card-info .card-header h1,
+.card-info .card-header h2,
+.card-info .card-header h3,
+.card-info .card-header h4,
+.card-info .card-header h5,
+.card-info .card-header h6,
+.card-info .card-header .card-title {
+  color: var(--white);
+}
+
+.card-info .card-header p,
+.card-info .card-header small,
+.card-info .card-header .text-muted {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.card-warning .card-header h1,
+.card-warning .card-header h2,
+.card-warning .card-header h3,
+.card-warning .card-header h4,
+.card-warning .card-header h5,
+.card-warning .card-header h6,
+.card-warning .card-header .card-title {
+    color: var(--white);
+}
+
+.card-warning .card-header p,
+.card-warning .card-header small,
+.card-warning .card-header .text-muted {
+  color: var(--text-muted);
+}
+
+/* Nested Text Elements in Card Bodies */
+.card-primary .card-body h1,
+.card-primary .card-body h2,
+.card-primary .card-body h3,
+.card-primary .card-body h4,
+.card-primary .card-body h5,
+.card-primary .card-body h6,
+.card-primary .card-body .card-title {
+  color: var(--text-primary);
+}
+
+.card-primary .card-body p,
+.card-primary .card-body small,
+.card-primary .card-body .text-muted {
+  color: var(--text-muted);
+}
+
+.card-success .card-body h1,
+.card-success .card-body h2,
+.card-success .card-body h3,
+.card-success .card-body h4,
+.card-success .card-body h5,
+.card-success .card-body h6,
+.card-success .card-body .card-title {
+  color: var(--text-primary);
+}
+
+.card-success .card-body p,
+.card-success .card-body small,
+.card-success .card-body .text-muted {
+  color: var(--text-muted);
+}
+
+.card-info .card-body h1,
+.card-info .card-body h2,
+.card-info .card-body h3,
+.card-info .card-body h4,
+.card-info .card-body h5,
+.card-info .card-body h6,
+.card-info .card-body .card-title {
+  color: var(--text-primary);
+}
+
+.card-info .card-body p,
+.card-info .card-body small,
+.card-info .card-body .text-muted {
+  color: var(--text-muted);
+}
+
+.card-warning .card-body h1,
+.card-warning .card-body h2,
+.card-warning .card-body h3,
+.card-warning .card-body h4,
+.card-warning .card-body h5,
+.card-warning .card-body h6,
+.card-warning .card-body .card-title {
+  color: var(--text-primary);
+}
+
+.card-warning .card-body p,
+.card-warning .card-body small,
+.card-warning .card-body .text-muted {
+  color: var(--text-muted);
+}
+
 .card-title {
   margin-bottom: 0.75rem;
   font-size: var(--font-size-xl);
@@ -1336,9 +1584,10 @@ small {
 }
 
 .sidebar-nav .nav-link.active {
-  color: var(--primary);
+  color: var(--white);
 /*  font-weight: var(--font-weight-semibold);*/
   background: linear-gradient(90deg, var(--primary-lighter) 0%, rgba(219, 234, 254, 0.6) 100%);
+  background: var(--primary);
 /*  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15), inset 4px 0 0 var(--primary);*/
 /*  border-left: 4px solid var(--primary);*/
   padding-left: calc(1rem - 4px);
@@ -1359,7 +1608,7 @@ small {
 
 
 .sidebar-nav .nav-link.active i {
-  color: var(--primary);
+/*  color: var(--primary);*/
   transform: scale(1.1);
 }
 

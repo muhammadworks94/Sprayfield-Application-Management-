@@ -34,9 +34,6 @@
 @if (isGlobalAdmin && companies != null)
 {
     <div class="card mb-3">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filter</h5>
-        </div>
         <div class="card-body">
             <form method="get" class="row g-3">
                 <div class="col-md-4">
@@ -56,11 +53,11 @@
     </div>
 }
 
-<div class="card">
+<div class="card card-primary">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Nozzle List</h5>
     </div>
-    <div class="card-body">
+    <div class="">
         @if (Model.Any())
         {
             <div class="table-responsive">
@@ -82,13 +79,13 @@
                         @foreach (var nozzle in Model)
                         {
                             <tr>
-                                <td><i class="bi bi-building me-1"></i>@nozzle.Manufacturer</td>
-                                <td><i class="bi bi-tag me-1"></i>@nozzle.Model</td>
-                                <td><i class="bi bi-speedometer2 me-1"></i>@nozzle.FlowRateGpm.ToString("F2")</td>
-                                <td><i class="bi bi-circle me-1"></i>@nozzle.SprayArc</td>
+                                <td>@nozzle.Manufacturer</td>
+                                <td>@nozzle.Model</td>
+                                <td>@nozzle.FlowRateGpm.ToString("F2")</td>
+                                <td>@nozzle.SprayArc</td>
                                 @if (isGlobalAdmin)
                                 {
-                                    <td><i class="bi bi-briefcase me-1"></i>@nozzle.CompanyName</td>
+                                    <td>@nozzle.CompanyName</td>
                                 }
                                 <td class="table-actions">
                                     <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary">
