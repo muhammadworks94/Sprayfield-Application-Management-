@@ -13,6 +13,7 @@ public interface ICompanyService
     Task<Company> UpdateAsync(Company company);
     Task<bool> DeleteAsync(Guid id);
     Task<bool> ExistsAsync(Guid id);
+    Task<IEnumerable<Company>> SearchAsync(string searchTerm, string[] searchFields);
 }
 
 

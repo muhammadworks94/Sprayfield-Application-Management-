@@ -694,13 +694,13 @@ small {
 }
 
 .card-header {
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 0;
-  background: linear-gradient(180deg, var(--gray-50) 0%, rgba(249, 250, 251, 0.8) 100%);
-  border-bottom: 1px solid var(--border-color);
-  border-radius: calc(0.625rem - 1px) calc(0.625rem - 1px) 0 0;
-  font-weight: var(--font-weight-semibold);
-  position: relative;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 0;
+    background: linear-gradient(270deg, var(--gray-200) 0%, var(--gray-200) 100%);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: calc(0.625rem - 1px) calc(0.625rem - 1px) 0 0;
+    font-weight: var(--font-weight-semibold);
+    position: relative;
 }
 
 .card-header::after {
@@ -1449,8 +1449,19 @@ small {
   border: 1px solid var(--border-color-dark);
   border-radius: 0.75rem;
   box-shadow: var(--elevation-5);
-  backdrop-filter: blur(12px);
   background-color: var(--card-bg);
+}
+
+/* Ensure modals work correctly even when inside tab content */
+.tab-content .modal {
+  /* Modals should be moved to body by Bootstrap, but ensure they work if not */
+  position: fixed !important;
+  z-index: 1055;
+  /* Ensure modal is positioned relative to viewport, not tab content */
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
 }
 
 .modal-header {
@@ -1520,7 +1531,8 @@ small {
 
 .modal-backdrop {
   background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
+  /* Removed backdrop-filter to prevent rendering flicker */
+  /* backdrop-filter: blur(2px); */
 }
 
 /* ============================================

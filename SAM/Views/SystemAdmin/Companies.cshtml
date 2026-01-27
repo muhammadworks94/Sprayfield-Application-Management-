@@ -32,7 +32,15 @@
     </div>
 }
 
-<div class="card card-primary">
+@{
+    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
+}
+@if (filterViewModel != null)
+{
+    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
+}
+
+<div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Company List</h5>
     </div>

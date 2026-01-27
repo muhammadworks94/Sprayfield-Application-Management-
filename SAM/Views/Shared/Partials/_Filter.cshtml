@@ -1,0 +1,141 @@
+@model SAM.ViewModels.Common.FilterViewModel
+@{
+    var hasFields = Model.Fields != null && Model.Fields.Any();
+    var showFilter = hasFields || Model.EnableSearch;
+}
+
+@if (showFilter)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" id="filterForm" class="row g-3">
+                @if (hasFields)
+                {
+                    @foreach (var field in Model.Fields)
+                    {
+                        <div class="@field.ColumnClass">
+                            <label for="@field.Name" class="form-label">
+                                @if (!string.IsNullOrEmpty(field.IconClass))
+                                {
+                                    <i class="@field.IconClass me-1"></i>
+                                }
+                                @field.Label:
+                            </label>
+                            @if (field.Type == SAM.ViewModels.Common.FilterFieldType.Dropdown && field.Options != null)
+                            {
+                                <select name="@field.Name" id="@field.Name" class="form-select" @(field.SubmitOnChange ? "onchange=\"this.form.submit()\"" : "")>
+                                    <option value="">All</option>
+                                    @foreach (var option in field.Options)
+                                    {
+                                        var isSelected = false;
+                                        if (field.Value != null)
+                                        {
+                                            var valueStr = field.Value.ToString();
+                                            isSelected = option.Value == valueStr;
+                                        }
+                                        <option value="@option.Value" selected="@isSelected">@option.Text</option>
+                                    }
+                                </select>
+                            }
+                            else if (field.Type == SAM.ViewModels.Common.FilterFieldType.Text)
+                            {
+                                <input type="text" 
+                                       name="@field.Name" 
+                                       id="@field.Name" 
+                                       class="form-control" 
+                                       value="@field.Value" 
+                                       placeholder="@field.Label" />
+                            }
+                            else if (field.Type == SAM.ViewModels.Common.FilterFieldType.Date)
+                            {
+                                <input type="date" 
+                                       name="@field.Name" 
+                                       id="@field.Name" 
+                                       class="form-control" 
+                                       value="@field.Value" />
+                            }
+                            else if (field.Type == SAM.ViewModels.Common.FilterFieldType.Number)
+                            {
+                                <input type="number" 
+                                       name="@field.Name" 
+                                       id="@field.Name" 
+                                       class="form-control" 
+                                       value="@field.Value" 
+                                       placeholder="@field.Label" />
+                            }
+                        </div>
+                    }
+                }
+
+                @if (Model.EnableSearch)
+                {
+                    <div class="col-md-4">
+                        <label for="searchTerm" class="form-label">
+                            <i class="bi bi-search me-1"></i>Search:
+                        </label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   name="searchTerm" 
+                                   id="searchTerm" 
+                                   class="form-control" 
+                                   value="@Model.SearchTerm" 
+                                   placeholder="@Model.SearchPlaceholder"
+                                   autocomplete="off" />
+                            <button type="button" class="btn btn-outline-secondary" id="clearSearch" style="display: none;">
+                                <i class="bi bi-x"></i>
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                @* Preserve other query parameters *@
+                @foreach (var key in Context.Request.Query.Keys)
+                {
+                    @if (key != "searchTerm" && !Model.Fields.Any(f => f.Name == key))
+                    {
+                        <input type="hidden" name="@key" value="@Context.Request.Query[key]" />
+                    }
+                }
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.EnableSearch)
+{
+    <script>
+        (function() {
+            const searchInput = document.getElementById('searchTerm');
+            const clearButton = document.getElementById('clearSearch');
+            const filterForm = document.getElementById('filterForm');
+            let searchTimeout;
+
+            if (searchInput && clearButton) {
+                // Show/hide clear button based on input
+                searchInput.addEventListener('input', function() {
+                    if (this.value.trim().length > 0) {
+                        clearButton.style.display = 'block';
+                    } else {
+                        clearButton.style.display = 'none';
+                    }
+                });
+
+                // Clear search
+                clearButton.addEventListener('click', function() {
+                    searchInput.value = '';
+                    clearButton.style.display = 'none';
+                    filterForm.submit();
+                });
+
+                // Initialize clear button visibility
+                if (searchInput.value.trim().length > 0) {
+                    clearButton.style.display = 'block';
+                }
+            }
+        })();
+    </script>
+}
+

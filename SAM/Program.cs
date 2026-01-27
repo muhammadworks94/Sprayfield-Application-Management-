@@ -6,6 +6,7 @@ using SAM.Data.Seeders;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Infrastructure.Middleware;
+using SAM.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,20 +76,21 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddScoped<IAuthorizationHandler, CompanyAccessHandler>();
 
 // Register services
-builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyService, SAM.Services.Implementations.CompanyService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IFacilityService, SAM.Services.Implementations.FacilityService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.ISoilService, SAM.Services.Implementations.SoilService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.INozzleService, SAM.Services.Implementations.NozzleService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.ICropService, SAM.Services.Implementations.CropService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.ISprayfieldService, SAM.Services.Implementations.SprayfieldService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IMonitoringWellService, SAM.Services.Implementations.MonitoringWellService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IOperatorLogService, SAM.Services.Implementations.OperatorLogService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IIrrigateService, SAM.Services.Implementations.IrrigateService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IWWCharService, SAM.Services.Implementations.WWCharService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IGWMonitService, SAM.Services.Implementations.GWMonitService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IIrrRprtService, SAM.Services.Implementations.IrrRprtService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IUserRequestService, SAM.Services.Implementations.UserRequestService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IAdminRequestService, SAM.Services.Implementations.AdminRequestService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyService, CompanyService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IFacilityService, FacilityService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ISoilService, SoilService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.INozzleService,NozzleService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ICropService, CropService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ISprayfieldService,SprayfieldService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IMonitoringWellService, MonitoringWellService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IOperatorLogService, OperatorLogService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IIrrigateService, IrrigateService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IWWCharService, WWCharService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IGWMonitService, GWMonitService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IIrrRprtService, IrrRprtService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IUserRequestService, UserRequestService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IAdminRequestService, AdminRequestService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ISearchService, SearchService>();
 
 // Configure Authorization Policies
 builder.Services.AddAuthorization(options =>

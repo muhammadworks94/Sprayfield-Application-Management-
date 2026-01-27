@@ -31,29 +31,15 @@
     </div>
 }
 
-@if (isGlobalAdmin && companies != null)
+@{
+    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
+}
+@if (filterViewModel != null)
 {
-    <div class="card mb-3">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <label for="companyId" class="form-label"><i class="bi bi-building me-1"></i>Filter by Company:</label>
-                    <select name="companyId" id="companyId" class="form-select" onchange="this.form.submit()">
-                        <option value="">All Companies</option>
-                        @foreach (var company in companies)
-                        {
-                            <option value="@company.Value" selected="@(selectedCompanyId.HasValue && selectedCompanyId.Value.ToString() == company.Value)">
-                                @company.Text
-                            </option>
-                        }
-                    </select>
-                </div>
-            </form>
-        </div>
-    </div>
+    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
 }
 
-<div class="card card-primary">
+<div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Crop List</h5>
     </div>
@@ -89,11 +75,11 @@
                                     <a asp-action="CropEdit" asp-route-id="@crop.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@crop.Id">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(crop.Id)">
                                         <i class="bi bi-trash"></i> Delete
                                     </button>
                                     
-                                    <div class="modal fade" id="deleteModal@crop.Id" tabindex="-1" aria-hidden="true">
+                                    <div class="modal fade" id="deleteModal@(crop.Id)" tabindex="-1" aria-hidden="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header">

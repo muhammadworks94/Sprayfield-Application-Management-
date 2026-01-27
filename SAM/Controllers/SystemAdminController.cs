@@ -8,6 +8,7 @@ using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.ViewModels.Common;
 using SAM.ViewModels.SystemAdmin;
 
 namespace SAM.Controllers;
@@ -53,12 +54,23 @@ public class SystemAdminController : BaseController
     #region Companies
 
     [HttpGet]
-    public async Task<IActionResult> Companies()
+    public async Task<IActionResult> Companies(string? searchTerm)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        var companies = await _companyService.GetAllAsync();
+        IEnumerable<Company> companies;
+
+        // Apply search if search term is provided
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var searchFields = new[] { "Name", "ContactEmail", "PhoneNumber", "Website", "Description", "TaxId", "LicenseNumber" };
+            companies = await _companyService.SearchAsync(searchTerm, searchFields);
+        }
+        else
+        {
+            companies = await _companyService.GetAllAsync();
+        }
         
         // Filter by company if not global admin
         if (!isGlobalAdmin && effectiveCompanyId.HasValue)
@@ -84,7 +96,17 @@ public class SystemAdminController : BaseController
             CreatedBy = c.CreatedBy
         });
 
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Companies",
+            EnableSearch = true,
+            SearchPlaceholder = "Search by name, email, phone, website...",
+            SearchTerm = searchTerm
+        };
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
+        ViewBag.FilterViewModel = filterViewModel;
         return View(viewModels);
     }
 
@@ -491,9 +513,33 @@ public class SystemAdminController : BaseController
             ZipCode = f.ZipCode
         });
 
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Facilities",
+            EnableSearch = false,
+            Fields = new List<FilterField>()
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.SelectedCompanyId = companyId;
+        ViewBag.FilterViewModel = filterViewModel;
 
         return View(viewModels);
     }
@@ -719,9 +765,33 @@ public class SystemAdminController : BaseController
             Permeability = s.Permeability
         });
 
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Soils",
+            EnableSearch = false,
+            Fields = new List<FilterField>()
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.SelectedCompanyId = companyId;
+        ViewBag.FilterViewModel = filterViewModel;
 
         return View(viewModels);
     }
@@ -900,9 +970,33 @@ public class SystemAdminController : BaseController
             NUptake = c.NUptake
         });
 
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Crops",
+            EnableSearch = false,
+            Fields = new List<FilterField>()
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.SelectedCompanyId = companyId;
+        ViewBag.FilterViewModel = filterViewModel;
 
         return View(viewModels);
     }
@@ -1082,9 +1176,33 @@ public class SystemAdminController : BaseController
             SprayArc = n.SprayArc
         });
 
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Nozzles",
+            EnableSearch = false,
+            Fields = new List<FilterField>()
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.SelectedCompanyId = companyId;
+        ViewBag.FilterViewModel = filterViewModel;
 
         return View(viewModels);
     }
@@ -1274,9 +1392,33 @@ public class SystemAdminController : BaseController
             HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr
         });
 
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Sprayfields",
+            EnableSearch = false,
+            Fields = new List<FilterField>()
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.SelectedCompanyId = companyId;
+        ViewBag.FilterViewModel = filterViewModel;
 
         return View(viewModels);
     }
@@ -1498,9 +1640,33 @@ public class SystemAdminController : BaseController
             Longitude = m.Longitude
         });
 
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "MonitoringWells",
+            EnableSearch = false,
+            Fields = new List<FilterField>()
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.SelectedCompanyId = companyId;
+        ViewBag.FilterViewModel = filterViewModel;
 
         return View(viewModels);
     }

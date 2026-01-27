@@ -149,7 +149,7 @@
 <div class="tab-content" id="companyTabsContent">
     <!-- Company Details Tab -->
     <div class="tab-pane fade show active" id="details" role="tabpanel">
-        <div class="card card-primary">
+        <div class="card">
             <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Company Information</h5>
             </div>
@@ -204,7 +204,7 @@
 
     <!-- Users Tab -->
     <div class="tab-pane fade" id="users" role="tabpanel">
-        <div class="card card-primary">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-people me-2"></i>Users</h5>
                 @if (canCreate)
@@ -279,7 +279,7 @@
 
     <!-- Facilities Tab -->
     <div class="tab-pane fade" id="facilities" role="tabpanel">
-        <div class="card card-primary">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-building me-2"></i>Facilities</h5>
                 @if (canCreate)
@@ -319,9 +319,31 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <a asp-action="FacilityDelete" asp-route-id="@facility.Id" class="btn btn-sm btn-outline-danger">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModalFacility@(facility.Id)">
                                                     <i class="bi bi-trash"></i> Delete
-                                                </a>
+                                                </button>
+                                                
+                                                <!-- Delete Confirmation Modal -->
+                                                <div class="modal fade" id="deleteModalFacility@(facility.Id)" tabindex="-1" aria-labelledby="deleteModalLabelFacility@(facility.Id)" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title" id="deleteModalLabelFacility@(facility.Id)">Confirm Delete</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                Are you sure you want to delete facility <strong>@facility.Name</strong>? This action cannot be undone.
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                <form asp-action="FacilityDelete" asp-route-id="@facility.Id" method="post" class="d-inline">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             }
                                         </td>
                                     </tr>
@@ -349,7 +371,7 @@
 
     <!-- Soils Tab -->
     <div class="tab-pane fade" id="soils" role="tabpanel">
-        <div class="card card-primary">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-circle me-2"></i>Soils</h5>
                 @if (canCreate)
@@ -389,9 +411,31 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <a asp-action="SoilDelete" asp-route-id="@soil.Id" class="btn btn-sm btn-outline-danger">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModalSoil@(soil.Id)">
                                                     <i class="bi bi-trash"></i> Delete
-                                                </a>
+                                                </button>
+                                                
+                                                <!-- Delete Confirmation Modal -->
+                                                <div class="modal fade" id="deleteModalSoil@(soil.Id)" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Confirm Delete</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                Are you sure you want to delete soil type <strong>@soil.TypeName</strong>?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                <form asp-action="SoilDelete" asp-route-id="@soil.Id" method="post" class="d-inline">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             }
                                         </td>
                                     </tr>
@@ -419,7 +463,7 @@
 
     <!-- Crops Tab -->
     <div class="tab-pane fade" id="crops" role="tabpanel">
-        <div class="card card-primary">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi-flower1 me-2"></i>Crops</h5>
                 @if (canCreate)
@@ -459,9 +503,31 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <a asp-action="CropDelete" asp-route-id="@crop.Id" class="btn btn-sm btn-outline-danger">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModalCrop@(crop.Id)">
                                                     <i class="bi bi-trash"></i> Delete
-                                                </a>
+                                                </button>
+                                                
+                                                <!-- Delete Confirmation Modal -->
+                                                <div class="modal fade" id="deleteModalCrop@(crop.Id)" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Confirm Delete</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                Are you sure you want to delete crop <strong>@crop.Name</strong>?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                <form asp-action="CropDelete" asp-route-id="@crop.Id" method="post" class="d-inline">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             }
                                         </td>
                                     </tr>
@@ -473,7 +539,7 @@
                 else
                 {
                     <div class="text-center py-5">
-                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <i class="bi bi-flower1" style="font-size: 3rem; color: var(--gray-400);"></i>
                         <p class="text-muted mt-3">No crops found for this company.</p>
                         @if (canCreate)
                         {
@@ -489,7 +555,7 @@
 
     <!-- Nozzles Tab -->
     <div class="tab-pane fade" id="nozzles" role="tabpanel">
-        <div class="card card-primary">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-droplet me-2"></i>Nozzles</h5>
                 @if (canCreate)
@@ -531,9 +597,31 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <a asp-action="NozzleDelete" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-danger">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModalNozzle@(nozzle.Id)">
                                                     <i class="bi bi-trash"></i> Delete
-                                                </a>
+                                                </button>
+                                                
+                                                <!-- Delete Confirmation Modal -->
+                                                <div class="modal fade" id="deleteModalNozzle@(nozzle.Id)" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Confirm Delete</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                Are you sure you want to delete nozzle <strong>@nozzle.Model</strong>?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                <form asp-action="NozzleDelete" asp-route-id="@nozzle.Id" method="post" class="d-inline">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             }
                                         </td>
                                     </tr>
@@ -545,7 +633,7 @@
                 else
                 {
                     <div class="text-center py-5">
-                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <i class="bi bi-droplet" style="font-size: 3rem; color: var(--gray-400);"></i>
                         <p class="text-muted mt-3">No nozzles found for this company.</p>
                         @if (canCreate)
                         {
@@ -561,7 +649,7 @@
 
     <!-- Sprayfields Tab -->
     <div class="tab-pane fade" id="sprayfields" role="tabpanel">
-        <div class="card card-primary">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-circle me-2"></i>Sprayfields</h5>
                 @if (canCreate)
@@ -605,9 +693,31 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <a asp-action="SprayfieldDelete" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-danger">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModalSprayfield@(sprayfield.Id)">
                                                     <i class="bi bi-trash"></i> Delete
-                                                </a>
+                                                </button>
+                                                
+                                                <!-- Delete Confirmation Modal -->
+                                                <div class="modal fade" id="deleteModalSprayfield@(sprayfield.Id)" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Confirm Delete</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                Are you sure you want to delete sprayfield <strong>@sprayfield.FieldId</strong>?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                <form asp-action="SprayfieldDelete" asp-route-id="@sprayfield.Id" method="post" class="d-inline">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             }
                                         </td>
                                     </tr>
@@ -619,7 +729,7 @@
                 else
                 {
                     <div class="text-center py-5">
-                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <i class="bi bi-grid" style="font-size: 3rem; color: var(--gray-400);"></i>
                         <p class="text-muted mt-3">No sprayfields found for this company.</p>
                         @if (canCreate)
                         {
@@ -635,7 +745,7 @@
 
     <!-- Monitoring Wells Tab -->
     <div class="tab-pane fade" id="monitoringwells" role="tabpanel">
-        <div class="card card-primary">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-water me-2"></i>Monitoring Wells</h5>
                 @if (canCreate)
@@ -675,9 +785,31 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <a asp-action="MonitoringWellDelete" asp-route-id="@well.Id" class="btn btn-sm btn-outline-danger">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModalMonitoringWell@(well.Id)">
                                                     <i class="bi bi-trash"></i> Delete
-                                                </a>
+                                                </button>
+                                                
+                                                <!-- Delete Confirmation Modal -->
+                                                <div class="modal fade" id="deleteModalMonitoringWell@(well.Id)" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Confirm Delete</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                Are you sure you want to delete monitoring well <strong>@well.WellId</strong>?
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                <form asp-action="MonitoringWellDelete" asp-route-id="@well.Id" method="post" class="d-inline">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             }
                                         </td>
                                     </tr>
@@ -689,7 +821,7 @@
                 else
                 {
                     <div class="text-center py-5">
-                        <i class="bi bi-circle" style="font-size: 3rem; color: var(--gray-400);"></i>
+                        <i class="bi bi-water" style="font-size: 3rem; color: var(--gray-400);"></i>
                         <p class="text-muted mt-3">No monitoring wells found for this company.</p>
                         @if (canCreate)
                         {
@@ -714,6 +846,15 @@
                 event.preventDefault();
                 tabTrigger.show();
             });
+        });
+        
+        // Ensure modals are moved to body if they're inside tab content to prevent positioning issues
+        document.addEventListener('show.bs.modal', function (event) {
+            var modal = event.target;
+            // Force move modal to body if it's inside tab content to prevent positioning issues
+            if (modal.parentNode && (modal.parentNode.classList.contains('tab-pane') || modal.parentNode.closest('.tab-pane'))) {
+                document.body.appendChild(modal);
+            }
         });
     </script>
 }

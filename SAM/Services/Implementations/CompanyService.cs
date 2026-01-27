@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
+using SAM.Infrastructure.Helpers;
 using SAM.Services.Interfaces;
 
 namespace SAM.Services.Implementations;
@@ -103,6 +104,58 @@ public class CompanyService : ICompanyService
     public async Task<bool> ExistsAsync(Guid id)
     {
         return await _context.Companies.AnyAsync(c => c.Id == id);
+    }
+
+    public async Task<IEnumerable<Company>> SearchAsync(string searchTerm, string[] searchFields)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return await GetAllAsync();
+        }
+
+        var query = _context.Companies
+            .Where(c => !c.IsDeleted)
+            .AsQueryable();
+
+        var searchLower = searchTerm.ToLower();
+        var searchPredicate = PredicateBuilder.False<Company>();
+
+        foreach (var field in searchFields)
+        {
+            switch (field.ToLower())
+            {
+                case "name":
+                    searchPredicate = searchPredicate.Or(c => c.Name.ToLower().Contains(searchLower));
+                    break;
+                case "contactemail":
+                case "email":
+                    searchPredicate = searchPredicate.Or(c => !string.IsNullOrEmpty(c.ContactEmail) && c.ContactEmail.ToLower().Contains(searchLower));
+                    break;
+                case "phonenumber":
+                case "phone":
+                    searchPredicate = searchPredicate.Or(c => !string.IsNullOrEmpty(c.PhoneNumber) && c.PhoneNumber.Contains(searchTerm));
+                    break;
+                case "website":
+                    searchPredicate = searchPredicate.Or(c => !string.IsNullOrEmpty(c.Website) && c.Website.ToLower().Contains(searchLower));
+                    break;
+                case "description":
+                    searchPredicate = searchPredicate.Or(c => !string.IsNullOrEmpty(c.Description) && c.Description.ToLower().Contains(searchLower));
+                    break;
+                case "taxid":
+                    searchPredicate = searchPredicate.Or(c => !string.IsNullOrEmpty(c.TaxId) && c.TaxId.Contains(searchTerm));
+                    break;
+                case "licensenumber":
+                case "license":
+                    searchPredicate = searchPredicate.Or(c => !string.IsNullOrEmpty(c.LicenseNumber) && c.LicenseNumber.Contains(searchTerm));
+                    break;
+            }
+        }
+
+        query = query.Where(searchPredicate);
+
+        return await query
+            .OrderBy(c => c.Name)
+            .ToListAsync();
     }
 }
 

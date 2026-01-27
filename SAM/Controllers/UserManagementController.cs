@@ -7,6 +7,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.ViewModels.Common;
 using SAM.ViewModels.UserManagement;
 
 namespace SAM.Controllers;
@@ -68,9 +69,33 @@ public class UserManagementController : BaseController
             CreatedDate = r.CreatedDate
         });
 
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "UserRequests",
+            EnableSearch = false,
+            Fields = new List<FilterField>()
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.SelectedCompanyId = companyId;
+        ViewBag.FilterViewModel = filterViewModel;
 
         return View(viewModels);
     }
