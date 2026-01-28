@@ -223,7 +223,7 @@ small {
   border-radius: 0.375rem;
   padding: 0.5rem 1rem;
   transition: var(--transition-base);
-  border: 1px solid transparent;
+/*  border: 1px solid transparent;*/
   position: relative;
   overflow: hidden;
 }
@@ -579,11 +579,11 @@ small {
 }
 
 .table > thead th {
-  border-bottom: 2px solid var(--border-color-dark);
+/*  border-bottom: 2px solid var(--border-color-dark);*/
   color: var(--text-primary);
-  padding: 1rem 0.75rem;
+/*  padding: 1rem 0.75rem;*/
   font-size: var(--font-size-sm);
-  text-transform: uppercase;
+/*  text-transform: uppercase;*/
   letter-spacing: 0.05em;
 }
 
@@ -654,6 +654,51 @@ small {
 }
 
 /* ============================================
+   WWChar Daily Data Table
+   ============================================ */
+.wwchar-daily-table {
+  min-width: 1200px;
+  font-size: 0.8rem;
+}
+
+.wwchar-daily-table thead th {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.wwchar-daily-table tbody td {
+  vertical-align: middle;
+}
+
+.wwchar-daily-table tbody td:first-child {
+  text-align: center;
+  font-weight: 600;
+}
+
+.wwchar-daily-table .form-control-sm,
+.wwchar-daily-table .form-select-sm {
+  min-width: 72px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
+}
+
+.wwchar-daily-table input[type="number"],
+.wwchar-daily-table input[type="time"] {
+  text-align: right;
+}
+
+/* ============================================
+   Groundwater Monitoring List Table
+   ============================================ */
+.gwmonits-table {
+  min-width: 1000px;
+}
+
+.gwmonits-table thead th {
+  white-space: nowrap;
+}
+
+/* ============================================
    Premium Card Styles with Hover Effects
    ============================================ */
 .card {
@@ -702,7 +747,15 @@ small {
     font-weight: var(--font-weight-semibold);
     position: relative;
 }
-
+.card-header-light {
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 0;
+     background: linear-gradient(270deg, var(--gray-50) 0%, var(--gray-50) 100%); 
+    border-bottom: 1px solid var(--border-color);
+    border-radius: calc(0.625rem - 1px) calc(0.625rem - 1px) 0 0;
+/*    font-weight: var(--font-weight-semibold);*/
+    position: relative;
+}
 .card-header::after {
   content: '';
   position: absolute;
@@ -1595,16 +1648,16 @@ small {
   transform: scale(1.1);
 }
 
-.sidebar-nav .nav-link.active {
-  color: var(--white);
-/*  font-weight: var(--font-weight-semibold);*/
-  background: linear-gradient(90deg, var(--primary-lighter) 0%, rgba(219, 234, 254, 0.6) 100%);
-  background: var(--primary);
-/*  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15), inset 4px 0 0 var(--primary);*/
-/*  border-left: 4px solid var(--primary);*/
-  padding-left: calc(1rem - 4px);
-  position: relative;
-}
+    .sidebar-nav .nav-link.active {
+        color: var(--white);
+        /*  font-weight: var(--font-weight-semibold);*/
+        background: linear-gradient(90deg, var(--primary-lighter) 0%, rgba(219, 234, 254, 0.6) 100%);
+        background: var(--primary);
+        /*  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15), inset 4px 0 0 var(--primary);*/
+        /*  border-left: 4px solid var(--primary);*/
+        padding-left: 2.75rem;
+        position: relative;
+    }
 
 .sidebar-nav .nav-link.active::after {
   content: '';
@@ -2624,7 +2677,7 @@ small {
 
 .login-form-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 550px;
   background: var(--white);
   border-radius: 1.25rem;
   padding: 2.5rem 2.25rem;

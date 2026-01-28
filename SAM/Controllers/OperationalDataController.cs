@@ -140,6 +140,17 @@ public class OperationalDataController : BaseController
             companyId = effectiveCompanyId.Value;
         }
 
+        // If facility is selected but companyId is still unknown (e.g., global admin),
+        // derive the company from the facility so downstream logic has a valid company.
+        if (!companyId.HasValue && facilityId.HasValue)
+        {
+            var facility = await _facilityService.GetByIdAsync(facilityId.Value);
+            if (facility != null)
+            {
+                companyId = facility.CompanyId;
+            }
+        }
+
         if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
@@ -998,9 +1009,21 @@ public class OperationalDataController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
+        // If a non-global user, default to their company when no company is specified
         if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
+        }
+
+        // If facility is selected but companyId is still unknown (e.g., global admin),
+        // derive the company from the facility so downstream logic has a valid company.
+        if (!companyId.HasValue && facilityId.HasValue)
+        {
+            var facility = await _facilityService.GetByIdAsync(facilityId.Value);
+            if (facility != null)
+            {
+                companyId = facility.CompanyId;
+            }
         }
 
         if (companyId.HasValue)
@@ -1025,7 +1048,22 @@ public class OperationalDataController : BaseController
     [Authorize(Policy = Policies.RequireTechnician)]
     public async Task<IActionResult> GWMonitCreate(GWMonitCreateViewModel viewModel)
     {
-        await EnsureCompanyAccessAsync(viewModel.CompanyId);
+        // Derive company from the selected facility to support global admins
+        var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
+        if (facility == null)
+        {
+            ModelState.AddModelError("FacilityId", "Selected facility was not found.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var companyIdForLists = facility?.CompanyId != Guid.Empty ? facility?.CompanyId : viewModel.CompanyId;
+            ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
+            ViewBag.MonitoringWells = await GetMonitoringWellSelectListAsync(companyIdForLists, viewModel.FacilityId);
+            return View(viewModel);
+        }
+
+        await EnsureCompanyAccessAsync(facility!.CompanyId);
 
         if (!ModelState.IsValid)
         {
@@ -1038,7 +1076,7 @@ public class OperationalDataController : BaseController
         {
             var gwMonit = new GWMonit
             {
-                CompanyId = viewModel.CompanyId,
+                CompanyId = facility.CompanyId,
                 FacilityId = viewModel.FacilityId,
                 MonitoringWellId = viewModel.MonitoringWellId,
                 SampleDate = viewModel.SampleDate,

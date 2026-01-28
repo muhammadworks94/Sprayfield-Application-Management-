@@ -43,6 +43,11 @@ public class UserRequest : AuditableEntity
     /// </summary>
     public RequestStatusEnum Status { get; set; } = RequestStatusEnum.Pending;
 
+    /// <summary>
+    /// Indicates if this is a self-signup request (user requested their own account) vs admin-created request.
+    /// </summary>
+    public bool IsSelfSignup { get; set; } = false;
+
     // Navigation properties
     public Company? Company { get; set; }
 }

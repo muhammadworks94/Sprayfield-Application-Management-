@@ -56,10 +56,13 @@ public class UserRequestService : IUserRequestService
         if (userRequest == null)
             throw new ArgumentNullException(nameof(userRequest));
 
-        // Validate company exists
-        var companyExists = await _context.Companies.AnyAsync(c => c.Id == userRequest.CompanyId);
-        if (!companyExists)
-            throw new EntityNotFoundException(nameof(Company), userRequest.CompanyId);
+        // Validate company exists (only if CompanyId is provided - self-signups may have null CompanyId)
+        if (userRequest.CompanyId.HasValue)
+        {
+            var companyExists = await _context.Companies.AnyAsync(c => c.Id == userRequest.CompanyId.Value);
+            if (!companyExists)
+                throw new EntityNotFoundException(nameof(Company), userRequest.CompanyId.Value);
+        }
 
         // Check if user already exists
         var existingUser = await _userManager.FindByEmailAsync(userRequest.Email);

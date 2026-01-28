@@ -2,9 +2,13 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using SAM.Domain.Entities;
+using SAM.Domain.Enums;
+using SAM.Services.Interfaces;
+using SAM.ViewModels.Account;
 
 namespace SAM.Controllers;
 
@@ -16,15 +20,27 @@ public class AccountController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<AccountController> _logger;
+    private readonly ICompanyService _companyService;
+    private readonly IUserRequestService _userRequestService;
+    private readonly ICompanyRequestService _companyRequestService;
+    private readonly IEmailService _emailService;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
-        ILogger<AccountController> logger)
+        ILogger<AccountController> logger,
+        ICompanyService companyService,
+        IUserRequestService userRequestService,
+        ICompanyRequestService companyRequestService,
+        IEmailService emailService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _logger = logger;
+        _companyService = companyService;
+        _userRequestService = userRequestService;
+        _companyRequestService = companyRequestService;
+        _emailService = emailService;
     }
 
     [HttpGet]
@@ -81,6 +97,116 @@ public class AccountController : Controller
         return View(model);
     }
 
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult ForgotPassword()
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToAction("Index", "Dashboard");
+        }
+
+        return View(new ForgotPasswordViewModel());
+    }
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var user = await _userManager.FindByEmailAsync(model.Email);
+
+        // For security, do not reveal whether the user exists or is active.
+        if (user != null && user.IsActive)
+        {
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            var callbackUrl = Url.Action(
+                nameof(ResetPassword),
+                "Account",
+                new { userId = user.Id, token },
+                protocol: Request.Scheme) ?? string.Empty;
+
+            var htmlBody =
+                $"<p>You requested to reset your password for your SAM account.</p>" +
+                $"<p>Please click the link below to reset your password:</p>" +
+                $"<p><a href=\"{callbackUrl}\">Reset your password</a></p>" +
+                "<p>If you did not request this, you can safely ignore this email.</p>";
+
+            try
+            {
+                await _emailService.SendEmailAsync(model.Email, "Reset your SAM password", htmlBody);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send password reset email to {Email}.", model.Email);
+                // Do not disclose email sending failures to avoid leaking information.
+            }
+
+            _logger.LogInformation("Password reset requested for email {Email}.", model.Email);
+        }
+
+        TempData["SuccessMessage"] = "If an account with that email exists, you will receive password reset instructions.";
+        return RedirectToAction(nameof(ForgotPassword));
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult ResetPassword(string userId, string token)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
+        {
+            TempData["ErrorMessage"] = "Invalid password reset token.";
+            return RedirectToAction(nameof(Login));
+        }
+
+        var model = new ResetPasswordViewModel
+        {
+            UserId = userId,
+            Token = token
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var user = await _userManager.FindByIdAsync(model.UserId);
+        if (user == null)
+        {
+            // For security, do not reveal that the user does not exist.
+            TempData["SuccessMessage"] = "Your password has been reset. You can now log in with your new password.";
+            return RedirectToAction(nameof(Login));
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, model.Token, model.Password);
+        if (result.Succeeded)
+        {
+            TempData["SuccessMessage"] = "Your password has been reset. You can now log in with your new password.";
+            return RedirectToAction(nameof(Login));
+        }
+
+        foreach (var error in result.Errors)
+        {
+            ModelState.AddModelError(string.Empty, error.Description);
+        }
+
+        return View(model);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
@@ -103,6 +229,117 @@ public class AccountController : Controller
     public IActionResult Lockout()
     {
         return View();
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> Signup()
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToAction("Index", "Dashboard");
+        }
+
+        var viewModel = new SignupViewModel
+        {
+            SignupType = SignupType.JoinExisting
+        };
+
+        // Load companies for dropdown
+        var companies = await _companyService.GetAllAsync();
+        ViewBag.Companies = new SelectList(companies, "Id", "Name");
+
+        return View(viewModel);
+    }
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Signup(SignupViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            var companies = await _companyService.GetAllAsync();
+            ViewBag.Companies = new SelectList(companies, "Id", "Name");
+            return View(model);
+        }
+
+        try
+        {
+            if (model.SignupType == SignupType.JoinExisting)
+            {
+                // Validate company selection
+                if (!model.SelectedCompanyId.HasValue)
+                {
+                    ModelState.AddModelError("SelectedCompanyId", "Please select a company.");
+                    var companies = await _companyService.GetAllAsync();
+                    ViewBag.Companies = new SelectList(companies, "Id", "Name");
+                    return View(model);
+                }
+
+                var company = await _companyService.GetByIdAsync(model.SelectedCompanyId.Value);
+                if (company == null)
+                {
+                    ModelState.AddModelError("SelectedCompanyId", "Selected company not found.");
+                    var companies = await _companyService.GetAllAsync();
+                    ViewBag.Companies = new SelectList(companies, "Id", "Name");
+                    return View(model);
+                }
+
+                // Create UserRequest for existing company
+                var userRequest = new UserRequest
+                {
+                    CompanyId = model.SelectedCompanyId.Value,
+                    CompanyName = company.Name,
+                    FullName = model.FullName,
+                    Email = model.Email,
+                    AppRole = AppRoleEnum.@operator, // Default role for self-signup
+                    RequestedByEmail = model.Email, // Self-requested
+                    Status = RequestStatusEnum.Pending,
+                    IsSelfSignup = true
+                };
+
+                await _userRequestService.CreateAsync(userRequest);
+                TempData["SuccessMessage"] = "Your request to join the company has been submitted. You will be notified via email once approved by the company administrator.";
+            }
+            else // CreateNew
+            {
+                // Validate company name
+                if (string.IsNullOrWhiteSpace(model.CompanyName))
+                {
+                    ModelState.AddModelError("CompanyName", "Company name is required.");
+                    var companies = await _companyService.GetAllAsync();
+                    ViewBag.Companies = new SelectList(companies, "Id", "Name");
+                    return View(model);
+                }
+
+                // Create CompanyRequest
+                var companyRequest = new CompanyRequest
+                {
+                    CompanyName = model.CompanyName,
+                    ContactEmail = model.Email, // Use requester's email as company contact
+                    PhoneNumber = model.PhoneNumber ?? string.Empty,
+                    Website = model.Website,
+                    Description = model.Description,
+                    RequesterFullName = model.FullName,
+                    RequesterEmail = model.Email,
+                    Status = RequestStatusEnum.Pending
+                };
+
+                await _companyRequestService.CreateAsync(companyRequest);
+                TempData["SuccessMessage"] = "Your company request has been submitted. You will be notified via email once approved by the administrator.";
+            }
+
+            _logger.LogInformation("Signup request submitted: {Email}, Type: {SignupType}", model.Email, model.SignupType);
+            return RedirectToAction("Login", "Account");
+        }
+        catch (Infrastructure.Exceptions.BusinessRuleException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            var companies = await _companyService.GetAllAsync();
+            ViewBag.Companies = new SelectList(companies, "Id", "Name");
+            return View(model);
+        }
     }
 
     [HttpGet]

@@ -13,6 +13,29 @@
 
 <div class="card">
     <div class="card-body">
+        <button class="btn btn-link px-0 mb-3" type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#wwcharEditInstructions"
+                aria-expanded="false"
+                aria-controls="wwcharEditInstructions">
+            <i class="bi bi-journal-text me-1"></i> Editing wastewater characteristics instructions
+        </button>
+
+        <div class="collapse" id="wwcharEditInstructions">
+            <div class="alert alert-info">
+                <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Editing Wastewater Records</h6>
+                <ul class="small mb-0 ps-3">
+                    <li class="mb-1"><strong>Record context</strong>: This record represents one facility’s effluent data for a specific month and year. Verify you are editing the correct period.</li>
+                    <li class="mb-1"><strong>Daily rows</strong>: Each row is a calendar day. Only revise values when you are correcting data entry errors or applying updated lab results.</li>
+                    <li class="mb-1"><strong>Analytical data</strong>: For BOD5, TSS, nutrients, coliforms, chloride, and TDS, align edits with final lab reports. Do not “smooth” results to fit expectations.</li>
+                    <li class="mb-1"><strong>Missing vs zero</strong>: Use blanks when no sample or measurement exists. Reserve zeros for true zero results as reported by the lab or meter.</li>
+                    <li class="mb-1"><strong>Composite time & ORC on site</strong>: Ensure these fields still reflect actual sampling practices and staffing for each day.</li>
+                    <li class="mb-1"><strong>Lagoon freeboard</strong>: Correct only if the original measurement was clearly wrong. These values support storage and freeboard compliance evaluations.</li>
+                    <li><strong>Comments / facility notes</strong>: Document material corrections (e.g., “Updated BOD5 days 5–7 from final lab report dated …”) so audits and regulatory reviews can follow the history.</li>
+                </ul>
+            </div>
+        </div>
+
         <form asp-action="WWCharEdit" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
@@ -57,7 +80,7 @@
                 <p class="text-muted small">Enter daily values for each parameter. Leave blank if no data available.</p>
                 
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
+                    <table class="table table-bordered wwchar-daily-table">
                         <thead>
                             <tr>
                                 <th>Day</th>

@@ -23,7 +23,7 @@
                             </label>
                             @if (field.Type == SAM.ViewModels.Common.FilterFieldType.Dropdown && field.Options != null)
                             {
-                                <select name="@field.Name" id="@field.Name" class="form-select" @(field.SubmitOnChange ? "onchange=\"this.form.submit()\"" : "")>
+                                <select name="@field.Name" id="@field.Name" class="form-select filter-dropdown" data-submit-on-change="@field.SubmitOnChange.ToString().ToLower()">
                                     <option value="">All</option>
                                     @foreach (var option in field.Options)
                                     {
@@ -31,9 +31,17 @@
                                         if (field.Value != null)
                                         {
                                             var valueStr = field.Value.ToString();
-                                            isSelected = option.Value == valueStr;
+                                            // Handle Guid comparison - compare both as strings, case-insensitive
+                                            isSelected = string.Equals(option.Value, valueStr, StringComparison.OrdinalIgnoreCase);
                                         }
-                                        <option value="@option.Value" selected="@isSelected">@option.Text</option>
+                                        @if (isSelected)
+                                        {
+                                            <option value="@option.Value" selected="selected">@option.Text</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@option.Value">@option.Text</option>
+                                        }
                                     }
                                 </select>
                             }
@@ -104,14 +112,29 @@
     </div>
 }
 
-@if (Model.EnableSearch)
-{
-    <script>
-        (function() {
+<script>
+    (function() {
+        const filterForm = document.getElementById('filterForm');
+        
+        // Handle dropdown changes
+        if (filterForm) {
+            const dropdowns = filterForm.querySelectorAll('.filter-dropdown');
+            dropdowns.forEach(function(dropdown) {
+                const submitOnChange = dropdown.getAttribute('data-submit-on-change') === 'true';
+                if (submitOnChange) {
+                    dropdown.addEventListener('change', function() {
+                        filterForm.submit();
+                    });
+                }
+            });
+        }
+
+        // Handle search functionality
+        @if (Model.EnableSearch)
+        {
+            <text>
             const searchInput = document.getElementById('searchTerm');
             const clearButton = document.getElementById('clearSearch');
-            const filterForm = document.getElementById('filterForm');
-            let searchTimeout;
 
             if (searchInput && clearButton) {
                 // Show/hide clear button based on input
@@ -127,7 +150,9 @@
                 clearButton.addEventListener('click', function() {
                     searchInput.value = '';
                     clearButton.style.display = 'none';
-                    filterForm.submit();
+                    if (filterForm) {
+                        filterForm.submit();
+                    }
                 });
 
                 // Initialize clear button visibility
@@ -135,7 +160,8 @@
                     clearButton.style.display = 'block';
                 }
             }
-        })();
-    </script>
-}
+            </text>
+        }
+    })();
+</script>
 

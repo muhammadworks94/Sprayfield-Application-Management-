@@ -96,11 +96,11 @@ public class SystemAdminController : BaseController
             CreatedBy = c.CreatedBy
         });
 
-        // Create filter view model
+        // Create filter view model (search only for global admins)
         var filterViewModel = new FilterViewModel
         {
             PageName = "Companies",
-            EnableSearch = true,
+            EnableSearch = isGlobalAdmin,
             SearchPlaceholder = "Search by name, email, phone, website...",
             SearchTerm = searchTerm
         };

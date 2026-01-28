@@ -17,29 +17,27 @@
     <div>
         <p class="text-muted mb-0">Review and manage user access requests</p>
     </div>
-    @if (canCreate)
-    {
-        <a asp-action="UserRequestCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create New Request
-        </a>
-    }
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+            <button type="button"
+                    class="btn btn-outline-secondary active"
+                    id="userRequestsTableViewBtn">
+                <i class="bi bi-table"></i> Table
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    id="userRequestsCardViewBtn">
+                <i class="bi bi-grid-3x3-gap"></i> Cards
+            </button>
+        </div>
+        @if (canCreate)
+        {
+            <a asp-action="UserRequestCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create New Request
+            </a>
+        }
+    </div>
 </div>
-
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
 
 @{
     var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
@@ -49,14 +47,14 @@
     @await Html.PartialAsync("Partials/_Filter", filterViewModel)
 }
 
-<div class="card card-primary">
+<div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> User Request List</h5>
     </div>
-    <div class="">
+    <div class="card-body">
         @if (Model.Any())
         {
-            <div class="table-responsive">
+            <div id="userRequestsTableView" class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
@@ -94,33 +92,13 @@
                                         <a asp-action="UserRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
                                             <i class="bi bi-check-circle"></i> Approve
                                         </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal@request.Id">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#rejectUserRequestModal"
+                                                data-request-id="@request.Id"
+                                                data-request-name="@request.FullName">
                                             <i class="bi bi-x-circle"></i> Reject
                                         </button>
-                                        
-                                        <div class="modal fade" id="rejectModal@request.Id" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Reject User Request</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <form asp-action="UserRequestReject" asp-route-id="@request.Id" method="post">
-                                                        @Html.AntiForgeryToken()
-                                                        <div class="modal-body">
-                                                            <div class="mb-3">
-                                                                <label for="reason@request.Id" class="form-label">Reason (optional):</label>
-                                                                <textarea name="reason" id="reason@request.Id" class="form-control" rows="3"></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                            <button type="submit" class="btn btn-danger">Reject Request</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </td>
                                 }
                                 else if (canApprove)
@@ -131,6 +109,65 @@
                         }
                     </tbody>
                 </table>
+            </div>
+
+            <div id="userRequestsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var request in Model)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                                <h6 class="mb-0 card-header-light">@request.FullName</h6>
+                            <div class="card-body d-flex flex-column">
+                                <small class="text-muted d-block">
+                                    <i class="bi bi-envelope me-1"></i>@request.Email
+                                </small>
+                                <small class="text-muted d-block">
+                                    <i class="bi bi-briefcase me-1"></i>@request.CompanyName
+                                </small>
+
+                                <dl class="row small mb-3 mt-2">
+                                    <dt class="col-5"><i class="bi bi-person-badge me-1"></i>Role</dt>
+                                    <dd class="col-7 mb-1">@request.AppRole.ToString().Replace("_", " ")</dd>
+
+                                    <dt class="col-5"><i class="bi bi-person-check me-1"></i>Requested By</dt>
+                                    <dd class="col-7 mb-1">@request.RequestedByEmail</dd>
+
+                                    <dt class="col-5"><i class="bi bi-calendar me-1"></i>Created</dt>
+                                    <dd class="col-7 mb-1">@request.CreatedDate.ToString("MM/dd/yyyy")</dd>
+
+                                    <dt class="col-5"><i class="bi bi-info-circle me-1"></i>Status</dt>
+                                    <dd class="col-7 mb-1">
+                                        <span class="badge bg-@(request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending ? "warning" : "success")">
+                                            @request.Status
+                                        </span>
+                                    </dd>
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-end">
+                                    @if (canApprove && request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                    {
+                                        <div class="btn-group">
+                                            <a asp-action="UserRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#rejectUserRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.FullName">
+                                                <i class="bi bi-x-circle"></i> Reject
+                                            </button>
+                                        </div>
+                                    }
+                                    else if (canApprove)
+                                    {
+                                        <span class="text-muted small">No actions</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
         }
         else
@@ -149,3 +186,97 @@
     </div>
 </div>
 
+<!-- Reject User Request Modal (Outside Table) -->
+<div class="modal fade" id="rejectUserRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject User Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="rejectUserRequestForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p>Are you sure you want to reject the user request for <strong id="rejectUserName"></strong>?</p>
+                    <div class="mb-3">
+                        <label for="rejectUserReason" class="form-label">Reason (optional):</label>
+                        <textarea name="reason" id="rejectUserReason" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rejectModal = document.getElementById('rejectUserRequestModal');
+            if (rejectModal) {
+                rejectModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const requestId = button.getAttribute('data-request-id');
+                    const requestName = button.getAttribute('data-request-name');
+                    
+                    const nameElement = rejectModal.querySelector('#rejectUserName');
+                    if (nameElement) {
+                        nameElement.textContent = requestName;
+                    }
+                    
+                    const form = rejectModal.querySelector('#rejectUserRequestForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("UserRequestReject", "UserManagement")';
+                        form.action = baseUrl + '/' + requestId;
+                    }
+                    
+                    // Clear reason textarea
+                    const reasonTextarea = rejectModal.querySelector('#rejectUserReason');
+                    if (reasonTextarea) {
+                        reasonTextarea.value = '';
+                    }
+                });
+            }
+
+            const tableBtn = document.getElementById('userRequestsTableViewBtn');
+            const cardBtn = document.getElementById('userRequestsCardViewBtn');
+            const tableView = document.getElementById('userRequestsTableView');
+            const cardView = document.getElementById('userRequestsCardView');
+            const storageKey = 'userRequestsViewMode';
+
+            function setViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    tableView?.classList.remove('d-none');
+                    cardView?.classList.add('d-none');
+                    tableBtn?.classList.add('active');
+                    cardBtn?.classList.remove('active');
+                } else {
+                    tableView?.classList.add('d-none');
+                    cardView?.classList.remove('d-none');
+                    tableBtn?.classList.remove('active');
+                    cardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, mode);
+                }
+            }
+
+            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+            setViewMode(savedMode === 'card' ? 'card' : 'table');
+
+            tableBtn?.addEventListener('click', function () {
+                setViewMode('table');
+            });
+
+            cardBtn?.addEventListener('click', function () {
+                setViewMode('card');
+            });
+        });
+    </script>
+}

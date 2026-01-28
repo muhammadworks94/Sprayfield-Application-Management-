@@ -10,26 +10,24 @@
     <div>
         <p class="text-muted mb-0">Configure and manage sprayfield areas</p>
     </div>
-    <a asp-action="SprayfieldCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Create New Sprayfield
-    </a>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+            <button type="button"
+                    class="btn btn-outline-secondary active"
+                    id="sprayfieldsTableViewBtn">
+                <i class="bi bi-table"></i> Table
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    id="sprayfieldsCardViewBtn">
+                <i class="bi bi-grid-3x3-gap"></i> Cards
+            </button>
+        </div>
+        <a asp-action="SprayfieldCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New Sprayfield
+        </a>
+    </div>
 </div>
-
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
 
 @{
     var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
@@ -43,10 +41,10 @@
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Sprayfield List</h5>
     </div>
-    <div class="">
+    <div class="card-body">
         @if (Model.Any())
         {
-            <div class="table-responsive">
+            <div id="sprayfieldsTableView" class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
@@ -83,35 +81,67 @@
                                     <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(sprayfield.Id)">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteSprayfieldModal"
+                                            data-sprayfield-id="@sprayfield.Id"
+                                            data-sprayfield-name="@sprayfield.FieldId">
                                         <i class="bi bi-trash"></i> Delete
                                     </button>
-                                    
-                                    <div class="modal fade" id="deleteModal@(sprayfield.Id)" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Confirm Delete</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    Are you sure you want to delete sprayfield <strong>@sprayfield.FieldId</strong>?
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    <form asp-action="SprayfieldDelete" asp-route-id="@sprayfield.Id" method="post" class="d-inline">
-                                                        @Html.AntiForgeryToken()
-                                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+            </div>
+
+            <div id="sprayfieldsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var sprayfield in Model)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <h6 class="mb-0 card-header-light">@sprayfield.FieldId</h6>
+                            <div class="card-body d-flex flex-column">
+
+                                <dl class="row small mb-3">
+                                    <dt class="col-6"><i class="bi bi-rulers me-1"></i>Size</dt>
+                                    <dd class="col-6 mb-1">@sprayfield.SizeAcres.ToString("F2") acres</dd>
+
+                                    <dt class="col-6"><i class="bi bi-moisture me-1"></i>Soil</dt>
+                                    <dd class="col-6 mb-1">@sprayfield.SoilName</dd>
+
+                                    <dt class="col-6"><i class="bi bi-flower1 me-1"></i>Crop</dt>
+                                    <dd class="col-6 mb-1">@sprayfield.CropName</dd>
+
+                                    <dt class="col-6"><i class="bi bi-droplet me-1"></i>Nozzle</dt>
+                                    <dd class="col-6 mb-1">@sprayfield.NozzleName</dd>
+
+                                    <dt class="col-6"><i class="bi bi-building me-1"></i>Facility</dt>
+                                    <dd class="col-6 mb-1">@((sprayfield.FacilityName ?? "-"))</dd>
+
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
+                                        <dd class="col-6 mb-1">@sprayfield.CompanyName</dd>
+                                    }
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-end">
+                                    <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteSprayfieldModal"
+                                            data-sprayfield-id="@sprayfield.Id"
+                                            data-sprayfield-name="@sprayfield.FieldId">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
         }
         else
@@ -127,3 +157,87 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal (Outside Table) -->
+<div class="modal fade" id="deleteSprayfieldModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete sprayfield <strong id="deleteSprayfieldName"></strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteSprayfieldForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteModal = document.getElementById('deleteSprayfieldModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const sprayfieldId = button.getAttribute('data-sprayfield-id');
+                    const sprayfieldName = button.getAttribute('data-sprayfield-name');
+                    
+                    const sprayfieldNameElement = deleteModal.querySelector('#deleteSprayfieldName');
+                    if (sprayfieldNameElement) {
+                        sprayfieldNameElement.textContent = sprayfieldName;
+                    }
+                    
+                    const form = deleteModal.querySelector('#deleteSprayfieldForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("SprayfieldDelete", "SystemAdmin")';
+                        form.action = baseUrl + '/' + sprayfieldId;
+                    }
+                });
+            }
+
+            const tableBtn = document.getElementById('sprayfieldsTableViewBtn');
+            const cardBtn = document.getElementById('sprayfieldsCardViewBtn');
+            const tableView = document.getElementById('sprayfieldsTableView');
+            const cardView = document.getElementById('sprayfieldsCardView');
+            const storageKey = 'sprayfieldsViewMode';
+
+            function setViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    tableView?.classList.remove('d-none');
+                    cardView?.classList.add('d-none');
+                    tableBtn?.classList.add('active');
+                    cardBtn?.classList.remove('active');
+                } else {
+                    tableView?.classList.add('d-none');
+                    cardView?.classList.remove('d-none');
+                    tableBtn?.classList.remove('active');
+                    cardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, mode);
+                }
+            }
+
+            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+            setViewMode(savedMode === 'card' ? 'card' : 'table');
+
+            tableBtn?.addEventListener('click', function () {
+                setViewMode('table');
+            });
+
+            cardBtn?.addEventListener('click', function () {
+                setViewMode('card');
+            });
+        });
+    </script>
+}

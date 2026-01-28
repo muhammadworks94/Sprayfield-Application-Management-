@@ -34,9 +34,13 @@ public class UserRequestConfiguration : IEntityTypeConfiguration<UserRequest>
         builder.Property(u => u.Status)
             .HasConversion<int>();
 
+        builder.Property(u => u.IsSelfSignup)
+            .HasDefaultValue(false);
+
         builder.HasIndex(u => u.CompanyId);
         builder.HasIndex(u => u.Email);
         builder.HasIndex(u => u.Status);
+        builder.HasIndex(u => u.IsSelfSignup);
 
         builder.HasOne(u => u.Company)
             .WithMany()

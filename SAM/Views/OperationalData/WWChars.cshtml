@@ -16,30 +16,27 @@
     <div>
         <p class="text-muted mb-0">Record and monitor wastewater characteristics</p>
     </div>
-    @if (canEdit)
-    {
-        <a asp-action="WWCharCreate" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create New Record
-        </a>
-    }
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+            <button type="button"
+                    class="btn btn-outline-secondary active"
+                    id="wwcharsTableViewBtn">
+                <i class="bi bi-table"></i> Table
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    id="wwcharsCardViewBtn">
+                <i class="bi bi-grid-3x3-gap"></i> Cards
+            </button>
+        </div>
+        @if (canEdit)
+        {
+            <a asp-action="WWCharCreate" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create New Record
+            </a>
+        }
+    </div>
 </div>
-
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
 <div class="card mb-3">
     <div class="card-body">
         <form method="get" class="row g-3">
@@ -70,14 +67,14 @@
     </div>
 </div>
 
-<div class="card card-primary">
+<div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Wastewater Characteristics List</h5>
     </div>
     <div class="card-body">
         @if (Model.Any())
         {
-            <div class="table-responsive">
+            <div id="wwcharsTableView" class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
@@ -117,11 +114,11 @@
                                         <a asp-action="WWCharEdit" asp-route-id="@wwChar.Id" class="btn btn-sm btn-outline-secondary">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@wwChar.Id">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(wwChar.Id.ToString().Replace("-", ""))">
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
                                         
-                                        <div class="modal fade" id="deleteModal@wwChar.Id" tabindex="-1" aria-hidden="true">
+                                        <div class="modal fade" id="deleteModal@(wwChar.Id.ToString().Replace("-", ""))" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
@@ -150,6 +147,61 @@
                     </tbody>
                 </table>
             </div>
+
+            <div id="wwcharsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var wwChar in Model)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header-light d-flex justify-content-between align-items-start">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-0">@wwChar.FacilityName</h6>
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar-month me-1"></i>@wwChar.Month @wwChar.Year
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                
+
+                                <dl class="row small mb-3">
+                                    <dt class="col-5"><i class="bi bi-award me-1"></i>Lab Cert.</dt>
+                                    <dd class="col-7 mb-1">@((string.IsNullOrEmpty(wwChar.LabCertification) ? "-" : wwChar.LabCertification))</dd>
+
+                                    <dt class="col-5"><i class="bi bi-person me-1"></i>Collected By</dt>
+                                    <dd class="col-7 mb-1">@((string.IsNullOrEmpty(wwChar.CollectedBy) ? "-" : wwChar.CollectedBy))</dd>
+
+                                    <dt class="col-5"><i class="bi bi-person-check me-1"></i>Analyzed By</dt>
+                                    <dd class="col-7 mb-1">@((string.IsNullOrEmpty(wwChar.AnalyzedBy) ? "-" : wwChar.AnalyzedBy))</dd>
+
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
+                                        <dd class="col-7 mb-1">@wwChar.CompanyName</dd>
+                                    }
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-between">
+                                    <a asp-action="WWCharDetails" asp-route-id="@wwChar.Id" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    @if (canEdit)
+                                    {
+                                        <div class="btn-group">
+                                            <a asp-action="WWCharEdit" asp-route-id="@wwChar.Id" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(wwChar.Id.ToString().Replace("-", ""))">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
         }
         else
         {
@@ -167,3 +219,62 @@
     </div>
 </div>
 
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteModals = document.querySelectorAll('.modal[id^="deleteModal"]');
+            deleteModals.forEach(modal => {
+                modal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    if (!button) return;
+
+                    const facilityName = button.getAttribute('data-facility-name');
+                    const period = button.getAttribute('data-period');
+
+                    const modalBody = modal.querySelector('.modal-body p.text-muted.small');
+                    if (modalBody && facilityName && period) {
+                        modalBody.innerHTML = `Facility: ${facilityName}<br />Period: ${period}`;
+                    }
+                });
+            });
+
+            const tableBtn = document.getElementById('wwcharsTableViewBtn');
+            const cardBtn = document.getElementById('wwcharsCardViewBtn');
+            const tableView = document.getElementById('wwcharsTableView');
+            const cardView = document.getElementById('wwcharsCardView');
+            const storageKey = 'wwcharsViewMode';
+
+            function setViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    tableView?.classList.remove('d-none');
+                    cardView?.classList.add('d-none');
+                    tableBtn?.classList.add('active');
+                    cardBtn?.classList.remove('active');
+                } else {
+                    tableView?.classList.add('d-none');
+                    cardView?.classList.remove('d-none');
+                    tableBtn?.classList.remove('active');
+                    cardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, mode);
+                }
+            }
+
+            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+            setViewMode(savedMode === 'card' ? 'card' : 'table');
+
+            tableBtn?.addEventListener('click', function () {
+                setViewMode('table');
+            });
+
+            cardBtn?.addEventListener('click', function () {
+                setViewMode('card');
+            });
+        });
+    </script>
+}

@@ -10,26 +10,24 @@
     <div>
         <p class="text-muted mb-0">Manage facility information and configurations</p>
     </div>
-    <a asp-action="FacilityCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Create New Facility
-    </a>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+            <button type="button"
+                    class="btn btn-outline-secondary active"
+                    id="facilitiesTableViewBtn">
+                <i class="bi bi-table"></i> Table
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    id="facilitiesCardViewBtn">
+                <i class="bi bi-grid-3x3-gap"></i> Cards
+            </button>
+        </div>
+        <a asp-action="FacilityCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New Facility
+        </a>
+    </div>
 </div>
-
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
 
 @{
     var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
@@ -43,10 +41,10 @@
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Facility List</h5>
     </div>
-    <div class="">
+    <div class="card-body">
         @if (Model.Any())
         {
-            <div class="table-responsive">
+            <div id="facilitiesTableView" class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
@@ -81,36 +79,68 @@
                                     <a asp-action="FacilityEdit" asp-route-id="@facility.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(facility.Id)">
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteFacilityModal"
+                                            data-facility-id="@facility.Id"
+                                            data-facility-name="@facility.Name">
                                         <i class="bi bi-trash"></i> Delete
                                     </button>
-                                    
-                                    <!-- Delete Confirmation Modal -->
-                                    <div class="modal fade" id="deleteModal@(facility.Id)" tabindex="-1" aria-labelledby="deleteModalLabel@(facility.Id)" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="deleteModalLabel@(facility.Id)">Confirm Delete</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    Are you sure you want to delete facility <strong>@facility.Name</strong>? This action cannot be undone.
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    <form asp-action="FacilityDelete" asp-route-id="@facility.Id" method="post" class="d-inline">
-                                                        @Html.AntiForgeryToken()
-                                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+            </div>
+
+            <div id="facilitiesCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var facility in Model)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header-light d-flex justify-content-between">
+                                
+                                    <h6 class="mb-0">
+                                        <a asp-action="FacilityDetails" asp-route-id="@facility.Id" class="text-decoration-none">
+                                            @facility.Name
+                                        </a>
+                                    </h6>
+                                    <small class="text-muted">
+                                        <i class="bi bi-file-text me-1"></i>@facility.PermitNumber
+                                    </small>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+
+                                <dl class="row small mb-3">
+                                    <dt class="col-5"><i class="bi bi-person me-1"></i>Permittee</dt>
+                                    <dd class="col-7 mb-1">@facility.Permittee</dd>
+
+                                    <dt class="col-5"><i class="bi bi-geo-alt me-1"></i>Location</dt>
+                                    <dd class="col-7 mb-1">@facility.City, @facility.State</dd>
+
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
+                                        <dd class="col-7 mb-1">@facility.CompanyName</dd>
+                                    }
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-end">
+                                    <a asp-action="FacilityEdit" asp-route-id="@facility.Id" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteFacilityModal"
+                                            data-facility-id="@facility.Id"
+                                            data-facility-name="@facility.Name">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
         }
         else
@@ -126,3 +156,87 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal (Outside Table) -->
+<div class="modal fade" id="deleteFacilityModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete facility <strong id="deleteFacilityName"></strong>? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteFacilityForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteModal = document.getElementById('deleteFacilityModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const facilityId = button.getAttribute('data-facility-id');
+                    const facilityName = button.getAttribute('data-facility-name');
+
+                    const facilityNameElement = deleteModal.querySelector('#deleteFacilityName');
+                    if (facilityNameElement) {
+                        facilityNameElement.textContent = facilityName;
+                    }
+
+                    const form = deleteModal.querySelector('#deleteFacilityForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("FacilityDelete", "SystemAdmin")';
+                        form.action = baseUrl + '/' + facilityId;
+                    }
+                });
+            }
+
+            const tableBtn = document.getElementById('facilitiesTableViewBtn');
+            const cardBtn = document.getElementById('facilitiesCardViewBtn');
+            const tableView = document.getElementById('facilitiesTableView');
+            const cardView = document.getElementById('facilitiesCardView');
+            const storageKey = 'facilitiesViewMode';
+
+            function setViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    tableView?.classList.remove('d-none');
+                    cardView?.classList.add('d-none');
+                    tableBtn?.classList.add('active');
+                    cardBtn?.classList.remove('active');
+                } else {
+                    tableView?.classList.add('d-none');
+                    cardView?.classList.remove('d-none');
+                    tableBtn?.classList.remove('active');
+                    cardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, mode);
+                }
+            }
+
+            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+            setViewMode(savedMode === 'card' ? 'card' : 'table');
+
+            tableBtn?.addEventListener('click', function () {
+                setViewMode('table');
+            });
+
+            cardBtn?.addEventListener('click', function () {
+                setViewMode('card');
+            });
+        });
+    </script>
+}

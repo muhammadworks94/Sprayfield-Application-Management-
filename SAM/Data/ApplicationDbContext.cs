@@ -34,6 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<OperatorLog> OperatorLogs => Set<OperatorLog>();
     public DbSet<UserRequest> UserRequests => Set<UserRequest>();
     public DbSet<AdminRequest> AdminRequests => Set<AdminRequest>();
+    public DbSet<CompanyRequest> CompanyRequests => Set<CompanyRequest>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -67,6 +68,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new OperatorLogConfiguration());
         builder.ApplyConfiguration(new UserRequestConfiguration());
         builder.ApplyConfiguration(new AdminRequestConfiguration());
+        builder.ApplyConfiguration(new CompanyRequestConfiguration());
 
         // Configure Identity table names and ApplicationUser
         builder.Entity<ApplicationUser>(entity =>
