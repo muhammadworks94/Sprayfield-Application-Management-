@@ -1,12 +1,6 @@
 @model SAM.ViewModels.SystemAdmin.FacilityCreateViewModel
-@using Microsoft.AspNetCore.Identity
-@using SAM.Domain.Entities
-@inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Create Facility";
-    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var user = await UserManager.GetUserAsync(User);
-    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
 
 <div class="mb-4">
@@ -17,90 +11,8 @@
     <div class="card-body">
         <form asp-action="FacilityCreate" method="post">
             @Html.AntiForgeryToken()
-            
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <div class="form-section">
-                <div class="form-section-title">Company Information</div>
-                
-                <div class="mb-3">
-                    <label asp-for="CompanyId" class="form-label required"></label>
-                    @if (isGlobalAdmin && companies != null)
-                    {
-                        <select asp-for="CompanyId" asp-items="companies" class="form-select">
-                            <option value="">-- Select Company --</option>
-                        </select>
-                    }
-                    else
-                    {
-                        <input type="hidden" asp-for="CompanyId" />
-                        <input type="text" class="form-control" value="@companies?.FirstOrDefault(c => c.Value == Model.CompanyId.ToString())?.Text" disabled />
-                    }
-                    <span asp-validation-for="CompanyId" class="text-danger"></span>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <div class="form-section-title">Facility Information</div>
-                
-                <div class="mb-3">
-                    <label asp-for="Name" class="form-label required"></label>
-                    <input asp-for="Name" class="form-control" />
-                    <span asp-validation-for="Name" class="text-danger"></span>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="PermitNumber" class="form-label required"></label>
-                    <input asp-for="PermitNumber" class="form-control" />
-                    <span asp-validation-for="PermitNumber" class="text-danger"></span>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="Permittee" class="form-label required"></label>
-                    <input asp-for="Permittee" class="form-control" />
-                    <span asp-validation-for="Permittee" class="text-danger"></span>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="FacilityClass" class="form-label"></label>
-                    <input asp-for="FacilityClass" class="form-control" />
-                    <span asp-validation-for="FacilityClass" class="text-danger"></span>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <div class="form-section-title">Address Information</div>
-                
-                <div class="mb-3">
-                    <label asp-for="Address" class="form-label"></label>
-                    <input asp-for="Address" class="form-control" />
-                    <span asp-validation-for="Address" class="text-danger"></span>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="City" class="form-label"></label>
-                            <input asp-for="City" class="form-control" />
-                            <span asp-validation-for="City" class="text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="State" class="form-label"></label>
-                            <input asp-for="State" class="form-control" />
-                            <span asp-validation-for="State" class="text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="ZipCode" class="form-label"></label>
-                            <input asp-for="ZipCode" class="form-control" />
-                            <span asp-validation-for="ZipCode" class="text-danger"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            @await Html.PartialAsync("Partials/_FacilityCreateFormPartial", Model)
 
             <div class="d-flex justify-content-end gap-2">
                 <a asp-action="Facilities" class="btn btn-secondary">Cancel</a>

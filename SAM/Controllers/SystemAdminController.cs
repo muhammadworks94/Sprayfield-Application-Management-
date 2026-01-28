@@ -627,12 +627,26 @@ public class SystemAdminController : BaseController
             };
 
             await _facilityService.CreateAsync(facility);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = true, id = facility.Id, name = facility.Name });
+            }
+
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' created successfully.";
             return RedirectToAction(nameof(Facilities), new { companyId = facility.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                // Return partial form with validation errors for modal
+                ViewBag.Companies = await GetCompanySelectListAsync();
+                return PartialView("Partials/_FacilityCreateFormPartial", viewModel);
+            }
+
             ViewBag.Companies = await GetCompanySelectListAsync();
             return View(viewModel);
         }
@@ -830,6 +844,10 @@ public class SystemAdminController : BaseController
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return PartialView("Partials/_SoilCreateFormPartial", viewModel);
+            }
             return View(viewModel);
         }
 
@@ -844,6 +862,11 @@ public class SystemAdminController : BaseController
             };
 
             await _soilService.CreateAsync(soil);
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = true, id = soil.Id, name = soil.TypeName });
+            }
+
             TempData["SuccessMessage"] = $"Soil type '{soil.TypeName}' created successfully.";
             return RedirectToAction(nameof(Soils), new { companyId = soil.CompanyId });
         }
@@ -851,6 +874,10 @@ public class SystemAdminController : BaseController
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return PartialView("Partials/_SoilCreateFormPartial", viewModel);
+            }
             return View(viewModel);
         }
     }
@@ -1035,6 +1062,12 @@ public class SystemAdminController : BaseController
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return PartialView("Partials/_CropCreateFormPartial", viewModel);
+            }
+
             return View(viewModel);
         }
 
@@ -1049,6 +1082,12 @@ public class SystemAdminController : BaseController
             };
 
             await _cropService.CreateAsync(crop);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = true, id = crop.Id, name = crop.Name });
+            }
+
             TempData["SuccessMessage"] = $"Crop '{crop.Name}' created successfully.";
             return RedirectToAction(nameof(Crops), new { companyId = crop.CompanyId });
         }
@@ -1056,6 +1095,12 @@ public class SystemAdminController : BaseController
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return PartialView("Partials/_CropCreateFormPartial", viewModel);
+            }
+
             return View(viewModel);
         }
     }
@@ -1241,6 +1286,12 @@ public class SystemAdminController : BaseController
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return PartialView("Partials/_NozzleCreateFormPartial", viewModel);
+            }
+
             return View(viewModel);
         }
 
@@ -1256,6 +1307,13 @@ public class SystemAdminController : BaseController
             };
 
             await _nozzleService.CreateAsync(nozzle);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                var label = $"{nozzle.Manufacturer} {nozzle.Model}";
+                return Json(new { success = true, id = nozzle.Id, name = label });
+            }
+
             TempData["SuccessMessage"] = $"Nozzle '{nozzle.Manufacturer} {nozzle.Model}' created successfully.";
             return RedirectToAction(nameof(Nozzles), new { companyId = nozzle.CompanyId });
         }
@@ -1263,6 +1321,12 @@ public class SystemAdminController : BaseController
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return PartialView("Partials/_NozzleCreateFormPartial", viewModel);
+            }
+
             return View(viewModel);
         }
     }
