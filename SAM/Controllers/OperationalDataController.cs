@@ -17,39 +17,42 @@ namespace SAM.Controllers;
 /// Controller for Operational Data Entry module - managing daily and monthly logs.
 /// </summary>
 [Authorize(Policy = Policies.RequireOperator)]
-public class OperationalDataController : BaseController
-{
-    private readonly IOperatorLogService _operatorLogService;
-    private readonly IIrrigateService _irrigateService;
-    private readonly IWWCharService _wwCharService;
-    private readonly IGWMonitService _gwMonitService;
-    private readonly IFacilityService _facilityService;
-    private readonly ISprayfieldService _sprayfieldService;
-    private readonly IMonitoringWellService _monitoringWellService;
-    private readonly ApplicationDbContext _context;
-
-    public OperationalDataController(
-        IOperatorLogService operatorLogService,
-        IIrrigateService irrigateService,
-        IWWCharService wwCharService,
-        IGWMonitService gwMonitService,
-        IFacilityService facilityService,
-        ISprayfieldService sprayfieldService,
-        IMonitoringWellService monitoringWellService,
-        ApplicationDbContext context,
-        UserManager<ApplicationUser> userManager,
-        ILogger<OperationalDataController> logger)
-        : base(userManager, logger)
+    public class OperationalDataController : BaseController
     {
-        _operatorLogService = operatorLogService;
-        _irrigateService = irrigateService;
-        _wwCharService = wwCharService;
-        _gwMonitService = gwMonitService;
-        _facilityService = facilityService;
-        _sprayfieldService = sprayfieldService;
-        _monitoringWellService = monitoringWellService;
-        _context = context;
-    }
+        private readonly IOperatorLogService _operatorLogService;
+        private readonly IIrrigateService _irrigateService;
+        private readonly IWWCharService _wwCharService;
+        private readonly IGWMonitService _gwMonitService;
+        private readonly IFacilityService _facilityService;
+        private readonly ISprayfieldService _sprayfieldService;
+        private readonly IMonitoringWellService _monitoringWellService;
+        private readonly ICompanyService _companyService;
+        private readonly ApplicationDbContext _context;
+
+        public OperationalDataController(
+            IOperatorLogService operatorLogService,
+            IIrrigateService irrigateService,
+            IWWCharService wwCharService,
+            IGWMonitService gwMonitService,
+            IFacilityService facilityService,
+            ISprayfieldService sprayfieldService,
+            IMonitoringWellService monitoringWellService,
+            ICompanyService companyService,
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            ILogger<OperationalDataController> logger)
+            : base(userManager, logger)
+        {
+            _operatorLogService = operatorLogService;
+            _irrigateService = irrigateService;
+            _wwCharService = wwCharService;
+            _gwMonitService = gwMonitService;
+            _facilityService = facilityService;
+            _sprayfieldService = sprayfieldService;
+            _monitoringWellService = monitoringWellService;
+            _companyService = companyService;
+            _context = context;
+        }
 
     #region Operator Logs
 
@@ -412,12 +415,25 @@ public class OperationalDataController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
+        // For non-global users, default company from their context when not provided
         if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
 
-        if (companyId.HasValue)
+        // For global admins (no company assigned) but with a facility selected,
+        // derive the company from the chosen facility so downstream filters work
+        if ((companyId == null || companyId == Guid.Empty) && facilityId.HasValue)
+        {
+            var facility = await _facilityService.GetByIdAsync(facilityId.Value);
+            if (facility != null)
+            {
+                companyId = facility.CompanyId;
+            }
+        }
+
+        // Only enforce company access when we have a real company id
+        if (companyId.HasValue && companyId != Guid.Empty)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
         }
@@ -428,8 +444,10 @@ public class OperationalDataController : BaseController
             FacilityId = facilityId ?? Guid.Empty
         };
 
+        // Populate dropdowns
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyId, facilityId);
+        ViewBag.Companies = await GetCompanySelectListAsync();
 
         return View(viewModel);
     }
@@ -438,12 +456,25 @@ public class OperationalDataController : BaseController
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> IrrigateCreate(IrrigateCreateViewModel viewModel)
     {
+        // For global admins or cases where CompanyId was not bound,
+        // derive the company from the selected facility so access checks succeed.
+        if ((viewModel.CompanyId == Guid.Empty || viewModel.CompanyId == default) &&
+            viewModel.FacilityId != Guid.Empty)
+        {
+            var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
+            if (facility != null)
+            {
+                viewModel.CompanyId = facility.CompanyId;
+            }
+        }
+
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
+            ViewBag.Companies = await GetCompanySelectListAsync();
             return View(viewModel);
         }
 
@@ -1284,6 +1315,20 @@ public class OperationalDataController : BaseController
         }).ToList();
 
         return new SelectList(items, "Value", "Text");
+    }
+
+    private async Task<SelectList> GetCompanySelectListAsync()
+    {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+        var companies = await _companyService.GetAllAsync();
+
+        if (!isGlobalAdmin && effectiveCompanyId.HasValue)
+        {
+            companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
+        }
+
+        return new SelectList(companies, "Id", "Name");
     }
 
     private async Task<SelectList> GetMonitoringWellSelectListAsync(Guid? companyId = null, Guid? facilityId = null)

@@ -654,6 +654,18 @@ small {
 }
 
 /* ============================================
+   Irrigation Logs Table - Horizontal Scrolling & No Wrap
+   ============================================ */
+.irrigates-table {
+  min-width: 1200px; /* ensure table can scroll horizontally on smaller screens */
+}
+
+.irrigates-table th,
+.irrigates-table td {
+  white-space: nowrap; /* keep header and cell text on a single line */
+}
+
+/* ============================================
    WWChar Daily Data Table
    ============================================ */
 .wwchar-daily-table {

@@ -25,9 +25,14 @@
                         
                         <div class="mb-3">
                             <label asp-for="FacilityId" class="form-label required"></label>
-                            <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
-                                <option value="">-- Select Facility --</option>
-                            </select>
+                            <div class="input-group">
+                                <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
+                                    <option value="">-- Select Facility --</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" id="btnNewFacility">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            </div>
                             <span asp-validation-for="FacilityId" class="text-danger"></span>
                         </div>
 
@@ -186,18 +191,98 @@
     </div>
 </div>
 
+<!-- Facility Create Modal -->
+<div class="modal fade" id="facilityCreateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Facility</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="facilityCreateForm" asp-action="FacilityCreate" asp-controller="SystemAdmin" method="post">
+                    @Html.AntiForgeryToken()
+                    @await Html.PartialAsync("~/Views/SystemAdmin/Partials/_FacilityCreateFormPartial.cshtml", new SAM.ViewModels.SystemAdmin.FacilityCreateViewModel { CompanyId = Model.CompanyId })
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="facilityCreateForm" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Facility
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         // Update sprayfields when facility changes
-        document.getElementById('facilitySelect')?.addEventListener('change', function() {
+        document.getElementById('facilitySelect')?.addEventListener('change', function () {
             var facilityId = this.value;
-            var sprayfieldSelect = document.getElementById('SprayfieldId');
             if (facilityId) {
-                // Reload page with new facility filter
-                window.location.href = '@Url.Action("IrrigateCreate")' + '?companyId=@Model.CompanyId&facilityId=' + facilityId;
+                // Reload page with selected facility; controller will determine companyId
+                window.location.href = '@Url.Action("IrrigateCreate")' + '?facilityId=' + facilityId;
             }
         });
+
+        // In-place Facility creation for admins/operators
+        (function () {
+            const button = document.getElementById('btnNewFacility');
+            const modalElement = document.getElementById('facilityCreateModal');
+            const select = document.getElementById('facilitySelect');
+
+            if (!button || !modalElement || !select) return;
+
+            const modal = new bootstrap.Modal(modalElement);
+            const form = modalElement.querySelector('form');
+            if (!form) return;
+
+            button.addEventListener('click', function () {
+                modal.show();
+            });
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const formData = new FormData(form);
+
+                fetch('@Url.Action("FacilityCreate", "SystemAdmin")', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                }).then(async response => {
+                    const contentType = response.headers.get('content-type') || '';
+
+                    if (contentType.includes('application/json')) {
+                        const data = await response.json();
+                        if (data.success) {
+                            const option = document.createElement('option');
+                            option.value = data.id;
+                            option.textContent = data.name;
+                            option.selected = true;
+                            select.appendChild(option);
+                            modal.hide();
+                        }
+                    } else {
+                        const html = await response.text();
+                        const wrapper = document.createElement('div');
+                        wrapper.innerHTML = html;
+                        const newFormContent = wrapper.firstElementChild;
+                        if (newFormContent) {
+                            const body = modalElement.querySelector('.modal-body');
+                            body.innerHTML = '';
+                            body.appendChild(newFormContent);
+                        }
+                    }
+                }).catch(error => {
+                    console.error('Error creating facility:', error);
+                });
+            });
+        })();
     </script>
 }
 

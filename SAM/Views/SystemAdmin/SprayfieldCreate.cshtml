@@ -238,17 +238,23 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    
-    @if (isGlobalAdmin)
-    {
-        <script>
-            // Reload dropdowns when company changes
-            document.getElementById('companySelect')?.addEventListener('change', function() {
-                var companyId = this.value;
-                if (companyId) {
-                    window.location.href = '@Url.Action("SprayfieldCreate")' + '?companyId=' + companyId;
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var isGlobalAdmin = @(isGlobalAdmin.ToString().ToLower());
+
+            // Only global admins see and use the company selector
+            if (isGlobalAdmin) {
+                var companySelect = document.getElementById('companySelect');
+                if (companySelect) {
+                    companySelect.addEventListener('change', function () {
+                        var companyId = this.value;
+                        if (companyId) {
+                            window.location.href = '@Url.Action("SprayfieldCreate")' + '?companyId=' + companyId;
+                        }
+                    });
                 }
-            });
+            }
 
             function bindCreateHandler(buttonId, modalId, formId, url, selectId) {
                 const button = document.getElementById(buttonId);
@@ -311,7 +317,7 @@
             bindCreateHandler('btnNewCrop', 'cropCreateModal', 'cropCreateForm', '@Url.Action("CropCreate", "SystemAdmin")', 'cropSelect');
             bindCreateHandler('btnNewNozzle', 'nozzleCreateModal', 'nozzleCreateForm', '@Url.Action("NozzleCreate", "SystemAdmin")', 'nozzleSelect');
             bindCreateHandler('btnNewFacility', 'facilityCreateModal', 'facilityCreateForm', '@Url.Action("FacilityCreate", "SystemAdmin")', 'facilitySelect');
-        </script>
-    }
+        });
+    </script>
 }
 
