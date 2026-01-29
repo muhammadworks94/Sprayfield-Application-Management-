@@ -151,6 +151,12 @@
                             <span class="nav-link-text">Irrigation Reports</span>
                         </a>
                     </li>
+                    <li class="nav-item" role="none">
+                        <a class="nav-link" asp-controller="Reports" asp-action="NDAR1Reports" role="menuitem" data-tooltip="NDAR-1 Reports">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span class="nav-link-text">NDAR-1 Reports</span>
+                        </a>
+                    </li>
                 </ul>
             </li>
         }
@@ -164,6 +170,15 @@
                     <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
                 </button>
                 <ul class="nav-dropdown" id="dropdown-user-management" role="menu">
+                    @if (isAdmin)
+                    {
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="UserManagement" asp-action="Users" role="menuitem" data-tooltip="Users">
+                                <i class="bi bi-people"></i>
+                                <span class="nav-link-text">Users</span>
+                            </a>
+                        </li>
+                    }
                     <li class="nav-item" role="none">
                         <a class="nav-link" asp-controller="UserManagement" asp-action="UserRequests" role="menuitem" data-tooltip="User Requests">
                             <i class="bi bi-person-plus"></i>

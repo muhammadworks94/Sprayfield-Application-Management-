@@ -103,7 +103,15 @@
                                 }
                                 else if (canApprove)
                                 {
-                                    <td>-</td>
+                                    <td class="table-actions">
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteUserRequestModal"
+                                                data-request-id="@request.Id"
+                                                data-request-name="@request.FullName">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </td>
                                 }
                             </tr>
                         }
@@ -161,7 +169,13 @@
                                     }
                                     else if (canApprove)
                                     {
-                                        <span class="text-muted small">No actions</span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteUserRequestModal"
+                                                data-request-id="@request.Id"
+                                                data-request-name="@request.FullName">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
                                     }
                                 </div>
                             </div>
@@ -212,6 +226,28 @@
     </div>
 </div>
 
+<!-- Delete User Request Modal (Outside Table) -->
+<div class="modal fade" id="deleteUserRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to permanently delete the user request for <strong id="deleteUserRequestName"></strong>? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteUserRequestForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -237,6 +273,28 @@
                     const reasonTextarea = rejectModal.querySelector('#rejectUserReason');
                     if (reasonTextarea) {
                         reasonTextarea.value = '';
+                    }
+                });
+            }
+
+            const deleteModal = document.getElementById('deleteUserRequestModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    if (!button) return;
+
+                    const requestId = button.getAttribute('data-request-id');
+                    const requestName = button.getAttribute('data-request-name');
+                    
+                    const nameElement = deleteModal.querySelector('#deleteUserRequestName');
+                    if (nameElement) {
+                        nameElement.textContent = requestName;
+                    }
+                    
+                    const form = deleteModal.querySelector('#deleteUserRequestForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("UserRequestDelete", "UserManagement")';
+                        form.action = baseUrl + '/' + requestId;
                     }
                 });
             }

@@ -155,7 +155,8 @@ public class SystemAdminController : BaseController
             Address = f.Address,
             City = f.City,
             State = f.State,
-            ZipCode = f.ZipCode
+            ZipCode = f.ZipCode,
+            County = f.County
         }).ToList();
 
         // Load Soils
@@ -510,7 +511,8 @@ public class SystemAdminController : BaseController
             Address = f.Address,
             City = f.City,
             State = f.State,
-            ZipCode = f.ZipCode
+            ZipCode = f.ZipCode,
+            County = f.County
         });
 
         // Create filter view model
@@ -566,7 +568,8 @@ public class SystemAdminController : BaseController
             Address = facility.Address,
             City = facility.City,
             State = facility.State,
-            ZipCode = facility.ZipCode
+            ZipCode = facility.ZipCode,
+            County = facility.County
         };
 
         return View(viewModel);
@@ -623,7 +626,8 @@ public class SystemAdminController : BaseController
                 Address = viewModel.Address,
                 City = viewModel.City,
                 State = viewModel.State,
-                ZipCode = viewModel.ZipCode
+                ZipCode = viewModel.ZipCode,
+                County = viewModel.County
             };
 
             await _facilityService.CreateAsync(facility);
@@ -673,7 +677,8 @@ public class SystemAdminController : BaseController
             Address = facility.Address,
             City = facility.City,
             State = facility.State,
-            ZipCode = facility.ZipCode
+            ZipCode = facility.ZipCode,
+            County = facility.County
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
@@ -707,6 +712,7 @@ public class SystemAdminController : BaseController
             facility.City = viewModel.City;
             facility.State = viewModel.State;
             facility.ZipCode = viewModel.ZipCode;
+            facility.County = viewModel.County;
 
             await _facilityService.UpdateAsync(facility);
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";
@@ -1453,7 +1459,9 @@ public class SystemAdminController : BaseController
             NozzleName = $"{s.Nozzle?.Manufacturer} {s.Nozzle?.Model}",
             FacilityId = s.FacilityId,
             FacilityName = s.Facility?.Name,
-            HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr
+            HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr,
+            HourlyRateInches = s.HourlyRateInches,
+            AnnualRateInches = s.AnnualRateInches
         });
 
         // Create filter view model
@@ -1511,7 +1519,9 @@ public class SystemAdminController : BaseController
             NozzleName = $"{sprayfield.Nozzle?.Manufacturer} {sprayfield.Nozzle?.Model}",
             FacilityId = sprayfield.FacilityId,
             FacilityName = sprayfield.Facility?.Name,
-            HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr
+            HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr,
+            HourlyRateInches = sprayfield.HourlyRateInches,
+            AnnualRateInches = sprayfield.AnnualRateInches
         };
 
         return View(viewModel);
@@ -1565,7 +1575,9 @@ public class SystemAdminController : BaseController
                 CropId = viewModel.CropId,
                 NozzleId = viewModel.NozzleId,
                 FacilityId = viewModel.FacilityId,
-                HydraulicLoadingLimitInPerYr = viewModel.HydraulicLoadingLimitInPerYr
+                HydraulicLoadingLimitInPerYr = viewModel.HydraulicLoadingLimitInPerYr,
+                HourlyRateInches = viewModel.HourlyRateInches,
+                AnnualRateInches = viewModel.AnnualRateInches
             };
 
             await _sprayfieldService.CreateAsync(sprayfield);
@@ -1599,7 +1611,9 @@ public class SystemAdminController : BaseController
             CropId = sprayfield.CropId,
             NozzleId = sprayfield.NozzleId,
             FacilityId = sprayfield.FacilityId,
-            HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr
+            HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr,
+            HourlyRateInches = sprayfield.HourlyRateInches,
+            AnnualRateInches = sprayfield.AnnualRateInches
         };
 
         await PopulateSprayfieldDropdownsAsync(sprayfield.CompanyId);
@@ -1631,6 +1645,8 @@ public class SystemAdminController : BaseController
             sprayfield.NozzleId = viewModel.NozzleId;
             sprayfield.FacilityId = viewModel.FacilityId;
             sprayfield.HydraulicLoadingLimitInPerYr = viewModel.HydraulicLoadingLimitInPerYr;
+            sprayfield.HourlyRateInches = viewModel.HourlyRateInches;
+            sprayfield.AnnualRateInches = viewModel.AnnualRateInches;
 
             await _sprayfieldService.UpdateAsync(sprayfield);
             TempData["SuccessMessage"] = $"Sprayfield '{sprayfield.FieldId}' updated successfully.";

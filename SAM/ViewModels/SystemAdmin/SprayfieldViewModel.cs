@@ -41,6 +41,14 @@ public class SprayfieldViewModel
     [Display(Name = "Hydraulic Loading Limit (inches/year)")]
     [Range(0, double.MaxValue, ErrorMessage = "Hydraulic loading limit must be a positive number.")]
     public decimal HydraulicLoadingLimitInPerYr { get; set; }
+    
+    [Display(Name = "Hourly Rate (inches/hour)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
+    public decimal? HourlyRateInches { get; set; }
+    
+    [Display(Name = "Annual Rate (inches/year)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
+    public decimal? AnnualRateInches { get; set; }
 }
 
 public class SprayfieldCreateViewModel
@@ -78,6 +86,14 @@ public class SprayfieldCreateViewModel
     [Display(Name = "Hydraulic Loading Limit (inches/year)")]
     [Range(0, double.MaxValue, ErrorMessage = "Hydraulic loading limit must be a positive number.")]
     public decimal HydraulicLoadingLimitInPerYr { get; set; }
+    
+    [Display(Name = "Hourly Rate (inches/hour)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
+    public decimal? HourlyRateInches { get; set; }
+    
+    [Display(Name = "Annual Rate (inches/year)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
+    public decimal? AnnualRateInches { get; set; }
 }
 
 public class SprayfieldEditViewModel
@@ -117,6 +133,14 @@ public class SprayfieldEditViewModel
     [Display(Name = "Hydraulic Loading Limit (inches/year)")]
     [Range(0, double.MaxValue, ErrorMessage = "Hydraulic loading limit must be a positive number.")]
     public decimal HydraulicLoadingLimitInPerYr { get; set; }
+    
+    [Display(Name = "Hourly Rate (inches/hour)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
+    public decimal? HourlyRateInches { get; set; }
+    
+    [Display(Name = "Annual Rate (inches/year)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
+    public decimal? AnnualRateInches { get; set; }
 }
 
 

@@ -45,6 +45,10 @@ public class FacilityViewModel
     [StringLength(20)]
     [Display(Name = "Zip Code")]
     public string ZipCode { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    [Display(Name = "County")]
+    public string County { get; set; } = string.Empty;
 }
 
 public class FacilityCreateViewModel
@@ -87,6 +91,10 @@ public class FacilityCreateViewModel
     [StringLength(20)]
     [Display(Name = "Zip Code")]
     public string ZipCode { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    [Display(Name = "County")]
+    public string County { get; set; } = string.Empty;
 }
 
 public class FacilityEditViewModel
@@ -131,6 +139,10 @@ public class FacilityEditViewModel
     [StringLength(20)]
     [Display(Name = "Zip Code")]
     public string ZipCode { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    [Display(Name = "County")]
+    public string County { get; set; } = string.Empty;
 }
 
 

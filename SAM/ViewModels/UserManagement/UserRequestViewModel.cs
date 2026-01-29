@@ -63,7 +63,12 @@ public class UserRequestApproveViewModel
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string CompanyName { get; set; } = string.Empty;
+    
+    [Required]
+    [Display(Name = "Role")]
     public AppRoleEnum AppRole { get; set; }
+    
+    public AppRoleEnum RequestedRole { get; set; }
     public string RequestedByEmail { get; set; } = string.Empty;
 }
 

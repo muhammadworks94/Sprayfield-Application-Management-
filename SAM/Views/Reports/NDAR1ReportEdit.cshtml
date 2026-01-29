@@ -1,0 +1,423 @@
+@model SAM.ViewModels.Reports.NDAR1EditViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Edit NDAR-1 Report";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var daysInMonth = DateTime.DaysInMonth(Model.Year, (int)Model.Month);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Edit NDAR-1 report data for @Model.Month @Model.Year</p>
+    </div>
+    <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.Id" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Details
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="NDAR1ReportEdit" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CompanyId" />
+
+            <div class="form-section">
+                <div class="form-section-title">Basic Information</div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="FacilityId" class="form-label required"></label>
+                            <select asp-for="FacilityId" asp-items="facilities" class="form-select">
+                                <option value="">-- Select Facility --</option>
+                            </select>
+                            <span asp-validation-for="FacilityId" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Month" class="form-label required"></label>
+                            <select asp-for="Month" asp-items="months" class="form-select"></select>
+                            <span asp-validation-for="Month" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Year" class="form-label required"></label>
+                            <input asp-for="Year" type="number" class="form-control" min="2000" max="2100" />
+                            <span asp-validation-for="Year" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input asp-for="DidIrrigationOccur" class="form-check-input" type="checkbox" />
+                        <label asp-for="DidIrrigationOccur" class="form-check-label">
+                            Did irrigation occur at this facility?
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Field Selection</div>
+                
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="Field1Id" class="form-label">Field 1</label>
+                            <select asp-for="Field1Id" asp-items="sprayfields" class="form-select">
+                                <option value="">-- Select Field --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="Field2Id" class="form-label">Field 2</label>
+                            <select asp-for="Field2Id" asp-items="sprayfields" class="form-select">
+                                <option value="">-- Select Field --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="Field3Id" class="form-label">Field 3</label>
+                            <select asp-for="Field3Id" asp-items="sprayfields" class="form-select">
+                                <option value="">-- Select Field --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="Field4Id" class="form-label">Field 4</label>
+                            <select asp-for="Field4Id" asp-items="sprayfields" class="form-select">
+                                <option value="">-- Select Field --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Daily Weather Data</div>
+                <p class="text-muted small">Enter daily weather values. Leave blank if no data available.</p>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Weather Code</th>
+                                <th>Temperature (°F)</th>
+                                <th>Precipitation (in)</th>
+                                <th>Storage (ft)</th>
+                                <th>5-Day Upset (ft)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < 31; i++)
+                            {
+                                var day = i + 1;
+                                <tr>
+                                    <td>@day</td>
+                                    <td>
+                                        <input asp-for="WeatherCodeDaily[i]" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="TemperatureDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="PrecipitationDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="StorageDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="FiveDayUpsetDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @if (Model.Field1Id.HasValue)
+            {
+                <div class="form-section">
+                    <div class="form-section-title">Field 1 Daily Data</div>
+                    <p class="text-muted small">Enter daily irrigation data for Field 1.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Volume Applied (gal)</th>
+                                    <th>Time Irrigated (min)</th>
+                                    <th>Daily Loading (in)</th>
+                                    <th>Max Hourly Loading (in)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < 31; i++)
+                                {
+                                    var day = i + 1;
+                                    <tr>
+                                        <td>@day</td>
+                                        <td>
+                                            <input asp-for="Field1VolumeAppliedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field1TimeIrrigatedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field1DailyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field1MaxHourlyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field1MonthlyLoading" class="form-label">Monthly Loading (in)</label>
+                                <input asp-for="Field1MonthlyLoading" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field1MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
+                                <input asp-for="Field1MaxHourlyLoading" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field1TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
+                                <input asp-for="Field1TwelveMonthFloatingTotal" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (Model.Field2Id.HasValue)
+            {
+                <div class="form-section">
+                    <div class="form-section-title">Field 2 Daily Data</div>
+                    <p class="text-muted small">Enter daily irrigation data for Field 2.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Volume Applied (gal)</th>
+                                    <th>Time Irrigated (min)</th>
+                                    <th>Daily Loading (in)</th>
+                                    <th>Max Hourly Loading (in)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < 31; i++)
+                                {
+                                    var day = i + 1;
+                                    <tr>
+                                        <td>@day</td>
+                                        <td>
+                                            <input asp-for="Field2VolumeAppliedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field2TimeIrrigatedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field2DailyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field2MaxHourlyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field2MonthlyLoading" class="form-label">Monthly Loading (in)</label>
+                                <input asp-for="Field2MonthlyLoading" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field2MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
+                                <input asp-for="Field2MaxHourlyLoading" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field2TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
+                                <input asp-for="Field2TwelveMonthFloatingTotal" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (Model.Field3Id.HasValue)
+            {
+                <div class="form-section">
+                    <div class="form-section-title">Field 3 Daily Data</div>
+                    <p class="text-muted small">Enter daily irrigation data for Field 3.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Volume Applied (gal)</th>
+                                    <th>Time Irrigated (min)</th>
+                                    <th>Daily Loading (in)</th>
+                                    <th>Max Hourly Loading (in)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < 31; i++)
+                                {
+                                    var day = i + 1;
+                                    <tr>
+                                        <td>@day</td>
+                                        <td>
+                                            <input asp-for="Field3VolumeAppliedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field3TimeIrrigatedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field3DailyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field3MaxHourlyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field3MonthlyLoading" class="form-label">Monthly Loading (in)</label>
+                                <input asp-for="Field3MonthlyLoading" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field3MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
+                                <input asp-for="Field3MaxHourlyLoading" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field3TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
+                                <input asp-for="Field3TwelveMonthFloatingTotal" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (Model.Field4Id.HasValue)
+            {
+                <div class="form-section">
+                    <div class="form-section-title">Field 4 Daily Data</div>
+                    <p class="text-muted small">Enter daily irrigation data for Field 4.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Volume Applied (gal)</th>
+                                    <th>Time Irrigated (min)</th>
+                                    <th>Daily Loading (in)</th>
+                                    <th>Max Hourly Loading (in)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < 31; i++)
+                                {
+                                    var day = i + 1;
+                                    <tr>
+                                        <td>@day</td>
+                                        <td>
+                                            <input asp-for="Field4VolumeAppliedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field4TimeIrrigatedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field4DailyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                        <td>
+                                            <input asp-for="Field4MaxHourlyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field4MonthlyLoading" class="form-label">Monthly Loading (in)</label>
+                                <input asp-for="Field4MonthlyLoading" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field4MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
+                                <input asp-for="Field4MaxHourlyLoading" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="Field4TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
+                                <input asp-for="Field4TwelveMonthFloatingTotal" type="number" step="0.01" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

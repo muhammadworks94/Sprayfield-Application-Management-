@@ -22,6 +22,12 @@ public class SprayfieldConfiguration : IEntityTypeConfiguration<Sprayfield>
         builder.Property(s => s.HydraulicLoadingLimitInPerYr)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(s => s.HourlyRateInches)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(s => s.AnnualRateInches)
+            .HasColumnType("decimal(18,2)");
+
         builder.HasIndex(s => s.CompanyId);
         builder.HasIndex(s => new { s.CompanyId, s.FieldId }).IsUnique();
 

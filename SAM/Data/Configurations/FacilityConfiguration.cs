@@ -39,6 +39,9 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
         builder.Property(f => f.ZipCode)
             .HasMaxLength(20);
 
+        builder.Property(f => f.County)
+            .HasMaxLength(100);
+
         builder.HasIndex(f => f.CompanyId);
         builder.HasIndex(f => f.PermitNumber);
 

@@ -1,0 +1,98 @@
+@model SAM.ViewModels.UserManagement.UserEditViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Edit User";
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var roles = ViewBag.Roles as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var user = await UserManager.GetUserAsync(User);
+    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Modify user account information</p>
+    </div>
+    <a asp-action="UserDetails" asp-route-id="@Model.Id" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Details
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-person-gear"></i> Edit User Information</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="UserEdit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title"><i class="bi bi-sliders me-2"></i>User Details</div>
+                
+                <div class="mb-3">
+                    <label asp-for="CompanyId" class="form-label"></label>
+                    @if (isGlobalAdmin)
+                    {
+                        <select asp-for="CompanyId" asp-items="companies" class="form-select">
+                            <option value="">-- Select Company (Optional for Global Admin) --</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <select asp-for="CompanyId" asp-items="companies" class="form-select" disabled>
+                            <option value="">-- Select Company --</option>
+                        </select>
+                        <input type="hidden" asp-for="CompanyId" />
+                        <small class="form-text text-muted">Company cannot be changed by company admins</small>
+                    }
+                    <span asp-validation-for="CompanyId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label required"></label>
+                    <input asp-for="FullName" class="form-control" />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label required"></label>
+                    <input asp-for="Email" type="email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="AppRole" class="form-label required"></label>
+                    <select asp-for="AppRole" asp-items="roles" class="form-select"></select>
+                    <span asp-validation-for="AppRole" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="IsActive" class="form-label"></label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" asp-for="IsActive">
+                        <label class="form-check-label" for="@Html.IdFor(m => m.IsActive)">
+                            User account is active
+                        </label>
+                    </div>
+                    <span asp-validation-for="IsActive" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="UserDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

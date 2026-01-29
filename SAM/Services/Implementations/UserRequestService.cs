@@ -17,15 +17,18 @@ public class UserRequestService : IUserRequestService
     private readonly ApplicationDbContext _context;
     private readonly ILogger<UserRequestService> _logger;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserService _userService;
 
     public UserRequestService(
         ApplicationDbContext context,
         ILogger<UserRequestService> logger,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IUserService userService)
     {
         _context = context;
         _logger = logger;
         _userManager = userManager;
+        _userService = userService;
     }
 
     public async Task<IEnumerable<UserRequest>> GetAllAsync(Guid? companyId = null)
@@ -118,6 +121,22 @@ public class UserRequestService : IUserRequestService
         return true;
     }
 
+    public async Task<bool> HardDeleteAsync(Guid id)
+    {
+        var userRequest = await _context.UserRequests
+            .FirstOrDefaultAsync(u => u.Id == id);
+        
+        if (userRequest == null)
+            throw new EntityNotFoundException(nameof(UserRequest), id);
+
+        // Hard delete - permanently remove from database
+        _context.UserRequests.Remove(userRequest);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("User request hard-deleted (ID: {RequestId})", id);
+        return true;
+    }
+
     public async Task<bool> ExistsAsync(Guid id)
     {
         return await _context.UserRequests.AnyAsync(u => u.Id == id);
@@ -139,7 +158,7 @@ public class UserRequestService : IUserRequestService
             .ToListAsync();
     }
 
-    public async Task<UserRequest> ApproveRequestAsync(Guid requestId, string approvedByEmail)
+    public async Task<UserRequest> ApproveRequestAsync(Guid requestId, string approvedByEmail, AppRoleEnum? approvedRole = null)
     {
         var request = await GetByIdAsync(requestId);
         if (request == null)
@@ -148,56 +167,23 @@ public class UserRequestService : IUserRequestService
         if (request.Status != RequestStatusEnum.Pending)
             throw new BusinessRuleException("Only pending requests can be approved.");
 
-        // Check if user already exists
-        var existingUser = await _userManager.FindByEmailAsync(request.Email);
-        if (existingUser != null)
-            throw new BusinessRuleException($"A user with email '{request.Email}' already exists.");
+        // Use approved role if provided, otherwise use requested role
+        var roleToAssign = approvedRole ?? request.AppRole;
 
-        // Create the user
-        var user = new ApplicationUser
-        {
-            UserName = request.Email,
-            Email = request.Email,
-            EmailConfirmed = true,
-            FullName = request.FullName,
-            CompanyId = request.CompanyId,
-            IsActive = true
-        };
-
-        // Generate a temporary password (in production, send via email)
-        var tempPassword = GenerateTemporaryPassword();
-        var result = await _userManager.CreateAsync(user, tempPassword);
-
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new BusinessRuleException($"Failed to create user: {errors}");
-        }
-
-        // Assign role based on AppRole
-        var roleName = request.AppRole switch
-        {
-            AppRoleEnum.company_admin => "company_admin",
-            AppRoleEnum.@operator => "operator",
-            AppRoleEnum.technician => "technician",
-            _ => "operator" // Default fallback
-        };
-
-        var roleResult = await _userManager.AddToRoleAsync(user, roleName);
-        if (!roleResult.Succeeded)
-        {
-            // Rollback user creation if role assignment fails
-            await _userManager.DeleteAsync(user);
-            var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
-            throw new BusinessRuleException($"Failed to assign role: {errors}");
-        }
+        // Create the user using the shared service (single source of truth)
+        var user = await _userService.CreateUserAsync(
+            request.Email,
+            request.FullName,
+            request.CompanyId,
+            roleToAssign,
+            generatePassword: true);
 
         // Update request status
         request.Status = RequestStatusEnum.Processed;
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("User request approved and user created: {Email} (Request ID: {RequestId}, User ID: {UserId})",
-            request.Email, requestId, user.Id);
+        _logger.LogInformation("User request approved and user created: {Email} (Request ID: {RequestId}, User ID: {UserId}, Role: {Role})",
+            request.Email, requestId, user.Id, roleToAssign);
 
         // TODO: Send email notification with temporary password
 
@@ -226,15 +212,5 @@ public class UserRequestService : IUserRequestService
         return request;
     }
 
-    private string GenerateTemporaryPassword()
-    {
-        // Generate a secure temporary password
-        // In production, this should be more sophisticated
-        const string chars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-        var random = new Random();
-        var password = new string(Enumerable.Repeat(chars, 12)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
-        return password + "1"; // Ensure at least one digit
-    }
 }
 

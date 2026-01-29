@@ -1,0 +1,260 @@
+@model IEnumerable<SAM.ViewModels.UserManagement.UserViewModel>
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Users";
+    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Manage user accounts and permissions</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+            <button type="button"
+                    class="btn btn-outline-secondary active"
+                    id="usersTableViewBtn">
+                <i class="bi bi-table"></i> Table
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    id="usersCardViewBtn">
+                <i class="bi bi-grid-3x3-gap"></i> Cards
+            </button>
+        </div>
+        <a asp-action="UserCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New User
+        </a>
+    </div>
+</div>
+
+@{
+    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
+}
+@if (filterViewModel != null)
+{
+    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
+}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> User List</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div id="usersTableView" class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-person"></i> Full Name</th>
+                            <th><i class="bi bi-envelope"></i> Email</th>
+                            <th><i class="bi bi-briefcase"></i> Company</th>
+                            <th><i class="bi bi-person-badge"></i> Role(s)</th>
+                            <th><i class="bi bi-check-circle"></i> Status</th>
+                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-action="UserDetails" asp-route-id="@user.Id" class="text-decoration-none">
+                                        <i class="bi bi-person me-1"></i>@user.FullName
+                                    </a>
+                                </td>
+                                <td><i class="bi bi-envelope me-1"></i>@user.Email</td>
+                                <td><i class="bi bi-briefcase me-1"></i>@(user.CompanyName ?? "N/A")</td>
+                                <td>
+                                    @foreach (var role in user.Roles)
+                                    {
+                                        <span class="badge bg-secondary me-1">@role.Replace("_", " ")</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                <td class="table-actions">
+                                    <a asp-action="UserDetails" asp-route-id="@user.Id" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a asp-action="UserEdit" asp-route-id="@user.Id" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteUserModal"
+                                            data-user-id="@user.Id"
+                                            data-user-name="@user.FullName">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="usersCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var user in Model)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header-light d-flex justify-content-between">
+                                <h6 class="mb-0">
+                                    <a asp-action="UserDetails" asp-route-id="@user.Id" class="text-decoration-none">
+                                        @user.FullName
+                                    </a>
+                                </h6>
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <dl class="row small mb-3">
+                                    <dt class="col-5"><i class="bi bi-envelope me-1"></i>Email</dt>
+                                    <dd class="col-7 mb-1">@user.Email</dd>
+
+                                    <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
+                                    <dd class="col-7 mb-1">@(user.CompanyName ?? "N/A")</dd>
+
+                                    <dt class="col-5"><i class="bi bi-person-badge me-1"></i>Role(s)</dt>
+                                    <dd class="col-7 mb-1">
+                                        @foreach (var role in user.Roles)
+                                        {
+                                            <span class="badge bg-secondary me-1">@role.Replace("_", " ")</span>
+                                        }
+                                    </dd>
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-end">
+                                    <a asp-action="UserDetails" asp-route-id="@user.Id" class="btn btn-sm btn-outline-secondary me-2">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a asp-action="UserEdit" asp-route-id="@user.Id" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteUserModal"
+                                            data-user-id="@user.Id"
+                                            data-user-name="@user.FullName">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <p class="text-muted mt-3">No users found.</p>
+                <a asp-action="UserCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Create First User
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete user <strong id="deleteUserName"></strong>? This action cannot be undone and will permanently remove the user from the system.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteUserForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const tableBtn = document.getElementById('usersTableViewBtn');
+            const cardBtn = document.getElementById('usersCardViewBtn');
+            const tableView = document.getElementById('usersTableView');
+            const cardView = document.getElementById('usersCardView');
+            const storageKey = 'usersViewMode';
+
+            const deleteModal = document.getElementById('deleteUserModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    if (!button) return;
+
+                    const userId = button.getAttribute('data-user-id');
+                    const userName = button.getAttribute('data-user-name');
+
+                    const nameElement = deleteModal.querySelector('#deleteUserName');
+                    if (nameElement) {
+                        nameElement.textContent = userName;
+                    }
+
+                    const form = deleteModal.querySelector('#deleteUserForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("UserDelete", "UserManagement")';
+                        form.action = baseUrl + '/' + userId;
+                    }
+                });
+            }
+
+            function setViewMode(mode) {
+                const isTable = mode === 'table';
+                if (isTable) {
+                    tableView?.classList.remove('d-none');
+                    cardView?.classList.add('d-none');
+                    tableBtn?.classList.add('active');
+                    cardBtn?.classList.remove('active');
+                } else {
+                    tableView?.classList.add('d-none');
+                    cardView?.classList.remove('d-none');
+                    tableBtn?.classList.remove('active');
+                    cardBtn?.classList.add('active');
+                }
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, mode);
+                }
+            }
+
+            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+            setViewMode(savedMode === 'card' ? 'card' : 'table');
+
+            tableBtn?.addEventListener('click', function () { setViewMode('table'); });
+            cardBtn?.addEventListener('click', function () { setViewMode('card'); });
+        });
+    </script>
+}
+

@@ -47,6 +47,11 @@ public class Facility : CompanyScopedEntity
     /// </summary>
     public string ZipCode { get; set; } = string.Empty;
 
+    /// <summary>
+    /// County.
+    /// </summary>
+    public string County { get; set; } = string.Empty;
+
     // Navigation properties
     public ICollection<WWChar> WWChars { get; set; } = new List<WWChar>();
     public ICollection<GWMonit> GWMonits { get; set; } = new List<GWMonit>();
@@ -54,6 +59,7 @@ public class Facility : CompanyScopedEntity
     public ICollection<IrrRprt> IrrRprts { get; set; } = new List<IrrRprt>();
     public ICollection<OperatorLog> OperatorLogs { get; set; } = new List<OperatorLog>();
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
+    public ICollection<NDAR1> NDAR1s { get; set; } = new List<NDAR1>();
 }
 
 

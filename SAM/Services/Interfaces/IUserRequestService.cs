@@ -1,4 +1,5 @@
 using SAM.Domain.Entities;
+using SAM.Domain.Enums;
 
 namespace SAM.Services.Interfaces;
 
@@ -12,9 +13,10 @@ public interface IUserRequestService
     Task<UserRequest> CreateAsync(UserRequest userRequest);
     Task<UserRequest> UpdateAsync(UserRequest userRequest);
     Task<bool> DeleteAsync(Guid id);
+    Task<bool> HardDeleteAsync(Guid id);
     Task<bool> ExistsAsync(Guid id);
     Task<IEnumerable<UserRequest>> GetPendingRequestsAsync(Guid? companyId = null);
-    Task<UserRequest> ApproveRequestAsync(Guid requestId, string approvedByEmail);
+    Task<UserRequest> ApproveRequestAsync(Guid requestId, string approvedByEmail, AppRoleEnum? approvedRole = null);
     Task<UserRequest> RejectRequestAsync(Guid requestId, string rejectedByEmail, string? reason = null);
 }
 

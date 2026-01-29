@@ -1,0 +1,162 @@
+@model SAM.ViewModels.Reports.NDAR1ViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "NDAR-1 Report Details";
+    var user = await UserManager.GetUserAsync(User);
+    var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
+    var report = ViewBag.Report as SAM.Domain.Entities.NDAR1;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">View detailed NDAR-1 report for @Model.Month @Model.Year</p>
+    </div>
+    <div>
+        <a asp-action="ExportNDAR1Report" asp-route-id="@Model.Id" class="btn btn-success">
+            <i class="bi bi-download"></i> Export to Excel
+        </a>
+        @if (canEdit)
+        {
+            <a asp-action="NDAR1ReportEdit" asp-route-id="@Model.Id" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+        }
+        <a asp-action="NDAR1Reports" asp-route-companyId="@Model.CompanyId" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Report Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4"><i class="bi bi-briefcase me-1"></i>Company:</dt>
+                    <dd class="col-sm-8">@Model.CompanyName</dd>
+
+                    <dt class="col-sm-4"><i class="bi bi-building me-1"></i>Facility:</dt>
+                    <dd class="col-sm-8">@Model.FacilityName</dd>
+
+                    <dt class="col-sm-4"><i class="bi bi-calendar me-1"></i>Period:</dt>
+                    <dd class="col-sm-8">@Model.Month @Model.Year</dd>
+
+                    <dt class="col-sm-4"><i class="bi bi-check-circle me-1"></i>Did Irrigation Occur:</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.DidIrrigationOccur)
+                        {
+                            <span class="badge bg-success">Yes</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">No</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (report != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-cloud"></i> Field Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @if (report.Field1 != null)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <h6>Field 1: @report.Field1.FieldId</h6>
+                                <dl class="row small">
+                                    <dt class="col-6">Area:</dt>
+                                    <dd class="col-6">@report.Field1.SizeAcres acres</dd>
+                                    <dt class="col-6">Cover Crop:</dt>
+                                    <dd class="col-6">@(report.Field1.Crop?.Name ?? "-")</dd>
+                                    <dt class="col-6">Monthly Loading:</dt>
+                                    <dd class="col-6">@report.Field1MonthlyLoading.ToString("F2") in</dd>
+                                    <dt class="col-6">12-Month Floating Total:</dt>
+                                    <dd class="col-6">@report.Field1TwelveMonthFloatingTotal.ToString("F2") in</dd>
+                                </dl>
+                            </div>
+                        }
+                        @if (report.Field2 != null)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <h6>Field 2: @report.Field2.FieldId</h6>
+                                <dl class="row small">
+                                    <dt class="col-6">Area:</dt>
+                                    <dd class="col-6">@report.Field2.SizeAcres acres</dd>
+                                    <dt class="col-6">Cover Crop:</dt>
+                                    <dd class="col-6">@(report.Field2.Crop?.Name ?? "-")</dd>
+                                    <dt class="col-6">Monthly Loading:</dt>
+                                    <dd class="col-6">@report.Field2MonthlyLoading.ToString("F2") in</dd>
+                                    <dt class="col-6">12-Month Floating Total:</dt>
+                                    <dd class="col-6">@report.Field2TwelveMonthFloatingTotal.ToString("F2") in</dd>
+                                </dl>
+                            </div>
+                        }
+                        @if (report.Field3 != null)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <h6>Field 3: @report.Field3.FieldId</h6>
+                                <dl class="row small">
+                                    <dt class="col-6">Area:</dt>
+                                    <dd class="col-6">@report.Field3.SizeAcres acres</dd>
+                                    <dt class="col-6">Cover Crop:</dt>
+                                    <dd class="col-6">@(report.Field3.Crop?.Name ?? "-")</dd>
+                                    <dt class="col-6">Monthly Loading:</dt>
+                                    <dd class="col-6">@report.Field3MonthlyLoading.ToString("F2") in</dd>
+                                    <dt class="col-6">12-Month Floating Total:</dt>
+                                    <dd class="col-6">@report.Field3TwelveMonthFloatingTotal.ToString("F2") in</dd>
+                                </dl>
+                            </div>
+                        }
+                        @if (report.Field4 != null)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <h6>Field 4: @report.Field4.FieldId</h6>
+                                <dl class="row small">
+                                    <dt class="col-6">Area:</dt>
+                                    <dd class="col-6">@report.Field4.SizeAcres acres</dd>
+                                    <dt class="col-6">Cover Crop:</dt>
+                                    <dd class="col-6">@(report.Field4.Crop?.Name ?? "-")</dd>
+                                    <dt class="col-6">Monthly Loading:</dt>
+                                    <dd class="col-6">@report.Field4MonthlyLoading.ToString("F2") in</dd>
+                                    <dt class="col-6">12-Month Floating Total:</dt>
+                                    <dd class="col-6">@report.Field4TwelveMonthFloatingTotal.ToString("F2") in</dd>
+                                </dl>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Report Metadata</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5"><i class="bi bi-calendar-plus me-1"></i>Created:</dt>
+                    <dd class="col-sm-7">@Model.CreatedDate.ToString("MM/dd/yyyy HH:mm") UTC</dd>
+
+                    @if (Model.UpdatedDate.HasValue)
+                    {
+                        <dt class="col-sm-5"><i class="bi bi-calendar-check me-1"></i>Updated:</dt>
+                        <dd class="col-sm-7">@Model.UpdatedDate.Value.ToString("MM/dd/yyyy HH:mm") UTC</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
