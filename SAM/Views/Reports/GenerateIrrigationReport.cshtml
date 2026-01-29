@@ -1,0 +1,80 @@
+@model SAM.ViewModels.Reports.IrrRprtCreateViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Generate Irrigation Report";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var user = await UserManager.GetUserAsync(User);
+    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Create a new compliance report for facilities</p>
+    </div>
+    <a asp-action="IrrigationReports" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> This will generate a monthly irrigation report by aggregating all irrigation records for the selected facility, month, and year.
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Report Parameters</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="GenerateIrrigationReport" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title"><i class="bi bi-sliders me-2"></i>Report Parameters</div>
+                
+                <div class="mb-3">
+                    <label asp-for="FacilityId" class="form-label required"></label>
+                    <select asp-for="FacilityId" asp-items="facilities" class="form-select">
+                        <option value="">-- Select Facility --</option>
+                    </select>
+                    <span asp-validation-for="FacilityId" class="text-danger"></span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Month" class="form-label required"></label>
+                            <select asp-for="Month" asp-items="months" class="form-select"></select>
+                            <span asp-validation-for="Month" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Year" class="form-label required"></label>
+                            <input asp-for="Year" type="number" min="2000" max="2100" class="form-control" />
+                            <span asp-validation-for="Year" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" asp-for="CompanyId" />
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="IrrigationReports" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-file-earmark-text"></i> Generate Report
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

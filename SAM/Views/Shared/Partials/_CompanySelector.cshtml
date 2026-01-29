@@ -1,0 +1,45 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using SAM.Domain.Entities
+@using SAM.Data
+@inject UserManager<ApplicationUser> UserManager
+@inject ApplicationDbContext DbContext
+
+@{
+    var user = await UserManager.GetUserAsync(User);
+    var isAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+    
+    if (isAdmin)
+    {
+        var companies = await DbContext.Companies.OrderBy(c => c.Name).ToListAsync();
+        
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center" type="button" id="companySelectorButton" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-building me-2"></i> 
+                <span>
+                @if (ViewBag.SelectedCompanyId != null)
+                {
+                    var selectedCompany = companies.FirstOrDefault(c => c.Id == ViewBag.SelectedCompanyId);
+                    @(selectedCompany?.Name ?? "All Companies")
+                }
+                else
+                {
+                    <text>All Companies</text>
+                }
+                </span>
+            </button>
+            <ul class="dropdown-menu shadow-lg" aria-labelledby="companySelectorButton" style="min-width: 200px;">
+                <li>
+                    <a class="dropdown-item" href="?companyId="><i class="bi bi-building me-2"></i>All Companies</a>
+                </li>
+                @foreach (var company in companies)
+                {
+                    <li>
+                        <a class="dropdown-item" href="?companyId=@company.Id"><i class="bi bi-building me-2"></i>@company.Name</a>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+}
+

@@ -1,0 +1,33 @@
+// ============================================
+// SAM Application - Centralized Custom Styles
+// ============================================
+
+// Variables - Single Source of Truth
+@import 'variables/colors';
+@import 'variables/typography';
+@import 'variables/spacing';
+@import 'variables/breakpoints';
+
+// Base Styles
+@import 'base/reset';
+@import 'base/typography';
+
+// Components
+@import 'components/buttons';
+@import 'components/forms';
+@import 'components/tables';
+@import 'components/cards';
+@import 'components/badges';
+@import 'components/modals';
+@import 'components/navigation';
+
+// Layout
+@import 'layout/header';
+@import 'layout/sidebar';
+@import 'layout/footer';
+
+// Utilities
+@import 'utilities/spacing';
+@import 'utilities/status-colors';
+
+

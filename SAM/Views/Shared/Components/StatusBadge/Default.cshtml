@@ -1,0 +1,21 @@
+@model SAM.ViewModels.Common.StatusBadgeViewModel
+
+@{
+    var badgeClass = Model.Status switch
+    {
+        "Compliant" => "badge-compliant",
+        "NonCompliant" => "badge-non-compliant",
+        "UnderReview" => "badge-under-review",
+        "Normal" => "badge-normal",
+        "Alert" => "badge-alert",
+        "Maintenance" => "badge-maintenance",
+        "Emergency" => "badge-emergency",
+        _ => "badge-secondary"
+    };
+}
+
+<span class="badge @badgeClass" title="@Model.Tooltip">
+    @Model.Text
+</span>
+
+

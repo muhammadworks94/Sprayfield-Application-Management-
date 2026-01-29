@@ -1,0 +1,396 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - SAM</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/SAM.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="app-layout">
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            @await Html.PartialAsync("Partials/_Navigation")
+        }
+        
+        <div class="main-content" id="mainContent">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <header class="app-header">
+                    <div class="header-content">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-link d-md-none me-3" type="button" id="sidebarToggle" aria-label="Toggle sidebar">
+                                <i class="bi bi-list"></i>
+                            </button>
+                            <h5 class="mb-0"><i class="bi bi-@(ViewData["TitleIcon"] ?? "file-text") me-2"></i>@ViewData["Title"]</h5>
+                        </div>
+                        <div class="user-menu">
+                            @* @await Html.PartialAsync("Partials/_CompanySelector") *@
+                            @await Html.PartialAsync("Partials/_UserMenu")
+                        </div>
+                    </div>
+                </header>
+            }
+            
+            <main role="main" class="p-4">
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        @TempData["SuccessMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        @TempData["ErrorMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                @RenderBody()
+            </main>
+            
+            <footer class="app-footer">
+                <div class="container">
+                    &copy; @DateTime.Now.Year - SAM - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+    
+    <script>
+        (function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarCollapseToggle = document.getElementById('sidebarCollapseToggle');
+            const overlay = document.getElementById('sidebarOverlay');
+            const mainContent = document.getElementById('mainContent');
+            const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+            
+            // Check if desktop collapsed state should be restored
+            const isDesktop = window.innerWidth >= 768;
+            const savedState = localStorage.getItem('sidebarCollapsed');
+            const shouldBeCollapsed = savedState === 'true' && isDesktop;
+            
+            if (shouldBeCollapsed && sidebar && mainContent) {
+                sidebar.classList.add('sidebar-collapsed-desktop');
+                mainContent.classList.add('sidebar-collapsed-desktop');
+                sidebarCollapseToggle?.setAttribute('aria-expanded', 'false');
+            }
+            
+            // Mobile sidebar toggle
+            sidebarToggle?.addEventListener('click', function() {
+                const isCollapsed = sidebar?.classList.contains('collapsed');
+                
+                if (isCollapsed) {
+                    sidebar?.classList.remove('collapsed');
+                    overlay?.classList.add('show');
+                    mainContent?.classList.remove('sidebar-collapsed');
+                } else {
+                    sidebar?.classList.add('collapsed');
+                    overlay?.classList.remove('show');
+                    mainContent?.classList.add('sidebar-collapsed');
+                }
+            });
+            
+            // Desktop sidebar collapse/expand toggle
+            sidebarCollapseToggle?.addEventListener('click', function() {
+                const isCollapsed = sidebar?.classList.contains('sidebar-collapsed-desktop');
+                
+                if (isCollapsed) {
+                    sidebar?.classList.remove('sidebar-collapsed-desktop');
+                    mainContent?.classList.remove('sidebar-collapsed-desktop');
+                    sidebarCollapseToggle.setAttribute('aria-expanded', 'true');
+                    localStorage.setItem('sidebarCollapsed', 'false');
+                } else {
+                    sidebar?.classList.add('sidebar-collapsed-desktop');
+                    mainContent?.classList.add('sidebar-collapsed-desktop');
+                    sidebarCollapseToggle.setAttribute('aria-expanded', 'false');
+                    localStorage.setItem('sidebarCollapsed', 'true');
+                }
+            });
+            
+            // Close sidebar when overlay is clicked (mobile)
+            overlay?.addEventListener('click', function() {
+                sidebar?.classList.add('collapsed');
+                overlay?.classList.remove('show');
+                mainContent?.classList.add('sidebar-collapsed');
+            });
+            
+            // Dropdown functionality
+            const dropdownItems = document.querySelectorAll('.nav-dropdown-item');
+            const dropdownToggles = document.querySelectorAll('.nav-dropdown-toggle');
+            
+            // Load saved dropdown states
+            function loadDropdownStates() {
+                dropdownItems.forEach(item => {
+                    const dropdownId = item.querySelector('.nav-dropdown-toggle')?.getAttribute('data-dropdown');
+                    if (dropdownId) {
+                        const savedState = localStorage.getItem(`dropdown-${dropdownId}`);
+                        if (savedState === 'expanded') {
+                            item.classList.add('expanded');
+                            const toggle = item.querySelector('.nav-dropdown-toggle');
+                            toggle?.setAttribute('aria-expanded', 'true');
+                        }
+                    }
+                });
+            }
+            
+            // Save dropdown state
+            function saveDropdownState(dropdownId, isExpanded) {
+                localStorage.setItem(`dropdown-${dropdownId}`, isExpanded ? 'expanded' : 'collapsed');
+            }
+            
+            // Toggle dropdown
+            function toggleDropdown(item, forceState) {
+                const toggle = item.querySelector('.nav-dropdown-toggle');
+                const dropdownId = toggle?.getAttribute('data-dropdown');
+                const isExpanded = item.classList.contains('expanded');
+                const newState = forceState !== undefined ? forceState : !isExpanded;
+                
+                if (newState) {
+                    item.classList.add('expanded');
+                    toggle?.setAttribute('aria-expanded', 'true');
+                } else {
+                    item.classList.remove('expanded');
+                    toggle?.setAttribute('aria-expanded', 'false');
+                }
+                
+                if (dropdownId) {
+                    saveDropdownState(dropdownId, newState);
+                }
+            }
+            
+            // Initialize dropdown toggles
+            dropdownToggles.forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const item = this.closest('.nav-dropdown-item');
+                    if (item) {
+                        toggleDropdown(item);
+                    }
+                });
+                
+                // Keyboard support
+                toggle.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const item = this.closest('.nav-dropdown-item');
+                        if (item) {
+                            toggleDropdown(item);
+                        }
+                    }
+                });
+            });
+            
+            // Enhanced active link detection with dropdown support
+            function setActiveNavLink() {
+                const currentPath = window.location.pathname.toLowerCase();
+                let activeDropdown = null;
+                
+                navLinks.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (!href) return;
+                    
+                    const linkPath = href.toLowerCase();
+                    const isActive = linkPath === currentPath || 
+                        (currentPath.startsWith(linkPath) && linkPath !== '/' && 
+                         (!currentPath[linkPath.length] || currentPath[linkPath.length] === '/'));
+                    
+                    if (isActive) {
+                        link.classList.add('active');
+                        link.setAttribute('aria-current', 'page');
+                        
+                        // Find parent dropdown and expand it
+                        const dropdownItem = link.closest('.nav-dropdown-item');
+                        if (dropdownItem) {
+                            activeDropdown = dropdownItem;
+                            dropdownItem.classList.add('has-active');
+                            toggleDropdown(dropdownItem, true);
+                        }
+                    } else {
+                        link.classList.remove('active');
+                        link.removeAttribute('aria-current');
+                    }
+                });
+                
+                // Remove has-active from other dropdowns
+                dropdownItems.forEach(item => {
+                    if (item !== activeDropdown) {
+                        item.classList.remove('has-active');
+                    }
+                });
+            }
+            
+            // Initialize dropdowns
+            loadDropdownStates();
+            
+            // Set active nav link on page load
+            setActiveNavLink();
+            
+            // Enhanced keyboard navigation (includes dropdowns)
+            let currentFocusIndex = -1;
+            
+            function getFocusableElements() {
+                const elements = [];
+                
+                // Add regular nav links
+                navLinks.forEach(link => {
+                    const style = window.getComputedStyle(link);
+                    if (style.display !== 'none' && style.visibility !== 'hidden') {
+                        elements.push(link);
+                    }
+                });
+                
+                // Add dropdown toggles
+                dropdownToggles.forEach(toggle => {
+                    const style = window.getComputedStyle(toggle);
+                    if (style.display !== 'none' && style.visibility !== 'hidden') {
+                        elements.push(toggle);
+                    }
+                });
+                
+                return elements;
+            }
+            
+            function focusElement(index) {
+                const focusableElements = getFocusableElements();
+                if (focusableElements.length === 0) return;
+                
+                currentFocusIndex = Math.max(0, Math.min(index, focusableElements.length - 1));
+                focusableElements[currentFocusIndex].focus();
+            }
+            
+            sidebar?.addEventListener('keydown', function(e) {
+                const focusableElements = getFocusableElements();
+                if (focusableElements.length === 0) return;
+                
+                // Find current focused element index
+                const currentFocused = focusableElements.indexOf(document.activeElement);
+                if (currentFocused === -1) {
+                    currentFocusIndex = 0;
+                } else {
+                    currentFocusIndex = currentFocused;
+                }
+                
+                const activeElement = document.activeElement;
+                const isDropdownToggle = activeElement?.classList.contains('nav-dropdown-toggle');
+                
+                switch(e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        if (isDropdownToggle && !activeElement.closest('.nav-dropdown-item')?.classList.contains('expanded')) {
+                            // Expand dropdown if collapsed
+                            const item = activeElement.closest('.nav-dropdown-item');
+                            if (item) {
+                                toggleDropdown(item, true);
+                            }
+                        } else {
+                            focusElement(currentFocusIndex + 1);
+                        }
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        focusElement(currentFocusIndex - 1);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        if (isDropdownToggle) {
+                            const item = activeElement.closest('.nav-dropdown-item');
+                            if (item && !item.classList.contains('expanded')) {
+                                toggleDropdown(item, true);
+                            }
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        if (isDropdownToggle) {
+                            const item = activeElement.closest('.nav-dropdown-item');
+                            if (item && item.classList.contains('expanded')) {
+                                toggleDropdown(item, false);
+                            }
+                        }
+                        break;
+                    case 'Home':
+                        e.preventDefault();
+                        focusElement(0);
+                        break;
+                    case 'End':
+                        e.preventDefault();
+                        focusElement(focusableElements.length - 1);
+                        break;
+                    case 'Escape':
+                        // Close mobile sidebar on Escape
+                        if (window.innerWidth < 768) {
+                            sidebar?.classList.add('collapsed');
+                            overlay?.classList.remove('show');
+                            mainContent?.classList.add('sidebar-collapsed');
+                        } else {
+                            // Close all dropdowns on Escape
+                            dropdownItems.forEach(item => {
+                                if (item.classList.contains('expanded')) {
+                                    toggleDropdown(item, false);
+                                }
+                            });
+                        }
+                        break;
+                }
+            });
+            
+            // Close dropdowns when clicking outside (for collapsed sidebar)
+            document.addEventListener('click', function(e) {
+                if (sidebar?.classList.contains('sidebar-collapsed-desktop')) {
+                    const isClickInsideDropdown = e.target.closest('.nav-dropdown-item');
+                    if (!isClickInsideDropdown) {
+                        dropdownItems.forEach(item => {
+                            if (item.classList.contains('expanded')) {
+                                toggleDropdown(item, false);
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // Handle window resize
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    const isDesktop = window.innerWidth >= 768;
+                    
+                    if (isDesktop) {
+                        // On desktop, remove mobile collapsed state
+                        sidebar?.classList.remove('collapsed');
+                        overlay?.classList.remove('show');
+                        mainContent?.classList.remove('sidebar-collapsed');
+                        
+                        // Restore desktop collapsed state if saved
+                        const savedState = localStorage.getItem('sidebarCollapsed');
+                        if (savedState === 'true') {
+                            sidebar?.classList.add('sidebar-collapsed-desktop');
+                            mainContent?.classList.add('sidebar-collapsed-desktop');
+                        }
+                    } else {
+                        // On mobile, remove desktop collapsed state
+                        sidebar?.classList.remove('sidebar-collapsed-desktop');
+                        mainContent?.classList.remove('sidebar-collapsed-desktop');
+                        sidebar?.classList.add('collapsed');
+                    }
+                }, 150);
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+// ============================================
+// Modal Styles
+// ============================================
+
+.modal-content {
+  border: none;
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+  padding: $spacing-4 $spacing-6;
+  border-bottom: 1px solid $border-color;
+  border-radius: calc(0.5rem - 1px) calc(0.5rem - 1px) 0 0;
+  background-color: $gray-50;
+
+  .modal-title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+  }
+
+  .btn-close {
+    padding: $spacing-2;
+    margin: calc($spacing-2 * -1) calc($spacing-2 * -1) calc($spacing-2 * -1) auto;
+  }
+}
+
+.modal-body {
+  padding: $spacing-6;
+  color: $text-primary;
+}
+
+.modal-footer {
+  padding: $spacing-4 $spacing-6;
+  border-top: 1px solid $border-color;
+  border-radius: 0 0 calc(0.5rem - 1px) calc(0.5rem - 1px);
+  background-color: $gray-50;
+
+  .btn {
+    margin-left: $spacing-2;
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}
+
+.modal-backdrop {
+  background-color: rgba($black, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+

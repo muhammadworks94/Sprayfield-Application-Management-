@@ -1,0 +1,68 @@
+@model SAM.ViewModels.SystemAdmin.NozzleCreateViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var user = await UserManager.GetUserAsync(User);
+    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+}
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+<div class="form-section">
+    <div class="form-section-title">Company Information</div>
+
+    <div class="mb-3">
+        <label asp-for="CompanyId" class="form-label required"></label>
+        @if (isGlobalAdmin && companies != null)
+        {
+            <select asp-for="CompanyId" asp-items="companies" class="form-select">
+                <option value="">-- Select Company --</option>
+            </select>
+        }
+        else
+        {
+            <input type="hidden" asp-for="CompanyId" />
+            <input type="text" class="form-control" value="@companies?.FirstOrDefault(c => c.Value == Model.CompanyId.ToString())?.Text" disabled />
+        }
+        <span asp-validation-for="CompanyId" class="text-danger"></span>
+    </div>
+</div>
+
+<div class="form-section">
+    <div class="form-section-title">Nozzle Information</div>
+
+    <div class="mb-3">
+        <label asp-for="Manufacturer" class="form-label required"></label>
+        <input asp-for="Manufacturer" class="form-control" />
+        <span asp-validation-for="Manufacturer" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Model" class="form-label required"></label>
+        <input asp-for="Model" class="form-control" />
+        <span asp-validation-for="Model" class="text-danger"></span>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label asp-for="FlowRateGpm" class="form-label required"></label>
+                <input asp-for="FlowRateGpm" type="number" step="0.01" min="0" class="form-control" />
+                <span asp-validation-for="FlowRateGpm" class="text-danger"></span>
+                <small class="form-text text-muted">Flow rate in gallons per minute</small>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label asp-for="SprayArc" class="form-label required"></label>
+                <input asp-for="SprayArc" type="number" min="0" max="360" class="form-control" />
+                <span asp-validation-for="SprayArc" class="text-danger"></span>
+                <small class="form-text text-muted">Spray arc in degrees (0-360)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+

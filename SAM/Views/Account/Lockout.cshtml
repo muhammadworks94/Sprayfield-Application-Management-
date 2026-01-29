@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "Account Locked";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-white text-center">
+                    <h5 class="mb-0"><i class="bi bi-lock-fill"></i> Account Locked</h5>
+                </div>
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-lock-fill" style="font-size: 4rem; color: var(--warning);"></i>
+                    <p class="text-muted mt-3">Your account has been temporarily locked due to multiple failed login attempts.</p>
+                    <p class="text-muted">Please try again later or contact your administrator.</p>
+                    <div class="mt-4">
+                        <a asp-controller="Account" asp-action="Login" class="btn btn-primary">
+                            <i class="bi bi-arrow-left"></i> Back to Login
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,234 @@
+@model IEnumerable<SAM.ViewModels.SystemAdmin.MonitoringWellViewModel>
+@{
+    ViewData["Title"] = "Monitoring Wells";
+    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Manage monitoring well locations and details</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+            <button type="button"
+                    class="btn btn-outline-secondary active"
+                    id="monitoringWellsTableViewBtn">
+                <i class="bi bi-table"></i> Table
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    id="monitoringWellsCardViewBtn">
+                <i class="bi bi-grid-3x3-gap"></i> Cards
+            </button>
+        </div>
+        <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New Monitoring Well
+        </a>
+    </div>
+</div>
+
+@{
+    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
+}
+@if (filterViewModel != null)
+{
+    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
+}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Monitoring Well List</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div id="monitoringWellsTableView" class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-hash"></i> Well ID</th>
+                            <th><i class="bi bi-geo-alt"></i> Location Description</th>
+                            <th><i class="bi bi-geo-alt-fill"></i> Latitude</th>
+                            <th><i class="bi bi-geo-alt-fill"></i> Longitude</th>
+                            @if (isGlobalAdmin)
+                            {
+                                <th><i class="bi bi-briefcase"></i> Company</th>
+                            }
+                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var well in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-action="MonitoringWellDetails" asp-route-id="@well.Id">@well.WellId</a>
+                                </td>
+                                <td>@(string.IsNullOrEmpty(well.LocationDescription) ? "-" : well.LocationDescription)</td>
+                                <td>@well.Latitude.ToString("F6")</td>
+                                <td>@well.Longitude.ToString("F6")</td>
+                                @if (isGlobalAdmin)
+                                {
+                                    <td>@well.CompanyName</td>
+                                }
+                                <td class="table-actions">
+                                    <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteMonitoringWellModal"
+                                            data-well-id="@well.Id"
+                                            data-well-name="@well.WellId">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="monitoringWellsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var well in Model)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <h6 class="card-header-light mb-0">@well.WellId</h6>
+                            <div class="card-body d-flex flex-column">
+
+                                <small class="text-muted d-block mb-2">
+                                    @(string.IsNullOrEmpty(well.LocationDescription) ? "-" : well.LocationDescription)
+                                </small>
+
+                                <dl class="row small mb-3">
+                                    <dt class="col-6"><i class="bi bi-geo-alt-fill me-1"></i>Latitude</dt>
+                                    <dd class="col-6 mb-1">@well.Latitude.ToString("F6")</dd>
+
+                                    <dt class="col-6"><i class="bi bi-geo-alt-fill me-1"></i>Longitude</dt>
+                                    <dd class="col-6 mb-1">@well.Longitude.ToString("F6")</dd>
+
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
+                                        <dd class="col-6 mb-1">@well.CompanyName</dd>
+                                    }
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-end">
+                                    <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteMonitoringWellModal"
+                                            data-well-id="@well.Id"
+                                            data-well-name="@well.WellId">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <p class="text-muted mt-3">No monitoring wells found.</p>
+                <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Create First Monitoring Well
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal (Outside Table) -->
+<div class="modal fade" id="deleteMonitoringWellModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete monitoring well <strong id="deleteWellName"></strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteWellForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteModal = document.getElementById('deleteMonitoringWellModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const wellId = button.getAttribute('data-well-id');
+                    const wellName = button.getAttribute('data-well-name');
+
+                    const wellNameElement = deleteModal.querySelector('#deleteWellName');
+                    if (wellNameElement) {
+                        wellNameElement.textContent = wellName;
+                    }
+
+                    const form = deleteModal.querySelector('#deleteWellForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("MonitoringWellDelete", "SystemAdmin")';
+                        form.action = baseUrl + '/' + wellId;
+                    }
+                });
+            }
+
+            const tableBtn = document.getElementById('monitoringWellsTableViewBtn');
+            const cardBtn = document.getElementById('monitoringWellsCardViewBtn');
+            const tableView = document.getElementById('monitoringWellsTableView');
+            const cardView = document.getElementById('monitoringWellsCardView');
+            const storageKey = 'monitoringWellsViewMode';
+
+            function setViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    tableView?.classList.remove('d-none');
+                    cardView?.classList.add('d-none');
+                    tableBtn?.classList.add('active');
+                    cardBtn?.classList.remove('active');
+                } else {
+                    tableView?.classList.add('d-none');
+                    cardView?.classList.remove('d-none');
+                    tableBtn?.classList.remove('active');
+                    cardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, mode);
+                }
+            }
+
+            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+            setViewMode(savedMode === 'card' ? 'card' : 'table');
+
+            tableBtn?.addEventListener('click', function () {
+                setViewMode('table');
+            });
+
+            cardBtn?.addEventListener('click', function () {
+                setViewMode('card');
+            });
+        });
+    </script>
+}

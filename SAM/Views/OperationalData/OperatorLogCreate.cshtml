@@ -1,0 +1,159 @@
+@model SAM.ViewModels.OperationalData.OperatorLogCreateViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Create Operator Log";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var shifts = ViewBag.Shifts as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var systemStatuses = ViewBag.SystemStatuses as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var user = await UserManager.GetUserAsync(User);
+    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Add a new operator log entry</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-8">
+                <form asp-action="OperatorLogCreate" method="post">
+                    @Html.AntiForgeryToken()
+                    
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Basic Information</div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="FacilityId" class="form-label required"></label>
+                                    <select asp-for="FacilityId" asp-items="facilities" class="form-select">
+                                        <option value="">-- Select Facility --</option>
+                                    </select>
+                                    <span asp-validation-for="FacilityId" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="LogDate" class="form-label required"></label>
+                                    <input asp-for="LogDate" type="date" class="form-control" />
+                                    <span asp-validation-for="LogDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="OperatorName" class="form-label required"></label>
+                                    <input asp-for="OperatorName" class="form-control" />
+                                    <span asp-validation-for="OperatorName" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Shift" class="form-label required"></label>
+                                    <select asp-for="Shift" asp-items="shifts" class="form-select"></select>
+                                    <span asp-validation-for="Shift" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="SystemStatus" class="form-label required"></label>
+                                    <select asp-for="SystemStatus" asp-items="systemStatuses" class="form-select"></select>
+                                    <span asp-validation-for="SystemStatus" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="WeatherConditions" class="form-label"></label>
+                                    <input asp-for="WeatherConditions" class="form-control" />
+                                    <span asp-validation-for="WeatherConditions" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Operational Details</div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="MaintenancePerformed" class="form-label"></label>
+                            <textarea asp-for="MaintenancePerformed" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="MaintenancePerformed" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="EquipmentInspected" class="form-label"></label>
+                            <textarea asp-for="EquipmentInspected" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="EquipmentInspected" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="IssuesNoted" class="form-label"></label>
+                            <textarea asp-for="IssuesNoted" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="IssuesNoted" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="CorrectiveActions" class="form-label"></label>
+                            <textarea asp-for="CorrectiveActions" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="CorrectiveActions" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="NextShiftNotes" class="form-label"></label>
+                            <textarea asp-for="NextShiftNotes" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="NextShiftNotes" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <input type="hidden" asp-for="CompanyId" />
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="OperatorLogs" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Create Log
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="alert alert-info ">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Operator Log Guidelines</h6>
+                    <ul class="small mb-0 ps-3">
+                        <li class="mb-1"><strong>Facility</strong>: Select the facility where this shift was worked. This controls which logs appear in reports for that site.</li>
+                        <li class="mb-1"><strong>Log Date</strong>: Use the local calendar date for the shift, even if the shift crosses midnight.</li>
+                        <li class="mb-1"><strong>Operator Name</strong>: Enter the full name of the on-duty operator responsible for this log.</li>
+                        <li class="mb-1"><strong>Shift</strong>: Choose the shift that best matches your work period (e.g., Day, Evening, Night). This is used for internal audit trails.</li>
+                        <li class="mb-1"><strong>System Status</strong>: 
+                            <ul class="mb-1">
+                                <li class="mb-0">Select the status that reflects the <em>worst condition</em> during the shift (e.g., Alarm/Bypass if any alarms or bypasses occurred).</li>
+                            </ul>
+                        </li>
+                        <li class="mb-1"><strong>Weather Conditions</strong>: Briefly describe conditions that may affect operations (e.g., “Heavy rain”, “High winds”, “Normal conditions”).</li>
+                        <li class="mb-1"><strong>Maintenance Performed</strong>: List any preventive or corrective maintenance completed during the shift, including equipment, tasks, and parts used.</li>
+                        <li class="mb-1"><strong>Equipment Inspected</strong>: Note key equipment you visually checked (pumps, blowers, valves, meters, alarms) and any observations.</li>
+                        <li class="mb-1"><strong>Issues Noted</strong>: Record abnormal conditions, alarms, out-of-range readings, or safety concerns, even if they were resolved.</li>
+                        <li class="mb-1"><strong>Corrective Actions</strong>: Document actions taken to resolve issues (setpoint changes, callouts, repairs, temporary workarounds).</li>
+                        <li class="mb-1"><strong>Notes for Next Shift</strong>: Provide clear handoff notes for the incoming operator—items to monitor, incomplete work, or follow-up needed.</li>
+                        <li><strong>Detail & Clarity</strong>: Use specific, concise language. These logs may be reviewed during audits or investigations, so avoid abbreviations that are not standard at your facility.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

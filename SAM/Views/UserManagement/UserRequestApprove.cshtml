@@ -1,0 +1,49 @@
+@model SAM.ViewModels.UserManagement.UserRequestApproveViewModel
+@{
+    ViewData["Title"] = "Approve User Request";
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Review and approve user access request</p>
+</div>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> Approving this request will create a new user account. A temporary password will be generated.
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Request Details</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Full Name:</dt>
+            <dd class="col-sm-9">@Model.FullName</dd>
+
+            <dt class="col-sm-3">Email:</dt>
+            <dd class="col-sm-9">@Model.Email</dd>
+
+            <dt class="col-sm-3">Company:</dt>
+            <dd class="col-sm-9">@Model.CompanyName</dd>
+
+            <dt class="col-sm-3">Role:</dt>
+            <dd class="col-sm-9">@Model.AppRole.ToString().Replace("_", " ")</dd>
+
+            <dt class="col-sm-3">Requested By:</dt>
+            <dd class="col-sm-9">@Model.RequestedByEmail</dd>
+        </dl>
+
+        <form asp-action="UserRequestApprove" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a asp-action="UserRequests" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Approve and Create User
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
