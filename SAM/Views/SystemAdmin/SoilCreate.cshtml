@@ -1,0 +1,30 @@
+@model SAM.ViewModels.SystemAdmin.SoilCreateViewModel
+@{
+    ViewData["Title"] = "Create Soil Type";
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Add a new soil type to the system</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="SoilCreate" method="post">
+            @Html.AntiForgeryToken()
+
+            @await Html.PartialAsync("Partials/_SoilCreateFormPartial", Model)
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="Soils" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Soil Type
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

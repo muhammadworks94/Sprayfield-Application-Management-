@@ -1,0 +1,197 @@
+@model SAM.ViewModels.OperationalData.IrrigateEditViewModel
+@{
+    ViewData["Title"] = "Edit Irrigation Log";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Modify irrigation log information</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-8">
+                <form asp-action="IrrigateEdit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="CompanyId" />
+                    
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Basic Information</div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="FacilityId" class="form-label required"></label>
+                            <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
+                                <option value="">-- Select Facility --</option>
+                            </select>
+                            <span asp-validation-for="FacilityId" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="SprayfieldId" class="form-label required"></label>
+                            <select asp-for="SprayfieldId" asp-items="sprayfields" class="form-select">
+                                <option value="">-- Select Sprayfield --</option>
+                            </select>
+                            <span asp-validation-for="SprayfieldId" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="IrrigationDate" class="form-label required"></label>
+                            <input asp-for="IrrigationDate" type="date" class="form-control" />
+                            <span asp-validation-for="IrrigationDate" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Time & Duration</div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="StartTime" class="form-label required"></label>
+                                    <input asp-for="StartTime" type="time" class="form-control" />
+                                    <span asp-validation-for="StartTime" class="text-danger"></span>
+                                    <small class="form-text text-muted">Format: HH:MM. Adjust only if the original times were incorrect.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="EndTime" class="form-label required"></label>
+                                    <input asp-for="EndTime" type="time" class="form-control" />
+                                    <span asp-validation-for="EndTime" class="text-danger"></span>
+                                    <small class="form-text text-muted">Keep consistent with the recorded event; document corrections in <em>Comments</em>.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="DurationHours" class="form-label"></label>
+                                    <input asp-for="DurationHours" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="DurationHours" class="text-danger"></span>
+                                    <small class="form-text text-muted">If you override this, verify that volume calculations and reporting still align.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Flow & Volume</div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="FlowRateGpm" class="form-label"></label>
+                                    <input asp-for="FlowRateGpm" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="FlowRateGpm" class="text-danger"></span>
+                                    <small class="form-text text-muted">Update only if new meter data or calibration results show the original rate was inaccurate.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="TotalVolumeGallons" class="form-label"></label>
+                                    <input asp-for="TotalVolumeGallons" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TotalVolumeGallons" class="text-danger"></span>
+                                    <small class="form-text text-muted">Use final metered volume when available; avoid double‑counting previously reported totals.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="ApplicationRateInches" class="form-label"></label>
+                                    <input asp-for="ApplicationRateInches" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="ApplicationRateInches" class="text-danger"></span>
+                                    <small class="form-text text-muted">If you change this, verify that updated values still comply with field loading limits.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Weather Conditions</div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="WindSpeed" class="form-label"></label>
+                                    <input asp-for="WindSpeed" type="number" step="0.1" class="form-control" />
+                                    <span asp-validation-for="WindSpeed" class="text-danger"></span>
+                                    <small class="form-text text-muted">Correct only if original readings were clearly wrong (e.g., transcription errors).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="WindDirection" class="form-label"></label>
+                                    <input asp-for="WindDirection" class="form-control" />
+                                    <span asp-validation-for="WindDirection" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="WeatherConditions" class="form-label"></label>
+                                    <input asp-for="WeatherConditions" class="form-control" />
+                                    <span asp-validation-for="WeatherConditions" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Additional Information</div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="Operator" class="form-label"></label>
+                            <input asp-for="Operator" class="form-control" />
+                            <span asp-validation-for="Operator" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Comments" class="form-label"></label>
+                            <textarea asp-for="Comments" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Comments" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="IrrigateDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Update Irrigation Log
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="alert alert-info ">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Editing Irrigation Logs</h6>
+                    <ul class="small mb-0 ps-3">
+                        <li class="mb-1"><strong>Facility & Sprayfield</strong>: Confirm these match where the irrigation actually occurred. Changing them will move this record to a different field’s history.</li>
+                        <li class="mb-1"><strong>Irrigation Date</strong>: Adjust only to correct data entry errors. Do not change the date to “group” events for reporting.</li>
+                        <li class="mb-1"><strong>Times & Duration</strong>: Ensure that start/end times and duration remain logically consistent. Document any corrections or re‑estimations in <em>Comments</em>.</li>
+                        <li class="mb-1"><strong>Flow Rate & Volume</strong>: Use updated meter readings or recalculated values when you discover an error. Keep a clear audit trail of why numbers changed.</li>
+                        <li class="mb-1"><strong>Application Rate</strong>: If recalculated, confirm that the corrected rate still complies with field‑specific permit limits and agronomic needs.</li>
+                        <li class="mb-1"><strong>Weather Data</strong>: Only adjust if original observations were clearly wrong or incomplete. Weather data supports defensibility of application decisions.</li>
+                        <li class="mb-1"><strong>Operator</strong>: Verify the responsible operator or team lead is correctly identified for this event.</li>
+                        <li><strong>Comments</strong>: Use comments to explain why any key values were edited (e.g., “Updated volume based on final meter total,” “Corrected field selection from SF‑1 to SF‑3”). This is important for audits and regulatory review.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Update sprayfields when facility changes
+        document.getElementById('facilitySelect')?.addEventListener('change', function() {
+            var facilityId = this.value;
+            if (facilityId) {
+                // Reload page with new facility filter
+                window.location.href = '@Url.Action("IrrigateEdit", new { id = Model.Id })' + '&facilityId=' + facilityId;
+            }
+        });
+    </script>
+}
+

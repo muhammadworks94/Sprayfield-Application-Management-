@@ -1,0 +1,304 @@
+@model SAM.ViewModels.OperationalData.GWMonitEditViewModel
+@{
+    ViewData["Title"] = "Edit Groundwater Monitoring Record";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var monitoringWells = ViewBag.MonitoringWells as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Modify groundwater monitoring record</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-8">
+                <form asp-action="GWMonitEdit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="CompanyId" />
+                    
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Basic Information</div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="FacilityId" class="form-label required"></label>
+                                    <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
+                                        <option value="">-- Select Facility --</option>
+                                    </select>
+                                    <span asp-validation-for="FacilityId" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="MonitoringWellId" class="form-label required"></label>
+                                    <select asp-for="MonitoringWellId" asp-items="monitoringWells" class="form-select">
+                                        <option value="">-- Select Monitoring Well --</option>
+                                    </select>
+                                    <span asp-validation-for="MonitoringWellId" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="SampleDate" class="form-label required"></label>
+                                    <input asp-for="SampleDate" type="date" class="form-control" />
+                                    <span asp-validation-for="SampleDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Sample Information</div>
+                        
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="SampleDepth" class="form-label"></label>
+                                    <input asp-for="SampleDepth" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="SampleDepth" class="text-danger"></span>
+                                    <small class="form-text text-muted">Depth from ground surface to sample point (feet).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="WaterLevel" class="form-label"></label>
+                                    <input asp-for="WaterLevel" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="WaterLevel" class="text-danger"></span>
+                                    <small class="form-text text-muted">Depth to water from reference point (feet). Use the same reference as prior records.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="Temperature" class="form-label"></label>
+                                    <input asp-for="Temperature" type="number" step="0.1" class="form-control" />
+                                    <span asp-validation-for="Temperature" class="text-danger"></span>
+                                    <small class="form-text text-muted">Sample temperature in °C. Update only if original value was clearly incorrect.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="PH" class="form-label"></label>
+                                    <input asp-for="PH" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="PH" class="text-danger"></span>
+                                    <small class="form-text text-muted">Field or lab pH. Note any corrections or qualifiers in <em>Comments</em>.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Physical Parameters</div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="Conductivity" class="form-label"></label>
+                                    <input asp-for="Conductivity" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="Conductivity" class="text-danger"></span>
+                                    <small class="form-text text-muted">Electrical conductivity (μS/cm). Adjust if updated lab or meter data is available.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="TDS" class="form-label"></label>
+                                    <input asp-for="TDS" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TDS" class="text-danger"></span>
+                                    <small class="form-text text-muted">Total dissolved solids (mg/L).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="Turbidity" class="form-label"></label>
+                                    <input asp-for="Turbidity" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="Turbidity" class="text-danger"></span>
+                                    <small class="form-text text-muted">Turbidity (NTU). Ensure changes are supported by lab documentation.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Chemical Parameters</div>
+                        
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="BOD5" class="form-label"></label>
+                                    <input asp-for="BOD5" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="BOD5" class="text-danger"></span>
+                                    <small class="form-text text-muted">Biochemical Oxygen Demand (mg/L) from lab report.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="COD" class="form-label"></label>
+                                    <input asp-for="COD" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="COD" class="text-danger"></span>
+                                    <small class="form-text text-muted">Chemical Oxygen Demand (mg/L).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="TSS" class="form-label"></label>
+                                    <input asp-for="TSS" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TSS" class="text-danger"></span>
+                                    <small class="form-text text-muted">Total Suspended Solids (mg/L).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="NH3N" class="form-label"></label>
+                                    <input asp-for="NH3N" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="NH3N" class="text-danger"></span>
+                                    <small class="form-text text-muted">Ammonia‑Nitrogen (mg/L).</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="NO3N" class="form-label"></label>
+                                    <input asp-for="NO3N" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="NO3N" class="text-danger"></span>
+                                    <small class="form-text text-muted">Nitrate‑Nitrogen (mg/L).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="TKN" class="form-label"></label>
+                                    <input asp-for="TKN" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TKN" class="text-danger"></span>
+                                    <small class="form-text text-muted">Total Kjeldahl Nitrogen (mg/L).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="TotalPhosphorus" class="form-label"></label>
+                                    <input asp-for="TotalPhosphorus" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TotalPhosphorus" class="text-danger"></span>
+                                    <small class="form-text text-muted">Total Phosphorus (mg/L).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="Chloride" class="form-label"></label>
+                                    <input asp-for="Chloride" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="Chloride" class="text-danger"></span>
+                                    <small class="form-text text-muted">Chloride (mg/L).</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Biological Parameters</div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="FecalColiform" class="form-label"></label>
+                                    <input asp-for="FecalColiform" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="FecalColiform" class="text-danger"></span>
+                                    <small class="form-text text-muted">Fecal coliform (CFU/100mL). Reflect final, confirmed lab results.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="TotalColiform" class="form-label"></label>
+                                    <input asp-for="TotalColiform" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TotalColiform" class="text-danger"></span>
+                                    <small class="form-text text-muted">Total coliform (CFU/100mL).</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Lab Information</div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="LabCertification" class="form-label"></label>
+                                    <input asp-for="LabCertification" class="form-control" />
+                                    <span asp-validation-for="LabCertification" class="text-danger"></span>
+                                    <small class="form-text text-muted">Update if lab accreditation or certification information has changed.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="CollectedBy" class="form-label"></label>
+                                    <input asp-for="CollectedBy" class="form-control" />
+                                    <span asp-validation-for="CollectedBy" class="text-danger"></span>
+                                    <small class="form-text text-muted">Use full names or team identifiers for clarity in audits.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label asp-for="AnalyzedBy" class="form-label"></label>
+                                    <input asp-for="AnalyzedBy" class="form-control" />
+                                    <span asp-validation-for="AnalyzedBy" class="text-danger"></span>
+                                    <small class="form-text text-muted">Lab or analyst responsible for the reported results.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Additional Information</div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="Comments" class="form-label"></label>
+                            <textarea asp-for="Comments" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Comments" class="text-danger"></span>
+                            <small class="form-text text-muted">Explain why any values were corrected, note lab qualifiers, or describe field conditions affecting data quality.</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="GWMonitDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Update Record
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="alert alert-info">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Editing Groundwater Records</h6>
+                    <ul class="small mb-0 ps-3">
+                        <li class="mb-1"><strong>Facility & Well</strong>: Confirm you are editing the correct well at the correct facility; changes here affect trend analysis and compliance reports.</li>
+                        <li class="mb-1"><strong>Sample Date</strong>: Adjust only to fix data entry errors. Do not change dates to “group” results across events.</li>
+                        <li class="mb-1"><strong>Depth & Water Level</strong>: Ensure measurements use the same reference point as prior records. If the reference changed, document it clearly in <em>Comments</em>.</li>
+                        <li class="mb-1"><strong>Field Measurements</strong>: Only update temperature, pH, conductivity, and turbidity when new or corrected field notes or lab data justify the change.</li>
+                        <li class="mb-1"><strong>Chemical/Biological Data</strong>: Use final lab reports as the source of truth. If results are censored, estimated, or re‑run, note this in <em>Comments</em>.</li>
+                        <li class="mb-1"><strong>Lab & Personnel Info</strong>: Keep <em>Collected By</em> and <em>Analyzed By</em> accurate so records remain traceable during audits.</li>
+                        <li><strong>Comments</strong>: Always explain material edits—why the change was needed, what data source was used, and any potential impact on historical trends or regulatory reporting.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Update monitoring wells when facility changes
+        document.getElementById('facilitySelect')?.addEventListener('change', function() {
+            var facilityId = this.value;
+            if (facilityId) {
+                // Reload page with new facility filter
+                window.location.href = '@Url.Action("GWMonitEdit", new { id = Model.Id })' + '&facilityId=' + facilityId;
+            }
+        });
+    </script>
+}
+

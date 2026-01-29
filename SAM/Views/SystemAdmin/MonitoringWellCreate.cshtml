@@ -1,0 +1,91 @@
+@model SAM.ViewModels.SystemAdmin.MonitoringWellCreateViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Create Monitoring Well";
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var user = await UserManager.GetUserAsync(User);
+    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Add a new monitoring well to the system</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="MonitoringWellCreate" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title">Company Information</div>
+                
+                <div class="mb-3">
+                    <label asp-for="CompanyId" class="form-label required"></label>
+                    @if (isGlobalAdmin && companies != null)
+                    {
+                        <select asp-for="CompanyId" asp-items="companies" class="form-select">
+                            <option value="">-- Select Company --</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="hidden" asp-for="CompanyId" />
+                        <input type="text" class="form-control" value="@companies?.FirstOrDefault(c => c.Value == Model.CompanyId.ToString())?.Text" disabled />
+                    }
+                    <span asp-validation-for="CompanyId" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Monitoring Well Information</div>
+                
+                <div class="mb-3">
+                    <label asp-for="WellId" class="form-label required"></label>
+                    <input asp-for="WellId" class="form-control" />
+                    <span asp-validation-for="WellId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="LocationDescription" class="form-label"></label>
+                    <textarea asp-for="LocationDescription" class="form-control" rows="3"></textarea>
+                    <span asp-validation-for="LocationDescription" class="text-danger"></span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Latitude" class="form-label required"></label>
+                            <input asp-for="Latitude" type="number" step="0.000001" min="-90" max="90" class="form-control" />
+                            <span asp-validation-for="Latitude" class="text-danger"></span>
+                            <small class="form-text text-muted">Latitude (-90 to 90)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Longitude" class="form-label required"></label>
+                            <input asp-for="Longitude" type="number" step="0.000001" min="-180" max="180" class="form-control" />
+                            <span asp-validation-for="Longitude" class="text-danger"></span>
+                            <small class="form-text text-muted">Longitude (-180 to 180)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="MonitoringWells" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Monitoring Well
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

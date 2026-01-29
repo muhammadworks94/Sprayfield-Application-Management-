@@ -1,0 +1,228 @@
+@model IEnumerable<SAM.ViewModels.SystemAdmin.NozzleViewModel>
+@{
+    ViewData["Title"] = "Nozzles";
+    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Configure nozzle specifications and settings</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+            <button type="button"
+                    class="btn btn-outline-secondary active"
+                    id="nozzlesTableViewBtn">
+                <i class="bi bi-table"></i> Table
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    id="nozzlesCardViewBtn">
+                <i class="bi bi-grid-3x3-gap"></i> Cards
+            </button>
+        </div>
+        <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create New Nozzle
+        </a>
+    </div>
+</div>
+
+@{
+    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
+}
+@if (filterViewModel != null)
+{
+    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
+}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Nozzle List</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div id="nozzlesTableView" class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-building"></i> Manufacturer</th>
+                            <th><i class="bi bi-tag"></i> Model</th>
+                            <th><i class="bi bi-speedometer2"></i> Flow Rate (GPM)</th>
+                            <th><i class="bi bi-circle"></i> Spray Arc (°)</th>
+                            @if (isGlobalAdmin)
+                            {
+                                <th><i class="bi bi-briefcase"></i> Company</th>
+                            }
+                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var nozzle in Model)
+                        {
+                            <tr>
+                                <td>@nozzle.Manufacturer</td>
+                                <td>@nozzle.Model</td>
+                                <td>@nozzle.FlowRateGpm.ToString("F2")</td>
+                                <td>@nozzle.SprayArc</td>
+                                @if (isGlobalAdmin)
+                                {
+                                    <td>@nozzle.CompanyName</td>
+                                }
+                                <td class="table-actions">
+                                    <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteNozzleModal"
+                                            data-nozzle-id="@nozzle.Id"
+                                            data-nozzle-name="@(nozzle.Manufacturer + " " + nozzle.Model)">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="nozzlesCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var nozzle in Model)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <h6 class="mb-0 card-header-light">@nozzle.Manufacturer @nozzle.Model</h6>
+                            <div class="card-body d-flex flex-column">
+
+                                <dl class="row small mb-3">
+                                    <dt class="col-6"><i class="bi bi-speedometer2 me-1"></i>Flow Rate</dt>
+                                    <dd class="col-6 mb-1">@nozzle.FlowRateGpm.ToString("F2") GPM</dd>
+
+                                    <dt class="col-6"><i class="bi bi-circle me-1"></i>Spray Arc</dt>
+                                    <dd class="col-6 mb-1">@nozzle.SprayArc °</dd>
+
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
+                                        <dd class="col-6 mb-1">@nozzle.CompanyName</dd>
+                                    }
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-end">
+                                    <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteNozzleModal"
+                                            data-nozzle-id="@nozzle.Id"
+                                            data-nozzle-name="@(nozzle.Manufacturer + " " + nozzle.Model)">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <p class="text-muted mt-3">No nozzles found.</p>
+                <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Create First Nozzle
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal (Outside Table) -->
+<div class="modal fade" id="deleteNozzleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete nozzle <strong id="deleteNozzleName"></strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteNozzleForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteModal = document.getElementById('deleteNozzleModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const nozzleId = button.getAttribute('data-nozzle-id');
+                    const nozzleName = button.getAttribute('data-nozzle-name');
+                    
+                    const nozzleNameElement = deleteModal.querySelector('#deleteNozzleName');
+                    if (nozzleNameElement) {
+                        nozzleNameElement.textContent = nozzleName;
+                    }
+                    
+                    const form = deleteModal.querySelector('#deleteNozzleForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("NozzleDelete", "SystemAdmin")';
+                        form.action = baseUrl + '/' + nozzleId;
+                    }
+                });
+            }
+
+            const tableBtn = document.getElementById('nozzlesTableViewBtn');
+            const cardBtn = document.getElementById('nozzlesCardViewBtn');
+            const tableView = document.getElementById('nozzlesTableView');
+            const cardView = document.getElementById('nozzlesCardView');
+            const storageKey = 'nozzlesViewMode';
+
+            function setViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    tableView?.classList.remove('d-none');
+                    cardView?.classList.add('d-none');
+                    tableBtn?.classList.add('active');
+                    cardBtn?.classList.remove('active');
+                } else {
+                    tableView?.classList.add('d-none');
+                    cardView?.classList.remove('d-none');
+                    tableBtn?.classList.remove('active');
+                    cardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, mode);
+                }
+            }
+
+            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+            setViewMode(savedMode === 'card' ? 'card' : 'table');
+
+            tableBtn?.addEventListener('click', function () {
+                setViewMode('table');
+            });
+
+            cardBtn?.addEventListener('click', function () {
+                setViewMode('card');
+            });
+        });
+    </script>
+}

@@ -1,0 +1,30 @@
+@model SAM.ViewModels.SystemAdmin.CropCreateViewModel
+@{
+    ViewData["Title"] = "Create Crop";
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Add a new crop type to the system</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="CropCreate" method="post">
+            @Html.AntiForgeryToken()
+
+            @await Html.PartialAsync("Partials/_CropCreateFormPartial", Model)
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="Crops" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Crop
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

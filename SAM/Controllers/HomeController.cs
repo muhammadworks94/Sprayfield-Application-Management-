@@ -13,10 +13,14 @@ namespace SAM.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index()
+    public IActionResult Index()
+    {
+        if (User.Identity?.IsAuthenticated == true)
         {
-            return View();
+            return RedirectToAction("Index", "Dashboard");
         }
+        return View();
+    }
 
         public IActionResult Privacy()
         {

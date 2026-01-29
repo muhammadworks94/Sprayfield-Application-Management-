@@ -1,0 +1,323 @@
+@model SAM.ViewModels.SystemAdmin.SprayfieldCreateViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Create Sprayfield";
+    var soils = ViewBag.Soils as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var crops = ViewBag.Crops as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var nozzles = ViewBag.Nozzles as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var user = await UserManager.GetUserAsync(User);
+    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Add a new sprayfield to the system</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="SprayfieldCreate" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title">Company Information</div>
+                
+                <div class="mb-3">
+                    <label asp-for="CompanyId" class="form-label required"></label>
+                    @if (isGlobalAdmin && companies != null)
+                    {
+                        <select asp-for="CompanyId" asp-items="companies" class="form-select" id="companySelect">
+                            <option value="">-- Select Company --</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="hidden" asp-for="CompanyId" />
+                        <input type="text" class="form-control" value="@companies?.FirstOrDefault(c => c.Value == Model.CompanyId.ToString())?.Text" disabled />
+                    }
+                    <span asp-validation-for="CompanyId" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Sprayfield Information</div>
+                
+                <div class="mb-3">
+                    <label asp-for="FieldId" class="form-label required"></label>
+                    <input asp-for="FieldId" class="form-control" />
+                    <span asp-validation-for="FieldId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="SizeAcres" class="form-label required"></label>
+                    <input asp-for="SizeAcres" type="number" step="0.01" min="0" class="form-control" />
+                    <span asp-validation-for="SizeAcres" class="text-danger"></span>
+                    <small class="form-text text-muted">Size in acres</small>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="SoilId" class="form-label required"></label>
+                            <div class="input-group">
+                                <select asp-for="SoilId" asp-items="soils" class="form-select" id="soilSelect">
+                                    <option value="">-- Select Soil --</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" id="btnNewSoil">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="SoilId" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="CropId" class="form-label required"></label>
+                            <div class="input-group">
+                                <select asp-for="CropId" asp-items="crops" class="form-select" id="cropSelect">
+                                    <option value="">-- Select Crop --</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" id="btnNewCrop">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="CropId" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="NozzleId" class="form-label required"></label>
+                            <div class="input-group">
+                                <select asp-for="NozzleId" asp-items="nozzles" class="form-select" id="nozzleSelect">
+                                    <option value="">-- Select Nozzle --</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" id="btnNewNozzle">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="NozzleId" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="FacilityId" class="form-label"></label>
+                            <div class="input-group">
+                                <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
+                                    <option value="">-- Select Facility (Optional) --</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" id="btnNewFacility">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="FacilityId" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="HydraulicLoadingLimitInPerYr" class="form-label required"></label>
+                    <input asp-for="HydraulicLoadingLimitInPerYr" type="number" step="0.01" min="0" class="form-control" />
+                    <span asp-validation-for="HydraulicLoadingLimitInPerYr" class="text-danger"></span>
+                    <small class="form-text text-muted">Annual hydraulic loading limit in inches per year</small>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="Sprayfields" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Sprayfield
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Soil Create Modal -->
+<div class="modal fade" id="soilCreateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Soil Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="soilCreateForm" asp-action="SoilCreate" method="post">
+                    @Html.AntiForgeryToken()
+                    @await Html.PartialAsync("Partials/_SoilCreateFormPartial", new SAM.ViewModels.SystemAdmin.SoilCreateViewModel { CompanyId = Model.CompanyId })
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="soilCreateForm" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Soil
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Crop Create Modal -->
+<div class="modal fade" id="cropCreateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Crop</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cropCreateForm" asp-action="CropCreate" method="post">
+                    @Html.AntiForgeryToken()
+                    @await Html.PartialAsync("Partials/_CropCreateFormPartial", new SAM.ViewModels.SystemAdmin.CropCreateViewModel { CompanyId = Model.CompanyId })
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="cropCreateForm" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Crop
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Nozzle Create Modal -->
+<div class="modal fade" id="nozzleCreateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Nozzle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="nozzleCreateForm" asp-action="NozzleCreate" method="post">
+                    @Html.AntiForgeryToken()
+                    @await Html.PartialAsync("Partials/_NozzleCreateFormPartial", new SAM.ViewModels.SystemAdmin.NozzleCreateViewModel { CompanyId = Model.CompanyId })
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="nozzleCreateForm" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Nozzle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Facility Create Modal -->
+<div class="modal fade" id="facilityCreateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Facility</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="facilityCreateForm" asp-action="FacilityCreate" method="post">
+                    @Html.AntiForgeryToken()
+                    @await Html.PartialAsync("Partials/_FacilityCreateFormPartial", new SAM.ViewModels.SystemAdmin.FacilityCreateViewModel { CompanyId = Model.CompanyId })
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="facilityCreateForm" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Facility
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var isGlobalAdmin = @(isGlobalAdmin.ToString().ToLower());
+
+            // Only global admins see and use the company selector
+            if (isGlobalAdmin) {
+                var companySelect = document.getElementById('companySelect');
+                if (companySelect) {
+                    companySelect.addEventListener('change', function () {
+                        var companyId = this.value;
+                        if (companyId) {
+                            window.location.href = '@Url.Action("SprayfieldCreate")' + '?companyId=' + companyId;
+                        }
+                    });
+                }
+            }
+
+            function bindCreateHandler(buttonId, modalId, formId, url, selectId) {
+                const button = document.getElementById(buttonId);
+                const modalElement = document.getElementById(modalId);
+                const select = document.getElementById(selectId);
+
+                if (!button || !modalElement || !select) return;
+
+                const modal = new bootstrap.Modal(modalElement);
+
+                button.addEventListener('click', function () {
+                    modal.show();
+                });
+
+                const form = modalElement.querySelector('form');
+                if (!form) return;
+
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    const formData = new FormData(form);
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    }).then(async response => {
+                        const contentType = response.headers.get('content-type') || '';
+
+                        if (contentType.includes('application/json')) {
+                            const data = await response.json();
+                            if (data.success) {
+                                const option = document.createElement('option');
+                                option.value = data.id;
+                                option.textContent = data.name;
+                                option.selected = true;
+                                select.appendChild(option);
+                                modal.hide();
+                            }
+                        } else {
+                            const html = await response.text();
+                            const wrapper = document.createElement('div');
+                            wrapper.innerHTML = html;
+                            const newFormContent = wrapper.firstElementChild;
+                            if (newFormContent) {
+                                const body = modalElement.querySelector('.modal-body');
+                                body.innerHTML = '';
+                                body.appendChild(newFormContent);
+                            }
+                        }
+                    }).catch(error => {
+                        console.error('Error creating related entity:', error);
+                    });
+                });
+            }
+
+            bindCreateHandler('btnNewSoil', 'soilCreateModal', 'soilCreateForm', '@Url.Action("SoilCreate", "SystemAdmin")', 'soilSelect');
+            bindCreateHandler('btnNewCrop', 'cropCreateModal', 'cropCreateForm', '@Url.Action("CropCreate", "SystemAdmin")', 'cropSelect');
+            bindCreateHandler('btnNewNozzle', 'nozzleCreateModal', 'nozzleCreateForm', '@Url.Action("NozzleCreate", "SystemAdmin")', 'nozzleSelect');
+            bindCreateHandler('btnNewFacility', 'facilityCreateModal', 'facilityCreateForm', '@Url.Action("FacilityCreate", "SystemAdmin")', 'facilitySelect');
+        });
+    </script>
+}
+

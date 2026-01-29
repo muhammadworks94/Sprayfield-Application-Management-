@@ -1,0 +1,92 @@
+@model SAM.ViewModels.UserManagement.AdminRequestCreateViewModel
+@{
+    ViewData["Title"] = "Create Admin Request";
+    var requestTypes = ViewBag.RequestTypes as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Submit a new administrator access request</p>
+    </div>
+    <a asp-action="AdminRequests" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> Admin requests require approval from other administrators. This is a security measure to prevent unauthorized admin account creation.
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Request Information</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="AdminRequestCreate" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title"><i class="bi bi-file-text me-2"></i>Request Information</div>
+                
+                <div class="mb-3">
+                    <label asp-for="RequestType" class="form-label required"></label>
+                    <select asp-for="RequestType" asp-items="requestTypes" class="form-select" id="requestTypeSelect">
+                        <option value="">-- Select Request Type --</option>
+                    </select>
+                    <span asp-validation-for="RequestType" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="TargetEmail" class="form-label required"></label>
+                    <input asp-for="TargetEmail" type="email" class="form-control" />
+                    <span asp-validation-for="TargetEmail" class="text-danger"></span>
+                    <small class="form-text text-muted" id="emailHelp">Email address of the user</small>
+                </div>
+
+                <div class="mb-3" id="fullNameGroup">
+                    <label asp-for="TargetFullName" class="form-label"></label>
+                    <input asp-for="TargetFullName" class="form-control" />
+                    <span asp-validation-for="TargetFullName" class="text-danger"></span>
+                    <small class="form-text text-muted">Required for Create Admin requests</small>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Justification" class="form-label required"></label>
+                    <textarea asp-for="Justification" class="form-control" rows="4" placeholder="Provide a justification for this request..."></textarea>
+                    <span asp-validation-for="Justification" class="text-danger"></span>
+                    <small class="form-text text-muted">Explain why this admin action is necessary</small>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="AdminRequests" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Submit Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        document.getElementById('requestTypeSelect')?.addEventListener('change', function() {
+            var requestType = this.value;
+            var fullNameGroup = document.getElementById('fullNameGroup');
+            var emailHelp = document.getElementById('emailHelp');
+            
+            if (requestType === 'CreateAdmin') {
+                fullNameGroup.style.display = 'block';
+                emailHelp.textContent = 'Email address for the new admin account';
+            } else if (requestType === 'DisableAdmin') {
+                fullNameGroup.style.display = 'none';
+                emailHelp.textContent = 'Email address of the admin account to disable';
+            }
+        });
+    </script>
+}
+
