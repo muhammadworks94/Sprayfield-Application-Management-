@@ -72,8 +72,8 @@ public class SystemAdminController : BaseController
             companies = await _companyService.GetAllAsync();
         }
         
-        // Filter by company if not global admin
-        if (!isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Filter by company if session has a selection (for admins) or user has a company
+        if (effectiveCompanyId.HasValue)
         {
             companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
         }
@@ -477,50 +477,154 @@ public class SystemAdminController : BaseController
 
     #endregion
 
-    #region Facilities
+    #region SystemAdmin (Tabbed Interface)
 
     [HttpGet]
-    public async Task<IActionResult> Facilities(Guid? companyId = null)
+    public async Task<IActionResult> SystemAdmin(string tab = "facilities", Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        // Use effective company ID if not global admin and no companyId specified
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
-
-        // Ensure company access if companyId is specified
+        
         if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
         }
-
-        var facilities = await _facilityService.GetAllAsync(companyId);
         
-        var viewModels = facilities.Select(f => new FacilityViewModel
+        // Validate tab parameter
+        var validTabs = new[] { "facilities", "soils", "crops", "nozzles", "sprayfields", "monitoringwells" };
+        if (!validTabs.Contains(tab?.ToLower()))
         {
-            Id = f.Id,
-            CompanyId = f.CompanyId,
-            CompanyName = f.Company?.Name,
-            Name = f.Name,
-            PermitNumber = f.PermitNumber,
-            Permittee = f.Permittee,
-            FacilityClass = f.FacilityClass,
-            Address = f.Address,
-            City = f.City,
-            State = f.State,
-            ZipCode = f.ZipCode,
-            County = f.County
-        });
-
-        // Create filter view model
+            tab = "facilities";
+        }
+        
+        var viewModel = new ViewModels.SystemAdmin.SystemAdminViewModel
+        {
+            ActiveTab = tab.ToLower(),
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Companies = await GetCompanySelectListAsync()
+        };
+        
+        // Switch statement to load appropriate data based on active tab
+        switch (tab.ToLower())
+        {
+            case "facilities":
+                var facilities = await _facilityService.GetAllAsync(companyId);
+                viewModel.Facilities = facilities.Select(f => new FacilityViewModel
+                {
+                    Id = f.Id,
+                    CompanyId = f.CompanyId,
+                    CompanyName = f.Company?.Name,
+                    Name = f.Name,
+                    PermitNumber = f.PermitNumber,
+                    Permittee = f.Permittee,
+                    FacilityClass = f.FacilityClass,
+                    Address = f.Address,
+                    City = f.City,
+                    State = f.State,
+                    ZipCode = f.ZipCode,
+                    County = f.County
+                });
+                viewModel.FacilitiesFilter = await CreateFacilitiesFilterViewModelAsync(isGlobalAdmin, companyId);
+                break;
+            case "soils":
+                var soils = await _soilService.GetAllAsync(companyId);
+                viewModel.Soils = soils.Select(s => new SoilViewModel
+                {
+                    Id = s.Id,
+                    CompanyId = s.CompanyId,
+                    CompanyName = s.Company?.Name,
+                    TypeName = s.TypeName,
+                    Description = s.Description,
+                    Permeability = s.Permeability
+                });
+                viewModel.SoilsFilter = await CreateSoilsFilterViewModelAsync(isGlobalAdmin, companyId);
+                break;
+            case "crops":
+                var crops = await _cropService.GetAllAsync(companyId);
+                viewModel.Crops = crops.Select(c => new CropViewModel
+                {
+                    Id = c.Id,
+                    CompanyId = c.CompanyId,
+                    CompanyName = c.Company?.Name,
+                    Name = c.Name,
+                    PanFactor = c.PanFactor,
+                    NUptake = c.NUptake
+                });
+                viewModel.CropsFilter = await CreateCropsFilterViewModelAsync(isGlobalAdmin, companyId);
+                break;
+            case "nozzles":
+                var nozzles = await _nozzleService.GetAllAsync(companyId);
+                viewModel.Nozzles = nozzles.Select(n => new NozzleViewModel
+                {
+                    Id = n.Id,
+                    CompanyId = n.CompanyId,
+                    CompanyName = n.Company?.Name,
+                    Model = n.Model,
+                    Manufacturer = n.Manufacturer,
+                    FlowRateGpm = n.FlowRateGpm,
+                    SprayArc = n.SprayArc
+                });
+                viewModel.NozzlesFilter = await CreateNozzlesFilterViewModelAsync(isGlobalAdmin, companyId);
+                break;
+            case "sprayfields":
+                var sprayfields = await _sprayfieldService.GetAllAsync(companyId);
+                viewModel.Sprayfields = sprayfields.Select(s => new SprayfieldViewModel
+                {
+                    Id = s.Id,
+                    CompanyId = s.CompanyId,
+                    CompanyName = s.Company?.Name,
+                    FieldId = s.FieldId,
+                    SizeAcres = s.SizeAcres,
+                    SoilId = s.SoilId,
+                    SoilName = s.Soil?.TypeName,
+                    CropId = s.CropId,
+                    CropName = s.Crop?.Name,
+                    NozzleId = s.NozzleId,
+                    NozzleName = $"{s.Nozzle?.Manufacturer} {s.Nozzle?.Model}",
+                    FacilityId = s.FacilityId,
+                    FacilityName = s.Facility?.Name,
+                    HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr,
+                    HourlyRateInches = s.HourlyRateInches,
+                    AnnualRateInches = s.AnnualRateInches
+                });
+                viewModel.SprayfieldsFilter = await CreateSprayfieldsFilterViewModelAsync(isGlobalAdmin, companyId);
+                break;
+            case "monitoringwells":
+                var monitoringWells = await _monitoringWellService.GetAllAsync(companyId);
+                viewModel.MonitoringWells = monitoringWells.Select(m => new MonitoringWellViewModel
+                {
+                    Id = m.Id,
+                    CompanyId = m.CompanyId,
+                    CompanyName = m.Company?.Name,
+                    WellId = m.WellId,
+                    LocationDescription = m.LocationDescription,
+                    Latitude = m.Latitude,
+                    Longitude = m.Longitude
+                });
+                viewModel.MonitoringWellsFilter = await CreateMonitoringWellsFilterViewModelAsync(isGlobalAdmin, companyId);
+                break;
+        }
+        
+        return View(viewModel);
+    }
+    
+    // Helper methods to create filter ViewModels
+    private async Task<FilterViewModel> CreateFacilitiesFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
+    {
         var filterViewModel = new FilterViewModel
         {
             PageName = "Facilities",
             EnableSearch = false,
-            Fields = new List<FilterField>()
+            Fields = new List<FilterField>(),
+            ActionName = "SystemAdmin",
+            ControllerName = "SystemAdmin"
         };
 
         if (isGlobalAdmin)
@@ -538,13 +642,157 @@ public class SystemAdminController : BaseController
             });
         }
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.FilterViewModel = filterViewModel;
-
-        return View(viewModels);
+        return filterViewModel;
     }
+    
+    private async Task<FilterViewModel> CreateSoilsFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
+    {
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Soils",
+            EnableSearch = false,
+            Fields = new List<FilterField>(),
+            ActionName = "SystemAdmin",
+            ControllerName = "SystemAdmin"
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
+        return filterViewModel;
+    }
+    
+    private async Task<FilterViewModel> CreateCropsFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
+    {
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Crops",
+            EnableSearch = false,
+            Fields = new List<FilterField>(),
+            ActionName = "SystemAdmin",
+            ControllerName = "SystemAdmin"
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
+        return filterViewModel;
+    }
+    
+    private async Task<FilterViewModel> CreateNozzlesFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
+    {
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Nozzles",
+            EnableSearch = false,
+            Fields = new List<FilterField>(),
+            ActionName = "SystemAdmin",
+            ControllerName = "SystemAdmin"
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
+        return filterViewModel;
+    }
+    
+    private async Task<FilterViewModel> CreateSprayfieldsFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
+    {
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Sprayfields",
+            EnableSearch = false,
+            Fields = new List<FilterField>(),
+            ActionName = "SystemAdmin",
+            ControllerName = "SystemAdmin"
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
+        return filterViewModel;
+    }
+    
+    private async Task<FilterViewModel> CreateMonitoringWellsFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
+    {
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "MonitoringWells",
+            EnableSearch = false,
+            Fields = new List<FilterField>(),
+            ActionName = "SystemAdmin",
+            ControllerName = "SystemAdmin"
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
+        return filterViewModel;
+    }
+
+    #endregion
+
+    #region Facilities
 
     [HttpGet]
     public async Task<IActionResult> FacilityDetails(Guid id)
@@ -581,8 +829,8 @@ public class SystemAdminController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        // Set company ID if not provided
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -638,7 +886,7 @@ public class SystemAdminController : BaseController
             }
 
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' created successfully.";
-            return RedirectToAction(nameof(Facilities), new { companyId = facility.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "facilities", companyId = facility.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -716,7 +964,7 @@ public class SystemAdminController : BaseController
 
             await _facilityService.UpdateAsync(facility);
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";
-            return RedirectToAction(nameof(Facilities), new { companyId = facility.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "facilities", companyId = facility.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -732,10 +980,10 @@ public class SystemAdminController : BaseController
     {
         try
         {
-            var facility = await _facilityService.GetByIdAsync(id);
-            if (facility != null)
+            var Facility = await _facilityService.GetByIdAsync(id);
+            if (Facility != null)
             {
-                await EnsureCompanyAccessAsync(facility.CompanyId);
+                await EnsureCompanyAccessAsync(Facility.CompanyId);
             }
 
             await _facilityService.DeleteAsync(id);
@@ -750,7 +998,9 @@ public class SystemAdminController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Facilities));
+        var facility = await _facilityService.GetByIdAsync(id);
+        var companyId = facility?.CompanyId;
+        return RedirectToAction("SystemAdmin", new { tab = "facilities", companyId = companyId });
     }
 
     #endregion
@@ -758,71 +1008,13 @@ public class SystemAdminController : BaseController
     #region Soils
 
     [HttpGet]
-    public async Task<IActionResult> Soils(Guid? companyId = null)
-    {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
-        if (companyId.HasValue)
-        {
-            await EnsureCompanyAccessAsync(companyId.Value);
-        }
-
-        var soils = await _soilService.GetAllAsync(companyId);
-        
-        var viewModels = soils.Select(s => new SoilViewModel
-        {
-            Id = s.Id,
-            CompanyId = s.CompanyId,
-            CompanyName = s.Company?.Name,
-            TypeName = s.TypeName,
-            Description = s.Description,
-            Permeability = s.Permeability
-        });
-
-        // Create filter view model
-        var filterViewModel = new FilterViewModel
-        {
-            PageName = "Soils",
-            EnableSearch = false,
-            Fields = new List<FilterField>()
-        };
-
-        if (isGlobalAdmin)
-        {
-            var companies = await GetCompanySelectListAsync();
-            filterViewModel.Fields.Add(new FilterField
-            {
-                Name = "companyId",
-                Label = "Company",
-                Type = FilterFieldType.Dropdown,
-                Options = companies,
-                Value = companyId,
-                ColumnClass = "col-md-4",
-                IconClass = "bi bi-building"
-            });
-        }
-
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.FilterViewModel = filterViewModel;
-
-        return View(viewModels);
-    }
-
-    [HttpGet]
     public async Task<IActionResult> SoilCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -874,7 +1066,7 @@ public class SystemAdminController : BaseController
             }
 
             TempData["SuccessMessage"] = $"Soil type '{soil.TypeName}' created successfully.";
-            return RedirectToAction(nameof(Soils), new { companyId = soil.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "soils", companyId = soil.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -934,7 +1126,7 @@ public class SystemAdminController : BaseController
 
             await _soilService.UpdateAsync(soil);
             TempData["SuccessMessage"] = $"Soil type '{soil.TypeName}' updated successfully.";
-            return RedirectToAction(nameof(Soils), new { companyId = soil.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "soils", companyId = soil.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -950,10 +1142,10 @@ public class SystemAdminController : BaseController
     {
         try
         {
-            var soil = await _soilService.GetByIdAsync(id);
-            if (soil != null)
+            var Soil = await _soilService.GetByIdAsync(id);
+            if (Soil != null)
             {
-                await EnsureCompanyAccessAsync(soil.CompanyId);
+                await EnsureCompanyAccessAsync(Soil.CompanyId);
             }
 
             await _soilService.DeleteAsync(id);
@@ -968,7 +1160,9 @@ public class SystemAdminController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Soils));
+        var soil = await _soilService.GetByIdAsync(id);
+        var companyId = soil?.CompanyId;
+        return RedirectToAction("SystemAdmin", new { tab = "soils", companyId = companyId });
     }
 
     #endregion
@@ -976,71 +1170,13 @@ public class SystemAdminController : BaseController
     #region Crops
 
     [HttpGet]
-    public async Task<IActionResult> Crops(Guid? companyId = null)
-    {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
-        if (companyId.HasValue)
-        {
-            await EnsureCompanyAccessAsync(companyId.Value);
-        }
-
-        var crops = await _cropService.GetAllAsync(companyId);
-        
-        var viewModels = crops.Select(c => new CropViewModel
-        {
-            Id = c.Id,
-            CompanyId = c.CompanyId,
-            CompanyName = c.Company?.Name,
-            Name = c.Name,
-            PanFactor = c.PanFactor,
-            NUptake = c.NUptake
-        });
-
-        // Create filter view model
-        var filterViewModel = new FilterViewModel
-        {
-            PageName = "Crops",
-            EnableSearch = false,
-            Fields = new List<FilterField>()
-        };
-
-        if (isGlobalAdmin)
-        {
-            var companies = await GetCompanySelectListAsync();
-            filterViewModel.Fields.Add(new FilterField
-            {
-                Name = "companyId",
-                Label = "Company",
-                Type = FilterFieldType.Dropdown,
-                Options = companies,
-                Value = companyId,
-                ColumnClass = "col-md-4",
-                IconClass = "bi bi-building"
-            });
-        }
-
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.FilterViewModel = filterViewModel;
-
-        return View(viewModels);
-    }
-
-    [HttpGet]
     public async Task<IActionResult> CropCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -1095,7 +1231,7 @@ public class SystemAdminController : BaseController
             }
 
             TempData["SuccessMessage"] = $"Crop '{crop.Name}' created successfully.";
-            return RedirectToAction(nameof(Crops), new { companyId = crop.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "crops", companyId = crop.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1157,7 +1293,7 @@ public class SystemAdminController : BaseController
 
             await _cropService.UpdateAsync(crop);
             TempData["SuccessMessage"] = $"Crop '{crop.Name}' updated successfully.";
-            return RedirectToAction(nameof(Crops), new { companyId = crop.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "crops", companyId = crop.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1173,10 +1309,10 @@ public class SystemAdminController : BaseController
     {
         try
         {
-            var crop = await _cropService.GetByIdAsync(id);
-            if (crop != null)
+            var Crop = await _cropService.GetByIdAsync(id);
+            if (Crop != null)
             {
-                await EnsureCompanyAccessAsync(crop.CompanyId);
+                await EnsureCompanyAccessAsync(Crop.CompanyId);
             }
 
             await _cropService.DeleteAsync(id);
@@ -1191,7 +1327,9 @@ public class SystemAdminController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Crops));
+        var crop = await _cropService.GetByIdAsync(id);
+        var companyId = crop?.CompanyId;
+        return RedirectToAction("SystemAdmin", new { tab = "crops", companyId = companyId });
     }
 
     #endregion
@@ -1199,72 +1337,13 @@ public class SystemAdminController : BaseController
     #region Nozzles
 
     [HttpGet]
-    public async Task<IActionResult> Nozzles(Guid? companyId = null)
-    {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
-        if (companyId.HasValue)
-        {
-            await EnsureCompanyAccessAsync(companyId.Value);
-        }
-
-        var nozzles = await _nozzleService.GetAllAsync(companyId);
-        
-        var viewModels = nozzles.Select(n => new NozzleViewModel
-        {
-            Id = n.Id,
-            CompanyId = n.CompanyId,
-            CompanyName = n.Company?.Name,
-            Model = n.Model,
-            Manufacturer = n.Manufacturer,
-            FlowRateGpm = n.FlowRateGpm,
-            SprayArc = n.SprayArc
-        });
-
-        // Create filter view model
-        var filterViewModel = new FilterViewModel
-        {
-            PageName = "Nozzles",
-            EnableSearch = false,
-            Fields = new List<FilterField>()
-        };
-
-        if (isGlobalAdmin)
-        {
-            var companies = await GetCompanySelectListAsync();
-            filterViewModel.Fields.Add(new FilterField
-            {
-                Name = "companyId",
-                Label = "Company",
-                Type = FilterFieldType.Dropdown,
-                Options = companies,
-                Value = companyId,
-                ColumnClass = "col-md-4",
-                IconClass = "bi bi-building"
-            });
-        }
-
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.FilterViewModel = filterViewModel;
-
-        return View(viewModels);
-    }
-
-    [HttpGet]
     public async Task<IActionResult> NozzleCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -1321,7 +1400,7 @@ public class SystemAdminController : BaseController
             }
 
             TempData["SuccessMessage"] = $"Nozzle '{nozzle.Manufacturer} {nozzle.Model}' created successfully.";
-            return RedirectToAction(nameof(Nozzles), new { companyId = nozzle.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "nozzles", companyId = nozzle.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1385,7 +1464,7 @@ public class SystemAdminController : BaseController
 
             await _nozzleService.UpdateAsync(nozzle);
             TempData["SuccessMessage"] = $"Nozzle '{nozzle.Manufacturer} {nozzle.Model}' updated successfully.";
-            return RedirectToAction(nameof(Nozzles), new { companyId = nozzle.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "nozzles", companyId = nozzle.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1401,10 +1480,10 @@ public class SystemAdminController : BaseController
     {
         try
         {
-            var nozzle = await _nozzleService.GetByIdAsync(id);
-            if (nozzle != null)
+            var Nozzle = await _nozzleService.GetByIdAsync(id);
+            if (Nozzle != null)
             {
-                await EnsureCompanyAccessAsync(nozzle.CompanyId);
+                await EnsureCompanyAccessAsync(Nozzle.CompanyId);
             }
 
             await _nozzleService.DeleteAsync(id);
@@ -1419,81 +1498,14 @@ public class SystemAdminController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Nozzles));
+        var nozzle = await _nozzleService.GetByIdAsync(id);
+        var companyId = nozzle?.CompanyId;
+        return RedirectToAction("SystemAdmin", new { tab = "nozzles", companyId = companyId });
     }
 
     #endregion
 
     #region Sprayfields
-
-    [HttpGet]
-    public async Task<IActionResult> Sprayfields(Guid? companyId = null)
-    {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
-        if (companyId.HasValue)
-        {
-            await EnsureCompanyAccessAsync(companyId.Value);
-        }
-
-        var sprayfields = await _sprayfieldService.GetAllAsync(companyId);
-        
-        var viewModels = sprayfields.Select(s => new SprayfieldViewModel
-        {
-            Id = s.Id,
-            CompanyId = s.CompanyId,
-            CompanyName = s.Company?.Name,
-            FieldId = s.FieldId,
-            SizeAcres = s.SizeAcres,
-            SoilId = s.SoilId,
-            SoilName = s.Soil?.TypeName,
-            CropId = s.CropId,
-            CropName = s.Crop?.Name,
-            NozzleId = s.NozzleId,
-            NozzleName = $"{s.Nozzle?.Manufacturer} {s.Nozzle?.Model}",
-            FacilityId = s.FacilityId,
-            FacilityName = s.Facility?.Name,
-            HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr,
-            HourlyRateInches = s.HourlyRateInches,
-            AnnualRateInches = s.AnnualRateInches
-        });
-
-        // Create filter view model
-        var filterViewModel = new FilterViewModel
-        {
-            PageName = "Sprayfields",
-            EnableSearch = false,
-            Fields = new List<FilterField>()
-        };
-
-        if (isGlobalAdmin)
-        {
-            var companies = await GetCompanySelectListAsync();
-            filterViewModel.Fields.Add(new FilterField
-            {
-                Name = "companyId",
-                Label = "Company",
-                Type = FilterFieldType.Dropdown,
-                Options = companies,
-                Value = companyId,
-                ColumnClass = "col-md-4",
-                IconClass = "bi bi-building"
-            });
-        }
-
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.FilterViewModel = filterViewModel;
-
-        return View(viewModels);
-    }
 
     [HttpGet]
     public async Task<IActionResult> SprayfieldDetails(Guid id)
@@ -1533,7 +1545,8 @@ public class SystemAdminController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -1582,7 +1595,7 @@ public class SystemAdminController : BaseController
 
             await _sprayfieldService.CreateAsync(sprayfield);
             TempData["SuccessMessage"] = $"Sprayfield '{sprayfield.FieldId}' created successfully.";
-            return RedirectToAction(nameof(Sprayfields), new { companyId = sprayfield.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "sprayfields", companyId = sprayfield.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1650,7 +1663,7 @@ public class SystemAdminController : BaseController
 
             await _sprayfieldService.UpdateAsync(sprayfield);
             TempData["SuccessMessage"] = $"Sprayfield '{sprayfield.FieldId}' updated successfully.";
-            return RedirectToAction(nameof(Sprayfields), new { companyId = sprayfield.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "sprayfields", companyId = sprayfield.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1666,10 +1679,10 @@ public class SystemAdminController : BaseController
     {
         try
         {
-            var sprayfield = await _sprayfieldService.GetByIdAsync(id);
-            if (sprayfield != null)
+            var Sprayfield = await _sprayfieldService.GetByIdAsync(id);
+            if (Sprayfield != null)
             {
-                await EnsureCompanyAccessAsync(sprayfield.CompanyId);
+                await EnsureCompanyAccessAsync(Sprayfield.CompanyId);
             }
 
             await _sprayfieldService.DeleteAsync(id);
@@ -1684,72 +1697,14 @@ public class SystemAdminController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Sprayfields));
+        var sprayfield = await _sprayfieldService.GetByIdAsync(id);
+        var companyId = sprayfield?.CompanyId;
+        return RedirectToAction("SystemAdmin", new { tab = "sprayfields", companyId = companyId });
     }
 
     #endregion
 
     #region Monitoring Wells
-
-    [HttpGet]
-    public async Task<IActionResult> MonitoringWells(Guid? companyId = null)
-    {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
-        if (companyId.HasValue)
-        {
-            await EnsureCompanyAccessAsync(companyId.Value);
-        }
-
-        var monitoringWells = await _monitoringWellService.GetAllAsync(companyId);
-        
-        var viewModels = monitoringWells.Select(m => new MonitoringWellViewModel
-        {
-            Id = m.Id,
-            CompanyId = m.CompanyId,
-            CompanyName = m.Company?.Name,
-            WellId = m.WellId,
-            LocationDescription = m.LocationDescription,
-            Latitude = m.Latitude,
-            Longitude = m.Longitude
-        });
-
-        // Create filter view model
-        var filterViewModel = new FilterViewModel
-        {
-            PageName = "MonitoringWells",
-            EnableSearch = false,
-            Fields = new List<FilterField>()
-        };
-
-        if (isGlobalAdmin)
-        {
-            var companies = await GetCompanySelectListAsync();
-            filterViewModel.Fields.Add(new FilterField
-            {
-                Name = "companyId",
-                Label = "Company",
-                Type = FilterFieldType.Dropdown,
-                Options = companies,
-                Value = companyId,
-                ColumnClass = "col-md-4",
-                IconClass = "bi bi-building"
-            });
-        }
-
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.FilterViewModel = filterViewModel;
-
-        return View(viewModels);
-    }
 
     [HttpGet]
     public async Task<IActionResult> MonitoringWellDetails(Guid id)
@@ -1780,7 +1735,8 @@ public class SystemAdminController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -1824,7 +1780,7 @@ public class SystemAdminController : BaseController
 
             await _monitoringWellService.CreateAsync(monitoringWell);
             TempData["SuccessMessage"] = $"Monitoring well '{monitoringWell.WellId}' created successfully.";
-            return RedirectToAction(nameof(MonitoringWells), new { companyId = monitoringWell.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "monitoringwells", companyId = monitoringWell.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1882,7 +1838,7 @@ public class SystemAdminController : BaseController
 
             await _monitoringWellService.UpdateAsync(monitoringWell);
             TempData["SuccessMessage"] = $"Monitoring well '{monitoringWell.WellId}' updated successfully.";
-            return RedirectToAction(nameof(MonitoringWells), new { companyId = monitoringWell.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "monitoringwells", companyId = monitoringWell.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1898,10 +1854,10 @@ public class SystemAdminController : BaseController
     {
         try
         {
-            var monitoringWell = await _monitoringWellService.GetByIdAsync(id);
-            if (monitoringWell != null)
+            var MonitoringWell = await _monitoringWellService.GetByIdAsync(id);
+            if (MonitoringWell != null)
             {
-                await EnsureCompanyAccessAsync(monitoringWell.CompanyId);
+                await EnsureCompanyAccessAsync(MonitoringWell.CompanyId);
             }
 
             await _monitoringWellService.DeleteAsync(id);
@@ -1916,7 +1872,9 @@ public class SystemAdminController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(MonitoringWells));
+        var monitoringWell = await _monitoringWellService.GetByIdAsync(id);
+        var companyId = monitoringWell?.CompanyId;
+        return RedirectToAction("SystemAdmin", new { tab = "monitoringwells", companyId = companyId });
     }
 
     #endregion
@@ -1930,7 +1888,8 @@ public class SystemAdminController : BaseController
 
         var companies = await _companyService.GetAllAsync();
         
-        if (!isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Filter by effective company ID if session has a selection (for admins) or user has a company
+        if (effectiveCompanyId.HasValue)
         {
             companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
         }

@@ -70,8 +70,8 @@ public class DashboardController : BaseController
 
         var viewModel = new DashboardViewModel();
 
-        // Get company-scoped data
-        Guid? companyId = isGlobalAdmin ? null : effectiveCompanyId;
+        // Get company-scoped data (respects session selection for admins)
+        Guid? companyId = effectiveCompanyId;
 
         // Count facilities
         var facilities = await _facilityService.GetAllAsync(companyId);
@@ -85,19 +85,35 @@ public class DashboardController : BaseController
         var monitoringWells = await _monitoringWellService.GetAllAsync(companyId);
         viewModel.TotalMonitoringWells = monitoringWells.Count();
 
-        // Count companies (only for global admins)
+        // Count companies (respects session selection for admins)
         if (isGlobalAdmin)
         {
             var companies = await _companyService.GetAllAsync();
+            // Filter by effectiveCompanyId if session has a selection
+            if (effectiveCompanyId.HasValue)
+            {
+                companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
+            }
             viewModel.TotalCompanies = companies.Count();
         }
 
-        // Count pending requests
+        // Count pending requests (respects session selection for admins)
         if (isGlobalAdmin)
         {
-            var pendingUserRequests = await _userRequestService.GetPendingRequestsAsync();
-            viewModel.PendingUserRequests = pendingUserRequests.Count();
+            // If admin has selected a company, filter requests by that company
+            if (effectiveCompanyId.HasValue)
+            {
+                var pendingUserRequests = await _userRequestService.GetPendingRequestsAsync(effectiveCompanyId.Value);
+                viewModel.PendingUserRequests = pendingUserRequests.Count();
+            }
+            else
+            {
+                // Show all pending requests if no company selected
+                var pendingUserRequests = await _userRequestService.GetPendingRequestsAsync();
+                viewModel.PendingUserRequests = pendingUserRequests.Count();
+            }
 
+            // Admin requests are always global (not company-scoped)
             var pendingAdminRequests = await _adminRequestService.GetPendingRequestsAsync();
             viewModel.PendingAdminRequests = pendingAdminRequests.Count();
         }
@@ -195,6 +211,14 @@ public class DashboardController : BaseController
         viewModel.ComplianceSummaries = complianceSummaries;
 
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
+        
+        // Pass selected company info to view (for admins with company selected)
+        if (isGlobalAdmin && effectiveCompanyId.HasValue)
+        {
+            var selectedCompany = await _companyService.GetByIdAsync(effectiveCompanyId.Value);
+            ViewBag.SelectedCompanyName = selectedCompany?.Name;
+            ViewBag.SelectedCompanyId = effectiveCompanyId.Value;
+        }
 
         return View(viewModel);
     }

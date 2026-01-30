@@ -1,9 +1,8 @@
-@model IEnumerable<SAM.ViewModels.SystemAdmin.SprayfieldViewModel>
+@model SAM.ViewModels.SystemAdmin.SprayfieldsPartialViewModel
 @{
-    ViewData["Title"] = "Sprayfields";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+    var isGlobalAdmin = Model.IsGlobalAdmin;
+    var companies = Model.Companies;
+    var selectedCompanyId = Model.SelectedCompanyId;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -29,20 +28,17 @@
     </div>
 </div>
 
-@{
-    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
-}
-@if (filterViewModel != null)
+@* @if (Model.Filter != null)
 {
-    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
-}
+    @await Html.PartialAsync("Partials/_Filter", Model.Filter)
+} *@
 
 <div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Sprayfield List</h5>
     </div>
     <div class="card-body">
-        @if (Model.Any())
+        @if (Model.Sprayfields.Any())
         {
             <div id="sprayfieldsTableView" class="table-responsive">
                 <table class="table table-hover irrigates-table">
@@ -64,7 +60,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var sprayfield in Model)
+                        @foreach (var sprayfield in Model.Sprayfields)
                         {
                             <tr>
                                 <td>
@@ -103,7 +99,7 @@
             </div>
 
             <div id="sprayfieldsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var sprayfield in Model)
+                @foreach (var sprayfield in Model.Sprayfields)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
@@ -177,7 +173,7 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal (Outside Table) -->
+<!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteSprayfieldModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -199,65 +195,64 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const deleteModal = document.getElementById('deleteSprayfieldModal');
-            if (deleteModal) {
-                deleteModal.addEventListener('show.bs.modal', function(event) {
-                    const button = event.relatedTarget;
-                    const sprayfieldId = button.getAttribute('data-sprayfield-id');
-                    const sprayfieldName = button.getAttribute('data-sprayfield-name');
-                    
-                    const sprayfieldNameElement = deleteModal.querySelector('#deleteSprayfieldName');
-                    if (sprayfieldNameElement) {
-                        sprayfieldNameElement.textContent = sprayfieldName;
-                    }
-                    
-                    const form = deleteModal.querySelector('#deleteSprayfieldForm');
-                    if (form) {
-                        const baseUrl = '@Url.Action("SprayfieldDelete", "SystemAdmin")';
-                        form.action = baseUrl + '/' + sprayfieldId;
-                    }
-                });
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteSprayfieldModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const sprayfieldId = button.getAttribute('data-sprayfield-id');
+                const sprayfieldName = button.getAttribute('data-sprayfield-name');
+                
+                const sprayfieldNameElement = deleteModal.querySelector('#deleteSprayfieldName');
+                if (sprayfieldNameElement) {
+                    sprayfieldNameElement.textContent = sprayfieldName;
+                }
+                
+                const form = deleteModal.querySelector('#deleteSprayfieldForm');
+                if (form) {
+                    const baseUrl = '@Url.Action("SprayfieldDelete", "SystemAdmin")';
+                    form.action = baseUrl + '/' + sprayfieldId;
+                }
+            });
+        }
+
+        const tableBtn = document.getElementById('sprayfieldsTableViewBtn');
+        const cardBtn = document.getElementById('sprayfieldsCardViewBtn');
+        const tableView = document.getElementById('sprayfieldsTableView');
+        const cardView = document.getElementById('sprayfieldsCardView');
+        const storageKey = 'sprayfieldsViewMode';
+
+        function setViewMode(mode) {
+            const isTable = mode === 'table';
+
+            if (isTable) {
+                tableView?.classList.remove('d-none');
+                cardView?.classList.add('d-none');
+                tableBtn?.classList.add('active');
+                cardBtn?.classList.remove('active');
+            } else {
+                tableView?.classList.add('d-none');
+                cardView?.classList.remove('d-none');
+                tableBtn?.classList.remove('active');
+                cardBtn?.classList.add('active');
             }
 
-            const tableBtn = document.getElementById('sprayfieldsTableViewBtn');
-            const cardBtn = document.getElementById('sprayfieldsCardViewBtn');
-            const tableView = document.getElementById('sprayfieldsTableView');
-            const cardView = document.getElementById('sprayfieldsCardView');
-            const storageKey = 'sprayfieldsViewMode';
-
-            function setViewMode(mode) {
-                const isTable = mode === 'table';
-
-                if (isTable) {
-                    tableView?.classList.remove('d-none');
-                    cardView?.classList.add('d-none');
-                    tableBtn?.classList.add('active');
-                    cardBtn?.classList.remove('active');
-                } else {
-                    tableView?.classList.add('d-none');
-                    cardView?.classList.remove('d-none');
-                    tableBtn?.classList.remove('active');
-                    cardBtn?.classList.add('active');
-                }
-
-                if (window.localStorage) {
-                    localStorage.setItem(storageKey, mode);
-                }
+            if (window.localStorage) {
+                localStorage.setItem(storageKey, mode);
             }
+        }
 
-            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
-            setViewMode(savedMode === 'card' ? 'card' : 'table');
+        const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+        setViewMode(savedMode === 'card' ? 'card' : 'table');
 
-            tableBtn?.addEventListener('click', function () {
-                setViewMode('table');
-            });
-
-            cardBtn?.addEventListener('click', function () {
-                setViewMode('card');
-            });
+        tableBtn?.addEventListener('click', function () {
+            setViewMode('table');
         });
-    </script>
-}
+
+        cardBtn?.addEventListener('click', function () {
+            setViewMode('card');
+        });
+    });
+</script>
+

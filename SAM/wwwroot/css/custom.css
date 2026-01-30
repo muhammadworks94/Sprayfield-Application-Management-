@@ -3120,3 +3120,89 @@ small {
   width: 100%;
   align-items: stretch;
 }
+
+/* ============================================
+   System Admin Tabs - Card-Based Design
+   ============================================ */
+.system-admin-tabs {
+  margin-bottom: 2rem;
+}
+
+.system-admin-tabs-container {
+  display: flex;
+/*  gap: 1rem;*/
+  flex-wrap: wrap;
+  width:100%;
+}
+
+.system-admin-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem;
+  text-decoration: none;
+  border-radius: 0.75rem;
+  background-color: transparent;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  flex:1;
+}
+
+.system-admin-tab-icon {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+  color: var(--gray-500);
+  transition: color 0.2s ease-in-out;
+}
+
+.system-admin-tab-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-600);
+  text-align: center;
+  transition: color 0.2s ease-in-out;
+}
+
+.system-admin-tab:hover {
+  background-color: var(--gray-100);
+}
+
+.system-admin-tab:hover .system-admin-tab-icon,
+.system-admin-tab:hover .system-admin-tab-label {
+  color: var(--gray-700);
+}
+
+.system-admin-tab.active {
+  background-color: var(--white);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+}
+
+.system-admin-tab.active .system-admin-tab-icon,
+.system-admin-tab.active .system-admin-tab-label {
+  color: var(--gray-800);
+}
+
+/* Responsive adjustments for System Admin Tabs */
+@media (max-width: 768px) {
+  .system-admin-tabs-container {
+/*    gap: 0.75rem;*/
+  }
+  
+  .system-admin-tab {
+    min-width: 100px;
+    padding: 1.25rem 1rem;
+  }
+  
+  .system-admin-tab-icon {
+    font-size: 1.75rem;
+  }
+  
+  .system-admin-tab-label {
+    font-size: 0.8125rem;
+  }
+}
+.dropdown-item.active, .dropdown-item:active{
+    color:var(--primary);
+}

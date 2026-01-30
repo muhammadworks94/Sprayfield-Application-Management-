@@ -13,29 +13,45 @@
     {
         var companies = await DbContext.Companies.OrderBy(c => c.Name).ToListAsync();
         
+        // Get selected company from session
+        var selectedCompanyIdString = Context.Session.GetString("SelectedCompanyId");
+        Guid? selectedCompanyId = null;
+        if (!string.IsNullOrEmpty(selectedCompanyIdString) && Guid.TryParse(selectedCompanyIdString, out var parsedId))
+        {
+            selectedCompanyId = parsedId;
+        }
+        
+        var selectedCompany = selectedCompanyId.HasValue 
+            ? companies.FirstOrDefault(c => c.Id == selectedCompanyId.Value) 
+            : null;
+        
         <div class="dropdown">
             <button class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center" type="button" id="companySelectorButton" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="bi bi-building me-2"></i> 
-                <span>
-                @if (ViewBag.SelectedCompanyId != null)
-                {
-                    var selectedCompany = companies.FirstOrDefault(c => c.Id == ViewBag.SelectedCompanyId);
-                    @(selectedCompany?.Name ?? "All Companies")
-                }
-                else
-                {
-                    <text>All Companies</text>
-                }
-                </span>
+                <span>@(selectedCompany?.Name ?? "All Companies")</span>
             </button>
             <ul class="dropdown-menu shadow-lg" aria-labelledby="companySelectorButton" style="min-width: 200px;">
                 <li>
-                    <a class="dropdown-item" href="?companyId="><i class="bi bi-building me-2"></i>All Companies</a>
+                    <form method="post" asp-controller="CompanyContext" asp-action="SetCompanyContext" class="m-0">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="companyId" value="" />
+                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                        <button type="submit" class="dropdown-item @(!selectedCompanyId.HasValue ? "active" : "")" style="border: none; background: none; width: 100%; text-align: left;">
+                            <i class="bi bi-building me-2"></i>All Companies
+                        </button>
+                    </form>
                 </li>
                 @foreach (var company in companies)
                 {
                     <li>
-                        <a class="dropdown-item" href="?companyId=@company.Id"><i class="bi bi-building me-2"></i>@company.Name</a>
+                        <form method="post" asp-controller="CompanyContext" asp-action="SetCompanyContext" class="m-0">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="companyId" value="@company.Id" />
+                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                            <button type="submit" class="dropdown-item @(selectedCompanyId == company.Id ? "active" : "")" style="border: none; background: none; width: 100%; text-align: left;">
+                                <i class="bi bi-building me-2"></i>@company.Name
+                            </button>
+                        </form>
                     </li>
                 }
             </ul>

@@ -1,9 +1,8 @@
-@model IEnumerable<SAM.ViewModels.SystemAdmin.NozzleViewModel>
+@model SAM.ViewModels.SystemAdmin.NozzlesPartialViewModel
 @{
-    ViewData["Title"] = "Nozzles";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+    var isGlobalAdmin = Model.IsGlobalAdmin;
+    var companies = Model.Companies;
+    var selectedCompanyId = Model.SelectedCompanyId;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -29,20 +28,17 @@
     </div>
 </div>
 
-@{
-    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
-}
-@if (filterViewModel != null)
+@* @if (Model.Filter != null)
 {
-    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
-}
+    @await Html.PartialAsync("Partials/_Filter", Model.Filter)
+} *@
 
 <div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Nozzle List</h5>
     </div>
     <div class="card-body">
-        @if (Model.Any())
+        @if (Model.Nozzles.Any())
         {
             <div id="nozzlesTableView" class="table-responsive">
                 <table class="table table-hover">
@@ -60,7 +56,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var nozzle in Model)
+                        @foreach (var nozzle in Model.Nozzles)
                         {
                             <tr>
                                 <td>@nozzle.Manufacturer</td>
@@ -90,7 +86,7 @@
             </div>
 
             <div id="nozzlesCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var nozzle in Model)
+                @foreach (var nozzle in Model.Nozzles)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
@@ -142,7 +138,7 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal (Outside Table) -->
+<!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteNozzleModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -164,65 +160,64 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const deleteModal = document.getElementById('deleteNozzleModal');
-            if (deleteModal) {
-                deleteModal.addEventListener('show.bs.modal', function(event) {
-                    const button = event.relatedTarget;
-                    const nozzleId = button.getAttribute('data-nozzle-id');
-                    const nozzleName = button.getAttribute('data-nozzle-name');
-                    
-                    const nozzleNameElement = deleteModal.querySelector('#deleteNozzleName');
-                    if (nozzleNameElement) {
-                        nozzleNameElement.textContent = nozzleName;
-                    }
-                    
-                    const form = deleteModal.querySelector('#deleteNozzleForm');
-                    if (form) {
-                        const baseUrl = '@Url.Action("NozzleDelete", "SystemAdmin")';
-                        form.action = baseUrl + '/' + nozzleId;
-                    }
-                });
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteNozzleModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const nozzleId = button.getAttribute('data-nozzle-id');
+                const nozzleName = button.getAttribute('data-nozzle-name');
+                
+                const nozzleNameElement = deleteModal.querySelector('#deleteNozzleName');
+                if (nozzleNameElement) {
+                    nozzleNameElement.textContent = nozzleName;
+                }
+                
+                const form = deleteModal.querySelector('#deleteNozzleForm');
+                if (form) {
+                    const baseUrl = '@Url.Action("NozzleDelete", "SystemAdmin")';
+                    form.action = baseUrl + '/' + nozzleId;
+                }
+            });
+        }
+
+        const tableBtn = document.getElementById('nozzlesTableViewBtn');
+        const cardBtn = document.getElementById('nozzlesCardViewBtn');
+        const tableView = document.getElementById('nozzlesTableView');
+        const cardView = document.getElementById('nozzlesCardView');
+        const storageKey = 'nozzlesViewMode';
+
+        function setViewMode(mode) {
+            const isTable = mode === 'table';
+
+            if (isTable) {
+                tableView?.classList.remove('d-none');
+                cardView?.classList.add('d-none');
+                tableBtn?.classList.add('active');
+                cardBtn?.classList.remove('active');
+            } else {
+                tableView?.classList.add('d-none');
+                cardView?.classList.remove('d-none');
+                tableBtn?.classList.remove('active');
+                cardBtn?.classList.add('active');
             }
 
-            const tableBtn = document.getElementById('nozzlesTableViewBtn');
-            const cardBtn = document.getElementById('nozzlesCardViewBtn');
-            const tableView = document.getElementById('nozzlesTableView');
-            const cardView = document.getElementById('nozzlesCardView');
-            const storageKey = 'nozzlesViewMode';
-
-            function setViewMode(mode) {
-                const isTable = mode === 'table';
-
-                if (isTable) {
-                    tableView?.classList.remove('d-none');
-                    cardView?.classList.add('d-none');
-                    tableBtn?.classList.add('active');
-                    cardBtn?.classList.remove('active');
-                } else {
-                    tableView?.classList.add('d-none');
-                    cardView?.classList.remove('d-none');
-                    tableBtn?.classList.remove('active');
-                    cardBtn?.classList.add('active');
-                }
-
-                if (window.localStorage) {
-                    localStorage.setItem(storageKey, mode);
-                }
+            if (window.localStorage) {
+                localStorage.setItem(storageKey, mode);
             }
+        }
 
-            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
-            setViewMode(savedMode === 'card' ? 'card' : 'table');
+        const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+        setViewMode(savedMode === 'card' ? 'card' : 'table');
 
-            tableBtn?.addEventListener('click', function () {
-                setViewMode('table');
-            });
-
-            cardBtn?.addEventListener('click', function () {
-                setViewMode('card');
-            });
+        tableBtn?.addEventListener('click', function () {
+            setViewMode('table');
         });
-    </script>
-}
+
+        cardBtn?.addEventListener('click', function () {
+            setViewMode('card');
+        });
+    });
+</script>
+

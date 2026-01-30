@@ -44,7 +44,8 @@ public class ReportsController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -127,7 +128,8 @@ public class ReportsController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -278,7 +280,8 @@ public class ReportsController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -346,7 +349,8 @@ public class ReportsController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -607,7 +611,8 @@ public class ReportsController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
