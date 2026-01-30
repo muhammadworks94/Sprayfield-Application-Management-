@@ -26,9 +26,6 @@
             <dt class="col-sm-3">Company:</dt>
             <dd class="col-sm-9">@Model.CompanyName</dd>
 
-            <dt class="col-sm-3">Role:</dt>
-            <dd class="col-sm-9">@Model.AppRole.ToString().Replace("_", " ")</dd>
-
             <dt class="col-sm-3">Requested By:</dt>
             <dd class="col-sm-9">@Model.RequestedByEmail</dd>
         </dl>
@@ -36,6 +33,15 @@
         <form asp-action="UserRequestApprove" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="AppRole" class="form-label">Role <small class="text-muted">(Requested: @Model.RequestedRole.ToString().Replace("_", " "))</small></label>
+                <select asp-for="AppRole" asp-items="ViewBag.Roles" class="form-select w-25"></select>
+                <span asp-validation-for="AppRole" class="text-danger"></span>
+                <small class="form-text text-muted">You can change the role before approving the request.</small>
+            </div>
             
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a asp-action="UserRequests" class="btn btn-secondary">Cancel</a>

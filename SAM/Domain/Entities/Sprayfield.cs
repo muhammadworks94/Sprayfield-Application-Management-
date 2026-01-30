@@ -38,6 +38,16 @@ public class Sprayfield : CompanyScopedEntity
     /// </summary>
     public decimal HydraulicLoadingLimitInPerYr { get; set; }
 
+    /// <summary>
+    /// Hourly irrigation rate in inches.
+    /// </summary>
+    public decimal? HourlyRateInches { get; set; }
+
+    /// <summary>
+    /// Annual irrigation rate in inches.
+    /// </summary>
+    public decimal? AnnualRateInches { get; set; }
+
     // Navigation properties
     public Soil? Soil { get; set; }
     public Crop? Crop { get; set; }
