@@ -265,8 +265,8 @@ public class UserManagementController : BaseController
     {
         try
         {
-            await _userRequestService.HardDeleteAsync(id);
-            TempData["SuccessMessage"] = "User request deleted permanently.";
+            await _userRequestService.SoftDeleteAsync(id);
+            TempData["SuccessMessage"] = "User request deleted.";
             return RedirectToAction(nameof(UserRequests));
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)

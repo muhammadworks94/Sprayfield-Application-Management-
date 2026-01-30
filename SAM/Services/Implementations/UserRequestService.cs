@@ -107,7 +107,7 @@ public class UserRequestService : IUserRequestService
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> SoftDeleteAsync(Guid id)
     {
         var userRequest = await GetByIdAsync(id);
         if (userRequest == null)

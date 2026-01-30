@@ -12,7 +12,7 @@ public interface IUserRequestService
     Task<UserRequest?> GetByIdAsync(Guid id);
     Task<UserRequest> CreateAsync(UserRequest userRequest);
     Task<UserRequest> UpdateAsync(UserRequest userRequest);
-    Task<bool> DeleteAsync(Guid id);
+    Task<bool> SoftDeleteAsync(Guid id);
     Task<bool> HardDeleteAsync(Guid id);
     Task<bool> ExistsAsync(Guid id);
     Task<IEnumerable<UserRequest>> GetPendingRequestsAsync(Guid? companyId = null);
