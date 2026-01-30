@@ -1,0 +1,171 @@
+@model SAM.ViewModels.Analytics.AdvancedAnalyticsViewModel
+@{
+    ViewData["Title"] = "Advanced Analytics";
+}
+
+<ul class="nav nav-tabs nav-fill mb-4 w-100" id="analyticsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="well-trends-tab" data-bs-toggle="tab" data-bs-target="#well-trends" type="button" role="tab" aria-controls="well-trends" aria-selected="true">
+            <i class="bi bi-graph-up me-2"></i>Well Trends
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="parameters-tab" data-bs-toggle="tab" data-bs-target="#parameters" type="button" role="tab" aria-controls="parameters" aria-selected="false">
+            <i class="bi bi-grid me-2"></i>Parameters
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="facilities-tab" data-bs-toggle="tab" data-bs-target="#facilities" type="button" role="tab" aria-controls="facilities" aria-selected="false">
+            <i class="bi bi-bar-chart me-2"></i>Facilities
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="historical-tab" data-bs-toggle="tab" data-bs-target="#historical" type="button" role="tab" aria-controls="historical" aria-selected="false">
+            <i class="bi bi-graph-up-arrow me-2"></i>Historical
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="analyticsTabContent">
+    <div class="tab-pane fade show active" id="well-trends" role="tabpanel" aria-labelledby="well-trends-tab">
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card dashboard-chart-card h-100">
+                    <div class="card-body">
+                        <h5 class="fw-semibold mb-3">
+                            <i class="bi bi-graph-up me-2"></i>Select Monitoring Well
+                        </h5>
+                        <form method="get" asp-controller="Analytics" asp-action="Index" class="mb-0">
+                            <select name="wellId" class="form-select" onchange="this.form.submit()" aria-label="Select Monitoring Well">
+                                @if (Model.MonitoringWells != null)
+                                {
+                                    @foreach (var item in Model.MonitoringWells)
+                                    {
+                                        <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                                    }
+                                }
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card dashboard-chart-card h-100">
+                    <div class="card-body">
+                        <h5 class="fw-semibold mb-3">
+                            <i class="bi bi-graph-up me-2"></i>Well Trend Analysis
+                        </h5>
+                        @if (Model.SelectedWellId.HasValue && Model.HasWellTrendData)
+                        {
+                            <div class="dashboard-chart-wrap dashboard-chart-wrap-tall">
+                                <canvas id="chartWellTrend"></canvas>
+                            </div>
+                            <div class="mt-2 d-flex flex-wrap gap-3 small">
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-circle-fill text-primary"></i> pH
+                                </span>
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-diamond-fill" style="color: #14b8a6;"></i> Conductivity (µS/cm)
+                                </span>
+                            </div>
+                        }
+                        else if (Model.SelectedWellId.HasValue)
+                        {
+                            <p class="text-muted text-center mb-0 py-4">No data available for this well</p>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center mb-0 py-4">Select a monitoring well to view trend analysis</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="parameters" role="tabpanel" aria-labelledby="parameters-tab">
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card dashboard-chart-card h-100">
+                    <div class="card-body">
+                        <h5 class="fw-semibold mb-3">
+                            <i class="bi bi-grid me-2"></i>Parameters
+                        </h5>
+                        <p class="text-muted mb-0">Compare parameters across wells and time periods. (Content can be added here.)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="facilities" role="tabpanel" aria-labelledby="facilities-tab">
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card dashboard-chart-card h-100">
+                    <div class="card-body">
+                        <h5 class="fw-semibold mb-3">
+                            <i class="bi bi-bar-chart me-2"></i>Facilities
+                        </h5>
+                        <p class="text-muted mb-0">Facility-level analytics. (Content can be added here.)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="historical" role="tabpanel" aria-labelledby="historical-tab">
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card dashboard-chart-card h-100">
+                    <div class="card-body">
+                        <h5 class="fw-semibold mb-3">
+                            <i class="bi bi-graph-up-arrow me-2"></i>Historical
+                        </h5>
+                        <p class="text-muted mb-0">Historical data and trends. (Content can be added here.)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @if (Model.SelectedWellId.HasValue && Model.HasWellTrendData)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            (function() {
+                const primaryColor = '#2563eb';
+                const greenTeal = '#14b8a6';
+                document.addEventListener('DOMContentLoaded', function() {
+                    const canvas = document.getElementById('chartWellTrend');
+                    if (!canvas) return;
+                    const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendDateLabels));
+                    const phData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendPH));
+                    const conductivityData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendConductivity));
+                    new Chart(canvas, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                { label: 'pH', data: phData, borderColor: primaryColor, backgroundColor: 'transparent', pointStyle: 'circle', pointRadius: 5, tension: 0.2 },
+                                { label: 'Conductivity (µS/cm)', data: conductivityData, borderColor: greenTeal, backgroundColor: 'transparent', pointStyle: 'diamond', pointRadius: 5, tension: 0.2 }
+                            ]
+                        },
+                        options: {
+                            scales: {
+                                y: { min: 0, grid: { color: 'rgba(0,0,0,0.06)' } },
+                                x: { grid: { color: 'rgba(0,0,0,0.06)' } }
+                            },
+                            plugins: { legend: { display: false } },
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                });
+            })();
+        </script>
+    }
+}

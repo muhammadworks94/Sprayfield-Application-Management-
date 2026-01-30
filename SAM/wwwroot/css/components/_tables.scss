@@ -20,10 +20,18 @@
     vertical-align: bottom;
     background-color: $gray-100;
     font-weight: $font-weight-semibold;
+    border-bottom: 1px solid $border-color;
 
     th {
-      border-bottom: 2px solid $border-color-dark;
       color: $text-primary;
+    }
+
+    th:first-child {
+      text-align: left;
+    }
+
+    th:not(:first-child) {
+      text-align: center;
     }
   }
 
@@ -32,23 +40,41 @@
 
     tr {
       transition: background-color 0.15s ease-in-out;
+      border-bottom: 1px solid $border-color;
+      background-color: transparent;
 
       &:hover {
-        background-color: $gray-50;
+        background-color: rgba(0, 0, 0, 0.02);
       }
 
       &:nth-of-type(even) {
-        background-color: rgba($gray-100, 0.5);
+        background-color: transparent;
       }
+    }
+
+    td:first-child {
+      text-align: left;
+    }
+
+    td:not(:first-child) {
+      text-align: center;
     }
   }
 
   &.table-striped > tbody > tr:nth-of-type(odd) {
-    background-color: rgba($gray-100, 0.5);
+    background-color: transparent;
   }
 
   &.table-hover > tbody > tr:hover {
-    background-color: $gray-100;
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  td .badge {
+    background-color: #e5e7eb;
+    color: $text-primary;
+    border-radius: 9999px;
+    padding: 0.25rem 0.625rem;
+    font-weight: 500;
   }
 
   &.table-bordered {
@@ -76,9 +102,10 @@
 .table-actions {
   white-space: nowrap;
   width: 1%;
+  text-align: center;
 
   .btn {
-    padding: $spacing-1 $spacing-2;
+    padding: 0.2rem 0.45rem;
     font-size: $font-size-sm;
     margin-right: $spacing-1;
 
