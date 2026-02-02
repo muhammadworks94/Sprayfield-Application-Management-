@@ -1,6 +1,7 @@
 @model SAM.ViewModels.Dashboard.DashboardViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
+@using System.Text.Json
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Dashboard";
@@ -18,8 +19,14 @@
     </div>
 }
 
+@section PageTitleExtra {
+    @if (isGlobalAdmin)
+    {
+        <a asp-controller="Dashboard" asp-action="Index" class="text-primary small text-decoration-none">Global Admin View</a>
+    }
+}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
-   
     <div>
         @if (canManageUsers && Model.PendingUserRequests > 0)
         {
@@ -36,307 +43,344 @@
     </div>
 </div>
 
-<!-- Statistics Cards -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="stat-card stat-card-primary">
-            <div class="stat-icon-container">
-                <i class="bi bi-building stat-icon"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-value">@Model.TotalFacilities</div>
+<!-- Key Metric Cards (row 1) - pixel-perfect: icon top-right, title, value, subtitle -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card">
+            <div class="card-body">
+                <div class="dashboard-kpi-icon bg-primary bg-opacity-10 rounded-3 p-2">
+                    <i class="bi bi-building fs-5 text-primary"></i>
+                </div>
                 <div class="stat-label">Facilities</div>
+                <div class="stat-value">@Model.TotalFacilities</div>
+                <div class="stat-desc">Active treatment facilities</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card stat-card-success">
-            <div class="stat-icon-container">
-                <i class="bi bi-grid-3x3-gap stat-icon"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-value">@Model.TotalSprayfields</div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card">
+            <div class="card-body">
+                <div class="dashboard-kpi-icon bg-success bg-opacity-10 rounded-3 p-2">
+                    <i class="bi bi-grid-3x3-gap fs-5 text-success"></i>
+                </div>
                 <div class="stat-label">Sprayfields</div>
+                <div class="stat-value">@Model.TotalSprayfields</div>
+                <div class="stat-desc">@Model.TotalSprayfieldAcres.ToString("F1") total acres</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card stat-card-info">
-            <div class="stat-icon-container">
-                <i class="bi bi-droplet stat-icon"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-value">@Model.TotalMonitoringWells</div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card">
+            <div class="card-body">
+                <div class="dashboard-kpi-icon bg-info bg-opacity-10 rounded-3 p-2">
+                    <i class="bi bi-geo-alt fs-5 text-info"></i>
+                </div>
                 <div class="stat-label">Monitoring Wells</div>
+                <div class="stat-value">@Model.TotalMonitoringWells</div>
+                <div class="stat-desc">Groundwater monitoring points</div>
             </div>
         </div>
     </div>
-    @if (isGlobalAdmin)
-    {
-        <div class="col-md-3">
-            <div class="stat-card stat-card-warning">
-                <div class="stat-icon-container">
-                    <i class="bi bi-briefcase stat-icon"></i>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card">
+            <div class="card-body">
+                <div class="dashboard-kpi-icon bg-warning bg-opacity-10 rounded-3 p-2">
+                    <i class="bi bi-calendar3 fs-5 text-warning"></i>
                 </div>
-                <div class="stat-content">
-                    <div class="stat-value">@Model.TotalCompanies</div>
-                    <div class="stat-label">Companies</div>
+                <div class="stat-label">Recent Activity</div>
+                <div class="stat-value">@Model.RecentActivityCount</div>
+                <div class="stat-desc">Irrigation events (last 10)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Wastewater Trends + Groundwater Overview (row 2 - at top) - equal chart heights -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card dashboard-chart-card h-100">
+            <div class="card-body">
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-droplet me-2"></i>Wastewater Monitoring Trends
+                </h5>
+                <div class="dashboard-chart-wrap">
+                    <canvas id="chartWastewaterTrends"></canvas>
+                </div>
+                <div class="mt-2 d-flex flex-wrap gap-3 small">
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-diamond text-danger"></i> Avg BOD5 (mg/L)
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-circle-fill text-primary"></i> Avg TSS (mg/L)
+                    </span>
                 </div>
             </div>
         </div>
-    }
-</div>
-
-<!-- Compliance Status -->
-@{
-    var totalReports = Model.CompliantReports + Model.UnderReviewReports + Model.NonCompliantReports;
-    var compliantPercent = totalReports > 0 ? (Model.CompliantReports * 100.0 / totalReports) : 0;
-    var underReviewPercent = totalReports > 0 ? (Model.UnderReviewReports * 100.0 / totalReports) : 0;
-    var nonCompliantPercent = totalReports > 0 ? (Model.NonCompliantReports * 100.0 / totalReports) : 0;
-    
-    // Calculate circumference for SVG (radius = 64, so circumference = 2 * PI * 64 ≈ 402)
-    var circumference = 2 * Math.PI * 64;
-    var compliantOffset = circumference - (compliantPercent / 100 * circumference);
-    var underReviewOffset = circumference - (underReviewPercent / 100 * circumference);
-    var nonCompliantOffset = circumference - (nonCompliantPercent / 100 * circumference);
-}
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card card-primary">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-shield-check"></i> Compliance Status (Last 30 Days)</h5>
-            </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card dashboard-chart-card h-100">
             <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-md-4">
-                        <div class="progress-circle-container">
-                            <div class="progress-circle-wrapper">
-                                <svg class="progress-circle-svg" viewBox="0 0 140 140">
-                                    <circle class="progress-circle-bg" cx="70" cy="70" r="64"></circle>
-                                    <circle class="progress-circle-fill compliant" 
-                                            cx="70" cy="70" r="64"
-                                            stroke-dasharray="@circumference"
-                                            stroke-dashoffset="@compliantOffset"
-                                            data-percent="@compliantPercent"></circle>
-                                </svg>
-                                <div class="progress-circle-value">@compliantPercent.ToString("F0")%</div>
-                            </div>
-                            <div class="progress-circle-count">@Model.CompliantReports</div>
-                            <div class="progress-circle-label">Compliant Reports</div>
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-funnel me-2"></i>Groundwater Quality Overview
+                </h5>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="dashboard-metric-box dashboard-metric-box-blue rounded-3 p-3">
+                            <div class="text-muted small">Average pH</div>
+                            <div class="fw-bold fs-4 text-primary">@(Model.GroundwaterOverview.AvgPH?.ToString("F2") ?? "—")</div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="progress-circle-container">
-                            <div class="progress-circle-wrapper">
-                                <svg class="progress-circle-svg" viewBox="0 0 140 140">
-                                    <circle class="progress-circle-bg" cx="70" cy="70" r="64"></circle>
-                                    <circle class="progress-circle-fill under-review" 
-                                            cx="70" cy="70" r="64"
-                                            stroke-dasharray="@circumference"
-                                            stroke-dashoffset="@underReviewOffset"
-                                            data-percent="@underReviewPercent"></circle>
-                                </svg>
-                                <div class="progress-circle-value">@underReviewPercent.ToString("F0")%</div>
-                            </div>
-                            <div class="progress-circle-count">@Model.UnderReviewReports</div>
-                            <div class="progress-circle-label">Under Review</div>
+                    <div class="col-6">
+                        <div class="dashboard-metric-box dashboard-metric-box-green rounded-3 p-3">
+                            <div class="text-muted small">Avg Conductivity (µS/cm)</div>
+                            <div class="fw-bold fs-4 text-success">@(Model.GroundwaterOverview.AvgConductivity?.ToString("F0") ?? "—")</div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="progress-circle-container">
-                            <div class="progress-circle-wrapper">
-                                <svg class="progress-circle-svg" viewBox="0 0 140 140">
-                                    <circle class="progress-circle-bg" cx="70" cy="70" r="64"></circle>
-                                    <circle class="progress-circle-fill non-compliant" 
-                                            cx="70" cy="70" r="64"
-                                            stroke-dasharray="@circumference"
-                                            stroke-dashoffset="@nonCompliantOffset"
-                                            data-percent="@nonCompliantPercent"></circle>
-                                </svg>
-                                <div class="progress-circle-value">@nonCompliantPercent.ToString("F0")%</div>
-                            </div>
-                            <div class="progress-circle-count">@Model.NonCompliantReports</div>
-                            <div class="progress-circle-label">Non-Compliant Reports</div>
-                        </div>
-                    </div>
+                </div>
+                <div class="dashboard-chart-wrap">
+                    <canvas id="chartGroundwaterOverview"></canvas>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Recent Activity and Compliance Summaries -->
-<div class="row mb-4">
-    <div class="col-md-6 mb-md-0">
-        <div class="card card-warning h-100">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i> Recent Activity</h5>
-            </div>
+<!-- Irrigation Compliance + Operational Efficiency (row 3) - equal chart heights -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card dashboard-chart-card h-100">
             <div class="card-body">
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-check-circle text-success me-2"></i>Irrigation Compliance Status
+                </h5>
+                <div class="d-flex flex-column flex-md-row align-items-center justify-content-between">
+                    <div class="dashboard-chart-wrap d-flex align-items-center justify-content-center flex-shrink-0">
+                        <div class="position-relative" style="width: 180px; height: 180px;">
+                            <canvas id="chartIrrigationCompliance" width="180" height="180"></canvas>
+                            <div class="position-absolute top-50 start-50 translate-middle text-center">
+                                <span class="fw-bold fs-6" style="color: #14b8a6;">Compliant @Model.IrrigationCompliance.CompliantPercent.ToString("F0")%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-summary-box p-3 text-center ms-md-3 mt-3 mt-md-0">
+                        <div class="text-muted small">Compliant</div>
+                        <div class="fw-bold fs-4">@Model.IrrigationCompliance.CompliantCount</div>
+                        <div class="text-muted small">(@Model.IrrigationCompliance.CompliantPercent.ToString("F0")%)</div>
+                    </div>
+                </div>
+                <div class="mt-3 d-flex align-items-center gap-2">
+                    <span class="d-inline-block rounded-1 dashboard-legend-normal" style="width: 12px; height: 12px;"></span>
+                    <span class="small">Compliant</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card dashboard-chart-card h-100">
+            <div class="card-body">
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-graph-up-arrow me-2"></i>Operational Efficiency Indicators
+                </h5>
+                <div class="dashboard-uptime-strip p-3 mb-3">
+                    <div class="text-muted small">System Uptime</div>
+                    <div class="fw-bold fs-4" style="color: #14b8a6;">@Model.SystemUptimePercent.ToString("F1")%</div>
+                    <div class="text-muted small">Based on normal operational status</div>
+                </div>
+                <div class="dashboard-chart-wrap dashboard-chart-wrap-tall">
+                    <canvas id="chartOperationalEfficiency"></canvas>
+                </div>
+                <div class="mt-2 d-flex flex-wrap gap-3 small">
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <span class="rounded-1 dashboard-legend-normal" style="width: 10px; height: 10px;"></span> Normal
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <span class="rounded-1 bg-warning" style="width: 10px; height: 10px;"></span> Alert
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <span class="rounded-1 bg-info" style="width: 10px; height: 10px;"></span> Maintenance
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity + System Status (below the graphs) - pixel-perfect -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card dashboard-chart-card h-100">
+            <div class="card-body">
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-journal-text me-2"></i>Recent Activity
+                </h5>
                 @if (Model.RecentActivities.Any())
                 {
-                    <div class="list-group list-group-flush">
+                    <ul class="list-unstyled mb-0">
                         @foreach (var activity in Model.RecentActivities)
                         {
-                            <div class="list-group-item border-0 border-bottom px-0 py-3">
-                                <div class="d-flex w-100 justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <div class="me-2">
-                                                <i class="bi bi-@(activity.Type == "Operator Log" ? "journal-text" : activity.Type == "Irrigation" ? "droplet" : "file-earmark-text") text-primary" style="font-size: 1.25rem;"></i>
-                                            </div>
-                                            <h6 class="mb-0 fw-semibold">@activity.Type</h6>
-                                        </div>
-                                        <p class="mb-2 text-muted small">@activity.Description</p>
-                                        <small class="text-muted">
-                                            <i class="bi bi-person me-1"></i>@activity.User
-                                        </small>
-                                    </div>
-                                    <small class="text-muted ms-3 text-nowrap">@activity.Date.ToString("MM/dd/yyyy HH:mm")</small>
+                            <li class="d-flex justify-content-between align-items-start py-2 @(activity != Model.RecentActivities.Last() ? "border-bottom border-light" : "")">
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold text-dark">@activity.Description</div>
+                                    <div class="small text-muted mt-1">@activity.Date.ToString("dd/MM/yyyy")</div>
                                 </div>
-                            </div>
+                                <span class="dashboard-status-tag dashboard-status-tag-dark rounded px-2 py-1 small ms-2 flex-shrink-0">Completed</span>
+                            </li>
                         }
-                    </div>
+                    </ul>
                 }
                 else
                 {
-                    <div class="text-center py-5">
-                        <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
-                        <p class="text-muted mt-3 mb-0">No recent activity</p>
-                    </div>
+                    <p class="text-muted small mb-0">No recent activity</p>
                 }
             </div>
         </div>
     </div>
-
-    <div class="col-md-6">
-        <div class="card card-success h-100">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-file-earmark-check me-2"></i> Recent Compliance Reports</h5>
-            </div>
+    <div class="col-lg-6">
+        <div class="card dashboard-chart-card h-100">
             <div class="card-body">
-                @if (Model.ComplianceSummaries.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm mb-0">
-                            <thead>
-                                <tr>
-                                    <th class="border-0"><i class="bi bi-building me-1"></i>Facility</th>
-                                    <th class="border-0">Period</th>
-                                    <th class="border-0 text-end">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var summary in Model.ComplianceSummaries)
-                                {
-                                    <tr>
-                                        <td class="align-middle">
-                                            <i class="bi bi-building me-1 text-muted"></i>@summary.FacilityName
-                                        </td>
-                                        <td class="align-middle text-muted">@summary.Period</td>
-                                        <td class="align-middle text-end">
-                                            <span class="badge badge-@(summary.ComplianceStatus == "Compliant" ? "success" : summary.ComplianceStatus == "NonCompliant" ? "danger" : "warning")">
-                                                @summary.ComplianceStatus
-                                            </span>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="text-center py-5">
-                        <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
-                        <p class="text-muted mt-3 mb-0">No compliance reports available</p>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Data Entry -->
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card card-info">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Recent Data Entry (Last 30 Days)</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <div class="metric-card-mini">
-                            <div class="metric-card-mini-icon icon-primary">
-                                <i class="bi bi-journal-text"></i>
-                            </div>
-                            <div class="metric-card-mini-content">
-                                <div class="metric-card-mini-value">@Model.RecentOperatorLogs</div>
-                                <div class="metric-card-mini-label">Operator Logs</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="metric-card-mini">
-                            <div class="metric-card-mini-icon icon-success">
-                                <i class="bi bi-droplet"></i>
-                            </div>
-                            <div class="metric-card-mini-content">
-                                <div class="metric-card-mini-value">@Model.RecentIrrigations</div>
-                                <div class="metric-card-mini-label">Irrigation Records</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="metric-card-mini">
-                            <div class="metric-card-mini-icon icon-info">
-                                <i class="bi bi-water"></i>
-                            </div>
-                            <div class="metric-card-mini-content">
-                                <div class="metric-card-mini-value">@Model.RecentWWCharRecords</div>
-                                <div class="metric-card-mini-label">Wastewater Records</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="metric-card-mini">
-                            <div class="metric-card-mini-icon icon-warning">
-                                <i class="bi bi-droplet-half"></i>
-                            </div>
-                            <div class="metric-card-mini-content">
-                                <div class="metric-card-mini-value">@Model.RecentGWMonitRecords</div>
-                                <div class="metric-card-mini-label">Groundwater Records</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>System Status
+                </h5>
+                <ul class="list-unstyled mb-0">
+                    @foreach (var sys in Model.SystemStatuses)
+                    {
+                        <li class="d-flex justify-content-between align-items-center py-2 @(sys != Model.SystemStatuses.Last() ? "border-bottom border-light" : "")">
+                            <span class="text-dark">@sys.SystemName</span>
+                            <span class="@(sys.IsNormalOrOperational ? "dashboard-status-tag-dark" : "dashboard-status-tag-light") dashboard-status-tag rounded px-2 py-1 small flex-shrink-0 ms-2">@sys.Status</span>
+                        </li>
+                    }
+                </ul>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
-        // Animate circular progress indicators on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const progressCircles = document.querySelectorAll('.progress-circle-fill');
-            const circumference = 2 * Math.PI * 64;
-            
-            progressCircles.forEach(function(circle, index) {
-                const percent = parseFloat(circle.getAttribute('data-percent')) || 0;
-                const offset = circumference - (percent / 100 * circumference);
-                
-                // Reset to full circumference for animation start
-                circle.style.strokeDashoffset = circumference;
-                
-                // Animate to target value with staggered delay
-                setTimeout(function() {
-                    circle.style.transition = 'stroke-dashoffset 1.2s ease-out';
-                    circle.style.strokeDashoffset = offset;
-                }, 150 + (index * 100));
+        (function() {
+            const primaryColor = '#2563eb';
+            const dangerColor = '#dc3545';
+            const warningColor = '#fd7e14';
+            const infoColor = '#17a2b8';
+            const successColor = '#28a745';
+            const greenTeal = '#14b8a6';
+            const greenTealDark = '#0d9488';
+
+            document.addEventListener('DOMContentLoaded', function() {
+                // 1. Irrigation Compliance (doughnut) - greenish-teal for Compliant
+                const compliantPercent = @Model.IrrigationCompliance.CompliantPercent;
+                const underReviewPercent = @Model.IrrigationCompliance.UnderReviewPercent;
+                const nonCompliantPercent = @Model.IrrigationCompliance.NonCompliantPercent;
+                const totalPie = compliantPercent + underReviewPercent + nonCompliantPercent;
+                const pieData = totalPie > 0 ? [compliantPercent, underReviewPercent, nonCompliantPercent] : [100, 0, 0];
+                new Chart(document.getElementById('chartIrrigationCompliance'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Compliant', 'Under Review', 'Non-Compliant'],
+                        datasets: [{
+                            data: pieData,
+                            backgroundColor: [greenTeal, warningColor, dangerColor],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        cutout: '70%',
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                // 2. Operational Efficiency - vertical bar chart (2 dates, 2 tall green-teal bars, Y 0-1, dashed grid)
+                let effDates = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.OperationalEfficiencyByDate?.Select(x => x.DateLabel).ToList() ?? new List<string>()));
+                let effValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.OperationalEfficiencyByDate?.Select(x => x.Value).ToList() ?? new List<double>()));
+                if (!effDates || effDates.length === 0) { effDates = ['No data', '—']; effValues = [0, 0]; }
+                if (effDates.length === 1) { effDates.push('—'); effValues.push(1); }
+                new Chart(document.getElementById('chartOperationalEfficiency'), {
+                    type: 'bar',
+                    data: {
+                        labels: effDates,
+                        datasets: [{
+                            label: 'Uptime',
+                            data: effValues,
+                            backgroundColor: greenTeal,
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'x',
+                        scales: {
+                            y: {
+                                min: 0,
+                                max: 1,
+                                ticks: { stepSize: 0.25 },
+                                grid: { color: 'rgba(0,0,0,0.08)', borderDash: [4, 2] }
+                            },
+                            x: {
+                                grid: { display: true, color: 'rgba(0,0,0,0.08)', borderDash: [4, 2] }
+                            }
+                        },
+                        plugins: { legend: { display: false } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+
+                // 3. Wastewater Trends (line) - fallback when no data
+                let wwPeriods = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WastewaterTrends?.Select(x => x.PeriodLabel).ToList() ?? new List<string>()));
+                let wwBod5 = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WastewaterTrends?.Select(x => x.AvgBOD5 ?? 0m).ToList() ?? new List<decimal>()));
+                let wwTss = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WastewaterTrends?.Select(x => x.AvgTSS ?? 0m).ToList() ?? new List<decimal>()));
+                if (!wwPeriods || wwPeriods.length === 0) {
+                    wwPeriods = ['No data'];
+                    wwBod5 = [0];
+                    wwTss = [0];
+                }
+                new Chart(document.getElementById('chartWastewaterTrends'), {
+                    type: 'line',
+                    data: {
+                        labels: wwPeriods,
+                        datasets: [
+                            { label: 'Avg BOD5 (mg/L)', data: wwBod5, borderColor: dangerColor, backgroundColor: 'transparent', pointStyle: 'diamond', pointRadius: 5, tension: 0.2 },
+                            { label: 'Avg TSS (mg/L)', data: wwTss, borderColor: primaryColor, backgroundColor: 'transparent', pointStyle: 'circle', pointRadius: 5, tension: 0.2 }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            y: { min: 0, suggestedMax: 16, grid: { color: 'rgba(0,0,0,0.06)' } },
+                            x: { grid: { color: 'rgba(0,0,0,0.06)' } }
+                        },
+                        plugins: { legend: { display: false } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+
+                // 4. Groundwater Overview (bar by well) - fallback when no data
+                let gwWells = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.GroundwaterOverview?.ByWell?.Select(x => x.WellId).ToList() ?? new List<string>()));
+                let gwPh = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.GroundwaterOverview?.ByWell?.Select(x => x.PH ?? 0m).ToList() ?? new List<decimal>()));
+                if (!gwWells || gwWells.length === 0) {
+                    gwWells = ['No data'];
+                    gwPh = [0];
+                }
+                new Chart(document.getElementById('chartGroundwaterOverview'), {
+                    type: 'bar',
+                    data: {
+                        labels: gwWells,
+                        datasets: [{ label: 'pH', data: gwPh, backgroundColor: primaryColor, borderWidth: 0 }]
+                    },
+                    options: {
+                        indexAxis: 'x',
+                        scales: {
+                            y: { min: 0, max: 8, ticks: { stepSize: 2 }, grid: { color: 'rgba(0,0,0,0.06)' } },
+                            x: { grid: { display: false } }
+                        },
+                        plugins: { legend: { display: false } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
             });
-        });
+        })();
     </script>
 }
-

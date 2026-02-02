@@ -361,4 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/SAM/bin/Debug/net8.0
+/SAM/bin/Release/net8.0
+/SAM/obj
 /SAM/.config
+/SAM/Properties/PublishProfiles
+/.vs/SAM/v17
+/.vs/SAM/config
+/.vs
+/SAM/SAM.csproj.user
