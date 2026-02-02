@@ -61,7 +61,7 @@
     --border-accent: rgba(37, 99, 235, 0.12);
     --divider-color: rgba(0, 0, 0, 0.06);
     /* Text Colors */
-    --text-primary: #51585f;
+    --text-primary: #181818!important;
     --text-secondary: #4b5563;
     --text-muted: #6b7280;
     --text-light: #9ca3af;
@@ -563,28 +563,23 @@ small {
 
 .table > thead {
   vertical-align: bottom;
-  background: linear-gradient(180deg, var(--gray-50) 0%, rgba(249, 250, 251, 0.9) 100%);
+  background-color: var(--gray-100);
   font-weight: var(--font-weight-semibold);
-  position: relative;
-}
-
-.table > thead::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--border-color-dark), transparent);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .table > thead th {
-/*  border-bottom: 2px solid var(--border-color-dark);*/
   color: var(--text-primary);
-/*  padding: 1rem 0.75rem;*/
   font-size: var(--font-size-sm);
-/*  text-transform: uppercase;*/
   letter-spacing: 0.05em;
+}
+
+.table > thead th:first-child {
+  text-align: left;
+}
+
+.table > thead th:not(:first-child) {
+  text-align: center;
 }
 
 .table > tbody {
@@ -594,24 +589,31 @@ small {
 .table > tbody tr {
   transition: var(--transition-fast);
   border-bottom: 1px solid var(--border-color);
+  background-color: transparent;
 }
 
 .table > tbody tr:hover {
-  background-color: rgba(37, 99, 235, 0.03);
-  box-shadow: inset 4px 0 0 var(--primary);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 .table > tbody tr:nth-of-type(even) {
-  background-color: rgba(247, 248, 250, 0.6);
+  background-color: transparent;
+}
+
+.table > tbody td:first-child {
+  text-align: left;
+}
+
+.table > tbody td:not(:first-child) {
+  text-align: center;
 }
 
 .table.table-striped > tbody > tr:nth-of-type(odd) {
-  background-color: rgba(247, 248, 250, 0.6);
+  background-color: transparent;
 }
 
 .table.table-hover > tbody > tr:hover {
-  background-color: rgba(37, 99, 235, 0.04);
-  box-shadow: inset 4px 0 0 var(--primary);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 .table.table-bordered {
@@ -641,16 +643,25 @@ small {
 .table-actions {
   white-space: nowrap;
   width: 1%;
+  text-align: center;
 }
 
 .table-actions .btn {
-  padding: 0.25rem 0.5rem;
+  padding: 0.2rem 0.45rem;
   font-size: var(--font-size-sm);
   margin-right: 0.25rem;
 }
 
 .table-actions .btn:last-child {
   margin-right: 0;
+}
+
+.table td .badge {
+  background-color: #e5e7eb;
+  color: var(--text-primary);
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  font-weight: 500;
 }
 
 /* ============================================
@@ -741,13 +752,12 @@ small {
 }
 
 .card:hover {
-  box-shadow: var(--elevation-3);
-  transform: translateY(-2px);
-  border-color: var(--border-accent);
+  box-shadow: var(--elevation-2);
+  border-color: var(--border-color);
 }
 
 .card:hover::before {
-  opacity: 1;
+  opacity: 0;
 }
 
 .card-header {
@@ -1235,6 +1245,115 @@ small {
 .stat-card.stat-card-info:hover {
   background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
   box-shadow: 0 10px 25px rgba(6, 182, 212, 0.4), var(--elevation-4);
+}
+
+/* ============================================
+   Dashboard (pixel-perfect from screenshots)
+   ============================================ */
+.dashboard-kpi-card {
+  background-color: #fff;
+  transition: box-shadow 0.15s ease-in-out;
+}
+.dashboard-kpi-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+.dashboard-kpi-card .card-body {
+  padding: 1.25rem 1.25rem;
+  position: relative;
+}
+.dashboard-kpi-icon {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+.dashboard-kpi-card .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+.dashboard-kpi-card .stat-value {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+.dashboard-kpi-card .stat-desc {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+/* Chart cards: white, rounded, shadow, consistent */
+.dashboard-chart-card {
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+}
+.dashboard-chart-card .card-header {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.dashboard-chart-card .card-body {
+  padding: 1.25rem;
+}
+/* Equal-height chart area for all 4 cards */
+.dashboard-chart-wrap {
+  height: 200px;
+  position: relative;
+  width: 100%;
+  max-width: 85%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.dashboard-chart-wrap canvas {
+  max-height: 200px;
+}
+.dashboard-chart-wrap-tall {
+  height: 260px;
+  max-width: 85%;
+}
+.dashboard-chart-wrap-tall canvas {
+  max-height: 260px;
+}
+.dashboard-legend-normal {
+  background-color: #14b8a6;
+}
+
+.dashboard-summary-box {
+  background-color: #f3f4f6;
+  min-width: 100px;
+  border-radius: 0.375rem;
+}
+.dashboard-uptime-strip {
+  background-color: #ccfbf1;
+  border-radius: 0.375rem;
+}
+.dashboard-metric-box-blue {
+  background-color: #e8f4fd;
+}
+.dashboard-metric-box-green {
+  background-color: #eaf7eb;
+}
+
+/* Recent Activity / System Status tags (pixel-perfect) */
+.dashboard-status-tag {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.dashboard-status-tag-dark {
+  background-color: #111827;
+  color: #fff;
+}
+.dashboard-status-tag-light {
+  background-color: #e5e7eb;
+  color: #111827;
 }
 
 /* ============================================
@@ -3119,4 +3238,90 @@ small {
   flex: 1;
   width: 100%;
   align-items: stretch;
+}
+
+/* ============================================
+   System Admin Tabs - Card-Based Design
+   ============================================ */
+.system-admin-tabs {
+  margin-bottom: 2rem;
+}
+
+.system-admin-tabs-container {
+  display: flex;
+/*  gap: 1rem;*/
+  flex-wrap: wrap;
+  width:100%;
+}
+
+.system-admin-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem;
+  text-decoration: none;
+  border-radius: 0.75rem;
+  background-color: transparent;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  flex:1;
+}
+
+.system-admin-tab-icon {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+  color: var(--gray-500);
+  transition: color 0.2s ease-in-out;
+}
+
+.system-admin-tab-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-600);
+  text-align: center;
+  transition: color 0.2s ease-in-out;
+}
+
+.system-admin-tab:hover {
+  background-color: var(--gray-100);
+}
+
+.system-admin-tab:hover .system-admin-tab-icon,
+.system-admin-tab:hover .system-admin-tab-label {
+  color: var(--gray-700);
+}
+
+.system-admin-tab.active {
+  background-color: var(--white);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+}
+
+.system-admin-tab.active .system-admin-tab-icon,
+.system-admin-tab.active .system-admin-tab-label {
+  color: var(--gray-800);
+}
+
+/* Responsive adjustments for System Admin Tabs */
+@media (max-width: 768px) {
+  .system-admin-tabs-container {
+/*    gap: 0.75rem;*/
+  }
+  
+  .system-admin-tab {
+    min-width: 100px;
+    padding: 1.25rem 1rem;
+  }
+  
+  .system-admin-tab-icon {
+    font-size: 1.75rem;
+  }
+  
+  .system-admin-tab-label {
+    font-size: 0.8125rem;
+  }
+}
+.dropdown-item.active, .dropdown-item:active{
+    color:var(--primary);
 }

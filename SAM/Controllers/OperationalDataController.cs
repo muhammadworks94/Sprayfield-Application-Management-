@@ -62,7 +62,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -138,7 +139,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -329,7 +331,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -416,7 +419,8 @@ namespace SAM.Controllers;
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // For non-global users, default company from their context when not provided
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -625,7 +629,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -716,7 +721,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -933,7 +939,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -1041,7 +1048,8 @@ namespace SAM.Controllers;
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // If a non-global user, default to their company when no company is specified
-        if (!companyId.HasValue && !isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Set company ID if not provided (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -1282,7 +1290,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -1296,7 +1305,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }
@@ -1323,7 +1333,8 @@ namespace SAM.Controllers;
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
         var companies = await _companyService.GetAllAsync();
 
-        if (!isGlobalAdmin && effectiveCompanyId.HasValue)
+        // Filter by effective company ID if session has a selection (for admins) or user has a company
+        if (effectiveCompanyId.HasValue)
         {
             companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
         }
@@ -1336,7 +1347,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        if (!isGlobalAdmin && !companyId.HasValue && effectiveCompanyId.HasValue)
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
         }

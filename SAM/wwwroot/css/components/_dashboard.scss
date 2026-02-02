@@ -1,0 +1,110 @@
+// ============================================
+// Dashboard-specific styles (pixel-perfect)
+// ============================================
+
+.dashboard-kpi-card {
+  background-color: #fff;
+  transition: box-shadow 0.15s ease-in-out;
+  &:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  }
+  .card-body {
+    padding: 1.25rem;
+    position: relative;
+  }
+  .dashboard-kpi-icon {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+  .stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+  .stat-value {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.2;
+  }
+  .stat-desc {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+}
+
+.dashboard-chart-card {
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  .card-header {
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .card-body {
+    padding: 1.25rem;
+  }
+}
+
+.dashboard-chart-wrap {
+  height: 200px;
+  position: relative;
+  width: 100%;
+  max-width: 85%;
+  margin-left: auto;
+  margin-right: auto;
+  canvas {
+    max-height: 200px;
+  }
+}
+.dashboard-chart-wrap-tall {
+  height: 260px;
+  max-width: 85%;
+  canvas {
+    max-height: 260px;
+  }
+}
+.dashboard-legend-normal {
+  background-color: #14b8a6;
+}
+
+.dashboard-summary-box {
+  background-color: #f3f4f6;
+  min-width: 100px;
+  border-radius: 0.375rem;
+}
+
+.dashboard-uptime-strip {
+  background-color: #ccfbf1;
+  border-radius: 0.375rem;
+}
+
+.dashboard-metric-box-blue {
+  background-color: #e8f4fd;
+}
+
+.dashboard-metric-box-green {
+  background-color: #eaf7eb;
+}
+
+.dashboard-status-tag {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.dashboard-status-tag-dark {
+  background-color: #111827;
+  color: #fff;
+}
+.dashboard-status-tag-light {
+  background-color: #e5e7eb;
+  color: #111827;
+}

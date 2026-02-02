@@ -1,9 +1,8 @@
-@model IEnumerable<SAM.ViewModels.SystemAdmin.FacilityViewModel>
+@model SAM.ViewModels.SystemAdmin.FacilitiesPartialViewModel
 @{
-    ViewData["Title"] = "Facilities";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+    var isGlobalAdmin = Model.IsGlobalAdmin;
+    var companies = Model.Companies;
+    var selectedCompanyId = Model.SelectedCompanyId;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -28,21 +27,18 @@
         </a>
     </div>
 </div>
-
-@{
-    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
-}
-@if (filterViewModel != null)
+@* 
+@if (Model.Filter != null)
 {
-    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
-}
+    @await Html.PartialAsync("Partials/_Filter", Model.Filter)
+} *@
 
 <div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Facility List</h5>
     </div>
     <div class="card-body">
-        @if (Model.Any())
+        @if (Model.Facilities.Any())
         {
             <div id="facilitiesTableView" class="table-responsive">
                 <table class="table table-hover">
@@ -61,7 +57,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var facility in Model)
+                        @foreach (var facility in Model.Facilities)
                         {
                             <tr>
                                 <td>
@@ -96,21 +92,21 @@
             </div>
 
             <div id="facilitiesCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var facility in Model)
+                @foreach (var facility in Model.Facilities)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
                             <div class="card-header-light d-flex justify-content-between">
                                 
-                                    <h6 class="mb-0">
-                                        <a asp-action="FacilityDetails" asp-route-id="@facility.Id" class="text-decoration-none">
-                                            @facility.Name
-                                        </a>
-                                    </h6>
-                                    <small class="text-muted">
-                                        <i class="bi bi-file-text me-1"></i>@facility.PermitNumber
-                                    </small>
-                            </div>
+                                <h6 class="mb-0">
+                                    <a asp-action="FacilityDetails" asp-route-id="@facility.Id" class="text-decoration-none">
+                                        @facility.Name
+                                    </a>
+                                </h6>
+                                <small class="text-muted">
+                                    <i class="bi bi-file-text me-1"></i>@facility.PermitNumber
+                                </small>
+                        </div>
                             <div class="card-body d-flex flex-column">
 
                                 <dl class="row small mb-3">
@@ -180,65 +176,64 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const deleteModal = document.getElementById('deleteFacilityModal');
-            if (deleteModal) {
-                deleteModal.addEventListener('show.bs.modal', function(event) {
-                    const button = event.relatedTarget;
-                    const facilityId = button.getAttribute('data-facility-id');
-                    const facilityName = button.getAttribute('data-facility-name');
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteFacilityModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const facilityId = button.getAttribute('data-facility-id');
+                const facilityName = button.getAttribute('data-facility-name');
 
-                    const facilityNameElement = deleteModal.querySelector('#deleteFacilityName');
-                    if (facilityNameElement) {
-                        facilityNameElement.textContent = facilityName;
-                    }
-
-                    const form = deleteModal.querySelector('#deleteFacilityForm');
-                    if (form) {
-                        const baseUrl = '@Url.Action("FacilityDelete", "SystemAdmin")';
-                        form.action = baseUrl + '/' + facilityId;
-                    }
-                });
-            }
-
-            const tableBtn = document.getElementById('facilitiesTableViewBtn');
-            const cardBtn = document.getElementById('facilitiesCardViewBtn');
-            const tableView = document.getElementById('facilitiesTableView');
-            const cardView = document.getElementById('facilitiesCardView');
-            const storageKey = 'facilitiesViewMode';
-
-            function setViewMode(mode) {
-                const isTable = mode === 'table';
-
-                if (isTable) {
-                    tableView?.classList.remove('d-none');
-                    cardView?.classList.add('d-none');
-                    tableBtn?.classList.add('active');
-                    cardBtn?.classList.remove('active');
-                } else {
-                    tableView?.classList.add('d-none');
-                    cardView?.classList.remove('d-none');
-                    tableBtn?.classList.remove('active');
-                    cardBtn?.classList.add('active');
+                const facilityNameElement = deleteModal.querySelector('#deleteFacilityName');
+                if (facilityNameElement) {
+                    facilityNameElement.textContent = facilityName;
                 }
 
-                if (window.localStorage) {
-                    localStorage.setItem(storageKey, mode);
+                const form = deleteModal.querySelector('#deleteFacilityForm');
+                if (form) {
+                    const baseUrl = '@Url.Action("FacilityDelete", "SystemAdmin")';
+                    form.action = baseUrl + '/' + facilityId;
                 }
+            });
+        }
+
+        const tableBtn = document.getElementById('facilitiesTableViewBtn');
+        const cardBtn = document.getElementById('facilitiesCardViewBtn');
+        const tableView = document.getElementById('facilitiesTableView');
+        const cardView = document.getElementById('facilitiesCardView');
+        const storageKey = 'viewMode';
+
+        function setViewMode(mode) {
+            const isTable = mode === 'table';
+
+            if (isTable) {
+                tableView?.classList.remove('d-none');
+                cardView?.classList.add('d-none');
+                tableBtn?.classList.add('active');
+                cardBtn?.classList.remove('active');
+            } else {
+                tableView?.classList.add('d-none');
+                cardView?.classList.remove('d-none');
+                tableBtn?.classList.remove('active');
+                cardBtn?.classList.add('active');
             }
 
-            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
-            setViewMode(savedMode === 'card' ? 'card' : 'table');
+            if (window.localStorage) {
+                localStorage.setItem(storageKey, mode);
+            }
+        }
 
-            tableBtn?.addEventListener('click', function () {
-                setViewMode('table');
-            });
+        const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+        setViewMode(savedMode === 'card' ? 'card' : 'table');
 
-            cardBtn?.addEventListener('click', function () {
-                setViewMode('card');
-            });
+        tableBtn?.addEventListener('click', function () {
+            setViewMode('table');
         });
-    </script>
-}
+
+        cardBtn?.addEventListener('click', function () {
+            setViewMode('card');
+        });
+    });
+</script>
+

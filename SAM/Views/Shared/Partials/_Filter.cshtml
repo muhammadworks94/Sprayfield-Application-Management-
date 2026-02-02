@@ -8,7 +8,15 @@
 {
     <div class="card mb-3">
         <div class="card-body">
-            <form method="get" id="filterForm" class="row g-3">
+            @{
+                var formAction = !string.IsNullOrEmpty(Model.ActionName) && !string.IsNullOrEmpty(Model.ControllerName)
+                    ? Url.Action(Model.ActionName, Model.ControllerName)
+                    : string.Empty;
+            }
+            <form method="get" 
+                  id="filterForm" 
+                  class="row g-3"
+                  action="@(string.IsNullOrEmpty(formAction) ? "" : formAction)">
                 @if (hasFields)
                 {
                     @foreach (var field in Model.Fields)
@@ -99,7 +107,7 @@
                     </div>
                 }
 
-                @* Preserve other query parameters *@
+                @* Preserve other query parameters (including tab parameter) *@
                 @foreach (var key in Context.Request.Query.Keys)
                 {
                     @if (key != "searchTerm" && !Model.Fields.Any(f => f.Name == key))

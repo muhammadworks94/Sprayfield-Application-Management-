@@ -1,9 +1,8 @@
-@model IEnumerable<SAM.ViewModels.SystemAdmin.MonitoringWellViewModel>
+@model SAM.ViewModels.SystemAdmin.MonitoringWellsPartialViewModel
 @{
-    ViewData["Title"] = "Monitoring Wells";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+    var isGlobalAdmin = Model.IsGlobalAdmin;
+    var companies = Model.Companies;
+    var selectedCompanyId = Model.SelectedCompanyId;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -29,20 +28,17 @@
     </div>
 </div>
 
-@{
-    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
-}
-@if (filterViewModel != null)
+@* @if (Model.Filter != null)
 {
-    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
-}
+    @await Html.PartialAsync("Partials/_Filter", Model.Filter)
+} *@
 
 <div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Monitoring Well List</h5>
     </div>
     <div class="card-body">
-        @if (Model.Any())
+        @if (Model.MonitoringWells.Any())
         {
             <div id="monitoringWellsTableView" class="table-responsive">
                 <table class="table table-hover">
@@ -60,7 +56,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var well in Model)
+                        @foreach (var well in Model.MonitoringWells)
                         {
                             <tr>
                                 <td>
@@ -92,7 +88,7 @@
             </div>
 
             <div id="monitoringWellsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var well in Model)
+                @foreach (var well in Model.MonitoringWells)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
@@ -148,7 +144,7 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal (Outside Table) -->
+<!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteMonitoringWellModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -170,65 +166,64 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const deleteModal = document.getElementById('deleteMonitoringWellModal');
-            if (deleteModal) {
-                deleteModal.addEventListener('show.bs.modal', function(event) {
-                    const button = event.relatedTarget;
-                    const wellId = button.getAttribute('data-well-id');
-                    const wellName = button.getAttribute('data-well-name');
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteMonitoringWellModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const wellId = button.getAttribute('data-well-id');
+                const wellName = button.getAttribute('data-well-name');
 
-                    const wellNameElement = deleteModal.querySelector('#deleteWellName');
-                    if (wellNameElement) {
-                        wellNameElement.textContent = wellName;
-                    }
-
-                    const form = deleteModal.querySelector('#deleteWellForm');
-                    if (form) {
-                        const baseUrl = '@Url.Action("MonitoringWellDelete", "SystemAdmin")';
-                        form.action = baseUrl + '/' + wellId;
-                    }
-                });
-            }
-
-            const tableBtn = document.getElementById('monitoringWellsTableViewBtn');
-            const cardBtn = document.getElementById('monitoringWellsCardViewBtn');
-            const tableView = document.getElementById('monitoringWellsTableView');
-            const cardView = document.getElementById('monitoringWellsCardView');
-            const storageKey = 'monitoringWellsViewMode';
-
-            function setViewMode(mode) {
-                const isTable = mode === 'table';
-
-                if (isTable) {
-                    tableView?.classList.remove('d-none');
-                    cardView?.classList.add('d-none');
-                    tableBtn?.classList.add('active');
-                    cardBtn?.classList.remove('active');
-                } else {
-                    tableView?.classList.add('d-none');
-                    cardView?.classList.remove('d-none');
-                    tableBtn?.classList.remove('active');
-                    cardBtn?.classList.add('active');
+                const wellNameElement = deleteModal.querySelector('#deleteWellName');
+                if (wellNameElement) {
+                    wellNameElement.textContent = wellName;
                 }
 
-                if (window.localStorage) {
-                    localStorage.setItem(storageKey, mode);
+                const form = deleteModal.querySelector('#deleteWellForm');
+                if (form) {
+                    const baseUrl = '@Url.Action("MonitoringWellDelete", "SystemAdmin")';
+                    form.action = baseUrl + '/' + wellId;
                 }
+            });
+        }
+
+        const tableBtn = document.getElementById('monitoringWellsTableViewBtn');
+        const cardBtn = document.getElementById('monitoringWellsCardViewBtn');
+        const tableView = document.getElementById('monitoringWellsTableView');
+        const cardView = document.getElementById('monitoringWellsCardView');
+        const storageKey = 'viewMode';
+
+        function setViewMode(mode) {
+            const isTable = mode === 'table';
+
+            if (isTable) {
+                tableView?.classList.remove('d-none');
+                cardView?.classList.add('d-none');
+                tableBtn?.classList.add('active');
+                cardBtn?.classList.remove('active');
+            } else {
+                tableView?.classList.add('d-none');
+                cardView?.classList.remove('d-none');
+                tableBtn?.classList.remove('active');
+                cardBtn?.classList.add('active');
             }
 
-            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
-            setViewMode(savedMode === 'card' ? 'card' : 'table');
+            if (window.localStorage) {
+                localStorage.setItem(storageKey, mode);
+            }
+        }
 
-            tableBtn?.addEventListener('click', function () {
-                setViewMode('table');
-            });
+        const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+        setViewMode(savedMode === 'card' ? 'card' : 'table');
 
-            cardBtn?.addEventListener('click', function () {
-                setViewMode('card');
-            });
+        tableBtn?.addEventListener('click', function () {
+            setViewMode('table');
         });
-    </script>
-}
+
+        cardBtn?.addEventListener('click', function () {
+            setViewMode('card');
+        });
+    });
+</script>
+

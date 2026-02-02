@@ -102,14 +102,30 @@ public abstract class BaseController : Controller
 
     /// <summary>
     /// Gets the effective company ID for the current user.
-    /// Returns the user's CompanyId, or null if they are a global admin.
+    /// For global admins, checks session for selected company context.
+    /// Returns the user's CompanyId for non-admins.
     /// </summary>
     protected async Task<Guid?> GetEffectiveCompanyIdAsync()
     {
+        // For global admins, check session first for company context
         if (await IsGlobalAdminAsync())
-            return null; // Global admins can see all companies
+        {
+            var sessionCompanyId = GetSelectedCompanyIdFromSession();
+            if (sessionCompanyId.HasValue)
+                return sessionCompanyId.Value;
+            return null; // "All Companies" - no filter
+        }
 
+        // Non-admins use their own company
         return await GetCurrentCompanyIdAsync();
+    }
+
+    /// <summary>
+    /// Gets the selected company ID from session (for admins).
+    /// </summary>
+    protected Guid? GetSelectedCompanyIdFromSession()
+    {
+        return CompanyContextController.GetSelectedCompanyIdFromSession(HttpContext.Session);
     }
 }
 

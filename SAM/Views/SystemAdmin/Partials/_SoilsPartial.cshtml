@@ -1,9 +1,8 @@
-@model IEnumerable<SAM.ViewModels.SystemAdmin.SoilViewModel>
+@model SAM.ViewModels.SystemAdmin.SoilsPartialViewModel
 @{
-    ViewData["Title"] = "Soil Types";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
+    var isGlobalAdmin = Model.IsGlobalAdmin;
+    var companies = Model.Companies;
+    var selectedCompanyId = Model.SelectedCompanyId;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -29,20 +28,17 @@
     </div>
 </div>
 
-@{
-    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
-}
-@if (filterViewModel != null)
+@* @if (Model.Filter != null)
 {
-    @await Html.PartialAsync("Partials/_Filter", filterViewModel)
-}
+    @await Html.PartialAsync("Partials/_Filter", Model.Filter)
+} *@
 
 <div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-list-ul"></i> Soil Types List</h5>
     </div>
     <div class="card-body">
-        @if (Model.Any())
+        @if (Model.Soils.Any())
         {
             <div id="soilsTableView" class="table-responsive">
                 <table class="table table-hover">
@@ -59,7 +55,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var soil in Model)
+                        @foreach (var soil in Model.Soils)
                         {
                             <tr>
                                 <td>@soil.TypeName</td>
@@ -88,7 +84,7 @@
             </div>
 
             <div id="soilsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var soil in Model)
+                @foreach (var soil in Model.Soils)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
@@ -140,7 +136,7 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal (Outside Table) -->
+<!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteSoilModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -162,65 +158,64 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const deleteModal = document.getElementById('deleteSoilModal');
-            if (deleteModal) {
-                deleteModal.addEventListener('show.bs.modal', function(event) {
-                    const button = event.relatedTarget;
-                    const soilId = button.getAttribute('data-soil-id');
-                    const soilName = button.getAttribute('data-soil-name');
-                    
-                    const soilNameElement = deleteModal.querySelector('#deleteSoilName');
-                    if (soilNameElement) {
-                        soilNameElement.textContent = soilName;
-                    }
-                    
-                    const form = deleteModal.querySelector('#deleteSoilForm');
-                    if (form) {
-                        const baseUrl = '@Url.Action("SoilDelete", "SystemAdmin")';
-                        form.action = baseUrl + '/' + soilId;
-                    }
-                });
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteSoilModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const soilId = button.getAttribute('data-soil-id');
+                const soilName = button.getAttribute('data-soil-name');
+                
+                const soilNameElement = deleteModal.querySelector('#deleteSoilName');
+                if (soilNameElement) {
+                    soilNameElement.textContent = soilName;
+                }
+                
+                const form = deleteModal.querySelector('#deleteSoilForm');
+                if (form) {
+                    const baseUrl = '@Url.Action("SoilDelete", "SystemAdmin")';
+                    form.action = baseUrl + '/' + soilId;
+                }
+            });
+        }
+
+        const tableBtn = document.getElementById('soilsTableViewBtn');
+        const cardBtn = document.getElementById('soilsCardViewBtn');
+        const tableView = document.getElementById('soilsTableView');
+        const cardView = document.getElementById('soilsCardView');
+        const storageKey = 'viewMode';
+
+        function setViewMode(mode) {
+            const isTable = mode === 'table';
+
+            if (isTable) {
+                tableView?.classList.remove('d-none');
+                cardView?.classList.add('d-none');
+                tableBtn?.classList.add('active');
+                cardBtn?.classList.remove('active');
+            } else {
+                tableView?.classList.add('d-none');
+                cardView?.classList.remove('d-none');
+                tableBtn?.classList.remove('active');
+                cardBtn?.classList.add('active');
             }
 
-            const tableBtn = document.getElementById('soilsTableViewBtn');
-            const cardBtn = document.getElementById('soilsCardViewBtn');
-            const tableView = document.getElementById('soilsTableView');
-            const cardView = document.getElementById('soilsCardView');
-            const storageKey = 'soilsViewMode';
-
-            function setViewMode(mode) {
-                const isTable = mode === 'table';
-
-                if (isTable) {
-                    tableView?.classList.remove('d-none');
-                    cardView?.classList.add('d-none');
-                    tableBtn?.classList.add('active');
-                    cardBtn?.classList.remove('active');
-                } else {
-                    tableView?.classList.add('d-none');
-                    cardView?.classList.remove('d-none');
-                    tableBtn?.classList.remove('active');
-                    cardBtn?.classList.add('active');
-                }
-
-                if (window.localStorage) {
-                    localStorage.setItem(storageKey, mode);
-                }
+            if (window.localStorage) {
+                localStorage.setItem(storageKey, mode);
             }
+        }
 
-            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
-            setViewMode(savedMode === 'card' ? 'card' : 'table');
+        const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+        setViewMode(savedMode === 'card' ? 'card' : 'table');
 
-            tableBtn?.addEventListener('click', function () {
-                setViewMode('table');
-            });
-
-            cardBtn?.addEventListener('click', function () {
-                setViewMode('card');
-            });
+        tableBtn?.addEventListener('click', function () {
+            setViewMode('table');
         });
-    </script>
-}
+
+        cardBtn?.addEventListener('click', function () {
+            setViewMode('card');
+        });
+    });
+</script>
+

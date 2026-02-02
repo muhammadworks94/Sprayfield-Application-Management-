@@ -301,7 +301,7 @@ public class NDAR1Service : INDAR1Service
         }
 
         // Aggregate daily irrigation data by field
-        var fieldIrrigations = new Dictionary<Guid?, List<Irrigate>>();
+        var fieldIrrigations = new Dictionary<Guid, List<Irrigate>>();
         foreach (var irrigation in irrigations)
         {
             if (!fieldIrrigations.ContainsKey(irrigation.SprayfieldId))
@@ -353,7 +353,7 @@ public class NDAR1Service : INDAR1Service
         return report;
     }
 
-    private void ProcessFieldData(Guid? fieldId, Dictionary<Guid?, List<Irrigate>> fieldIrrigations,
+    private void ProcessFieldData(Guid? fieldId, Dictionary<Guid, List<Irrigate>> fieldIrrigations,
         List<decimal?> volumeDaily, List<decimal?> timeDaily, List<decimal?> loadingDaily,
         List<decimal?> maxHourlyLoadingDaily, DateTime startDate, int daysInMonth)
     {

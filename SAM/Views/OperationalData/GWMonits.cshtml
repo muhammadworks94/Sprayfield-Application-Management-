@@ -95,19 +95,19 @@
                 <table class="table table-hover gwmonits-table">
                     <thead>
                         <tr>
-                            <th><i class="bi bi-calendar"></i> Sample Date</th>
-                            <th><i class="bi bi-building"></i> Facility</th>
-                            <th><i class="bi bi-droplet-half"></i> Well ID</th>
-                            <th><i class="bi bi-rulers"></i> Sample Depth</th>
-                            <th><i class="bi bi-water"></i> Water Level</th>
-                            <th><i class="bi bi-thermometer"></i> pH</th>
-                            <th><i class="bi bi-thermometer-half"></i> Temperature</th>
-                            <th><i class="bi bi-lightning"></i> Conductivity</th>
+                            <th> Sample Date</th>
+                            <th> Facility</th>
+                            <th> Well ID</th>
+                            @* <th><i class="bi bi-rulers"></i> Sample Depth</th> *@
+                            @* <th><i class="bi bi-water"></i> Water Level</th> *@
+                            <th> pH</th>
+                            @* <th><i class="bi bi-thermometer-half"></i> Temperature</th> *@
+                            <th> Conductivity</th>
                             @if (isGlobalAdmin)
                             {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
+                                <th> Company</th>
                             }
-                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                            <th class="table-actions"> Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -121,10 +121,10 @@
                                 </td>
                                 <td>@gwMonit.FacilityName</td>
                                 <td>@gwMonit.MonitoringWellName</td>
-                                <td>@(gwMonit.SampleDepth?.ToString("F2") ?? "N/A")</td>
-                                <td>@(gwMonit.WaterLevel?.ToString("F2") ?? "N/A")</td>
+                                @* <td>@(gwMonit.SampleDepth?.ToString("F2") ?? "N/A")</td> *@
+                                @* <td>@(gwMonit.WaterLevel?.ToString("F2") ?? "N/A")</td> *@
                                 <td>@(gwMonit.PH?.ToString("F2") ?? "N/A")</td>
-                                <td>@(gwMonit.Temperature?.ToString("F1") ?? "N/A")</td>
+                                @* <td>@(gwMonit.Temperature?.ToString("F1") ?? "N/A")</td> *@
                                 <td>@(gwMonit.Conductivity?.ToString("F2") ?? "N/A")</td>
                                 @if (isGlobalAdmin)
                                 {
@@ -283,7 +283,7 @@
             const cardBtn = document.getElementById('gwmonitsCardViewBtn');
             const tableView = document.getElementById('gwmonitsTableView');
             const cardView = document.getElementById('gwmonitsCardView');
-            const storageKey = 'gwmonitsViewMode';
+            const storageKey = 'viewMode';
 
             function setViewMode(mode) {
                 const isTable = mode === 'table';

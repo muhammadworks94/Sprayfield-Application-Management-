@@ -30,6 +30,27 @@
                 <span class="nav-link-text">Dashboard</span>
             </a>
         </li>
+        <li class="nav-item" role="none">
+            <a class="nav-link" asp-controller="Analytics" asp-action="Index" role="menuitem" data-tooltip="Analytics">
+                <i class="bi bi-bar-chart-line"></i>
+                <span class="nav-link-text">Analytics</span>
+            </a>
+        </li>
+        @if (isTechnician)
+        {
+            <li class="nav-item" role="none">
+                <a class="nav-link" asp-controller="OperationalData" asp-action="WWChars" role="menuitem" data-tooltip="Wastewater Monitoring">
+                    <i class="bi bi-droplet-half"></i>
+                    <span class="nav-link-text">Wastewater Monitoring</span>
+                </a>
+            </li>
+            <li class="nav-item" role="none">
+                <a class="nav-link" asp-controller="OperationalData" asp-action="GWMonits" role="menuitem" data-tooltip="Groundwater Monitoring">
+                    <i class="bi bi-water"></i>
+                    <span class="nav-link-text">Groundwater Monitoring</span>
+                </a>
+            </li>
+        }
 
         @if (isCompanyAdmin)
         {
@@ -40,71 +61,19 @@
                     <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
                 </button>
                 <ul class="nav-dropdown" id="dropdown-system-admin" role="menu">
+                    @if (isAdmin)
+                    {
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="SystemAdmin" asp-action="Companies" role="menuitem" data-tooltip="Companies">
+                                <i class="bi bi-building"></i>
+                                <span class="nav-link-text">Companies</span>
+                            </a>
+                        </li>
+                    }
                     <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Companies" role="menuitem" data-tooltip="Companies">
-                            <i class="bi bi-building"></i>
-                            <span class="nav-link-text">Companies</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Facilities" role="menuitem" data-tooltip="Facilities">
-                            <i class="bi bi-building-fill"></i>
-                            <span class="nav-link-text">Facilities</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Soils" role="menuitem" data-tooltip="Soils">
-                            <i class="bi bi-circle"></i>
-                            <span class="nav-link-text">Soils</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Crops" role="menuitem" data-tooltip="Crops">
-                            <i class="bi bi-flower1"></i>
-                            <span class="nav-link-text">Crops</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Nozzles" role="menuitem" data-tooltip="Nozzles">
-                            <i class="bi bi-droplet"></i>
-                            <span class="nav-link-text">Nozzles</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="Sprayfields" role="menuitem" data-tooltip="Sprayfields">
-                            <i class="bi bi-grid"></i>
-                            <span class="nav-link-text">Sprayfields</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="MonitoringWells" role="menuitem" data-tooltip="Monitoring Wells">
-                            <i class="bi bi-water"></i>
-                            <span class="nav-link-text">Monitoring Wells</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-        }
-
-        @if (isTechnician)
-        {
-            <li class="nav-item nav-dropdown-item" role="none">
-                <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-monitoring" data-dropdown="monitoring" data-tooltip="Monitoring">
-                    <i class="bi bi-clipboard-data"></i>
-                    <span class="nav-link-text">Monitoring</span>
-                    <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
-                </button>
-                <ul class="nav-dropdown" id="dropdown-monitoring" role="menu">
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="OperationalData" asp-action="WWChars" role="menuitem" data-tooltip="Wastewater Monitoring">
-                            <i class="bi bi-droplet-half"></i>
-                            <span class="nav-link-text">Wastewater Monitoring</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="OperationalData" asp-action="GWMonits" role="menuitem" data-tooltip="Groundwater Monitoring">
-                            <i class="bi bi-water"></i>
-                            <span class="nav-link-text">Groundwater Monitoring</span>
+                        <a class="nav-link" asp-controller="SystemAdmin" asp-action="SystemAdmin" asp-route-tab="facilities" role="menuitem" data-tooltip="System Administration">
+                            <i class="bi bi-gear"></i>
+                            <span class="nav-link-text">System Administration</span>
                         </a>
                     </li>
                 </ul>
