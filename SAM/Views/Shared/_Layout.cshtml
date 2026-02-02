@@ -212,31 +212,117 @@
             // Enhanced active link detection with dropdown support
             function setActiveNavLink() {
                 const currentPath = window.location.pathname.toLowerCase();
+                const currentUrl = new URL(window.location.href);
                 let activeDropdown = null;
                 
                 navLinks.forEach(link => {
                     const href = link.getAttribute('href');
                     if (!href) return;
                     
-                    const linkPath = href.toLowerCase();
-                    const isActive = linkPath === currentPath || 
-                        (currentPath.startsWith(linkPath) && linkPath !== '/' && 
-                         (!currentPath[linkPath.length] || currentPath[linkPath.length] === '/'));
-                    
-                    if (isActive) {
-                        link.classList.add('active');
-                        link.setAttribute('aria-current', 'page');
+                    try {
+                        const linkUrl = new URL(href, window.location.origin);
+                        const linkPath = linkUrl.pathname.toLowerCase();
                         
-                        // Find parent dropdown and expand it
-                        const dropdownItem = link.closest('.nav-dropdown-item');
-                        if (dropdownItem) {
-                            activeDropdown = dropdownItem;
-                            dropdownItem.classList.add('has-active');
-                            toggleDropdown(dropdownItem, true);
+                        // Extract controller and action from paths for more precise matching
+                        const currentParts = currentPath.split('/').filter(p => p);
+                        const linkParts = linkPath.split('/').filter(p => p);
+                        
+                        let isActive = false;
+                        
+                        // Exact path match
+                        if (linkPath === currentPath) {
+                            isActive = true;
                         }
-                    } else {
-                        link.classList.remove('active');
-                        link.removeAttribute('aria-current');
+                        // For SystemAdmin, check if controller and action match (ignore query params)
+                        else if (currentPath.includes('/systemadmin/systemadmin') && 
+                                linkPath.includes('/systemadmin/systemadmin')) {
+                            isActive = true;
+                        }
+                        // For paths with same controller, check if action matches exactly
+                        else if (currentParts.length > 0 && linkParts.length > 0) {
+                            const currentController = currentParts[0];
+                            const currentAction = currentParts.length > 1 ? currentParts[1] : 'index';
+                            const linkController = linkParts[0];
+                            const linkAction = linkParts.length > 1 ? linkParts[1] : 'index';
+                            
+                            // If controllers match, actions must match exactly
+                            if (currentController === linkController) {
+                                // Both paths have the same controller, so actions must match exactly
+                                if (currentAction === linkAction) {
+                                    isActive = true;
+                                }
+                            }
+                        }
+                        // Fallback: check if current path starts with link path (for parent paths)
+                        else if (currentPath.startsWith(linkPath) && linkPath !== '/' && 
+                                (!currentPath[linkPath.length] || currentPath[linkPath.length] === '/')) {
+                            // Only allow this for paths that are truly parent paths
+                            // Exclude cases where both share the same controller but different actions
+                            if (currentParts.length > 0 && linkParts.length > 0) {
+                                const currentController = currentParts[0];
+                                const linkController = linkParts[0];
+                                // Only allow startsWith if controllers are different
+                                if (currentController !== linkController) {
+                                    isActive = true;
+                                }
+                            } else {
+                                isActive = true;
+                            }
+                        }
+                        
+                        if (isActive) {
+                            link.classList.add('active');
+                            link.setAttribute('aria-current', 'page');
+                            
+                            // Find parent dropdown and expand it
+                            const dropdownItem = link.closest('.nav-dropdown-item');
+                            if (dropdownItem) {
+                                activeDropdown = dropdownItem;
+                                dropdownItem.classList.add('has-active');
+                                toggleDropdown(dropdownItem, true);
+                            }
+                        } else {
+                            link.classList.remove('active');
+                            link.removeAttribute('aria-current');
+                        }
+                    } catch (e) {
+                        // Fallback to simple path comparison if URL parsing fails
+                        const linkPath = href.toLowerCase().split('?')[0];
+                        const currentParts = currentPath.split('/').filter(p => p);
+                        const linkParts = linkPath.split('/').filter(p => p);
+                        
+                        let isActive = false;
+                        
+                        if (linkPath === currentPath) {
+                            isActive = true;
+                        } else if (currentParts.length > 0 && linkParts.length > 0) {
+                            const currentController = currentParts[0];
+                            const currentAction = currentParts.length > 1 ? currentParts[1] : 'index';
+                            const linkController = linkParts[0];
+                            const linkAction = linkParts.length > 1 ? linkParts[1] : 'index';
+                            
+                            if (currentController === linkController) {
+                                // Both paths have the same controller, so actions must match exactly
+                                if (currentAction === linkAction) {
+                                    isActive = true;
+                                }
+                            }
+                        }
+                        
+                        if (isActive) {
+                            link.classList.add('active');
+                            link.setAttribute('aria-current', 'page');
+                            
+                            const dropdownItem = link.closest('.nav-dropdown-item');
+                            if (dropdownItem) {
+                                activeDropdown = dropdownItem;
+                                dropdownItem.classList.add('has-active');
+                                toggleDropdown(dropdownItem, true);
+                            }
+                        } else {
+                            link.classList.remove('active');
+                            link.removeAttribute('aria-current');
+                        }
                     }
                 });
                 

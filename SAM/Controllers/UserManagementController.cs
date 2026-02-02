@@ -41,6 +41,122 @@ public class UserManagementController : BaseController
         _userService = userService;
     }
 
+    #region Index (Combined View)
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> Index(string? tab = null, Guid? companyId = null)
+    {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+
+        // Determine default tab based on role if not specified
+        if (string.IsNullOrWhiteSpace(tab))
+        {
+            tab = isGlobalAdmin ? "users" : "requests";
+        }
+
+        // If non-admin tries to access "users" tab, redirect to "requests"
+        if (tab == "users" && !isGlobalAdmin)
+        {
+            tab = "requests";
+        }
+
+        // Use effective company ID if no companyId specified (respects session selection for admins)
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
+        {
+            companyId = effectiveCompanyId.Value;
+        }
+
+        if (companyId.HasValue)
+        {
+            await EnsureCompanyAccessAsync(companyId.Value);
+        }
+
+        // Load users data (only if admin or if tab is users)
+        var userViewModels = new List<UserViewModel>();
+        if (isGlobalAdmin)
+        {
+            IEnumerable<ApplicationUser> users;
+            if (companyId.HasValue)
+            {
+                users = await _userService.GetUsersByCompanyAsync(companyId.Value);
+            }
+            else
+            {
+                users = await _userService.GetAllUsersAsync();
+            }
+
+            foreach (var user in users)
+            {
+                var roles = await UserManager.GetRolesAsync(user);
+                userViewModels.Add(new UserViewModel
+                {
+                    Id = user.Id,
+                    Email = user.Email ?? string.Empty,
+                    FullName = user.FullName,
+                    CompanyId = user.CompanyId,
+                    CompanyName = user.Company?.Name,
+                    Roles = roles.ToList(),
+                    IsActive = user.IsActive
+                });
+            }
+        }
+
+        // Load user requests data
+        var requests = await _userRequestService.GetAllAsync(companyId);
+        var userRequestViewModels = requests.Select(r => new UserRequestViewModel
+        {
+            Id = r.Id,
+            CompanyId = r.CompanyId,
+            CompanyName = r.CompanyName,
+            FullName = r.FullName,
+            Email = r.Email,
+            AppRole = r.AppRole,
+            RequestedByEmail = r.RequestedByEmail,
+            Status = r.Status,
+            CreatedDate = r.CreatedDate
+        }).ToList();
+
+        // Create filter view model
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = tab == "users" ? "Users" : "UserRequests",
+            EnableSearch = false,
+            Fields = new List<FilterField>()
+        };
+
+        if (isGlobalAdmin)
+        {
+            var companies = await GetCompanySelectListAsync();
+            filterViewModel.Fields.Add(new FilterField
+            {
+                Name = "companyId",
+                Label = "Company",
+                Type = FilterFieldType.Dropdown,
+                Options = companies,
+                Value = companyId,
+                ColumnClass = "col-md-4",
+                IconClass = "bi bi-building"
+            });
+        }
+
+        var viewModel = new UserManagementIndexViewModel
+        {
+            Users = userViewModels,
+            UserRequests = userRequestViewModels,
+            ActiveTab = tab,
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Companies = await GetCompanySelectListAsync(),
+            FilterViewModel = filterViewModel
+        };
+
+        return View(viewModel);
+    }
+
+    #endregion
+
     #region User Requests
 
     [HttpGet]
@@ -175,7 +291,7 @@ public class UserManagementController : BaseController
 
             await _userRequestService.CreateAsync(userRequest);
             TempData["SuccessMessage"] = $"User request created successfully. The request will be reviewed by administrators.";
-            return RedirectToAction(nameof(UserRequests), new { companyId = viewModel.CompanyId });
+            return RedirectToAction(nameof(Index), new { tab = "requests", companyId = viewModel.CompanyId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -231,7 +347,7 @@ public class UserManagementController : BaseController
             var currentUser = await GetCurrentUserAsync();
             await _userRequestService.ApproveRequestAsync(viewModel.Id, currentUser?.Email ?? CurrentUserEmail ?? "unknown", viewModel.AppRole);
             TempData["SuccessMessage"] = $"User request approved. {viewModel.AppRole} account created for {viewModel.FullName}.";
-            return RedirectToAction(nameof(UserRequests));
+            return RedirectToAction(nameof(Index), new { tab = "requests" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -251,7 +367,7 @@ public class UserManagementController : BaseController
             var currentUser = await GetCurrentUserAsync();
             await _userRequestService.RejectRequestAsync(id, currentUser?.Email ?? CurrentUserEmail ?? "unknown", reason);
             TempData["SuccessMessage"] = "User request rejected.";
-            return RedirectToAction(nameof(UserRequests));
+            return RedirectToAction(nameof(Index), new { tab = "requests" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -420,32 +536,6 @@ public class UserManagementController : BaseController
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> CompanyRequests()
-    {
-        var requests = await _companyRequestService.GetAllAsync();
-        
-        var viewModels = requests.Select(r => new CompanyRequestViewModel
-        {
-            Id = r.Id,
-            CompanyName = r.CompanyName,
-            ContactEmail = r.ContactEmail,
-            PhoneNumber = r.PhoneNumber,
-            Website = r.Website,
-            Description = r.Description,
-            RequesterFullName = r.RequesterFullName,
-            RequesterEmail = r.RequesterEmail,
-            Status = r.Status,
-            CreatedDate = r.CreatedDate,
-            CreatedCompanyId = r.CreatedCompanyId,
-            CreatedUserId = r.CreatedUserId,
-            RejectionReason = r.RejectionReason
-        });
-
-        return View(viewModels);
-    }
-
-    [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
     public async Task<IActionResult> CompanyRequestApprove(Guid id)
     {
         var request = await _companyRequestService.GetByIdAsync(id);
@@ -477,7 +567,7 @@ public class UserManagementController : BaseController
             var currentUser = await GetCurrentUserAsync();
             await _companyRequestService.ApproveRequestAsync(viewModel.Id, currentUser?.Email ?? CurrentUserEmail ?? "unknown");
             TempData["SuccessMessage"] = $"Company request approved. Company '{viewModel.CompanyName}' and user account for {viewModel.RequesterEmail} have been created.";
-            return RedirectToAction(nameof(CompanyRequests));
+            return RedirectToAction(nameof(Index), "CompanyManagement", new { tab = "requests" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -496,12 +586,12 @@ public class UserManagementController : BaseController
             var currentUser = await GetCurrentUserAsync();
             await _companyRequestService.RejectRequestAsync(id, currentUser?.Email ?? CurrentUserEmail ?? "unknown", reason);
             TempData["SuccessMessage"] = "Company request rejected.";
-            return RedirectToAction(nameof(CompanyRequests));
+            return RedirectToAction(nameof(Index), "CompanyManagement", new { tab = "requests" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             TempData["ErrorMessage"] = ex.Message;
-            return RedirectToAction(nameof(CompanyRequests));
+            return RedirectToAction(nameof(Index), "CompanyManagement", new { tab = "requests" });
         }
     }
 

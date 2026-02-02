@@ -18,26 +18,7 @@
     <div>
         <p class="text-muted mb-0">Manage groundwater monitoring data and records</p>
     </div>
-    <div class="d-flex align-items-center gap-2">
-        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-            <button type="button"
-                    class="btn btn-outline-secondary active"
-                    id="gwmonitsTableViewBtn">
-                <i class="bi bi-table"></i> Table
-            </button>
-            <button type="button"
-                    class="btn btn-outline-secondary"
-                    id="gwmonitsCardViewBtn">
-                <i class="bi bi-grid-3x3-gap"></i> Cards
-            </button>
-        </div>
-        @if (canEdit)
-        {
-            <a asp-action="GWMonitCreate" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Create New Record
-            </a>
-        }
-    </div>
+   
 </div>
 <div class="card mb-3">
     <div class="card-body">
@@ -85,10 +66,30 @@
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Groundwater Monitoring List</h5>
-    </div>
     <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <h4 class="mb-0"> Groundwater Monitoring List</h4>
+            <div class="d-flex">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm active"
+                            id="gwmonitsTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            id="gwmonitsCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+                @if (canEdit)
+                {
+                    <a asp-action="GWMonitCreate" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-circle"></i> Create New Record
+                    </a>
+                }
+            </div>
+        </div>
         @if (Model.Any())
         {
             <div id="gwmonitsTableView" class="table-responsive">

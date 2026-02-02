@@ -5,28 +5,7 @@
     var selectedCompanyId = Model.SelectedCompanyId;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <p class="text-muted mb-0">Manage facility information and configurations</p>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-            <button type="button"
-                    class="btn btn-outline-secondary active"
-                    id="facilitiesTableViewBtn">
-                <i class="bi bi-table"></i> Table
-            </button>
-            <button type="button"
-                    class="btn btn-outline-secondary"
-                    id="facilitiesCardViewBtn">
-                <i class="bi bi-grid-3x3-gap"></i> Cards
-            </button>
-        </div>
-        <a asp-action="FacilityCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create New Facility
-        </a>
-    </div>
-</div>
+
 @* 
 @if (Model.Filter != null)
 {
@@ -34,10 +13,27 @@
 } *@
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Facility List</h5>
-    </div>
     <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <h4 class="mb-0">Facilities</h4>
+            <div class="d-flex align-items-center gap-2">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm active"
+                            id="facilitiesTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="facilitiesCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+                <a asp-action="FacilityCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Facility
+                </a>
+            </div>
+        </div>
         @if (Model.Facilities.Any())
         {
             <div id="facilitiesTableView" class="table-responsive">
@@ -45,7 +41,7 @@
                     <thead>
                         <tr>
                             <th><i class="bi bi-building"></i> Facility Name</th>
-                            <th><i class="bi bi-file-text"></i> Permit Number</th>
+                            <th><i class="bi bi-file-text"></i> Permit #</th>
                             <th><i class="bi bi-person"></i> Permittee</th>
                             @if (isGlobalAdmin)
                             {
@@ -62,27 +58,27 @@
                             <tr>
                                 <td>
                                     <a asp-action="FacilityDetails" asp-route-id="@facility.Id" class="text-decoration-none">
-                                        <i class="bi bi-building me-1"></i>@facility.Name
+                                        @facility.Name
                                     </a>
                                 </td>
-                                <td><i class="bi bi-file-text me-1"></i>@facility.PermitNumber</td>
-                                <td><i class="bi bi-person me-1"></i>@facility.Permittee</td>
+                                <td>@facility.PermitNumber</td>
+                                <td>@facility.Permittee</td>
                                 @if (isGlobalAdmin)
                                 {
-                                    <td><i class="bi bi-briefcase me-1"></i>@facility.CompanyName</td>
+                                    <td>@facility.CompanyName</td>
                                 }
-                                <td><i class="bi bi-geo-alt me-1"></i>@facility.City, @facility.State</td>
-                                <td><i class="bi bi-map me-1"></i>@facility.County</td>
+                                <td>@facility.City, @facility.State</td>
+                                <td>@facility.County</td>
                                 <td class="table-actions">
                                     <a asp-action="FacilityEdit" asp-route-id="@facility.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil"></i> Edit
+                                        <i class="bi bi-pencil"></i>
                                     </a>
                                     <button type="button" class="btn btn-sm btn-outline-danger"
                                             data-bs-toggle="modal"
                                             data-bs-target="#deleteFacilityModal"
                                             data-facility-id="@facility.Id"
                                             data-facility-name="@facility.Name">
-                                        <i class="bi bi-trash"></i> Delete
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -97,7 +93,7 @@
                     <div class="col">
                         <div class="card h-100 shadow-sm">
                             <div class="card-header-light d-flex justify-content-between">
-                                
+
                                 <h6 class="mb-0">
                                     <a asp-action="FacilityDetails" asp-route-id="@facility.Id" class="text-decoration-none">
                                         @facility.Name
@@ -106,7 +102,7 @@
                                 <small class="text-muted">
                                     <i class="bi bi-file-text me-1"></i>@facility.PermitNumber
                                 </small>
-                        </div>
+                            </div>
                             <div class="card-body d-flex flex-column">
 
                                 <dl class="row small mb-3">

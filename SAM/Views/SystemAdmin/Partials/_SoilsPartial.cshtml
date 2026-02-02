@@ -5,28 +5,6 @@
     var selectedCompanyId = Model.SelectedCompanyId;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <p class="text-muted mb-0">Configure soil types and properties</p>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-            <button type="button"
-                    class="btn btn-outline-secondary active"
-                    id="soilsTableViewBtn">
-                <i class="bi bi-table"></i> Table
-            </button>
-            <button type="button"
-                    class="btn btn-outline-secondary"
-                    id="soilsCardViewBtn">
-                <i class="bi bi-grid-3x3-gap"></i> Cards
-            </button>
-        </div>
-        <a asp-action="SoilCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create New Soil Type
-        </a>
-    </div>
-</div>
 
 @* @if (Model.Filter != null)
 {
@@ -34,10 +12,27 @@
 } *@
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Soil Types List</h5>
-    </div>
     <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <h4 class="mb-0">Soils</h4>
+            <div class="d-flex align-items-center gap-2">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm active"
+                            id="soilsTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="soilsCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+                <a asp-action="SoilCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Soil
+                </a>
+            </div>
+        </div>
         @if (Model.Soils.Any())
         {
             <div id="soilsTableView" class="table-responsive">

@@ -1,0 +1,87 @@
+@model SAM.ViewModels.UserManagement.CompanyRequestApproveViewModel
+@{
+    ViewData["Title"] = "Approve Company Request";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-check-circle me-2"></i>Approve Company Request</h4>
+        <p class="text-muted mb-0">Review company details before approval</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-building me-2"></i>Company Information</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="CompanyRequestApprove" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CompanyName" class="form-label"></label>
+                    <input asp-for="CompanyName" class="form-control" readonly />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="ContactEmail" class="form-label"></label>
+                    <input asp-for="ContactEmail" type="email" class="form-control" readonly />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PhoneNumber" class="form-label"></label>
+                    <input asp-for="PhoneNumber" type="tel" class="form-control" readonly />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Website" class="form-label"></label>
+                    <input asp-for="Website" type="url" class="form-control" readonly />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3" readonly></textarea>
+            </div>
+
+            <hr />
+
+            <h5 class="mb-3"><i class="bi bi-person me-2"></i>Requester Information</h5>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="RequesterFullName" class="form-label"></label>
+                    <input asp-for="RequesterFullName" class="form-control" readonly />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="RequesterEmail" class="form-label"></label>
+                    <input asp-for="RequesterEmail" type="email" class="form-control" readonly />
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Note:</strong> Approving this request will:
+                <ul class="mb-0 mt-2">
+                    <li>Create the company with the provided details</li>
+                    <li>Create a user account for the requester</li>
+                    <li>Assign the requester as the company administrator</li>
+                    <li>Send login credentials to the requester via email</li>
+                </ul>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a asp-action="Index" asp-route-tab="requests" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle me-1"></i>Approve Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+

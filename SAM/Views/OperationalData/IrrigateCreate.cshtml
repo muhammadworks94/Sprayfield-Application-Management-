@@ -218,12 +218,61 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
-        // Update sprayfields when facility changes
+        // Update sprayfields and company when facility changes (AJAX, no page reload)
         document.getElementById('facilitySelect')?.addEventListener('change', function () {
             var facilityId = this.value;
-            if (facilityId) {
-                // Reload page with selected facility; controller will determine companyId
-                window.location.href = '@Url.Action("IrrigateCreate")' + '?facilityId=' + facilityId;
+            var sprayfieldSelect = document.querySelector('select[name="SprayfieldId"]');
+            var companyIdInput = document.querySelector('input[name="CompanyId"]');
+
+            if (!sprayfieldSelect || !companyIdInput) return;
+
+            // Clear current sprayfields
+            sprayfieldSelect.innerHTML = '<option value="">-- Select Sprayfield --</option>';
+
+            if (!facilityId) {
+                // If facility cleared, also clear company id
+                companyIdInput.value = '';
+                return;
+            }
+
+            fetch('@Url.Action("GetSprayfieldsForFacility", "OperationalData")' + '?facilityId=' + encodeURIComponent(facilityId), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Failed to load sprayfields');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                // Set company id derived from facility
+                if (data.companyId) {
+                    companyIdInput.value = data.companyId;
+                }
+
+                // Populate sprayfields
+                if (Array.isArray(data.sprayfields)) {
+                    data.sprayfields.forEach(function (sf) {
+                        var opt = document.createElement('option');
+                        opt.value = sf.id;
+                        opt.textContent = sf.name;
+                        sprayfieldSelect.appendChild(opt);
+                    });
+                }
+            })
+            .catch(function (err) {
+                console.error('Error loading sprayfields:', err);
+            });
+        });
+
+        // Auto-load sprayfields if facility is already selected on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            var facilitySelect = document.getElementById('facilitySelect');
+            if (facilitySelect && facilitySelect.value) {
+                var event = new Event('change');
+                facilitySelect.dispatchEvent(event);
             }
         });
 

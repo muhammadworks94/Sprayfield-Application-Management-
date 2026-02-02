@@ -5,28 +5,7 @@
     var selectedCompanyId = Model.SelectedCompanyId;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <p class="text-muted mb-0">Configure nozzle specifications and settings</p>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-            <button type="button"
-                    class="btn btn-outline-secondary active"
-                    id="nozzlesTableViewBtn">
-                <i class="bi bi-table"></i> Table
-            </button>
-            <button type="button"
-                    class="btn btn-outline-secondary"
-                    id="nozzlesCardViewBtn">
-                <i class="bi bi-grid-3x3-gap"></i> Cards
-            </button>
-        </div>
-        <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create New Nozzle
-        </a>
-    </div>
-</div>
+
 
 @* @if (Model.Filter != null)
 {
@@ -34,10 +13,27 @@
 } *@
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Nozzle List</h5>
-    </div>
     <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <h4 class="mb-0">Nozzles</h4>
+            <div class="d-flex align-items-center gap-2">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm active"
+                            id="nozzlesTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="nozzlesCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+                <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Nozzle
+                </a>
+            </div>
+        </div>
         @if (Model.Nozzles.Any())
         {
             <div id="nozzlesTableView" class="table-responsive">
@@ -47,7 +43,7 @@
                             <th><i class="bi bi-building"></i> Manufacturer</th>
                             <th><i class="bi bi-tag"></i> Model</th>
                             <th><i class="bi bi-speedometer2"></i> Flow Rate (GPM)</th>
-                            <th><i class="bi bi-circle"></i> Spray Arc (°)</th>
+                            <th><i class="bi bi-droplet"></i> Spray Arc (°)</th>
                             @if (isGlobalAdmin)
                             {
                                 <th><i class="bi bi-briefcase"></i> Company</th>

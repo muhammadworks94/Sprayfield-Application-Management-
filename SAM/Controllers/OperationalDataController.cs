@@ -456,6 +456,37 @@ namespace SAM.Controllers;
         return View(viewModel);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetSprayfieldsForFacility(Guid facilityId)
+    {
+        if (facilityId == Guid.Empty)
+            return BadRequest("Facility is required.");
+
+        var facility = await _facilityService.GetByIdAsync(facilityId);
+        if (facility == null)
+            return NotFound("Facility not found.");
+
+        // Enforce access using the facility's company
+        await EnsureCompanyAccessAsync(facility.CompanyId);
+
+        // Get sprayfields for this facility only
+        var sprayfields = await _sprayfieldService.GetAllAsync(facility.CompanyId);
+        var filtered = sprayfields
+            .Where(s => s.FacilityId == facilityId)
+            .Select(s => new
+            {
+                id = s.Id,
+                name = s.FieldId
+            })
+            .ToList();
+
+        return Json(new
+        {
+            companyId = facility.CompanyId,
+            sprayfields = filtered
+        });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> IrrigateCreate(IrrigateCreateViewModel viewModel)
@@ -727,6 +758,17 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
+        // If facility is selected but companyId is still unknown (e.g., global admin),
+        // derive the company from the facility so downstream logic has a valid company.
+        if (!companyId.HasValue && facilityId.HasValue)
+        {
+            var facility = await _facilityService.GetByIdAsync(facilityId.Value);
+            if (facility != null)
+            {
+                companyId = facility.CompanyId;
+            }
+        }
+
         if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
@@ -753,6 +795,17 @@ namespace SAM.Controllers;
     [Authorize(Policy = Policies.RequireTechnician)]
     public async Task<IActionResult> WWCharCreate(WWCharCreateViewModel viewModel)
     {
+        // If CompanyId is not set (e.g., global admin without a company) but FacilityId is,
+        // resolve the company from the selected facility.
+        if ((viewModel.CompanyId == Guid.Empty || viewModel.CompanyId == default) && viewModel.FacilityId != Guid.Empty)
+        {
+            var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
+            if (facility != null)
+            {
+                viewModel.CompanyId = facility.CompanyId;
+            }
+        }
+
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
         // Ensure arrays are initialized
