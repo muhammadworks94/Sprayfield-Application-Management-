@@ -28,9 +28,12 @@
                         <i class="bi bi-grid-3x3-gap"></i> Cards
                     </button>
                 </div>
-                <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary btn-sm">
-                    <i class="bi bi-plus-circle"></i> Add Monitoring Well
-                </a>
+                @if (isGlobalAdmin)
+                {
+                    <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-circle"></i> Add Monitoring Well
+                    </a>
+                }
             </div>
         </div>
         @if (Model.MonitoringWells.Any())
@@ -65,16 +68,19 @@
                                     <td>@well.CompanyName</td>
                                 }
                                 <td class="table-actions">
-                                    <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteMonitoringWellModal"
-                                            data-well-id="@well.Id"
-                                            data-well-name="@well.WellId">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteMonitoringWellModal"
+                                                data-well-id="@well.Id"
+                                                data-well-name="@well.WellId">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -109,16 +115,19 @@
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">
-                                    <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary me-2">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteMonitoringWellModal"
-                                            data-well-id="@well.Id"
-                                            data-well-name="@well.WellId">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary me-2">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteMonitoringWellModal"
+                                                data-well-id="@well.Id"
+                                                data-well-name="@well.WellId">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -131,9 +140,12 @@
             <div class="text-center py-5">
                 <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
                 <p class="text-muted mt-3">No monitoring wells found.</p>
-                <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-circle"></i> Create First Monitoring Well
-                </a>
+                @if (isGlobalAdmin)
+                {
+                    <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle"></i> Create First Monitoring Well
+                    </a>
+                }
             </div>
         }
     </div>

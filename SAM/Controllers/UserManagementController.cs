@@ -48,16 +48,18 @@ public class UserManagementController : BaseController
     public async Task<IActionResult> Index(string? tab = null, Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
+        var isCompanyAdminOnly = !isGlobalAdmin && await IsInRoleAsync("company_admin");
+        var canManageUsers = isGlobalAdmin || isCompanyAdminOnly;
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Determine default tab based on role if not specified
         if (string.IsNullOrWhiteSpace(tab))
         {
-            tab = isGlobalAdmin ? "users" : "requests";
+            tab = canManageUsers ? "users" : "requests";
         }
 
-        // If non-admin tries to access "users" tab, redirect to "requests"
-        if (tab == "users" && !isGlobalAdmin)
+        // Only roles with manage-users permission may access the users tab
+        if (tab == "users" && !canManageUsers)
         {
             tab = "requests";
         }
@@ -73,18 +75,33 @@ public class UserManagementController : BaseController
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        // Load users data (only if admin or if tab is users)
+        // Load users data for roles that can manage users
         var userViewModels = new List<UserViewModel>();
-        if (isGlobalAdmin)
+        if (canManageUsers)
         {
             IEnumerable<ApplicationUser> users;
-            if (companyId.HasValue)
+
+            if (isGlobalAdmin)
             {
-                users = await _userService.GetUsersByCompanyAsync(companyId.Value);
+                if (companyId.HasValue)
+                {
+                    users = await _userService.GetUsersByCompanyAsync(companyId.Value);
+                }
+                else
+                {
+                    users = await _userService.GetAllUsersAsync();
+                }
             }
-            else
+            else // company admin only
             {
-                users = await _userService.GetAllUsersAsync();
+                if (!companyId.HasValue)
+                {
+                    companyId = effectiveCompanyId;
+                }
+
+                users = companyId.HasValue
+                    ? await _userService.GetUsersByCompanyAsync(companyId.Value)
+                    : Enumerable.Empty<ApplicationUser>();
             }
 
             foreach (var user in users)
@@ -147,6 +164,7 @@ public class UserManagementController : BaseController
             UserRequests = userRequestViewModels,
             ActiveTab = tab,
             IsGlobalAdmin = isGlobalAdmin,
+            CanManageUsers = canManageUsers,
             SelectedCompanyId = companyId,
             Companies = await GetCompanySelectListAsync(),
             FilterViewModel = filterViewModel

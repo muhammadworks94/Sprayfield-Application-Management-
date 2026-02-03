@@ -80,7 +80,7 @@
 
         @if (isCompanyAdmin)
         {
-            <li class="nav-item nav-dropdown-item" role="none">
+            <li class="nav-item nav-dropdown-item pb-1" role="none">
                 <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-reports" data-dropdown="reports" data-tooltip="Reports">
                     <i class="bi bi-file-earmark-text"></i>
                     <span class="nav-link-text">Reports</span>
@@ -103,9 +103,9 @@
             </li>
         }
 
-        @if (isCompanyAdmin)
+        @if (isOperator || isTechnician)
         {
-            <li class="nav-item" role="none">
+            <li class="nav-item border-separate" role="none">
                 <a class="nav-link" asp-controller="SystemAdmin" asp-action="SystemAdmin" asp-route-tab="facilities" role="menuitem" data-tooltip="System Administration">
                     <i class="bi bi-gear"></i>
                     <span class="nav-link-text">System Administration</span>

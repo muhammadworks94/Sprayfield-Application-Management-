@@ -28,9 +28,12 @@
                         <i class="bi bi-grid-3x3-gap"></i> Cards
                     </button>
                 </div>
-                <a asp-action="SprayfieldCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
-                    <i class="bi bi-plus-circle"></i> Add Sprayfield
-                </a>
+                @if (isGlobalAdmin)
+                {
+                    <a asp-action="SprayfieldCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Add Sprayfield
+                    </a>
+                }
             </div>
         </div>
         @if (Model.Sprayfields.Any())
@@ -76,16 +79,19 @@
                                     <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-eye"></i> View
                                     </a>
-                                    <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteSprayfieldModal"
-                                            data-sprayfield-id="@sprayfield.Id"
-                                            data-sprayfield-name="@sprayfield.FieldId">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteSprayfieldModal"
+                                                data-sprayfield-id="@sprayfield.Id"
+                                                data-sprayfield-name="@sprayfield.FieldId">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -138,16 +144,19 @@
                                     <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-secondary me-2">
                                         <i class="bi bi-eye"></i> View
                                     </a>
-                                    <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary me-2">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteSprayfieldModal"
-                                            data-sprayfield-id="@sprayfield.Id"
-                                            data-sprayfield-name="@sprayfield.FieldId">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary me-2">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteSprayfieldModal"
+                                                data-sprayfield-id="@sprayfield.Id"
+                                                data-sprayfield-name="@sprayfield.FieldId">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -160,9 +169,12 @@
             <div class="text-center py-5">
                 <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
                 <p class="text-muted mt-3">No sprayfields found.</p>
-                <a asp-action="SprayfieldCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-circle"></i> Create First Sprayfield
-                </a>
+                @if (isGlobalAdmin)
+                {
+                    <a asp-action="SprayfieldCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle"></i> Create First Sprayfield
+                    </a>
+                }
             </div>
         }
     </div>

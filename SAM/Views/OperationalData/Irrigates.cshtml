@@ -22,15 +22,7 @@
 <div class="card mb-3">
     <div class="card-body">
         <form method="get" class="row g-3">
-            @if (isGlobalAdmin)
-            {
-                <div class="col-md-3">
-                    <label for="companyId" class="form-label"><i class="bi bi-building me-1"></i>Company:</label>
-                    <input type="hidden" name="companyId" value="@selectedCompanyId" />
-                    <input type="text" class="form-control" value="@selectedCompanyId" disabled />
-                </div>
-            }
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
                 <select name="facilityId" id="facilityId" class="form-select" onchange="this.form.submit()">
                     <option value="">All Facilities</option>
@@ -45,7 +37,7 @@
                     }
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label for="sprayfieldId" class="form-label"><i class="bi bi-grid-3x3-gap me-1"></i>Sprayfield:</label>
                 <select name="sprayfieldId" id="sprayfieldId" class="form-select" onchange="this.form.submit()">
                     <option value="">All Sprayfields</option>

@@ -143,11 +143,11 @@ public class IrrRprtService : IIrrRprtService
         if (irrRprt == null)
             throw new EntityNotFoundException(nameof(IrrRprt), id);
 
-        // Soft delete
-        irrRprt.IsDeleted = true;
+        // Hard delete - permanently remove the report from the database
+        _context.IrrRprts.Remove(irrRprt);
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Monthly irrigation report soft-deleted (ID: {ReportId})", id);
+        _logger.LogInformation("Monthly irrigation report hard-deleted (ID: {ReportId})", id);
         return true;
     }
 
@@ -205,7 +205,7 @@ public class IrrRprtService : IIrrRprtService
         // Calculate aggregations
         var totalVolumeApplied = irrigations.Sum(i => i.TotalVolumeGallons);
         var totalAcres = sprayfieldList.Sum(s => s.SizeAcres);
-        var totalApplicationRate = totalAcres > 0 ? totalVolumeApplied / (totalAcres * 27.154m) : 0; // Convert gallons to inches (1 acre-inch = 27,154 gallons)
+        var totalApplicationRate = totalAcres > 0 ? totalVolumeApplied / (totalAcres * 27152m) : 0; // Convert gallons to inches (1 acre-inch = 27,152 gallons)
 
         // Calculate hydraulic loading rate (inches per year, annualized from monthly)
         var hydraulicLoadingRate = totalApplicationRate * 12;

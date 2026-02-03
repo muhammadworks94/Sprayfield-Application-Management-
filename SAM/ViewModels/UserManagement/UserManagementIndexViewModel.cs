@@ -29,6 +29,12 @@ public class UserManagementIndexViewModel
     public bool IsGlobalAdmin { get; set; }
 
     /// <summary>
+    /// Whether the current user can manage users (admins and company admins).
+    /// Controls visibility of the Users tab and user actions.
+    /// </summary>
+    public bool CanManageUsers { get; set; }
+
+    /// <summary>
     /// Selected company ID for filtering (if applicable).
     /// </summary>
     public Guid? SelectedCompanyId { get; set; }

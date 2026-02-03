@@ -270,6 +270,36 @@ public class ReportsController : BaseController
         }
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> IrrigationReportDelete(Guid id)
+    {
+        IrrRprt? report = null;
+        try
+        {
+            report = await _irrRprtService.GetByIdAsync(id);
+            if (report == null)
+                return NotFound();
+
+            await EnsureCompanyAccessAsync(report.CompanyId);
+
+            await _irrRprtService.DeleteAsync(id);
+            TempData["SuccessMessage"] = "Irrigation report deleted successfully.";
+            return RedirectToAction(nameof(IrrigationReports), new { companyId = report.CompanyId, facilityId = report.FacilityId });
+        }
+        catch (Infrastructure.Exceptions.EntityNotFoundException)
+        {
+            TempData["ErrorMessage"] = "Irrigation report not found.";
+        }
+        catch (Infrastructure.Exceptions.BusinessRuleException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(IrrigationReports), new { companyId = report?.CompanyId, facilityId = report?.FacilityId });
+    }
+
     #endregion
 
     #region NDAR-1 Reports

@@ -8,6 +8,7 @@
     var canApprove = user != null && await UserManager.IsInRoleAsync(user, "admin");
     var canCreate = user != null && (await UserManager.IsInRoleAsync(user, "admin") ||
                                       await UserManager.IsInRoleAsync(user, "company_admin"));
+    var canManageUsers = Model.CanManageUsers;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -18,7 +19,7 @@
 
 <!-- Bootstrap Tabs -->
 <ul class="nav nav-tabs mb-4" id="userManagementTabs" role="tablist">
-    @if (Model.IsGlobalAdmin)
+    @if (canManageUsers)
     {
         <li class="nav-item" role="presentation">
             <button class="nav-link @(Model.ActiveTab == "users" ? "active" : "")"
@@ -50,7 +51,7 @@
 <!-- Tab Content -->
 <div class="tab-content" id="userManagementTabContent">
     <!-- Users Tab -->
-    @if (Model.IsGlobalAdmin)
+    @if (canManageUsers)
     {
         <div class="tab-pane fade @(Model.ActiveTab == "users" ? "show active" : "")"
              id="users"
@@ -406,7 +407,7 @@
 </div>
 
 <!-- Delete User Modal -->
-@if (Model.IsGlobalAdmin)
+@if (canManageUsers)
 {
     <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
@@ -482,9 +483,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // Users tab view mode toggle
-            @if (Model.IsGlobalAdmin)
+            @if (canManageUsers)
             {
-                        <text>
+                <text>
                         const usersTableBtn = document.getElementById('usersTableViewBtn');
                         const usersCardBtn = document.getElementById('usersCardViewBtn');
                         const usersTableView = document.getElementById('usersTableView');
@@ -537,7 +538,7 @@
                                 }
                             });
                         }
-                        </text>
+                </text>
             }
 
             // User Requests tab view mode toggle

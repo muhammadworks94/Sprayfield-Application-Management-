@@ -178,6 +178,27 @@ namespace SAM.Controllers;
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OperatorLogCreate(OperatorLogCreateViewModel viewModel)
     {
+        // If company ID is empty but facility is selected, derive company from facility
+        // This handles the case where admins don't have a company ID
+        if (viewModel.CompanyId == Guid.Empty && viewModel.FacilityId != Guid.Empty)
+        {
+            var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
+            if (facility != null)
+            {
+                viewModel.CompanyId = facility.CompanyId;
+            }
+        }
+
+        // Also check effective company ID from session for admins
+        if (viewModel.CompanyId == Guid.Empty)
+        {
+            var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+            if (effectiveCompanyId.HasValue)
+            {
+                viewModel.CompanyId = effectiveCompanyId.Value;
+            }
+        }
+
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
         if (!ModelState.IsValid)
@@ -208,7 +229,7 @@ namespace SAM.Controllers;
 
             await _operatorLogService.CreateAsync(operatorLog);
             TempData["SuccessMessage"] = "Operator log created successfully.";
-            return RedirectToAction(nameof(OperatorLogs), new { companyId = operatorLog.CompanyId, facilityId = operatorLog.FacilityId });
+            return RedirectToAction(nameof(OperatorLogs));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -286,7 +307,7 @@ namespace SAM.Controllers;
 
             await _operatorLogService.UpdateAsync(operatorLog);
             TempData["SuccessMessage"] = "Operator log updated successfully.";
-            return RedirectToAction(nameof(OperatorLogs), new { companyId = operatorLog.CompanyId, facilityId = operatorLog.FacilityId });
+            return RedirectToAction(nameof(OperatorLogs));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -536,7 +557,17 @@ namespace SAM.Controllers;
 
             await _irrigateService.CreateAsync(irrigate);
             TempData["SuccessMessage"] = "Irrigation log created successfully.";
-            return RedirectToAction(nameof(Irrigates), new { companyId = irrigate.CompanyId, facilityId = irrigate.FacilityId });
+            var isGlobalAdmin = await IsGlobalAdminAsync();
+            if (isGlobalAdmin)
+            {
+                return RedirectToAction(nameof(Irrigates));
+
+            }
+            else
+            {
+                return RedirectToAction(nameof(Irrigates), new { companyId = irrigate.CompanyId, facilityId = irrigate.FacilityId });
+               
+            }
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {

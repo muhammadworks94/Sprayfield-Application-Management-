@@ -17,11 +17,11 @@ public class GWMonitViewModel
     [DataType(DataType.Date)]
     public DateTime SampleDate { get; set; }
     
-    [Display(Name = "Sample Depth (feet)")]
+    [Display(Name = "Sample Depth (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (feet)")]
+    [Display(Name = "Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
     
@@ -121,11 +121,11 @@ public class GWMonitCreateViewModel
     [DataType(DataType.Date)]
     public DateTime SampleDate { get; set; } = DateTime.Today;
     
-    [Display(Name = "Sample Depth (feet)")]
+    [Display(Name = "Sample Depth (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (feet)")]
+    [Display(Name = "Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
     
@@ -227,11 +227,11 @@ public class GWMonitEditViewModel
     [DataType(DataType.Date)]
     public DateTime SampleDate { get; set; }
     
-    [Display(Name = "Sample Depth (feet)")]
+    [Display(Name = "Sample Depth (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (feet)")]
+    [Display(Name = "Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
     

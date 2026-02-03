@@ -61,7 +61,7 @@
                                     <label asp-for="SampleDepth" class="form-label"></label>
                                     <input asp-for="SampleDepth" type="number" step="0.01" class="form-control" />
                                     <span asp-validation-for="SampleDepth" class="text-danger"></span>
-                                    <small class="form-text text-muted">Depth from ground surface to sample point (feet).</small>
+                                    <small class="form-text text-muted">Depth from ground surface to sample point (ft).</small>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -69,13 +69,13 @@
                                     <label asp-for="WaterLevel" class="form-label"></label>
                                     <input asp-for="WaterLevel" type="number" step="0.01" class="form-control" />
                                     <span asp-validation-for="WaterLevel" class="text-danger"></span>
-                                    <small class="form-text text-muted">Depth to water from reference point (feet). Use the same reference as prior records.</small>
+                                    <small class="form-text text-muted">Depth to water from reference point (ft). Use the same reference as prior records.</small>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label asp-for="Temperature" class="form-label"></label>
-                                    <input asp-for="Temperature" type="number" step="0.1" class="form-control" />
+                                    <input asp-for="Temperature" type="number" step="0.01" class="form-control" />
                                     <span asp-validation-for="Temperature" class="text-danger"></span>
                                     <small class="form-text text-muted">Sample temperature in °C. Update only if original value was clearly incorrect.</small>
                                 </div>

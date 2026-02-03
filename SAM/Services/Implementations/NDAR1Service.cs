@@ -16,6 +16,8 @@ namespace SAM.Services.Implementations;
 /// </summary>
 public class NDAR1Service : INDAR1Service
 {
+    private const decimal GALLONS_PER_ACRE_INCH = 27152m;
+
     private readonly ApplicationDbContext _context;
     private readonly ILogger<NDAR1Service> _logger;
     private readonly IIrrigateService _irrigateService;
@@ -204,11 +206,11 @@ public class NDAR1Service : INDAR1Service
         if (ndar1 == null)
             throw new EntityNotFoundException(nameof(NDAR1), id);
 
-        // Soft delete
-        ndar1.IsDeleted = true;
+        // Hard delete - permanently remove the report from the database
+        _context.NDAR1s.Remove(ndar1);
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("NDAR-1 report soft-deleted (ID: {ReportId})", id);
+        _logger.LogInformation("NDAR-1 report hard-deleted (ID: {ReportId})", id);
         return true;
     }
 
@@ -371,21 +373,44 @@ public class NDAR1Service : INDAR1Service
             var dayIrrigations = irrigations.Where(i => i.IrrigationDate.Date == currentDate.Date).ToList();
             if (dayIrrigations.Any())
             {
-                volumeDaily[dayIndex] = dayIrrigations.Sum(i => i.TotalVolumeGallons);
-                timeDaily[dayIndex] = dayIrrigations.Sum(i => (decimal)(i.EndTime - i.StartTime).TotalMinutes);
-                loadingDaily[dayIndex] = dayIrrigations.Sum(i => i.ApplicationRateInches);
+                // Get sprayfield area
+                var areaAcres = sprayfield.SizeAcres;
 
-                // Calculate max hourly loading
-                if (sprayfield?.HourlyRateInches.HasValue == true)
+                // Calculate volume and time
+                var volumeApplied = dayIrrigations.Sum(i => i.TotalVolumeGallons);
+                var timeIrrigatedMinutes = dayIrrigations.Sum(i => (decimal)(i.EndTime - i.StartTime).TotalMinutes);
+
+                volumeDaily[dayIndex] = volumeApplied;
+                timeDaily[dayIndex] = timeIrrigatedMinutes;
+
+                // Calculate daily loading: Volume Applied / (Area × 27,152)
+                if (areaAcres > 0 && volumeApplied > 0)
                 {
-                    var maxHourlyRate = dayIrrigations.Max(i => 
-                        sprayfield.HourlyRateInches.Value * (decimal)(i.EndTime - i.StartTime).TotalHours);
-                    maxHourlyLoadingDaily[dayIndex] = maxHourlyRate;
+                    loadingDaily[dayIndex] = volumeApplied / (areaAcres * GALLONS_PER_ACRE_INCH);
                 }
                 else
                 {
-                    // Fallback: use application rate if hourly rate not available
-                    maxHourlyLoadingDaily[dayIndex] = dayIrrigations.Max(i => i.ApplicationRateInches);
+                    loadingDaily[dayIndex] = null;
+                }
+
+                // Calculate maximum hourly loading based on time irrigated
+                var dailyLoading = loadingDaily[dayIndex];
+                if (timeIrrigatedMinutes > 0 && dailyLoading.HasValue)
+                {
+                    if (timeIrrigatedMinutes < 60)
+                    {
+                        // If Time Irrigated < 60 minutes: Maximum Hourly Loading = Daily Loading
+                        maxHourlyLoadingDaily[dayIndex] = dailyLoading.Value;
+                    }
+                    else
+                    {
+                        // If Time Irrigated ≥ 60 minutes: Maximum Hourly Loading = (Daily Loading / Time Irrigated) × 60
+                        maxHourlyLoadingDaily[dayIndex] = (dailyLoading.Value / timeIrrigatedMinutes) * 60m;
+                    }
+                }
+                else
+                {
+                    maxHourlyLoadingDaily[dayIndex] = null;
                 }
             }
         }
@@ -476,25 +501,30 @@ public class NDAR1Service : INDAR1Service
         var worksheet = workbook.Worksheet(1);
 
         // Populate header information
-        worksheet.Cell("B1").Value = facility.PermitNumber;
-        worksheet.Cell("E1").Value = facility.Name;
-        worksheet.Cell("K1").Value = facility.County;
-        worksheet.Cell("O1").Value = report.Month.ToString();
-        worksheet.Cell("Q1").Value = report.Year;
+        // Row 1 value cells: D1 (Permit No.), I1 (Facility Name), P1 (County), S1 (Month), V1 (Year)
+        worksheet.Cell("D1").Value = facility.PermitNumber;
+        worksheet.Cell("I1").Value = facility.Name;
+        worksheet.Cell("P1").Value = facility.County;
+        worksheet.Cell("S1").Value = report.Month.ToString();
+        worksheet.Cell("V1").Value = report.Year;
 
         // Did irrigation occur checkbox (Row 5, approximate location)
         // Note: Excel checkboxes are complex, this is a simplified approach
         // You may need to adjust based on actual template structure
 
-        // Field information (Rows 2-6)
+        // Field information (Rows 2-7)
+        // Field 1: Headers at G2-G7, Data at G-J (Volume, Time, Daily Loading, Max Hourly)
+        // Field 2: Headers at I2-I7, Data at K-N
+        // Field 3: Headers at K2-K7, Data at O-R
+        // Field 4: Headers at M2-M7, Data at S-V
         var fields = new[] { report.Field1, report.Field2, report.Field3, report.Field4 };
-        var fieldColumns = new[] { "C", "G", "K", "O" };
+        var fieldHeaderColumns = new[] { "G", "I", "K", "M" };
 
         for (int i = 0; i < fields.Length; i++)
         {
             if (fields[i] != null)
             {
-                var col = fieldColumns[i];
+                var col = fieldHeaderColumns[i];
                 worksheet.Cell($"{col}2").Value = fields[i].FieldId; // Field Name
                 worksheet.Cell($"{col}3").Value = fields[i].SizeAcres; // Area (acres)
                 worksheet.Cell($"{col}4").Value = fields[i].Crop?.Name ?? ""; // Cover Crop
@@ -503,9 +533,9 @@ public class NDAR1Service : INDAR1Service
             }
         }
 
-        // Daily data (Rows 8-40, starting from row 8 for day 1)
+        // Daily data (Rows 10-40, starting from row 10 for day 1)
         var daysInMonth = DateTime.DaysInMonth(report.Year, (int)report.Month);
-        var startRow = 8;
+        var startRow = 10;
 
         for (int day = 1; day <= daysInMonth; day++)
         {
@@ -522,63 +552,76 @@ public class NDAR1Service : INDAR1Service
             worksheet.Cell($"E{row}").Value = report.StorageDaily[dayIndex];
             worksheet.Cell($"F{row}").Value = report.FiveDayUpsetDaily[dayIndex];
 
-            // Field 1 data (Columns G-J)
+            // Field 1 data (Columns G-J: Volume, Time, Daily Loading, Max Hourly)
             if (report.Field1Id.HasValue)
             {
                 worksheet.Cell($"G{row}").Value = report.Field1VolumeAppliedDaily[dayIndex];
                 worksheet.Cell($"H{row}").Value = report.Field1TimeIrrigatedDaily[dayIndex];
-                worksheet.Cell($"I{row}").Value = report.Field1DailyLoadingDaily[dayIndex];
-                worksheet.Cell($"J{row}").Value = report.Field1MaxHourlyLoadingDaily[dayIndex];
+                // Daily Loading formula: =IF(ISBLANK(G{row})," ",G{row}/($G$3*27152))
+                worksheet.Cell($"I{row}").FormulaA1 = $"=IF(ISBLANK(G{row}),\" \",G{row}/($G$3*27152))";
+                // Maximum Hourly Loading formula: =IF(OR(ISBLANK(G{row}),ISBLANK(H{row}))," ",IF(H{row}<60,I{row},(I{row}/H{row})*60))
+                worksheet.Cell($"J{row}").FormulaA1 = $"=IF(OR(ISBLANK(G{row}),ISBLANK(H{row})),\" \",IF(H{row}<60,I{row},(I{row}/H{row})*60))";
             }
 
-            // Field 2 data (Columns K-N)
+            // Field 2 data (Columns K-N: Volume, Time, Daily Loading, Max Hourly)
             if (report.Field2Id.HasValue)
             {
                 worksheet.Cell($"K{row}").Value = report.Field2VolumeAppliedDaily[dayIndex];
                 worksheet.Cell($"L{row}").Value = report.Field2TimeIrrigatedDaily[dayIndex];
-                worksheet.Cell($"M{row}").Value = report.Field2DailyLoadingDaily[dayIndex];
-                worksheet.Cell($"N{row}").Value = report.Field2MaxHourlyLoadingDaily[dayIndex];
+                // Daily Loading formula: =IF(ISBLANK(K{row})," ",K{row}/($I$3*27152))
+                worksheet.Cell($"M{row}").FormulaA1 = $"=IF(ISBLANK(K{row}),\" \",K{row}/($I$3*27152))";
+                // Maximum Hourly Loading formula: =IF(OR(ISBLANK(K{row}),ISBLANK(L{row}))," ",IF(L{row}<60,M{row},(M{row}/L{row})*60))
+                worksheet.Cell($"N{row}").FormulaA1 = $"=IF(OR(ISBLANK(K{row}),ISBLANK(L{row})),\" \",IF(L{row}<60,M{row},(M{row}/L{row})*60))";
             }
 
-            // Field 3 data (Columns O-R)
+            // Field 3 data (Columns O-R: Volume, Time, Daily Loading, Max Hourly)
             if (report.Field3Id.HasValue)
             {
                 worksheet.Cell($"O{row}").Value = report.Field3VolumeAppliedDaily[dayIndex];
                 worksheet.Cell($"P{row}").Value = report.Field3TimeIrrigatedDaily[dayIndex];
-                worksheet.Cell($"Q{row}").Value = report.Field3DailyLoadingDaily[dayIndex];
-                worksheet.Cell($"R{row}").Value = report.Field3MaxHourlyLoadingDaily[dayIndex];
+                // Daily Loading formula: =IF(ISBLANK(O{row})," ",O{row}/($K$3*27152))
+                worksheet.Cell($"Q{row}").FormulaA1 = $"=IF(ISBLANK(O{row}),\" \",O{row}/($K$3*27152))";
+                // Maximum Hourly Loading formula: =IF(OR(ISBLANK(O{row}),ISBLANK(P{row}))," ",IF(P{row}<60,Q{row},(Q{row}/P{row})*60))
+                worksheet.Cell($"R{row}").FormulaA1 = $"=IF(OR(ISBLANK(O{row}),ISBLANK(P{row})),\" \",IF(P{row}<60,Q{row},(Q{row}/P{row})*60))";
             }
 
-            // Field 4 data (Columns S-V)
+            // Field 4 data (Columns S-V: Volume, Time, Daily Loading, Max Hourly)
             if (report.Field4Id.HasValue)
             {
                 worksheet.Cell($"S{row}").Value = report.Field4VolumeAppliedDaily[dayIndex];
                 worksheet.Cell($"T{row}").Value = report.Field4TimeIrrigatedDaily[dayIndex];
-                worksheet.Cell($"U{row}").Value = report.Field4DailyLoadingDaily[dayIndex];
-                worksheet.Cell($"V{row}").Value = report.Field4MaxHourlyLoadingDaily[dayIndex];
+                // Daily Loading formula: =IF(ISBLANK(S{row})," ",S{row}/($M$3*27152))
+                worksheet.Cell($"U{row}").FormulaA1 = $"=IF(ISBLANK(S{row}),\" \",S{row}/($M$3*27152))";
+                // Maximum Hourly Loading formula: =IF(OR(ISBLANK(S{row}),ISBLANK(T{row}))," ",IF(T{row}<60,U{row},(U{row}/T{row})*60))
+                worksheet.Cell($"V{row}").FormulaA1 = $"=IF(OR(ISBLANK(S{row}),ISBLANK(T{row})),\" \",IF(T{row}<60,U{row},(U{row}/T{row})*60))";
             }
         }
 
         // Monthly totals (Row 41)
         var monthlyRow = 41;
+        var dataStartRow = startRow; // Data starts at row 10 (day 1)
+        var dataEndRow = startRow + daysInMonth - 1; // Data ends at the last day of the month
+        
         if (report.Field1Id.HasValue)
         {
-            worksheet.Cell($"I{monthlyRow}").Value = report.Field1MonthlyLoading;
+            // Monthly Loading: Sum of daily loading from row 10 to row 40
+            worksheet.Cell($"I{monthlyRow}").FormulaA1 = $"=SUM(I{dataStartRow}:I{dataEndRow})";
+            // Maximum Hourly Loading: Keep as calculated value (MAX of daily values)
             worksheet.Cell($"J{monthlyRow}").Value = report.Field1MaxHourlyLoading;
         }
         if (report.Field2Id.HasValue)
         {
-            worksheet.Cell($"M{monthlyRow}").Value = report.Field2MonthlyLoading;
+            worksheet.Cell($"M{monthlyRow}").FormulaA1 = $"=SUM(M{dataStartRow}:M{dataEndRow})";
             worksheet.Cell($"N{monthlyRow}").Value = report.Field2MaxHourlyLoading;
         }
         if (report.Field3Id.HasValue)
         {
-            worksheet.Cell($"Q{monthlyRow}").Value = report.Field3MonthlyLoading;
+            worksheet.Cell($"Q{monthlyRow}").FormulaA1 = $"=SUM(Q{dataStartRow}:Q{dataEndRow})";
             worksheet.Cell($"R{monthlyRow}").Value = report.Field3MaxHourlyLoading;
         }
         if (report.Field4Id.HasValue)
         {
-            worksheet.Cell($"U{monthlyRow}").Value = report.Field4MonthlyLoading;
+            worksheet.Cell($"U{monthlyRow}").FormulaA1 = $"=SUM(U{dataStartRow}:U{dataEndRow})";
             worksheet.Cell($"V{monthlyRow}").Value = report.Field4MaxHourlyLoading;
         }
 

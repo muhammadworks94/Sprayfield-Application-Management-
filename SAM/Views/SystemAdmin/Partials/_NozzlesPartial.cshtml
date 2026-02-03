@@ -29,9 +29,12 @@
                         <i class="bi bi-grid-3x3-gap"></i> Cards
                     </button>
                 </div>
-                <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
-                    <i class="bi bi-plus-circle"></i> Add Nozzle
-                </a>
+                @if (isGlobalAdmin)
+                {
+                    <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Add Nozzle
+                    </a>
+                }
             </div>
         </div>
         @if (Model.Nozzles.Any())
@@ -64,16 +67,19 @@
                                     <td>@nozzle.CompanyName</td>
                                 }
                                 <td class="table-actions">
-                                    <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteNozzleModal"
-                                            data-nozzle-id="@nozzle.Id"
-                                            data-nozzle-name="@(nozzle.Manufacturer + " " + nozzle.Model)">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteNozzleModal"
+                                                data-nozzle-id="@nozzle.Id"
+                                                data-nozzle-name="@(nozzle.Manufacturer + " " + nozzle.Model)">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -104,16 +110,19 @@
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">
-                                    <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary me-2">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteNozzleModal"
-                                            data-nozzle-id="@nozzle.Id"
-                                            data-nozzle-name="@(nozzle.Manufacturer + " " + nozzle.Model)">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <a asp-action="NozzleEdit" asp-route-id="@nozzle.Id" class="btn btn-sm btn-outline-primary me-2">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteNozzleModal"
+                                                data-nozzle-id="@nozzle.Id"
+                                                data-nozzle-name="@(nozzle.Manufacturer + " " + nozzle.Model)">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    }
                                 </div>
                             </div>
                         </div>
