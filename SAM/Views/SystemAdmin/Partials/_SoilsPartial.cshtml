@@ -129,9 +129,13 @@
             <div class="text-center py-5">
                 <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
                 <p class="text-muted mt-3">No soil types found.</p>
-                <a asp-action="SoilCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-circle"></i> Create First Soil Type
+
+                @if (isGlobalAdmin)
+                {
+                    <a asp-action="SoilCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle"></i> Create First Soil Type
                 </a>
+                }
             </div>
         }
     </div>

@@ -6,8 +6,6 @@
     ViewData["Title"] = "Create User";
     var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var roles = ViewBag.Roles as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var user = await UserManager.GetUserAsync(User);
-    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">

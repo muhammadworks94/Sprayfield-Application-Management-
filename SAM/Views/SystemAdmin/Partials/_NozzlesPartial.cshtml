@@ -135,9 +135,12 @@
             <div class="text-center py-5">
                 <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
                 <p class="text-muted mt-3">No nozzles found.</p>
-                <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-circle"></i> Create First Nozzle
+                @if (isGlobalAdmin)
+                {
+                    <a asp-action="NozzleCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle"></i> Create First Nozzle
                 </a>
+                }
             </div>
         }
     </div>

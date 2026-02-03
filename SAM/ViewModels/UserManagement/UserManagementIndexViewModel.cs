@@ -4,7 +4,7 @@ using SAM.ViewModels.Common;
 namespace SAM.ViewModels.UserManagement;
 
 /// <summary>
-/// ViewModel for the User Management Index page with tabbed interface.
+/// ViewModel for the User Management Index page (users list).
 /// </summary>
 public class UserManagementIndexViewModel
 {
@@ -12,16 +12,6 @@ public class UserManagementIndexViewModel
     /// List of users to display in the Users tab.
     /// </summary>
     public List<UserViewModel> Users { get; set; } = new();
-
-    /// <summary>
-    /// List of user requests to display in the User Requests tab.
-    /// </summary>
-    public List<UserRequestViewModel> UserRequests { get; set; } = new();
-
-    /// <summary>
-    /// Currently active tab ("users" or "requests").
-    /// </summary>
-    public string ActiveTab { get; set; } = "requests";
 
     /// <summary>
     /// Whether the current user is a global admin.

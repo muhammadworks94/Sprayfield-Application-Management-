@@ -313,7 +313,8 @@ public class AccountController : Controller
                     return View(model);
                 }
 
-                // Create CompanyRequest
+                // Create CompanyRequest for signup flow (requires admin approval)
+                // Note: Admins create companies directly via CompanyManagementController.CompanyCreate (no request flow)
                 var companyRequest = new CompanyRequest
                 {
                     CompanyName = model.CompanyName,

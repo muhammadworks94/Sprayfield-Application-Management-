@@ -21,14 +21,12 @@ public class UserManagementController : BaseController
     private readonly IUserRequestService _userRequestService;
     private readonly IAdminRequestService _adminRequestService;
     private readonly ICompanyService _companyService;
-    private readonly ICompanyRequestService _companyRequestService;
     private readonly IUserService _userService;
 
     public UserManagementController(
         IUserRequestService userRequestService,
         IAdminRequestService adminRequestService,
         ICompanyService companyService,
-        ICompanyRequestService companyRequestService,
         IUserService userService,
         UserManager<ApplicationUser> userManager,
         ILogger<UserManagementController> logger)
@@ -37,7 +35,6 @@ public class UserManagementController : BaseController
         _userRequestService = userRequestService;
         _adminRequestService = adminRequestService;
         _companyService = companyService;
-        _companyRequestService = companyRequestService;
         _userService = userService;
     }
 
@@ -45,24 +42,12 @@ public class UserManagementController : BaseController
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> Index(string? tab = null, Guid? companyId = null)
+    public async Task<IActionResult> Index(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var isCompanyAdminOnly = !isGlobalAdmin && await IsInRoleAsync("company_admin");
         var canManageUsers = isGlobalAdmin || isCompanyAdminOnly;
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        // Determine default tab based on role if not specified
-        if (string.IsNullOrWhiteSpace(tab))
-        {
-            tab = canManageUsers ? "users" : "requests";
-        }
-
-        // Only roles with manage-users permission may access the users tab
-        if (tab == "users" && !canManageUsers)
-        {
-            tab = "requests";
-        }
 
         // Use effective company ID if no companyId specified (respects session selection for admins)
         if (!companyId.HasValue && effectiveCompanyId.HasValue)
@@ -120,54 +105,14 @@ public class UserManagementController : BaseController
             }
         }
 
-        // Load user requests data
-        var requests = await _userRequestService.GetAllAsync(companyId);
-        var userRequestViewModels = requests.Select(r => new UserRequestViewModel
-        {
-            Id = r.Id,
-            CompanyId = r.CompanyId,
-            CompanyName = r.CompanyName,
-            FullName = r.FullName,
-            Email = r.Email,
-            AppRole = r.AppRole,
-            RequestedByEmail = r.RequestedByEmail,
-            Status = r.Status,
-            CreatedDate = r.CreatedDate
-        }).ToList();
-
-        // Create filter view model
-        var filterViewModel = new FilterViewModel
-        {
-            PageName = tab == "users" ? "Users" : "UserRequests",
-            EnableSearch = false,
-            Fields = new List<FilterField>()
-        };
-
-        if (isGlobalAdmin)
-        {
-            var companies = await GetCompanySelectListAsync();
-            filterViewModel.Fields.Add(new FilterField
-            {
-                Name = "companyId",
-                Label = "Company",
-                Type = FilterFieldType.Dropdown,
-                Options = companies,
-                Value = companyId,
-                ColumnClass = "col-md-4",
-                IconClass = "bi bi-building"
-            });
-        }
-
         var viewModel = new UserManagementIndexViewModel
         {
             Users = userViewModels,
-            UserRequests = userRequestViewModels,
-            ActiveTab = tab,
             IsGlobalAdmin = isGlobalAdmin,
             CanManageUsers = canManageUsers,
             SelectedCompanyId = companyId,
             Companies = await GetCompanySelectListAsync(),
-            FilterViewModel = filterViewModel
+            FilterViewModel = null
         };
 
         return View(viewModel);
@@ -243,85 +188,6 @@ public class UserManagementController : BaseController
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> UserRequestCreate(Guid? companyId = null)
-    {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        // Set company ID if not provided (respects session selection for admins)
-        if (!companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
-        if (companyId.HasValue)
-        {
-            await EnsureCompanyAccessAsync(companyId.Value);
-        }
-
-        var viewModel = new UserRequestCreateViewModel
-        {
-            CompanyId = companyId ?? Guid.Empty
-        };
-
-        ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.Roles = GetAppRoleSelectList();
-
-        return View(viewModel);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> UserRequestCreate(UserRequestCreateViewModel viewModel)
-    {
-        await EnsureCompanyAccessAsync(viewModel.CompanyId);
-
-        if (!ModelState.IsValid)
-        {
-            ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList();
-            return View(viewModel);
-        }
-
-        try
-        {
-            var company = await _companyService.GetByIdAsync(viewModel.CompanyId);
-            if (company == null)
-            {
-                ModelState.AddModelError("CompanyId", "Company not found.");
-                ViewBag.Companies = await GetCompanySelectListAsync();
-                ViewBag.Roles = GetAppRoleSelectList();
-                return View(viewModel);
-            }
-
-            var currentUser = await GetCurrentUserAsync();
-            var userRequest = new UserRequest
-            {
-                CompanyId = viewModel.CompanyId,
-                CompanyName = company.Name,
-                FullName = viewModel.FullName,
-                Email = viewModel.Email,
-                AppRole = viewModel.AppRole,
-                RequestedByEmail = currentUser?.Email ?? CurrentUserEmail ?? "unknown",
-                Status = RequestStatusEnum.Pending
-            };
-
-            await _userRequestService.CreateAsync(userRequest);
-            TempData["SuccessMessage"] = $"User request created successfully. The request will be reviewed by administrators.";
-            return RedirectToAction(nameof(Index), new { tab = "requests", companyId = viewModel.CompanyId });
-        }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
-        {
-            ModelState.AddModelError("", ex.Message);
-            ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList();
-            return View(viewModel);
-        }
-    }
-
-    [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
     public async Task<IActionResult> UserRequestApprove(Guid id)
     {
         var request = await _userRequestService.GetByIdAsync(id);
@@ -345,7 +211,7 @@ public class UserManagementController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserRequestApprove(UserRequestApproveViewModel viewModel)
     {
         if (!ModelState.IsValid)
@@ -550,71 +416,6 @@ public class UserManagementController : BaseController
 
     #endregion
 
-    #region Company Requests
-
-    [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> CompanyRequestApprove(Guid id)
-    {
-        var request = await _companyRequestService.GetByIdAsync(id);
-        if (request == null)
-            return NotFound();
-
-        var viewModel = new CompanyRequestApproveViewModel
-        {
-            Id = request.Id,
-            CompanyName = request.CompanyName,
-            ContactEmail = request.ContactEmail,
-            PhoneNumber = request.PhoneNumber,
-            Website = request.Website,
-            Description = request.Description,
-            RequesterFullName = request.RequesterFullName,
-            RequesterEmail = request.RequesterEmail
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> CompanyRequestApprove(CompanyRequestApproveViewModel viewModel)
-    {
-        try
-        {
-            var currentUser = await GetCurrentUserAsync();
-            await _companyRequestService.ApproveRequestAsync(viewModel.Id, currentUser?.Email ?? CurrentUserEmail ?? "unknown");
-            TempData["SuccessMessage"] = $"Company request approved. Company '{viewModel.CompanyName}' and user account for {viewModel.RequesterEmail} have been created.";
-            return RedirectToAction(nameof(Index), "CompanyManagement", new { tab = "requests" });
-        }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
-        {
-            TempData["ErrorMessage"] = ex.Message;
-            return RedirectToAction(nameof(CompanyRequestApprove), new { id = viewModel.Id });
-        }
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> CompanyRequestReject(Guid id, string? reason = null)
-    {
-        try
-        {
-            var currentUser = await GetCurrentUserAsync();
-            await _companyRequestService.RejectRequestAsync(id, currentUser?.Email ?? CurrentUserEmail ?? "unknown", reason);
-            TempData["SuccessMessage"] = "Company request rejected.";
-            return RedirectToAction(nameof(Index), "CompanyManagement", new { tab = "requests" });
-        }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
-        {
-            TempData["ErrorMessage"] = ex.Message;
-            return RedirectToAction(nameof(Index), "CompanyManagement", new { tab = "requests" });
-        }
-    }
-
-    #endregion
-
     #region Users
 
     [HttpGet]
@@ -699,7 +500,7 @@ public class UserManagementController : BaseController
     }
 
     [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserDetails(string id)
     {
         var user = await _userService.GetUserByIdAsync(id);
@@ -732,7 +533,7 @@ public class UserManagementController : BaseController
     }
 
     [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -755,25 +556,33 @@ public class UserManagementController : BaseController
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.Roles = GetAppRoleSelectList(includeAdmin: true);
+        ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
 
         return View(viewModel);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserCreate(UserCreateViewModel viewModel)
     {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+
         if (viewModel.CompanyId.HasValue)
         {
             await EnsureCompanyAccessAsync(viewModel.CompanyId.Value);
         }
 
+        // Prevent company admins from assigning admin role
+        if (!isGlobalAdmin && viewModel.AppRole == AppRoleEnum.admin)
+        {
+            ModelState.AddModelError("AppRole", "Company admins cannot assign the admin role.");
+        }
+
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: true);
+            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
             return View(viewModel);
         }
 
@@ -793,22 +602,23 @@ public class UserManagementController : BaseController
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: true);
+            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
             return View(viewModel);
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException ex)
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: true);
+            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
             return View(viewModel);
         }
     }
 
     [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserEdit(string id)
     {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
             return NotFound();
@@ -844,25 +654,44 @@ public class UserManagementController : BaseController
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.Roles = GetAppRoleSelectList(includeAdmin: true);
+        ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
 
         return View(viewModel);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserEdit(UserEditViewModel viewModel)
     {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+
         if (viewModel.CompanyId.HasValue)
         {
             await EnsureCompanyAccessAsync(viewModel.CompanyId.Value);
         }
 
+        // Prevent company admins from assigning admin role
+        if (!isGlobalAdmin && viewModel.AppRole == AppRoleEnum.admin)
+        {
+            ModelState.AddModelError("AppRole", "Company admins cannot assign the admin role.");
+        }
+
+        // Prevent company admins from changing a user's role to admin if they already have it
+        var existingUser = await _userService.GetUserByIdAsync(viewModel.Id);
+        if (existingUser != null && !isGlobalAdmin)
+        {
+            var existingRoles = await UserManager.GetRolesAsync(existingUser);
+            if (existingRoles.Contains("admin") && viewModel.AppRole != AppRoleEnum.admin)
+            {
+                ModelState.AddModelError("AppRole", "Company admins cannot modify users with the admin role.");
+            }
+        }
+
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: true);
+            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
             return View(viewModel);
         }
 
@@ -883,21 +712,21 @@ public class UserManagementController : BaseController
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: true);
+            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
             return View(viewModel);
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException ex)
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: true);
+            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
             return View(viewModel);
         }
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserDelete(string id)
     {
         ApplicationUser? user = null;
@@ -915,7 +744,7 @@ public class UserManagementController : BaseController
 
             await _userService.DeleteUserAsync(id);
             TempData["SuccessMessage"] = $"User '{user.FullName}' deleted successfully.";
-            return RedirectToAction(nameof(Users), new { companyId = user.CompanyId });
+            return RedirectToAction(nameof(Index));
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
@@ -926,7 +755,7 @@ public class UserManagementController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Users), new { companyId = user?.CompanyId });
+        return RedirectToAction(nameof(Index), new { companyId = user?.CompanyId });
     }
 
     #endregion

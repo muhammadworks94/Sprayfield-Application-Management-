@@ -1,35 +1,37 @@
-@model IEnumerable<SAM.ViewModels.UserManagement.CompanyRequestViewModel>
 @{
     ViewData["Title"] = "Company Requests";
+    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
+    var companyRequests = ViewBag.CompanyRequests as IEnumerable<SAM.ViewModels.UserManagement.CompanyRequestViewModel> ?? Enumerable.Empty<SAM.ViewModels.UserManagement.CompanyRequestViewModel>();
+    var validCompanyIds = ViewBag.ValidCompanyIds as Dictionary<Guid, bool> ?? new Dictionary<Guid, bool>();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <p class="text-muted mb-0">Review and manage company creation requests</p>
-    </div>
-    <div class="btn-group" role="group" aria-label="View mode toggle">
-        <button type="button"
-                class="btn btn-outline-secondary active"
-                id="companyRequestsTableViewBtn">
-            <i class="bi bi-table"></i> Table
-        </button>
-        <button type="button"
-                class="btn btn-outline-secondary"
-                id="companyRequestsCardViewBtn">
-            <i class="bi bi-grid-3x3-gap"></i> Cards
-        </button>
+        <p class="text-muted mb-0">Review and manage company registration requests from user signup</p>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Company Request List</h5>
-    </div>
     <div class="card-body">
-        @if (Model.Any())
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <h4 class="mb-0"> Company Requests</h4>
+            <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm active"
+                        id="companyRequestsTableViewBtn">
+                    <i class="bi bi-table"></i> Table
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        id="companyRequestsCardViewBtn">
+                    <i class="bi bi-grid-3x3-gap"></i> Cards
+                </button>
+            </div>
+        </div>
+        @if (companyRequests.Any())
         {
             <div id="companyRequestsTableView" class="table-responsive">
-                <table class="table table-hover">
+                <table class="table irrigates-table">
                     <thead>
                         <tr>
                             <th><i class="bi bi-building"></i> Company Name</th>
@@ -42,7 +44,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var request in Model)
+                        @foreach (var request in companyRequests)
                         {
                             <tr>
                                 <td>
@@ -103,9 +105,18 @@
                                     }
                                     else if (request.CreatedCompanyId.HasValue)
                                     {
-                                        <a asp-controller="SystemAdmin" asp-action="CompanyDetails" asp-route-id="@request.CreatedCompanyId" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-eye"></i> View Company
-                                        </a>
+                                        @if (validCompanyIds.ContainsKey(request.CreatedCompanyId.Value) && validCompanyIds[request.CreatedCompanyId.Value])
+                                        {
+                                            <a asp-controller="SystemAdmin" asp-action="CompanyDetails" asp-route-id="@request.CreatedCompanyId" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> View Company
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary" title="The company associated with this request has been deleted.">
+                                                <i class="bi bi-exclamation-triangle"></i> Company Deleted
+                                            </span>
+                                        }
                                     }
                                     else
                                     {
@@ -119,7 +130,7 @@
             </div>
 
             <div id="companyRequestsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var request in Model)
+                @foreach (var request in companyRequests)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
@@ -191,9 +202,18 @@
                                     }
                                     else if (request.CreatedCompanyId.HasValue)
                                     {
-                                        <a asp-controller="SystemAdmin" asp-action="CompanyDetails" asp-route-id="@request.CreatedCompanyId" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-eye"></i> View Company
-                                        </a>
+                                        @if (validCompanyIds.ContainsKey(request.CreatedCompanyId.Value) && validCompanyIds[request.CreatedCompanyId.Value])
+                                        {
+                                            <a asp-controller="SystemAdmin" asp-action="CompanyDetails" asp-route-id="@request.CreatedCompanyId" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> View Company
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary" title="The company associated with this request has been deleted.">
+                                                <i class="bi bi-exclamation-triangle"></i> Company Deleted
+                                            </span>
+                                        }
                                     }
                                     else
                                     {
@@ -216,7 +236,7 @@
     </div>
 </div>
 
-<!-- Reject Company Request Modal (Outside Table) -->
+<!-- Reject Company Request Modal -->
 <div class="modal fade" id="rejectCompanyRequestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -244,7 +264,46 @@
 
 @section Scripts {
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        (function () {
+            // Company Requests view mode toggle
+            const requestsTableBtn = document.getElementById('companyRequestsTableViewBtn');
+            const requestsCardBtn = document.getElementById('companyRequestsCardViewBtn');
+            const requestsTableView = document.getElementById('companyRequestsTableView');
+            const requestsCardView = document.getElementById('companyRequestsCardView');
+            const requestsStorageKey = 'companyRequestsViewMode';
+
+            function setRequestsViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    requestsTableView?.classList.remove('d-none');
+                    requestsCardView?.classList.add('d-none');
+                    requestsTableBtn?.classList.add('active');
+                    requestsCardBtn?.classList.remove('active');
+                } else {
+                    requestsTableView?.classList.add('d-none');
+                    requestsCardView?.classList.remove('d-none');
+                    requestsTableBtn?.classList.remove('active');
+                    requestsCardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(requestsStorageKey, mode);
+                }
+            }
+
+            const savedRequestsMode = window.localStorage ? localStorage.getItem(requestsStorageKey) : null;
+            setRequestsViewMode(savedRequestsMode === 'card' ? 'card' : 'table');
+
+            requestsTableBtn?.addEventListener('click', function () {
+                setRequestsViewMode('table');
+            });
+
+            requestsCardBtn?.addEventListener('click', function () {
+                setRequestsViewMode('card');
+            });
+
+            // Reject modal handling
             const rejectModal = document.getElementById('rejectCompanyRequestModal');
             if (rejectModal) {
                 rejectModal.addEventListener('show.bs.modal', function(event) {
@@ -259,54 +318,17 @@
                     
                     const form = rejectModal.querySelector('#rejectCompanyRequestForm');
                     if (form) {
-                        const baseUrl = '@Url.Action("CompanyRequestReject", "UserManagement")';
+                        const baseUrl = '@Url.Action("CompanyRequestReject", "CompanyManagement")';
                         form.action = baseUrl + '/' + requestId;
                     }
                     
-                    // Clear reason textarea
                     const reasonTextarea = rejectModal.querySelector('#rejectCompanyReason');
                     if (reasonTextarea) {
                         reasonTextarea.value = '';
                     }
                 });
             }
-
-            const tableBtn = document.getElementById('companyRequestsTableViewBtn');
-            const cardBtn = document.getElementById('companyRequestsCardViewBtn');
-            const tableView = document.getElementById('companyRequestsTableView');
-            const cardView = document.getElementById('companyRequestsCardView');
-            const storageKey = 'companyRequestsViewMode';
-
-            function setViewMode(mode) {
-                const isTable = mode === 'table';
-
-                if (isTable) {
-                    tableView?.classList.remove('d-none');
-                    cardView?.classList.add('d-none');
-                    tableBtn?.classList.add('active');
-                    cardBtn?.classList.remove('active');
-                } else {
-                    tableView?.classList.add('d-none');
-                    cardView?.classList.remove('d-none');
-                    tableBtn?.classList.remove('active');
-                    cardBtn?.classList.add('active');
-                }
-
-                if (window.localStorage) {
-                    localStorage.setItem(storageKey, mode);
-                }
-            }
-
-            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
-            setViewMode(savedMode === 'card' ? 'card' : 'table');
-
-            tableBtn?.addEventListener('click', function () {
-                setViewMode('table');
-            });
-
-            cardBtn?.addEventListener('click', function () {
-                setViewMode('card');
-            });
-        });
+        })();
     </script>
 }
+

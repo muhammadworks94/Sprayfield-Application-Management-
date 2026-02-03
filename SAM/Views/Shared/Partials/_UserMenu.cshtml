@@ -4,6 +4,7 @@
 
 @{
     var user = await UserManager.GetUserAsync(User);
+    var isAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
 
 <div class="dropdown">
@@ -24,6 +25,20 @@
             </li>
         }
         <li><hr class="dropdown-divider"></li>
+        @if (isAdmin)
+        {
+            <li>
+                <a class="dropdown-item" asp-controller="CompanyManagement" asp-action="CompanyRequests">
+                    <i class="bi bi-building-add me-2"></i> Company Requests
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" asp-controller="UserManagement" asp-action="UserRequests">
+                    <i class="bi bi-person-plus me-2"></i> User Requests
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+        }
         <li>
             <a class="dropdown-item" asp-controller="Account" asp-action="Profile">
                 <i class="bi bi-person me-2"></i> Profile

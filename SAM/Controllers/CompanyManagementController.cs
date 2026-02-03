@@ -15,6 +15,11 @@ namespace SAM.Controllers;
 
 /// <summary>
 /// Controller for Company Management module - managing companies and company requests.
+/// 
+/// Company Creation Flows:
+/// 1. Admin Direct Creation: Admins can directly create companies via CompanyCreate action (no request flow)
+/// 2. Signup Requests: Users sign up via AccountController.Signup which creates CompanyRequest entities.
+///    These requests are approved/rejected via CompanyRequestApprove/CompanyRequestReject actions in this controller.
 /// </summary>
 [Authorize(Policy = Policies.RequireAdmin)]
 public class CompanyManagementController : BaseController
@@ -55,7 +60,7 @@ public class CompanyManagementController : BaseController
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? tab = "companies", string? searchTerm = null)
+    public async Task<IActionResult> Index(string? searchTerm = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -96,6 +101,31 @@ public class CompanyManagementController : BaseController
             CreatedBy = c.CreatedBy
         });
 
+        // Create filter view model (search only for global admins)
+        var filterViewModel = new FilterViewModel
+        {
+            PageName = "Companies",
+            EnableSearch = isGlobalAdmin,
+            SearchPlaceholder = "Search by name, email, phone, website...",
+            SearchTerm = searchTerm
+        };
+
+        ViewBag.IsGlobalAdmin = isGlobalAdmin;
+        ViewBag.FilterViewModel = filterViewModel;
+        ViewBag.Companies = companyViewModels;
+
+        return View();
+    }
+
+    /// <summary>
+    /// Display all company requests from user signup.
+    /// Note: This is for signup requests only. Admins create companies directly via CompanyCreate action.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> CompanyRequests()
+    {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+
         // Load company requests data
         var requests = await _companyRequestService.GetAllAsync();
         var companyRequestViewModels = requests.Select(r => new CompanyRequestViewModel
@@ -126,25 +156,17 @@ public class CompanyManagementController : BaseController
             }
         }
 
-        // Create filter view model (search only for global admins)
-        var filterViewModel = new FilterViewModel
-        {
-            PageName = "Companies",
-            EnableSearch = isGlobalAdmin,
-            SearchPlaceholder = "Search by name, email, phone, website...",
-            SearchTerm = searchTerm
-        };
-
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.FilterViewModel = filterViewModel;
-        ViewBag.ActiveTab = tab ?? "companies";
-        ViewBag.Companies = companyViewModels;
         ViewBag.CompanyRequests = companyRequestViewModels;
         ViewBag.ValidCompanyIds = validCompanyIds;
 
         return View();
     }
 
+    /// <summary>
+    /// Approve a company request from user signup.
+    /// Note: This is for signup requests only. Admins create companies directly via CompanyCreate action.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> CompanyRequestApprove(Guid id)
     {
@@ -167,6 +189,10 @@ public class CompanyManagementController : BaseController
         return View(viewModel);
     }
 
+    /// <summary>
+    /// Approve a company request from user signup (POST).
+    /// Note: This is for signup requests only. Admins create companies directly via CompanyCreate action.
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompanyRequestApprove(CompanyRequestApproveViewModel viewModel)
@@ -176,7 +202,7 @@ public class CompanyManagementController : BaseController
             var currentUser = await GetCurrentUserAsync();
             await _companyRequestService.ApproveRequestAsync(viewModel.Id, currentUser?.Email ?? CurrentUserEmail ?? "unknown");
             TempData["SuccessMessage"] = $"Company request approved. Company '{viewModel.CompanyName}' and user account for {viewModel.RequesterEmail} have been created.";
-            return RedirectToAction(nameof(Index), new { tab = "requests" });
+            return RedirectToAction(nameof(CompanyRequests));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -185,6 +211,10 @@ public class CompanyManagementController : BaseController
         }
     }
 
+    /// <summary>
+    /// Reject a company request from user signup.
+    /// Note: This is for signup requests only. Admins create companies directly via CompanyCreate action.
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompanyRequestReject(Guid id, string? reason = null)
@@ -194,12 +224,12 @@ public class CompanyManagementController : BaseController
             var currentUser = await GetCurrentUserAsync();
             await _companyRequestService.RejectRequestAsync(id, currentUser?.Email ?? CurrentUserEmail ?? "unknown", reason);
             TempData["SuccessMessage"] = "Company request rejected.";
-            return RedirectToAction(nameof(Index), new { tab = "requests" });
+            return RedirectToAction(nameof(CompanyRequests));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             TempData["ErrorMessage"] = ex.Message;
-            return RedirectToAction(nameof(Index), new { tab = "requests" });
+            return RedirectToAction(nameof(CompanyRequests));
         }
     }
 
@@ -354,12 +384,21 @@ public class CompanyManagementController : BaseController
         return View(viewModel);
     }
 
+    /// <summary>
+    /// Direct company creation by admin (no request flow).
+    /// This creates the company immediately without requiring approval.
+    /// </summary>
     [HttpGet]
     public IActionResult CompanyCreate()
     {
         return View(new CompanyCreateViewModel());
     }
 
+    /// <summary>
+    /// Direct company creation by admin (POST) - no request flow.
+    /// This creates the company immediately without requiring approval.
+    /// Note: For user signup requests, use CompanyRequestApprove instead.
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompanyCreate(CompanyCreateViewModel viewModel)
