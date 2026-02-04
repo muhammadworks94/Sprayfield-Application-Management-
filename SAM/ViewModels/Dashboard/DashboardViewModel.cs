@@ -12,7 +12,6 @@ public class DashboardViewModel
     public int RecentActivityCount { get; set; }
 
     public int PendingUserRequests { get; set; }
-    public int PendingAdminRequests { get; set; }
 
     public int RecentOperatorLogs { get; set; }
     public int RecentIrrigations { get; set; }

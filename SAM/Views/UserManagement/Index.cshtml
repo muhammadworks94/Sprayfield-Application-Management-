@@ -4,8 +4,9 @@
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Users";
-    var user = await UserManager.GetUserAsync(User);
+    var currentUser = await UserManager.GetUserAsync(User);
     var canManageUsers = Model.CanManageUsers;
+    var isGlobalAdmin = currentUser != null && await UserManager.IsInRoleAsync(currentUser, "admin");
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -49,6 +50,10 @@
                                 <th><i class="bi bi-briefcase"></i> Company</th>
                                 <th><i class="bi bi-person-badge"></i> Role(s)</th>
                                 <th><i class="bi bi-check-circle"></i> Status</th>
+                                @if (isGlobalAdmin)
+                                {
+                                    <th><i class="bi bi-shield-check"></i> isSystemAdmin</th>
+                                }
                                 <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                             </tr>
                         </thead>
@@ -58,11 +63,11 @@
                                 <tr>
                                     <td>
                                         <a asp-action="UserDetails" asp-route-id="@userItem.Id" class="text-decoration-none">
-                                            <i class="bi bi-person me-1"></i>@userItem.FullName
+                                            @userItem.FullName
                                         </a>
                                     </td>
-                                    <td><i class="bi bi-envelope me-1"></i>@userItem.Email</td>
-                                    <td><i class="bi bi-briefcase me-1"></i>@(userItem.CompanyName ?? "N/A")</td>
+                                    <td>@userItem.Email</td>
+                                    <td>@(userItem.CompanyName ?? "N/A")</td>
                                     <td>
                                         @foreach (var role in userItem.Roles)
                                         {
@@ -79,20 +84,40 @@
                                             <span class="badge bg-secondary">Inactive</span>
                                         }
                                     </td>
+                                    @if (isGlobalAdmin)
+                                    {
+                                        var isAdminUser = userItem.Roles.Contains("admin");
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input mx-auto system-admin-toggle"
+                                                       type="checkbox"
+                                                       data-user-id="@userItem.Id"
+                                                       @(isAdminUser ? "checked" : "")
+                                                       @(currentUser != null && currentUser.Id == userItem.Id ? "disabled" : "") />
+                                            </div>
+                                        </td>
+                                    }
                                     <td class="table-actions">
-                                        <a asp-action="UserDetails" asp-route-id="@userItem.Id" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-eye"></i> View
-                                        </a>
-                                        <a asp-action="UserEdit" asp-route-id="@userItem.Id" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteUserModal"
-                                                data-user-id="@userItem.Id"
-                                                data-user-name="@userItem.FullName">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
+                                        @if (currentUser != null && currentUser.Id != userItem.Id)
+                                        {
+                                            <a asp-action="UserDetails" asp-route-id="@userItem.Id" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-eye"></i> View
+                                            </a>
+                                            <a asp-action="UserEdit" asp-route-id="@userItem.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteUserModal"
+                                                    data-user-id="@userItem.Id"
+                                                    data-user-name="@userItem.FullName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Current User</span>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -138,19 +163,26 @@
                                     </dl>
 
                                     <div class="mt-auto d-flex justify-content-end">
-                                        <a asp-action="UserDetails" asp-route-id="@userItem.Id" class="btn btn-sm btn-outline-secondary me-2">
-                                            <i class="bi bi-eye"></i> View
-                                        </a>
-                                        <a asp-action="UserEdit" asp-route-id="@userItem.Id" class="btn btn-sm btn-outline-primary me-2">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteUserModal"
-                                                data-user-id="@userItem.Id"
-                                                data-user-name="@userItem.FullName">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
+                                        @if (currentUser != null && currentUser.Id != userItem.Id)
+                                        {
+                                            <a asp-action="UserDetails" asp-route-id="@userItem.Id" class="btn btn-sm btn-outline-secondary me-2">
+                                                <i class="bi bi-eye"></i> View
+                                            </a>
+                                            <a asp-action="UserEdit" asp-route-id="@userItem.Id" class="btn btn-sm btn-outline-primary me-2">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteUserModal"
+                                                    data-user-id="@userItem.Id"
+                                                    data-user-name="@userItem.FullName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Current User</span>
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -191,6 +223,27 @@
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-danger">Delete</button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (isGlobalAdmin)
+{
+    <!-- System Admin Toggle Confirmation Modal -->
+    <div class="modal fade" id="systemAdminConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="systemAdminConfirmTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="systemAdminConfirmBody">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="systemAdminConfirmButton">Confirm</button>
                 </div>
             </div>
         </div>
@@ -254,6 +307,97 @@
                             form.action = baseUrl + '/' + userId;
                         }
                     });
+                }
+
+                // System admin toggle (super admin only)
+                if (@(isGlobalAdmin.ToString().ToLower())) {
+                    const adminToggles = document.querySelectorAll('.system-admin-toggle');
+                    const systemAdminModalElement = document.getElementById('systemAdminConfirmModal');
+                    let systemAdminModal = null;
+                    let pendingUserId = null;
+                    let pendingAction = null; // 'promote' | 'demote'
+
+                    if (systemAdminModalElement && window.bootstrap) {
+                        systemAdminModal = new bootstrap.Modal(systemAdminModalElement);
+                    }
+
+                    const titleElement = document.getElementById('systemAdminConfirmTitle');
+                    const bodyElement = document.getElementById('systemAdminConfirmBody');
+                    const confirmButton = document.getElementById('systemAdminConfirmButton');
+
+                    adminToggles.forEach(function (checkbox) {
+                        checkbox.addEventListener('change', function () {
+                            if (!systemAdminModal) return;
+
+                            const isChecked = checkbox.checked;
+                            const userId = checkbox.getAttribute('data-user-id');
+                            const row = checkbox.closest('tr');
+                            const nameCell = row ? row.querySelector('td:first-child a, td:first-child') : null;
+                            const userName = nameCell ? nameCell.textContent.trim() : 'this user';
+
+                            if (!userId) return;
+
+                            // Immediately revert checkbox; will be updated after successful action
+                            checkbox.checked = !isChecked;
+
+                            pendingUserId = userId;
+                            pendingAction = isChecked ? 'promote' : 'demote';
+
+                            if (pendingAction === 'promote') {
+                                if (titleElement) titleElement.textContent = 'Promote to System Admin';
+                                if (bodyElement) bodyElement.innerHTML = `Are you sure you want to promote <strong>${userName}</strong> to a system administrator?`;
+                            } else {
+                                if (titleElement) titleElement.textContent = 'Remove System Admin Role';
+                                if (bodyElement) bodyElement.innerHTML = `Are you sure you want to remove the system administrator role from <strong>${userName}</strong>?`;
+                            }
+
+                            systemAdminModal.show();
+                        });
+                    });
+
+                    if (confirmButton && systemAdminModalElement) {
+                        confirmButton.addEventListener('click', function () {
+                            if (!pendingUserId || !pendingAction) {
+                                systemAdminModal.hide();
+                                return;
+                            }
+
+                            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                            const token = tokenInput ? tokenInput.value : null;
+
+                            const url = pendingAction === 'promote'
+                                ? '@Url.Action("AdminPromote", "UserManagement")'
+                                : '@Url.Action("AdminRemove", "UserManagement")';
+
+                            const body = new URLSearchParams();
+                            if (pendingAction === 'promote') {
+                                body.append('userId', pendingUserId);
+                            } else {
+                                body.append('adminId', pendingUserId);
+                            }
+
+                            fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    ...(token ? { 'RequestVerificationToken': token } : {})
+                                },
+                                body: body.toString()
+                            })
+                                .then(response => {
+                                    if (!response.ok) {
+                                        throw new Error('Request failed');
+                                    }
+                                    systemAdminModal.hide();
+                                    // Reload to reflect updated roles / UI
+                                    window.location.reload();
+                                })
+                                .catch(error => {
+                                    console.error('Error updating system admin role:', error);
+                                    systemAdminModal.hide();
+                                });
+                        });
+                    }
                 }
             }
         });

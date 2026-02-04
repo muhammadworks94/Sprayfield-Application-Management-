@@ -101,7 +101,6 @@ builder.Services.AddScoped<SAM.Services.Interfaces.IIrrRprtService, IrrRprtServi
 builder.Services.AddScoped<SAM.Services.Interfaces.INDAR1Service, NDAR1Service>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserService, UserService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserRequestService, UserRequestService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IAdminRequestService, AdminRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISearchService, SearchService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService, SAM.Services.Implementations.CompanyRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailService, EmailService>();

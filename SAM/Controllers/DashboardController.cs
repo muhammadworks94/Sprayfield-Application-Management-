@@ -24,7 +24,6 @@ public class DashboardController : BaseController
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly ICompanyService _companyService;
     private readonly IUserRequestService _userRequestService;
-    private readonly IAdminRequestService _adminRequestService;
     private readonly IOperatorLogService _operatorLogService;
     private readonly IIrrigateService _irrigateService;
     private readonly IWWCharService _wwCharService;
@@ -38,7 +37,6 @@ public class DashboardController : BaseController
         IMonitoringWellService monitoringWellService,
         ICompanyService companyService,
         IUserRequestService userRequestService,
-        IAdminRequestService adminRequestService,
         IOperatorLogService operatorLogService,
         IIrrigateService irrigateService,
         IWWCharService wwCharService,
@@ -54,7 +52,6 @@ public class DashboardController : BaseController
         _monitoringWellService = monitoringWellService;
         _companyService = companyService;
         _userRequestService = userRequestService;
-        _adminRequestService = adminRequestService;
         _operatorLogService = operatorLogService;
         _irrigateService = irrigateService;
         _wwCharService = wwCharService;
@@ -107,7 +104,6 @@ public class DashboardController : BaseController
         if (isGlobalAdmin)
         {
             viewModel.PendingUserRequests = (await _userRequestService.GetPendingRequestsAsync()).Count();
-            viewModel.PendingAdminRequests = (await _adminRequestService.GetPendingRequestsAsync()).Count();
         }
         else if (effectiveCompanyId.HasValue)
         {

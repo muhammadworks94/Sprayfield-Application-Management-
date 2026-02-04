@@ -222,7 +222,9 @@ public class UserService : IUserService
         if (string.IsNullOrWhiteSpace(userId))
             return null;
 
-        return await _userManager.FindByIdAsync(userId);
+        return await _context.Users
+            .Include(u => u.Company)
+            .FirstOrDefaultAsync(u => u.Id == userId);
     }
 
     public async Task<IEnumerable<ApplicationUser>> GetUsersByCompanyAsync(Guid? companyId = null)

@@ -1,0 +1,309 @@
+@model IEnumerable<SAM.ViewModels.UserManagement.AdminViewModel>
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Global Administrator Management";
+    var currentUser = await UserManager.GetUserAsync(User);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Manage global administrators in the system</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <h4 class="mb-0">Administrator List</h4>
+            <div class="d-flex">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm active"
+                            id="adminsTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="adminsCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+                <a asp-action="AdminCreate" class="btn btn-sm btn-primary me-2">
+                    <i class="bi bi-plus-circle"></i> Create Admin
+                </a>
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#promoteUserModal">
+                    <i class="bi bi-person-plus"></i> Promote User
+                </button>
+            </div>
+        </div>
+
+        @if (Model.Any())
+        {
+            <div id="adminsTableView" class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-person"></i> Full Name</th>
+                            <th><i class="bi bi-envelope"></i> Email</th>
+                            <th><i class="bi bi-briefcase"></i> Company</th>
+                            <th><i class="bi bi-check-circle"></i> Status</th>
+                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var admin in Model)
+                        {
+                            <tr>
+                                <td>
+                                   @admin.FullName
+                                </td>
+                                <td>@admin.Email</td>
+                                <td>@(admin.CompanyName ?? "Global Admin")</td>
+                                <td>
+                                    @if (admin.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                <td class="table-actions">
+                                    @if (currentUser != null && currentUser.Id != admin.Id)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#removeAdminModal"
+                                                data-admin-id="@admin.Id"
+                                                data-admin-name="@admin.FullName">
+                                            <i class="bi bi-x-circle"></i> Remove Admin
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Current User</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="adminsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var admin in Model)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header-light d-flex justify-content-between">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-shield-check me-1 text-primary"></i>@admin.FullName
+                                </h6>
+                                @if (admin.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <dl class="row small mb-3">
+                                    <dt class="col-5"><i class="bi bi-envelope me-1"></i>Email</dt>
+                                    <dd class="col-7 mb-1">@admin.Email</dd>
+
+                                    <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
+                                    <dd class="col-7 mb-1">@(admin.CompanyName ?? "Global Admin")</dd>
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-end">
+                                    @if (currentUser != null && currentUser.Id != admin.Id)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#removeAdminModal"
+                                                data-admin-id="@admin.Id"
+                                                data-admin-name="@admin.FullName">
+                                            <i class="bi bi-x-circle"></i> Remove Admin
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Current User</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-shield-check" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <p class="text-muted mt-3">No administrators found.</p>
+                <a asp-action="AdminCreate" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Create First Administrator
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Promote User Modal -->
+<div class="modal fade" id="promoteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Promote User to Administrator</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="promoteUserForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p>Select a user to promote to administrator:</p>
+                    <div class="mb-3">
+                        <label for="promoteUserId" class="form-label required">User</label>
+                        <select name="userId" id="promoteUserId" class="form-select" required>
+                            <option value="">-- Select User --</option>
+                        </select>
+                        <small class="form-text text-muted">Only non-admin users are shown</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Promote to Admin</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Admin Modal -->
+<div class="modal fade" id="removeAdminModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Remove Administrator Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove the administrator role from <strong id="removeAdminName"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> This action cannot be undone. The user will lose administrator privileges.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="removeAdminForm" method="post" class="d-inline" asp-action="AdminRemove" asp-controller="UserManagement">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="adminId" id="removeAdminId" value="" />
+                    <button type="submit" class="btn btn-danger">Remove Admin Role</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // View mode toggle
+            const adminsTableBtn = document.getElementById('adminsTableViewBtn');
+            const adminsCardBtn = document.getElementById('adminsCardViewBtn');
+            const adminsTableView = document.getElementById('adminsTableView');
+            const adminsCardView = document.getElementById('adminsCardView');
+            const adminsStorageKey = 'adminsViewMode';
+
+            function setAdminsViewMode(mode) {
+                const isTable = mode === 'table';
+                if (isTable) {
+                    adminsTableView?.classList.remove('d-none');
+                    adminsCardView?.classList.add('d-none');
+                    adminsTableBtn?.classList.add('active');
+                    adminsCardBtn?.classList.remove('active');
+                } else {
+                    adminsTableView?.classList.add('d-none');
+                    adminsCardView?.classList.remove('d-none');
+                    adminsTableBtn?.classList.remove('active');
+                    adminsCardBtn?.classList.add('active');
+                }
+                if (window.localStorage) {
+                    localStorage.setItem(adminsStorageKey, mode);
+                }
+            }
+
+            const savedAdminsMode = window.localStorage ? localStorage.getItem(adminsStorageKey) : null;
+            setAdminsViewMode(savedAdminsMode === 'card' ? 'card' : 'table');
+
+            adminsTableBtn?.addEventListener('click', function () { setAdminsViewMode('table'); });
+            adminsCardBtn?.addEventListener('click', function () { setAdminsViewMode('card'); });
+
+            // Load users for promote modal
+            const promoteModal = document.getElementById('promoteUserModal');
+            if (promoteModal) {
+                promoteModal.addEventListener('show.bs.modal', async function() {
+                    const select = document.getElementById('promoteUserId');
+                    if (select && select.options.length === 1) {
+                        try {
+                            const response = await fetch('@Url.Action("GetNonAdminUsers", "UserManagement")');
+                            if (response.ok) {
+                                const users = await response.json();
+                                select.innerHTML = '<option value="">-- Select User --</option>';
+                                users.forEach(user => {
+                                    const option = document.createElement('option');
+                                    option.value = user.id;
+                                    option.textContent = `${user.fullName} (${user.email})`;
+                                    select.appendChild(option);
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error loading users:', error);
+                        }
+                    }
+                });
+
+                const promoteForm = document.getElementById('promoteUserForm');
+                if (promoteForm) {
+                    promoteForm.addEventListener('submit', function(e) {
+                        const userId = document.getElementById('promoteUserId').value;
+                        if (!userId) {
+                            e.preventDefault();
+                            alert('Please select a user to promote.');
+                            return false;
+                        }
+                        promoteForm.action = '@Url.Action("AdminPromote", "UserManagement")';
+                    });
+                }
+            }
+
+            // Remove admin modal
+            const removeAdminModal = document.getElementById('removeAdminModal');
+            if (removeAdminModal) {
+                removeAdminModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    if (!button) return;
+
+                    const adminId = button.getAttribute('data-admin-id');
+                    const adminName = button.getAttribute('data-admin-name');
+
+                    const nameElement = removeAdminModal.querySelector('#removeAdminName');
+                    if (nameElement) {
+                        nameElement.textContent = adminName;
+                    }
+
+                    const adminIdInput = removeAdminModal.querySelector('#removeAdminId');
+                    if (adminIdInput && adminId) {
+                        adminIdInput.value = adminId;
+                    }
+                });
+            }
+        });
+    </script>
+}
+

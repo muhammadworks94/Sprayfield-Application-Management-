@@ -1,0 +1,58 @@
+@model SAM.ViewModels.UserManagement.AdminCreateViewModel
+@{
+    ViewData["Title"] = "Create Administrator";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Create a new global administrator account</p>
+    </div>
+    <a asp-action="ManageAdmins" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> A temporary password will be automatically generated for the new administrator. The administrator will need to change this password on first login.
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-shield-check"></i> Administrator Information</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="AdminCreate" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-section">
+                <div class="form-section-title"><i class="bi bi-sliders me-2"></i>Administrator Details</div>
+                
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label required"></label>
+                    <input asp-for="FullName" class="form-control" />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label required"></label>
+                    <input asp-for="Email" type="email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="ManageAdmins" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Administrator
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

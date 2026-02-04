@@ -34,12 +34,6 @@
                 <i class="bi bi-exclamation-circle"></i> @Model.PendingUserRequests Pending User Request(s)
             </a>
         }
-        @if (isGlobalAdmin && Model.PendingAdminRequests > 0)
-        {
-            <a asp-controller="UserManagement" asp-action="AdminRequests" class="btn btn-warning">
-                <i class="bi bi-exclamation-circle"></i> @Model.PendingAdminRequests Pending Admin Request(s)
-            </a>
-        }
     </div>
 </div>
 

@@ -19,13 +19,11 @@ namespace SAM.Controllers;
 public class UserManagementController : BaseController
 {
     private readonly IUserRequestService _userRequestService;
-    private readonly IAdminRequestService _adminRequestService;
     private readonly ICompanyService _companyService;
     private readonly IUserService _userService;
 
     public UserManagementController(
         IUserRequestService userRequestService,
-        IAdminRequestService adminRequestService,
         ICompanyService companyService,
         IUserService userService,
         UserManager<ApplicationUser> userManager,
@@ -33,7 +31,6 @@ public class UserManagementController : BaseController
         : base(userManager, logger)
     {
         _userRequestService = userRequestService;
-        _adminRequestService = adminRequestService;
         _companyService = companyService;
         _userService = userService;
     }
@@ -42,8 +39,9 @@ public class UserManagementController : BaseController
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> Index(Guid? companyId = null)
+    public async Task<IActionResult> Index()
     {
+        Guid? companyId = null;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var isCompanyAdminOnly = !isGlobalAdmin && await IsInRoleAsync("company_admin");
         var canManageUsers = isGlobalAdmin || isCompanyAdminOnly;
@@ -285,136 +283,6 @@ public class UserManagementController : BaseController
 
     #endregion
 
-    #region Admin Requests
-
-    [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> AdminRequests()
-    {
-        var requests = await _adminRequestService.GetAllAsync();
-        
-        var viewModels = requests.Select(r => new AdminRequestViewModel
-        {
-            Id = r.Id,
-            RequestType = r.RequestType,
-            TargetEmail = r.TargetEmail,
-            TargetFullName = r.TargetFullName,
-            Justification = r.Justification,
-            RequestedByEmail = r.RequestedByEmail,
-            Status = r.Status,
-            CreatedDate = r.CreatedDate
-        });
-
-        return View(viewModels);
-    }
-
-    [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public IActionResult AdminRequestCreate()
-    {
-        var viewModel = new AdminRequestCreateViewModel();
-        ViewBag.RequestTypes = GetAdminRequestTypeSelectList();
-        return View(viewModel);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> AdminRequestCreate(AdminRequestCreateViewModel viewModel)
-    {
-        if (!ModelState.IsValid)
-        {
-            ViewBag.RequestTypes = GetAdminRequestTypeSelectList();
-            return View(viewModel);
-        }
-
-        try
-        {
-            var currentUser = await GetCurrentUserAsync();
-            var adminRequest = new AdminRequest
-            {
-                RequestType = viewModel.RequestType,
-                TargetEmail = viewModel.TargetEmail,
-                TargetFullName = viewModel.TargetFullName,
-                Justification = viewModel.Justification,
-                RequestedByEmail = currentUser?.Email ?? CurrentUserEmail ?? "unknown",
-                Status = RequestStatusEnum.Pending
-            };
-
-            await _adminRequestService.CreateAsync(adminRequest);
-            TempData["SuccessMessage"] = "Admin request created successfully. The request will be reviewed by other administrators.";
-            return RedirectToAction(nameof(AdminRequests));
-        }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
-        {
-            ModelState.AddModelError("", ex.Message);
-            ViewBag.RequestTypes = GetAdminRequestTypeSelectList();
-            return View(viewModel);
-        }
-    }
-
-    [HttpGet]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> AdminRequestApprove(Guid id)
-    {
-        var request = await _adminRequestService.GetByIdAsync(id);
-        if (request == null)
-            return NotFound();
-
-        var viewModel = new AdminRequestApproveViewModel
-        {
-            Id = request.Id,
-            RequestType = request.RequestType,
-            TargetEmail = request.TargetEmail,
-            TargetFullName = request.TargetFullName,
-            Justification = request.Justification,
-            RequestedByEmail = request.RequestedByEmail
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> AdminRequestApprove(AdminRequestApproveViewModel viewModel)
-    {
-        try
-        {
-            var currentUser = await GetCurrentUserAsync();
-            await _adminRequestService.ApproveRequestAsync(viewModel.Id, currentUser?.Email ?? CurrentUserEmail ?? "unknown");
-            
-            var action = viewModel.RequestType == AdminRequestTypeEnum.CreateAdmin ? "created" : "disabled";
-            TempData["SuccessMessage"] = $"Admin request approved. User account {action} for {viewModel.TargetEmail}.";
-            return RedirectToAction(nameof(AdminRequests));
-        }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
-        {
-            TempData["ErrorMessage"] = ex.Message;
-            return RedirectToAction(nameof(AdminRequestApprove), new { id = viewModel.Id });
-        }
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
-    public async Task<IActionResult> AdminRequestReject(Guid id, string? reason = null)
-    {
-        try
-        {
-            var currentUser = await GetCurrentUserAsync();
-            await _adminRequestService.RejectRequestAsync(id, currentUser?.Email ?? CurrentUserEmail ?? "unknown", reason);
-            TempData["SuccessMessage"] = "Admin request rejected.";
-            return RedirectToAction(nameof(AdminRequests));
-        }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
-        {
-            TempData["ErrorMessage"] = ex.Message;
-            return RedirectToAction(nameof(AdminRequests));
-        }
-    }
-
-    #endregion
 
     #region Users
 
@@ -629,18 +497,21 @@ public class UserManagementController : BaseController
         }
 
         var roles = await UserManager.GetRolesAsync(user);
-        var currentRole = AppRoleEnum.@operator; // Default
+        AppRoleEnum? currentRole = null; // Default to null if no role
         if (roles.Any())
         {
             var roleName = roles.First();
-            currentRole = roleName switch
+            // Exclude admin role - only get company roles
+            if (roleName != "admin")
             {
-                "admin" => AppRoleEnum.admin,
-                "company_admin" => AppRoleEnum.company_admin,
-                "operator" => AppRoleEnum.@operator,
-                "technician" => AppRoleEnum.technician,
-                _ => AppRoleEnum.@operator
-            };
+                currentRole = roleName switch
+                {
+                    "company_admin" => AppRoleEnum.company_admin,
+                    "operator" => AppRoleEnum.@operator,
+                    "technician" => AppRoleEnum.technician,
+                    _ => null
+                };
+            }
         }
 
         var viewModel = new UserEditViewModel
@@ -654,7 +525,7 @@ public class UserManagementController : BaseController
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
+        ViewBag.Roles = GetAppRoleSelectList(includeAdmin: false, includeDefaultOption: true);
 
         return View(viewModel);
     }
@@ -671,8 +542,14 @@ public class UserManagementController : BaseController
             await EnsureCompanyAccessAsync(viewModel.CompanyId.Value);
         }
 
-        // Prevent company admins from assigning admin role
-        if (!isGlobalAdmin && viewModel.AppRole == AppRoleEnum.admin)
+        // Validate that a role is selected
+        if (!viewModel.AppRole.HasValue)
+        {
+            ModelState.AddModelError("AppRole", "Please select a role.");
+        }
+
+        // Prevent company admins from assigning admin role (should not be possible, but double-check)
+        if (viewModel.AppRole.HasValue && !isGlobalAdmin && viewModel.AppRole.Value == AppRoleEnum.admin)
         {
             ModelState.AddModelError("AppRole", "Company admins cannot assign the admin role.");
         }
@@ -682,7 +559,7 @@ public class UserManagementController : BaseController
         if (existingUser != null && !isGlobalAdmin)
         {
             var existingRoles = await UserManager.GetRolesAsync(existingUser);
-            if (existingRoles.Contains("admin") && viewModel.AppRole != AppRoleEnum.admin)
+            if (existingRoles.Contains("admin"))
             {
                 ModelState.AddModelError("AppRole", "Company admins cannot modify users with the admin role.");
             }
@@ -691,18 +568,20 @@ public class UserManagementController : BaseController
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin);
+            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: false, includeDefaultOption: true);
             return View(viewModel);
         }
 
         try
         {
+            // Ensure AppRole has a value before calling UpdateUserAsync
+            var roleToUpdate = viewModel.AppRole ?? AppRoleEnum.@operator; // Default to operator if null
             var user = await _userService.UpdateUserAsync(
                 viewModel.Id,
                 viewModel.FullName,
                 viewModel.Email,
                 viewModel.CompanyId,
-                viewModel.AppRole,
+                roleToUpdate,
                 viewModel.IsActive);
 
             TempData["SuccessMessage"] = $"User '{viewModel.FullName}' updated successfully.";
@@ -755,7 +634,237 @@ public class UserManagementController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Index), new { companyId = user?.CompanyId });
+        return RedirectToAction(nameof(Index));
+    }
+
+    #endregion
+
+    #region Admin Management
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public async Task<IActionResult> ManageAdmins()
+    {
+        // Get all users with admin role
+        var allUsers = await _userService.GetAllUsersAsync();
+        var adminUsers = new List<ApplicationUser>();
+
+        foreach (var user in allUsers)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            if (roles.Contains("admin"))
+            {
+                adminUsers.Add(user);
+            }
+        }
+
+        var viewModels = adminUsers.Select(u => new AdminViewModel
+        {
+            Id = u.Id,
+            Email = u.Email ?? string.Empty,
+            FullName = u.FullName,
+            IsActive = u.IsActive,
+            CompanyName = u.Company?.Name
+        }).ToList();
+
+        return View(viewModels);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public IActionResult AdminCreate()
+    {
+        var viewModel = new AdminCreateViewModel();
+        return View(viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public async Task<IActionResult> AdminCreate(AdminCreateViewModel viewModel)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(viewModel);
+        }
+
+        try
+        {
+            // Create admin user with no company (global admin)
+            var user = await _userService.CreateUserAsync(
+                viewModel.Email,
+                viewModel.FullName,
+                companyId: null, // Global admins don't have a company
+                AppRoleEnum.admin,
+                generatePassword: true);
+
+            TempData["SuccessMessage"] = $"Admin '{viewModel.FullName}' created successfully. A temporary password has been generated.";
+            return RedirectToAction(nameof(ManageAdmins));
+        }
+        catch (Infrastructure.Exceptions.BusinessRuleException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View(viewModel);
+        }
+        catch (Infrastructure.Exceptions.EntityNotFoundException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View(viewModel);
+        }
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public async Task<IActionResult> GetNonAdminUsers()
+    {
+        var allUsers = await _userService.GetAllUsersAsync();
+        var nonAdminUsers = new List<object>();
+
+        foreach (var user in allUsers)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            if (!roles.Contains("admin"))
+            {
+                nonAdminUsers.Add(new
+                {
+                    id = user.Id,
+                    fullName = user.FullName,
+                    email = user.Email
+                });
+            }
+        }
+
+        return Json(nonAdminUsers);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public async Task<IActionResult> AdminPromote(string userId)
+    {
+        try
+        {
+            var user = await _userService.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "User not found.";
+                return RedirectToAction(nameof(ManageAdmins));
+            }
+
+            // Check if user already has admin role
+            var roles = await UserManager.GetRolesAsync(user);
+            if (roles.Contains("admin"))
+            {
+                TempData["ErrorMessage"] = $"User '{user.FullName}' is already an administrator.";
+                return RedirectToAction(nameof(ManageAdmins));
+            }
+
+            // Remove company-related roles (company_admin, operator, technician)
+            var companyRoles = new[] { "company_admin", "operator", "technician" };
+            foreach (var role in companyRoles)
+            {
+                if (roles.Contains(role))
+                {
+                    var removeResult = await UserManager.RemoveFromRoleAsync(user, role);
+                    if (!removeResult.Succeeded)
+                    {
+                        var errors = string.Join(", ", removeResult.Errors.Select(e => e.Description));
+                        TempData["ErrorMessage"] = $"Failed to remove {role} role: {errors}";
+                        return RedirectToAction(nameof(ManageAdmins));
+                    }
+                }
+            }
+
+            // Remove user from company (set CompanyId to null for global admins)
+            if (user.CompanyId.HasValue)
+            {
+                user.CompanyId = null;
+                var updateResult = await UserManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+                    TempData["ErrorMessage"] = $"Failed to remove user from company: {errors}";
+                    return RedirectToAction(nameof(ManageAdmins));
+                }
+            }
+
+            // Add admin role
+            var result = await UserManager.AddToRoleAsync(user, "admin");
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                TempData["ErrorMessage"] = $"Failed to promote user: {errors}";
+                return RedirectToAction(nameof(ManageAdmins));
+            }
+
+            TempData["SuccessMessage"] = $"User '{user.FullName}' has been promoted to administrator and removed from their company.";
+            return RedirectToAction(nameof(ManageAdmins));
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+            return RedirectToAction(nameof(ManageAdmins));
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireAdmin)]
+    public async Task<IActionResult> AdminRemove(string adminId)
+    {
+        try
+        {
+            var user = await _userService.GetUserByIdAsync(adminId);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "User not found.";
+                return RedirectToAction(nameof(ManageAdmins));
+            }
+
+            // Check if this is the current user
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser != null && currentUser.Id == adminId)
+            {
+                TempData["ErrorMessage"] = "You cannot remove your own administrator role.";
+                return RedirectToAction(nameof(ManageAdmins));
+            }
+
+            // Count total admins
+            var allUsers = await _userService.GetAllUsersAsync();
+            var adminCount = 0;
+            foreach (var u in allUsers)
+            {
+                var roles = await UserManager.GetRolesAsync(u);
+                if (roles.Contains("admin"))
+                {
+                    adminCount++;
+                }
+            }
+
+            // Ensure at least one admin remains
+            if (adminCount <= 1)
+            {
+                TempData["ErrorMessage"] = "Cannot remove the last administrator. At least one administrator must remain.";
+                return RedirectToAction(nameof(ManageAdmins));
+            }
+
+            // Remove admin role
+            var result = await UserManager.RemoveFromRoleAsync(user, "admin");
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                TempData["ErrorMessage"] = $"Failed to remove admin role: {errors}";
+                return RedirectToAction(nameof(ManageAdmins));
+            }
+
+            TempData["SuccessMessage"] = $"Administrator role has been removed from '{user.FullName}'.";
+            return RedirectToAction(nameof(ManageAdmins));
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+            return RedirectToAction(nameof(ManageAdmins));
+        }
     }
 
     #endregion
@@ -778,7 +887,7 @@ public class UserManagementController : BaseController
         return new SelectList(companies, "Id", "Name");
     }
 
-    private SelectList GetAppRoleSelectList(bool includeAdmin = false)
+    private SelectList GetAppRoleSelectList(bool includeAdmin = false, bool includeDefaultOption = false)
     {
         // Exclude admin role by default (for company admin requests)
         // Include admin role when managing users (admin-only page)
@@ -792,18 +901,19 @@ public class UserManagementController : BaseController
             })
             .ToList();
 
+        // Add default "Select Role" option if requested
+        if (includeDefaultOption)
+        {
+            roles.Insert(0, new SelectListItem
+            {
+                Value = "",
+                Text = "Select Role"
+            });
+        }
+
         return new SelectList(roles, "Value", "Text");
     }
 
-    private SelectList GetAdminRequestTypeSelectList()
-    {
-        return new SelectList(Enum.GetValues(typeof(AdminRequestTypeEnum)).Cast<AdminRequestTypeEnum>()
-            .Select(e => new SelectListItem
-            {
-                Value = e.ToString(),
-                Text = e.ToString().Replace("Admin", " Admin")
-            }), "Value", "Text");
-    }
 
     #endregion
 }
