@@ -27,6 +27,11 @@ public class Nozzle : CompanyScopedEntity
     /// </summary>
     public int SprayArc { get; set; }
 
+    /// <summary>
+    /// Optional comment or notes about the nozzle.
+    /// </summary>
+    public string? Comment { get; set; }
+
     // Navigation properties
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
 }

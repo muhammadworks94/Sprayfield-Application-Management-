@@ -305,8 +305,9 @@ public class ReportsController : BaseController
     #region NDAR-1 Reports
 
     [HttpGet]
-    public async Task<IActionResult> NDAR1Reports(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> NDAR1Reports( Guid? facilityId = null)
     {
+        Guid? companyId = null;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 

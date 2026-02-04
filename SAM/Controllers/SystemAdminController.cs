@@ -145,7 +145,8 @@ public class SystemAdminController : BaseController
                     Model = n.Model,
                     Manufacturer = n.Manufacturer,
                     FlowRateGpm = n.FlowRateGpm,
-                    SprayArc = n.SprayArc
+                    SprayArc = n.SprayArc,
+                    Comment=n.Comment
                 });
                 viewModel.NozzlesFilter = await CreateNozzlesFilterViewModelAsync(isGlobalAdmin, companyId);
                 break;
@@ -168,7 +169,7 @@ public class SystemAdminController : BaseController
                     FacilityName = s.Facility?.Name,
                     HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr,
                     HourlyRateInches = s.HourlyRateInches,
-                    AnnualRateInches = s.AnnualRateInches
+                    WeeklyRateInches = s.WeeklyRateInches
                 });
                 viewModel.SprayfieldsFilter = await CreateSprayfieldsFilterViewModelAsync(isGlobalAdmin, companyId);
                 break;
@@ -400,7 +401,21 @@ public class SystemAdminController : BaseController
             City = facility.City,
             State = facility.State,
             ZipCode = facility.ZipCode,
-            County = facility.County
+            County = facility.County,
+            PermitExpirationDate = facility.PermitExpirationDate,
+            PermitPhone = facility.PermitPhone,
+            FacilityPhone = facility.FacilityPhone,
+            OrcName = facility.OrcName,
+            OperatorGrade = facility.OperatorGrade,
+            OperatorNumber = facility.OperatorNumber,
+            ChangeInOrc = facility.ChangeInOrc,
+            TotalNumberOfSprayfields = facility.TotalNumberOfSprayfields,
+            CertifiedLaboratory1Name = facility.CertifiedLaboratory1Name,
+            CertifiedLaboratory2Name = facility.CertifiedLaboratory2Name,
+            LabCertificationNumber1 = facility.LabCertificationNumber1,
+            LabCertificationNumber2 = facility.LabCertificationNumber2,
+            PersonsCollectingSamples = facility.PersonsCollectingSamples,
+            PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet
         };
 
         return View(viewModel);
@@ -460,7 +475,21 @@ public class SystemAdminController : BaseController
                 City = viewModel.City,
                 State = viewModel.State,
                 ZipCode = viewModel.ZipCode,
-                County = viewModel.County
+                County = viewModel.County,
+                PermitExpirationDate = viewModel.PermitExpirationDate,
+                PermitPhone = viewModel.PermitPhone,
+                FacilityPhone = viewModel.FacilityPhone,
+                OrcName = viewModel.OrcName,
+                OperatorGrade = viewModel.OperatorGrade,
+                OperatorNumber = viewModel.OperatorNumber,
+                ChangeInOrc = viewModel.ChangeInOrc,
+                TotalNumberOfSprayfields = viewModel.TotalNumberOfSprayfields,
+                CertifiedLaboratory1Name = viewModel.CertifiedLaboratory1Name,
+                CertifiedLaboratory2Name = viewModel.CertifiedLaboratory2Name,
+                LabCertificationNumber1 = viewModel.LabCertificationNumber1,
+                LabCertificationNumber2 = viewModel.LabCertificationNumber2,
+                PersonsCollectingSamples = viewModel.PersonsCollectingSamples,
+                PermittedMinimumFreeboardFeet = viewModel.PermittedMinimumFreeboardFeet
             };
 
             await _facilityService.CreateAsync(facility);
@@ -512,7 +541,21 @@ public class SystemAdminController : BaseController
             City = facility.City,
             State = facility.State,
             ZipCode = facility.ZipCode,
-            County = facility.County
+            County = facility.County,
+            PermitExpirationDate = facility.PermitExpirationDate,
+            PermitPhone = facility.PermitPhone,
+            FacilityPhone = facility.FacilityPhone,
+            OrcName = facility.OrcName,
+            OperatorGrade = facility.OperatorGrade,
+            OperatorNumber = facility.OperatorNumber,
+            ChangeInOrc = facility.ChangeInOrc,
+            TotalNumberOfSprayfields = facility.TotalNumberOfSprayfields,
+            CertifiedLaboratory1Name = facility.CertifiedLaboratory1Name,
+            CertifiedLaboratory2Name = facility.CertifiedLaboratory2Name,
+            LabCertificationNumber1 = facility.LabCertificationNumber1,
+            LabCertificationNumber2 = facility.LabCertificationNumber2,
+            PersonsCollectingSamples = facility.PersonsCollectingSamples,
+            PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
@@ -548,6 +591,20 @@ public class SystemAdminController : BaseController
             facility.State = viewModel.State;
             facility.ZipCode = viewModel.ZipCode;
             facility.County = viewModel.County;
+            facility.PermitExpirationDate = viewModel.PermitExpirationDate;
+            facility.PermitPhone = viewModel.PermitPhone;
+            facility.FacilityPhone = viewModel.FacilityPhone;
+            facility.OrcName = viewModel.OrcName;
+            facility.OperatorGrade = viewModel.OperatorGrade;
+            facility.OperatorNumber = viewModel.OperatorNumber;
+            facility.ChangeInOrc = viewModel.ChangeInOrc;
+            facility.TotalNumberOfSprayfields = viewModel.TotalNumberOfSprayfields;
+            facility.CertifiedLaboratory1Name = viewModel.CertifiedLaboratory1Name;
+            facility.CertifiedLaboratory2Name = viewModel.CertifiedLaboratory2Name;
+            facility.LabCertificationNumber1 = viewModel.LabCertificationNumber1;
+            facility.LabCertificationNumber2 = viewModel.LabCertificationNumber2;
+            facility.PersonsCollectingSamples = viewModel.PersonsCollectingSamples;
+            facility.PermittedMinimumFreeboardFeet = viewModel.PermittedMinimumFreeboardFeet;
 
             await _facilityService.UpdateAsync(facility);
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";
@@ -988,7 +1045,8 @@ public class SystemAdminController : BaseController
                 Model = viewModel.Model,
                 Manufacturer = viewModel.Manufacturer,
                 FlowRateGpm = viewModel.FlowRateGpm,
-                SprayArc = viewModel.SprayArc
+                SprayArc = viewModel.SprayArc,
+                Comment = viewModel.Comment
             };
 
             await _nozzleService.CreateAsync(nozzle);
@@ -1033,7 +1091,8 @@ public class SystemAdminController : BaseController
             Model = nozzle.Model,
             Manufacturer = nozzle.Manufacturer,
             FlowRateGpm = nozzle.FlowRateGpm,
-            SprayArc = nozzle.SprayArc
+            SprayArc = nozzle.SprayArc,
+            Comment = nozzle.Comment
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
@@ -1063,6 +1122,7 @@ public class SystemAdminController : BaseController
             nozzle.Manufacturer = viewModel.Manufacturer;
             nozzle.FlowRateGpm = viewModel.FlowRateGpm;
             nozzle.SprayArc = viewModel.SprayArc;
+            nozzle.Comment = viewModel.Comment;
 
             await _nozzleService.UpdateAsync(nozzle);
             TempData["SuccessMessage"] = $"Nozzle '{nozzle.Manufacturer} {nozzle.Model}' updated successfully.";
@@ -1137,7 +1197,7 @@ public class SystemAdminController : BaseController
             FacilityName = sprayfield.Facility?.Name,
             HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr,
             HourlyRateInches = sprayfield.HourlyRateInches,
-            AnnualRateInches = sprayfield.AnnualRateInches
+            WeeklyRateInches = sprayfield.WeeklyRateInches
         };
 
         return View(viewModel);
@@ -1196,7 +1256,7 @@ public class SystemAdminController : BaseController
                 FacilityId = viewModel.FacilityId,
                 HydraulicLoadingLimitInPerYr = viewModel.HydraulicLoadingLimitInPerYr,
                 HourlyRateInches = viewModel.HourlyRateInches,
-                AnnualRateInches = viewModel.AnnualRateInches
+                WeeklyRateInches = viewModel.WeeklyRateInches
             };
 
             await _sprayfieldService.CreateAsync(sprayfield);
@@ -1233,7 +1293,7 @@ public class SystemAdminController : BaseController
             FacilityId = sprayfield.FacilityId,
             HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr,
             HourlyRateInches = sprayfield.HourlyRateInches,
-            AnnualRateInches = sprayfield.AnnualRateInches
+            WeeklyRateInches = sprayfield.WeeklyRateInches
         };
 
         await PopulateSprayfieldDropdownsAsync(sprayfield.CompanyId);
@@ -1267,7 +1327,7 @@ public class SystemAdminController : BaseController
             sprayfield.FacilityId = viewModel.FacilityId;
             sprayfield.HydraulicLoadingLimitInPerYr = viewModel.HydraulicLoadingLimitInPerYr;
             sprayfield.HourlyRateInches = viewModel.HourlyRateInches;
-            sprayfield.AnnualRateInches = viewModel.AnnualRateInches;
+            sprayfield.WeeklyRateInches = viewModel.WeeklyRateInches;
 
             await _sprayfieldService.UpdateAsync(sprayfield);
             TempData["SuccessMessage"] = $"Sprayfield '{sprayfield.FieldId}' updated successfully.";

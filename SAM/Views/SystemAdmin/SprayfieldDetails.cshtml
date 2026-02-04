@@ -29,7 +29,7 @@
             <dt class="col-sm-3">Field ID:</dt>
             <dd class="col-sm-9">@Model.FieldId</dd>
 
-            <dt class="col-sm-3">Size:</dt>
+            <dt class="col-sm-3">Size (Wetted Acres):</dt>
             <dd class="col-sm-9">@Model.SizeAcres.ToString("F2") acres</dd>
 
             <dt class="col-sm-3">Soil:</dt>
@@ -46,6 +46,9 @@
 
             <dt class="col-sm-3">Hydraulic Loading Limit:</dt>
             <dd class="col-sm-9">@Model.HydraulicLoadingLimitInPerYr.ToString("F2") inches/year</dd>
+
+            <dt class="col-sm-3">Weekly Rate:</dt>
+            <dd class="col-sm-9">@((Model.WeeklyRateInches?.ToString("F2") ?? "-")) in/week</dd>
         </dl>
     </div>
 </div>

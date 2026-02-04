@@ -526,10 +526,10 @@ public class NDAR1Service : INDAR1Service
             {
                 var col = fieldHeaderColumns[i];
                 worksheet.Cell($"{col}2").Value = fields[i].FieldId; // Field Name
-                worksheet.Cell($"{col}3").Value = fields[i].SizeAcres; // Area (acres)
+                worksheet.Cell($"{col}3").Value = fields[i].SizeAcres; // Area (wetted acres)
                 worksheet.Cell($"{col}4").Value = fields[i].Crop?.Name ?? ""; // Cover Crop
                 worksheet.Cell($"{col}5").Value = fields[i].HourlyRateInches; // Hourly Rate (in)
-                worksheet.Cell($"{col}6").Value = fields[i].AnnualRateInches; // Annual Rate (in)
+                worksheet.Cell($"{col}6").Value = fields[i].WeeklyRateInches; // Weekly Rate (in/week)
             }
         }
 

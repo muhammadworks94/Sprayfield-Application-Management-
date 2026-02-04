@@ -47,6 +47,7 @@
                             <th><i class="bi bi-tag"></i> Model</th>
                             <th><i class="bi bi-speedometer2"></i> Flow Rate (GPM)</th>
                             <th><i class="bi bi-droplet"></i> Spray Arc (°)</th>
+                            <th><i class="bi bi-chat-left-text"></i> Comment</th>
                             @if (isGlobalAdmin)
                             {
                                 <th><i class="bi bi-briefcase"></i> Company</th>
@@ -62,6 +63,7 @@
                                 <td>@nozzle.Model</td>
                                 <td>@nozzle.FlowRateGpm.ToString("F2")</td>
                                 <td>@nozzle.SprayArc</td>
+                                <td>@(string.IsNullOrWhiteSpace(nozzle.Comment) ? "N/A" : nozzle.Comment)</td>
                                 @if (isGlobalAdmin)
                                 {
                                     <td>@nozzle.CompanyName</td>
@@ -101,6 +103,11 @@
 
                                     <dt class="col-6"><i class="bi bi-circle me-1"></i>Spray Arc</dt>
                                     <dd class="col-6 mb-1">@nozzle.SprayArc °</dd>
+
+                                    <dt class="col-6"><i class="bi bi-chat-left-text me-1"></i>Comment</dt>
+                                    <dd class="col-6 mb-1">
+                                        @(string.IsNullOrWhiteSpace(nozzle.Comment) ? "N/A" : nozzle.Comment)
+                                    </dd>
 
                                     @if (isGlobalAdmin)
                                     {

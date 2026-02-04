@@ -17,37 +17,122 @@
     </div>
 </div>
 
-<div class="card card-primary">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-building me-2"></i>@Model.Name</h5>
-    </div>
+<div class="card">
+   
     <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3"><i class="bi bi-briefcase me-1"></i>Company:</dt>
-            <dd class="col-sm-9">@Model.CompanyName</dd>
+        <h4 class="mb-5"><i class="bi bi-building me-2"></i>@Model.Name</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="mb-3">General Information</h6>
+                <dl class="row">
+                    <dt class="col-sm-5"><i class="bi bi-briefcase me-1"></i>Company:</dt>
+                    <dd class="col-sm-7">@Model.CompanyName</dd>
 
-            <dt class="col-sm-3"><i class="bi bi-building me-1"></i>Facility Name:</dt>
-            <dd class="col-sm-9">@Model.Name</dd>
+                  @*   <dt class="col-sm-5"><i class="bi bi-building me-1"></i>Facility Name:</dt>
+                    <dd class="col-sm-7">@Model.Name</dd> *@
 
-            <dt class="col-sm-3"><i class="bi bi-file-text me-1"></i>Permit Number:</dt>
-            <dd class="col-sm-9">@Model.PermitNumber</dd>
+                    <dt class="col-sm-5"><i class="bi bi-file-text me-1"></i>Permit Number:</dt>
+                    <dd class="col-sm-7">@Model.PermitNumber</dd>
 
-            <dt class="col-sm-3"><i class="bi bi-person me-1"></i>Permittee:</dt>
-            <dd class="col-sm-9">@Model.Permittee</dd>
+                    <dt class="col-sm-5"><i class="bi bi-calendar-event me-1"></i>Permit Expiration:</dt>
+                    <dd class="col-sm-7">
+                        @(Model.PermitExpirationDate.HasValue
+                            ? Model.PermitExpirationDate.Value.ToString("MM/dd/yyyy")
+                            : "N/A")
+                    </dd>
 
-            <dt class="col-sm-3"><i class="bi bi-tag me-1"></i>Facility Class:</dt>
-            <dd class="col-sm-9">@Model.FacilityClass</dd>
+                    <dt class="col-sm-5"><i class="bi bi-person me-1"></i>Permittee:</dt>
+                    <dd class="col-sm-7">@Model.Permittee</dd>
 
-            <dt class="col-sm-3"><i class="bi bi-geo-alt me-1"></i>Address:</dt>
-            <dd class="col-sm-9">
-                @Model.Address<br />
-                @Model.City, @Model.State @Model.ZipCode<br />
-                @if (!string.IsNullOrWhiteSpace(Model.County))
-                {
-                    <span><i class="bi bi-map me-1"></i>@Model.County County</span>
-                }
-            </dd>
-        </dl>
+                    <dt class="col-sm-5"><i class="bi bi-tag me-1"></i>Facility Class:</dt>
+                    <dd class="col-sm-7">@Model.FacilityClass</dd>
+
+                    <dt class="col-sm-5"><i class="bi bi-telephone me-1"></i>Permit Phone:</dt>
+                    <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.PermitPhone) ? Model.PermitPhone : "N/A")</dd>
+
+                    <dt class="col-sm-5"><i class="bi bi-telephone-outbound me-1"></i>Facility Phone:</dt>
+                    <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.FacilityPhone) ? Model.FacilityPhone : "N/A")</dd>
+                </dl>
+            </div>
+
+            <div class="col-md-6">
+                <h6 class="mb-3">Address & ORC Information</h6>
+                <dl class="row">
+                    <dt class="col-sm-5"><i class="bi bi-geo-alt me-1"></i>Address:</dt>
+                    <dd class="col-sm-7">
+                        @Model.Address<br />
+                        @Model.City, @Model.State @Model.ZipCode<br />
+                        @if (!string.IsNullOrWhiteSpace(Model.County))
+                        {
+                            <span><i class="bi bi-map me-1"></i>@Model.County County</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-5"><i class="bi bi-person-badge me-1"></i>ORC Name:</dt>
+                    <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.OrcName) ? Model.OrcName : "N/A")</dd>
+
+                    <dt class="col-sm-5"><i class="bi bi-diagram-3 me-1"></i>Operator Grade:</dt>
+                    <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.OperatorGrade) ? Model.OperatorGrade : "N/A")</dd>
+
+                    <dt class="col-sm-5"><i class="bi bi-hash me-1"></i>Operator Number:</dt>
+                    <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.OperatorNumber) ? Model.OperatorNumber : "N/A")</dd>
+
+                    <dt class="col-sm-5"><i class="bi bi-arrow-repeat me-1"></i>Change in ORC?</dt>
+                    <dd class="col-sm-7">@((Model.ChangeInOrc ?? false) ? "Yes" : "No")</dd>
+
+                </dl>
+            </div>
+        </div>
+
+        <hr />
+
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="mb-3">Sprayfields & Freeboard</h6>
+                <dl class="row">
+                    <dt class="col-sm-6"><i class="bi bi-bezier me-1"></i>Total Number of Sprayfields:</dt>
+                    <dd class="col-sm-6">
+                        @(Model.TotalNumberOfSprayfields.HasValue ? Model.TotalNumberOfSprayfields.Value.ToString() : "N/A")
+                    </dd>
+
+                    <dt class="col-sm-6"><i class="bi bi-water me-1"></i>Permitted Minimum Freeboard:</dt>
+                    <dd class="col-sm-6">
+                        @(Model.PermittedMinimumFreeboardFeet.HasValue
+                            ? $"{Model.PermittedMinimumFreeboardFeet.Value} ft"
+                            : "N/A")
+                    </dd>
+                </dl>
+            </div>
+
+            <div class="col-md-6">
+                <h6 class="mb-3">Certified Laboratories & Sampling</h6>
+                <dl class="row">
+                    <dt class="col-sm-6"><i class="bi bi-lab me-1"></i>Certified Lab (1):</dt>
+                    <dd class="col-sm-6">
+                        @(!string.IsNullOrWhiteSpace(Model.CertifiedLaboratory1Name) ? Model.CertifiedLaboratory1Name : "N/A")
+                        @if (!string.IsNullOrWhiteSpace(Model.LabCertificationNumber1))
+                        {
+                            <br /><small class="text-muted">Cert No: @Model.LabCertificationNumber1</small>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-6"><i class="bi bi-lab me-1"></i>Certified Lab (2):</dt>
+                    <dd class="col-sm-6">
+                        @(!string.IsNullOrWhiteSpace(Model.CertifiedLaboratory2Name) ? Model.CertifiedLaboratory2Name : "N/A")
+                        @if (!string.IsNullOrWhiteSpace(Model.LabCertificationNumber2))
+                        {
+                            <br /><small class="text-muted">Cert No: @Model.LabCertificationNumber2</small>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-6"><i class="bi bi-person-lines-fill me-1"></i>Person(s) Collecting Samples:</dt>
+                    <dd class="col-sm-6">
+                        @(!string.IsNullOrWhiteSpace(Model.PersonsCollectingSamples)
+                            ? Model.PersonsCollectingSamples
+                            : "N/A")
+                    </dd>
+                </dl>
+            </div>
+        </div>
     </div>
 </div>
-

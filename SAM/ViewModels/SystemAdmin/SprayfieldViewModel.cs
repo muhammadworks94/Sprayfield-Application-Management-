@@ -14,7 +14,7 @@ public class SprayfieldViewModel
     public string FieldId { get; set; } = string.Empty;
     
     [Required]
-    [Display(Name = "Size (acres)")]
+    [Display(Name = "Size (Wetted Acres)")]
     [Range(0, double.MaxValue, ErrorMessage = "Size must be a positive number.")]
     public decimal SizeAcres { get; set; }
     
@@ -46,9 +46,9 @@ public class SprayfieldViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
     public decimal? HourlyRateInches { get; set; }
     
-    [Display(Name = "Annual Rate (inches/year)")]
-    [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
-    public decimal? AnnualRateInches { get; set; }
+    [Display(Name = "Weekly Rate (inches/week)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Weekly rate must be a positive number.")]
+    public decimal? WeeklyRateInches { get; set; }
 }
 
 public class SprayfieldCreateViewModel
@@ -63,7 +63,7 @@ public class SprayfieldCreateViewModel
     public string FieldId { get; set; } = string.Empty;
     
     [Required]
-    [Display(Name = "Size (acres)")]
+    [Display(Name = "Size (Wetted Acres)")]
     [Range(0, double.MaxValue, ErrorMessage = "Size must be a positive number.")]
     public decimal SizeAcres { get; set; }
     
@@ -91,9 +91,9 @@ public class SprayfieldCreateViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
     public decimal? HourlyRateInches { get; set; }
     
-    [Display(Name = "Annual Rate (inches/year)")]
-    [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
-    public decimal? AnnualRateInches { get; set; }
+    [Display(Name = "Weekly Rate (inches/week)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Weekly rate must be a positive number.")]
+    public decimal? WeeklyRateInches { get; set; }
 }
 
 public class SprayfieldEditViewModel
@@ -110,7 +110,7 @@ public class SprayfieldEditViewModel
     public string FieldId { get; set; } = string.Empty;
     
     [Required]
-    [Display(Name = "Size (acres)")]
+    [Display(Name = "Size (Wetted Acres)")]
     [Range(0, double.MaxValue, ErrorMessage = "Size must be a positive number.")]
     public decimal SizeAcres { get; set; }
     
@@ -138,9 +138,9 @@ public class SprayfieldEditViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
     public decimal? HourlyRateInches { get; set; }
     
-    [Display(Name = "Annual Rate (inches/year)")]
-    [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
-    public decimal? AnnualRateInches { get; set; }
+    [Display(Name = "Weekly Rate (inches/week)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Weekly rate must be a positive number.")]
+    public decimal? WeeklyRateInches { get; set; }
 }
 
 

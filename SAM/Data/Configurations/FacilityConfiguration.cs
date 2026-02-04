@@ -42,6 +42,37 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
         builder.Property(f => f.County)
             .HasMaxLength(100);
 
+        // Optional regulatory metadata fields
+        builder.Property(f => f.PermitPhone)
+            .HasMaxLength(50);
+
+        builder.Property(f => f.FacilityPhone)
+            .HasMaxLength(50);
+
+        builder.Property(f => f.OrcName)
+            .HasMaxLength(200);
+
+        builder.Property(f => f.OperatorGrade)
+            .HasMaxLength(50);
+
+        builder.Property(f => f.OperatorNumber)
+            .HasMaxLength(50);
+
+        builder.Property(f => f.CertifiedLaboratory1Name)
+            .HasMaxLength(200);
+
+        builder.Property(f => f.CertifiedLaboratory2Name)
+            .HasMaxLength(200);
+
+        builder.Property(f => f.LabCertificationNumber1)
+            .HasMaxLength(100);
+
+        builder.Property(f => f.LabCertificationNumber2)
+            .HasMaxLength(100);
+
+        builder.Property(f => f.PersonsCollectingSamples)
+            .HasMaxLength(200);
+
         builder.HasIndex(f => f.CompanyId);
         builder.HasIndex(f => f.PermitNumber);
 

@@ -178,6 +178,7 @@ public static class CompanySeeder
             CropId = crop1.Id,
             NozzleId = nozzle1.Id,
             HydraulicLoadingLimitInPerYr = 48.0m,
+            WeeklyRateInches = 1.0m,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
@@ -194,6 +195,7 @@ public static class CompanySeeder
             CropId = crop2.Id,
             NozzleId = nozzle2.Id,
             HydraulicLoadingLimitInPerYr = 45.0m,
+            WeeklyRateInches = 0.9m,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
@@ -302,6 +304,7 @@ public static class CompanySeeder
             CropId = crop3.Id,
             NozzleId = nozzle3.Id,
             HydraulicLoadingLimitInPerYr = 50.0m,
+            WeeklyRateInches = 1.1m,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false

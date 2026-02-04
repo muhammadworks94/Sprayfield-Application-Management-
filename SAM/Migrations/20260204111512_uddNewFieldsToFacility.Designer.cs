@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SAM.Data;
 
@@ -11,9 +12,11 @@ using SAM.Data;
 namespace SAM.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260204111512_uddNewFieldsToFacility")]
+    partial class uddNewFieldsToFacility
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -448,14 +451,16 @@ namespace SAM.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("CertifiedLaboratory1Name")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("CertifiedLaboratory2Name")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<bool?>("ChangeInOrc")
+                    b.Property<bool>("ChangeInOrc")
                         .HasColumnType("bit");
 
                     b.Property<string>("City")
@@ -484,6 +489,7 @@ namespace SAM.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FacilityPhone")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -491,10 +497,12 @@ namespace SAM.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("LabCertificationNumber1")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("LabCertificationNumber2")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -504,14 +512,17 @@ namespace SAM.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("OperatorGrade")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("OperatorNumber")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("OrcName")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -524,6 +535,7 @@ namespace SAM.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("PermitPhone")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -536,6 +548,7 @@ namespace SAM.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("PersonsCollectingSamples")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -1078,10 +1091,6 @@ namespace SAM.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Comment")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1249,6 +1258,9 @@ namespace SAM.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("AnnualRateInches")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1290,9 +1302,6 @@ namespace SAM.Migrations
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("WeeklyRateInches")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 

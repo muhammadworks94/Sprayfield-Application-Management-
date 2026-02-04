@@ -25,7 +25,7 @@ public class SprayfieldConfiguration : IEntityTypeConfiguration<Sprayfield>
         builder.Property(s => s.HourlyRateInches)
             .HasColumnType("decimal(18,2)");
 
-        builder.Property(s => s.AnnualRateInches)
+        builder.Property(s => s.WeeklyRateInches)
             .HasColumnType("decimal(18,2)");
 
         builder.HasIndex(s => s.CompanyId);

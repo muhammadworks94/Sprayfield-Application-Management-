@@ -23,6 +23,9 @@ public class NozzleConfiguration : IEntityTypeConfiguration<Nozzle>
         builder.Property(n => n.FlowRateGpm)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(n => n.Comment)
+            .HasMaxLength(500);
+
         builder.HasIndex(n => n.CompanyId);
 
         builder.HasOne(n => n.Company)

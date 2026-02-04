@@ -50,10 +50,28 @@
                     <span asp-validation-for="Name" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
-                    <label asp-for="PermitNumber" class="form-label required"></label>
-                    <input asp-for="PermitNumber" class="form-control" />
-                    <span asp-validation-for="PermitNumber" class="text-danger"></span>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="PermitNumber" class="form-label required"></label>
+                            <input asp-for="PermitNumber" class="form-control" />
+                            <span asp-validation-for="PermitNumber" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="PermitExpirationDate" class="form-label"></label>
+                            <input asp-for="PermitExpirationDate" type="date" class="form-control" />
+                            <span asp-validation-for="PermitExpirationDate" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="PermitPhone" class="form-label"></label>
+                            <input asp-for="PermitPhone" class="form-control" />
+                            <span asp-validation-for="PermitPhone" class="text-danger"></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -62,10 +80,21 @@
                     <span asp-validation-for="Permittee" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
-                    <label asp-for="FacilityClass" class="form-label"></label>
-                    <input asp-for="FacilityClass" class="form-control" />
-                    <span asp-validation-for="FacilityClass" class="text-danger"></span>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="FacilityClass" class="form-label required"></label>
+                            <input asp-for="FacilityClass" class="form-control" />
+                            <span asp-validation-for="FacilityClass" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="FacilityPhone" class="form-label"></label>
+                            <input asp-for="FacilityPhone" class="form-control" />
+                            <span asp-validation-for="FacilityPhone" class="text-danger"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -73,7 +102,7 @@
                 <div class="form-section-title">Address Information</div>
                 
                 <div class="mb-3">
-                    <label asp-for="Address" class="form-label"></label>
+                    <label asp-for="Address" class="form-label required"></label>
                     <input asp-for="Address" class="form-control" />
                     <span asp-validation-for="Address" class="text-danger"></span>
                 </div>
@@ -81,21 +110,21 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="City" class="form-label"></label>
+                            <label asp-for="City" class="form-label required"></label>
                             <input asp-for="City" class="form-control" />
                             <span asp-validation-for="City" class="text-danger"></span>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="State" class="form-label"></label>
+                            <label asp-for="State" class="form-label required"></label>
                             <input asp-for="State" class="form-control" />
                             <span asp-validation-for="State" class="text-danger"></span>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="ZipCode" class="form-label"></label>
+                            <label asp-for="ZipCode" class="form-label required"></label>
                             <input asp-for="ZipCode" class="form-control" />
                             <span asp-validation-for="ZipCode" class="text-danger"></span>
                         </div>
@@ -105,11 +134,103 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label asp-for="County" class="form-label"></label>
+                            <label asp-for="County" class="form-label required"></label>
                             <input asp-for="County" class="form-control" />
                             <span asp-validation-for="County" class="text-danger"></span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Operator in Responsible Charge (ORC)</div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="OrcName" class="form-label"></label>
+                            <input asp-for="OrcName" class="form-control" />
+                            <span asp-validation-for="OrcName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="OperatorGrade" class="form-label"></label>
+                            <input asp-for="OperatorGrade" class="form-control" />
+                            <span asp-validation-for="OperatorGrade" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="OperatorNumber" class="form-label"></label>
+                            <input asp-for="OperatorNumber" class="form-control" />
+                            <span asp-validation-for="OperatorNumber" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input asp-for="ChangeInOrc" class="form-check-input" />
+                    <label asp-for="ChangeInOrc" class="form-check-label"></label>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Sprayfields & Laboratories</div>
+
+                <div class="mb-3">
+                    <label asp-for="TotalNumberOfSprayfields" class="form-label"></label>
+                    <input asp-for="TotalNumberOfSprayfields" type="number" min="0" class="form-control" />
+                    <span asp-validation-for="TotalNumberOfSprayfields" class="text-danger"></span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="CertifiedLaboratory1Name" class="form-label"></label>
+                            <input asp-for="CertifiedLaboratory1Name" class="form-control" />
+                            <span asp-validation-for="CertifiedLaboratory1Name" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="LabCertificationNumber1" class="form-label"></label>
+                            <input asp-for="LabCertificationNumber1" class="form-control" />
+                            <span asp-validation-for="LabCertificationNumber1" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="CertifiedLaboratory2Name" class="form-label"></label>
+                            <input asp-for="CertifiedLaboratory2Name" class="form-control" />
+                            <span asp-validation-for="CertifiedLaboratory2Name" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="LabCertificationNumber2" class="form-label"></label>
+                            <input asp-for="LabCertificationNumber2" class="form-control" />
+                            <span asp-validation-for="LabCertificationNumber2" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="PersonsCollectingSamples" class="form-label"></label>
+                    <input asp-for="PersonsCollectingSamples" class="form-control" />
+                    <span asp-validation-for="PersonsCollectingSamples" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="PermittedMinimumFreeboardFeet" class="form-label"></label>
+                    <div class="input-group">
+                        <input asp-for="PermittedMinimumFreeboardFeet" type="number" step="0.1" class="form-control" />
+                        <span class="input-group-text">ft</span>
+                    </div>
+                    <span asp-validation-for="PermittedMinimumFreeboardFeet" class="text-danger"></span>
                 </div>
             </div>
 
