@@ -123,6 +123,9 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(Policies.RequireTechnician, policy => 
         policy.RequireRole("admin", "company_admin", "technician"));
 
+    options.AddPolicy(Policies.RequireTechnicianOrOperator, policy =>
+         policy.RequireRole("admin", "company_admin", "technician","operator"));
+
     // RequireCompanyAccess policy uses custom handler for company-scoped access
     options.AddPolicy(Policies.RequireCompanyAccess, policy => 
         policy.Requirements.Add(new CompanyAccessRequirement()));

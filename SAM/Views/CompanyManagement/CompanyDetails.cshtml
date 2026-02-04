@@ -61,12 +61,12 @@
 <!-- Tabbed Interface -->
 <ul class="nav nav-tabs mb-4" id="companyTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab">
+        <button class="nav-link text-secondary active" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab">
             <i class="bi bi-info-circle me-2"></i>Company Details
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
+        <button class="nav-link text-secondary" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
             <i class="bi bi-people me-2"></i>Users
             @if (Model.UsersCount > 0)
             {
@@ -75,7 +75,7 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="facilities-tab" data-bs-toggle="tab" data-bs-target="#facilities" type="button" role="tab">
+        <button class="nav-link text-secondary" id="facilities-tab" data-bs-toggle="tab" data-bs-target="#facilities" type="button" role="tab">
             <i class="bi bi-building me-2"></i>Facilities
             @if (Model.FacilitiesCount > 0)
             {
@@ -84,7 +84,7 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="soils-tab" data-bs-toggle="tab" data-bs-target="#soils" type="button" role="tab">
+        <button class="nav-link text-secondary" id="soils-tab" data-bs-toggle="tab" data-bs-target="#soils" type="button" role="tab">
             <i class="bi bi-layers me-2"></i>Soils
             @if (Model.SoilsCount > 0)
             {
@@ -93,7 +93,7 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="crops-tab" data-bs-toggle="tab" data-bs-target="#crops" type="button" role="tab">
+        <button class="nav-link text-secondary" id="crops-tab" data-bs-toggle="tab" data-bs-target="#crops" type="button" role="tab">
             <i class="bi bi-flower1 me-2"></i>Crops
             @if (Model.CropsCount > 0)
             {
@@ -102,7 +102,7 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="nozzles-tab" data-bs-toggle="tab" data-bs-target="#nozzles" type="button" role="tab">
+        <button class="nav-link text-secondary" id="nozzles-tab" data-bs-toggle="tab" data-bs-target="#nozzles" type="button" role="tab">
             <i class="bi bi-droplet me-2"></i>Nozzles
             @if (Model.NozzlesCount > 0)
             {
@@ -111,7 +111,7 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="sprayfields-tab" data-bs-toggle="tab" data-bs-target="#sprayfields" type="button" role="tab">
+        <button class="nav-link text-secondary" id="sprayfields-tab" data-bs-toggle="tab" data-bs-target="#sprayfields" type="button" role="tab">
             <i class="bi bi-grid me-2"></i>Sprayfields
             @if (Model.SprayfieldsCount > 0)
             {
@@ -120,7 +120,7 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="monitoringwells-tab" data-bs-toggle="tab" data-bs-target="#monitoringwells" type="button" role="tab">
+        <button class="nav-link text-secondary" id="monitoringwells-tab" data-bs-toggle="tab" data-bs-target="#monitoringwells" type="button" role="tab">
             <i class="bi bi-water me-2"></i>Monitoring Wells
             @if (Model.MonitoringWellsCount > 0)
             {
@@ -134,12 +134,10 @@
     <!-- Company Details Tab -->
     <div class="tab-pane fade show active" id="details" role="tabpanel">
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Company Information</h5>
-            </div>
             <div class="card-body">
+                <h4 class="mb-5">Company Information</h4>
                 <dl class="row">
-                    
+
                     <dt class="col-sm-3"><i class="bi bi-envelope me-1"></i>Contact Email:</dt>
                     <dd class="col-sm-9">@Model.ContactEmail</dd>
 
@@ -189,10 +187,8 @@
     <!-- Users Tab -->
     <div class="tab-pane fade" id="users" role="tabpanel">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Users</h5>
-            </div>
             <div class="card-body">
+                <h4 class="mb-5">Users</h4>
                 @if (Model.Users.Any())
                 {
                     <div class="table-responsive">
@@ -252,16 +248,16 @@
     <!-- Facilities Tab -->
     <div class="tab-pane fade" id="facilities" role="tabpanel">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-building me-2"></i>Facilities</h5>
-                @if (canCreate)
-                {
-                    <a asp-controller="SystemAdmin" asp-action="FacilityCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
-                        <i class="bi bi-plus-circle"></i> Create Facility
-                    </a>
-                }
-            </div>
             <div class="card-body">
+                <div class="d-flex mb-5 justify-content-between">
+                    <h4 class="">Facilities</h4>
+                    @if (canCreate)
+                    {
+                        <a asp-controller="SystemAdmin" asp-action="FacilityCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add Facility
+                        </a>
+                    }
+                </div>
                 @if (Model.Facilities.Any())
                 {
                     <div class="table-responsive">
@@ -291,8 +287,8 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#deleteFacilityModalCD"
                                                         data-facility-id="@facility.Id"
                                                         data-facility-name="@facility.Name">
@@ -326,16 +322,16 @@
     <!-- Soils Tab -->
     <div class="tab-pane fade" id="soils" role="tabpanel">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-layers me-2"></i>Soils</h5>
-                @if (canCreate)
-                {
-                    <a asp-controller="SystemAdmin" asp-action="SoilCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
-                        <i class="bi bi-plus-circle"></i> Create Soil
-                    </a>
-                }
-            </div>
             <div class="card-body">
+                <div class="d-flex mb-5 justify-content-between">
+                    <h4 class="">Soils</h4>
+                    @if (canCreate)
+                    {
+                        <a asp-controller="SystemAdmin" asp-action="SoilCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add Soil
+                        </a>
+                    }
+                </div>
                 @if (Model.Soils.Any())
                 {
                     <div class="table-responsive">
@@ -365,8 +361,8 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#deleteSoilModalCD"
                                                         data-soil-id="@soil.Id"
                                                         data-soil-name="@soil.TypeName">
@@ -400,16 +396,16 @@
     <!-- Crops Tab -->
     <div class="tab-pane fade" id="crops" role="tabpanel">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi-flower1 me-2"></i>Crops</h5>
-                @if (canCreate)
-                {
-                    <a asp-controller="SystemAdmin" asp-action="CropCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
-                        <i class="bi bi-plus-circle"></i> Create Crop
-                    </a>
-                }
-            </div>
             <div class="card-body">
+                <div class="d-flex mb-5 justify-content-between">
+                    <h4 class="">Crops</h4>
+                    @if (canCreate)
+                    {
+                        <a asp-controller="SystemAdmin" asp-action="CropCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add Crop
+                        </a>
+                    }
+                </div>
                 @if (Model.Crops.Any())
                 {
                     <div class="table-responsive">
@@ -439,8 +435,8 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#deleteCropModalCD"
                                                         data-crop-id="@crop.Id"
                                                         data-crop-name="@crop.Name">
@@ -474,16 +470,16 @@
     <!-- Nozzles Tab -->
     <div class="tab-pane fade" id="nozzles" role="tabpanel">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-droplet me-2"></i>Nozzles</h5>
-                @if (canCreate)
-                {
-                    <a asp-controller="SystemAdmin" asp-action="NozzleCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
-                        <i class="bi bi-plus-circle"></i> Create Nozzle
-                    </a>
-                }
-            </div>
             <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-5">
+                    <h4>Nozzles</h4>
+                    @if (canCreate)
+                    {
+                        <a asp-controller="SystemAdmin" asp-action="NozzleCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add Nozzle
+                        </a>
+                    }
+                </div>
                 @if (Model.Nozzles.Any())
                 {
                     <div class="table-responsive">
@@ -515,8 +511,8 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#deleteNozzleModalCD"
                                                         data-nozzle-id="@nozzle.Id"
                                                         data-nozzle-name="@(nozzle.Manufacturer + " " + nozzle.Model)">
@@ -550,16 +546,16 @@
     <!-- Sprayfields Tab -->
     <div class="tab-pane fade" id="sprayfields" role="tabpanel">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-layers me-2"></i>Sprayfields</h5>
-                @if (canCreate)
-                {
-                    <a asp-controller="SystemAdmin" asp-action="SprayfieldCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
-                        <i class="bi bi-grid-circle"></i> Create Sprayfield
-                    </a>
-                }
-            </div>
             <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-5">
+                    <h4>Sprayfields</h4>
+                    @if (canCreate)
+                    {
+                        <a asp-controller="SystemAdmin" asp-action="SprayfieldCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                            <i class="bi bi-grid-circle"></i> Add Sprayfield
+                        </a>
+                    }
+                </div>
                 @if (Model.Sprayfields.Any())
                 {
                     <div class="table-responsive">
@@ -593,8 +589,8 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#deleteSprayfieldModalCD"
                                                         data-sprayfield-id="@sprayfield.Id"
                                                         data-sprayfield-name="@sprayfield.FieldId">
@@ -628,16 +624,17 @@
     <!-- Monitoring Wells Tab -->
     <div class="tab-pane fade" id="monitoringwells" role="tabpanel">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-water me-2"></i>Monitoring Wells</h5>
-                @if (canCreate)
-                {
-                    <a asp-controller="SystemAdmin" asp-action="MonitoringWellCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
-                        <i class="bi bi-plus-circle"></i> Create Monitoring Well
-                    </a>
-                }
-            </div>
+            
             <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-5">
+                    <h4>Monitoring Wells</h4>
+                    @if (canCreate)
+                    {
+                        <a asp-controller="SystemAdmin" asp-action="MonitoringWellCreate" asp-route-companyId="@Model.Id" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add Monitoring Well
+                        </a>
+                    }
+                </div>
                 @if (Model.MonitoringWells.Any())
                 {
                     <div class="table-responsive">
@@ -667,8 +664,8 @@
                                             </a>
                                             @if (isGlobalAdmin)
                                             {
-                                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#deleteMonitoringWellModalCD"
                                                         data-well-id="@well.Id"
                                                         data-well-name="@well.WellId">
@@ -844,7 +841,7 @@
                 tabTrigger.show();
             });
         });
-        
+
         // Facility Modal Handler
         const deleteFacilityModalCD = document.getElementById('deleteFacilityModalCD');
         if (deleteFacilityModalCD) {
@@ -852,10 +849,10 @@
                 const button = event.relatedTarget;
                 const facilityId = button.getAttribute('data-facility-id');
                 const facilityName = button.getAttribute('data-facility-name');
-                
+
                 const nameElement = deleteFacilityModalCD.querySelector('#deleteFacilityNameCD');
                 if (nameElement) nameElement.textContent = facilityName;
-                
+
                 const form = deleteFacilityModalCD.querySelector('#deleteFacilityFormCD');
                 if (form) {
                     const baseUrl = '@Url.Action("FacilityDelete", "SystemAdmin")';
@@ -863,7 +860,7 @@
                 }
             });
         }
-        
+
         // Soil Modal Handler
         const deleteSoilModalCD = document.getElementById('deleteSoilModalCD');
         if (deleteSoilModalCD) {
@@ -871,10 +868,10 @@
                 const button = event.relatedTarget;
                 const soilId = button.getAttribute('data-soil-id');
                 const soilName = button.getAttribute('data-soil-name');
-                
+
                 const nameElement = deleteSoilModalCD.querySelector('#deleteSoilNameCD');
                 if (nameElement) nameElement.textContent = soilName;
-                
+
                 const form = deleteSoilModalCD.querySelector('#deleteSoilFormCD');
                 if (form) {
                     const baseUrl = '@Url.Action("SoilDelete", "SystemAdmin")';
@@ -882,7 +879,7 @@
                 }
             });
         }
-        
+
         // Crop Modal Handler
         const deleteCropModalCD = document.getElementById('deleteCropModalCD');
         if (deleteCropModalCD) {
@@ -890,10 +887,10 @@
                 const button = event.relatedTarget;
                 const cropId = button.getAttribute('data-crop-id');
                 const cropName = button.getAttribute('data-crop-name');
-                
+
                 const nameElement = deleteCropModalCD.querySelector('#deleteCropNameCD');
                 if (nameElement) nameElement.textContent = cropName;
-                
+
                 const form = deleteCropModalCD.querySelector('#deleteCropFormCD');
                 if (form) {
                     const baseUrl = '@Url.Action("CropDelete", "SystemAdmin")';
@@ -901,7 +898,7 @@
                 }
             });
         }
-        
+
         // Nozzle Modal Handler
         const deleteNozzleModalCD = document.getElementById('deleteNozzleModalCD');
         if (deleteNozzleModalCD) {
@@ -909,10 +906,10 @@
                 const button = event.relatedTarget;
                 const nozzleId = button.getAttribute('data-nozzle-id');
                 const nozzleName = button.getAttribute('data-nozzle-name');
-                
+
                 const nameElement = deleteNozzleModalCD.querySelector('#deleteNozzleNameCD');
                 if (nameElement) nameElement.textContent = nozzleName;
-                
+
                 const form = deleteNozzleModalCD.querySelector('#deleteNozzleFormCD');
                 if (form) {
                     const baseUrl = '@Url.Action("NozzleDelete", "SystemAdmin")';
@@ -920,7 +917,7 @@
                 }
             });
         }
-        
+
         // Sprayfield Modal Handler
         const deleteSprayfieldModalCD = document.getElementById('deleteSprayfieldModalCD');
         if (deleteSprayfieldModalCD) {
@@ -928,10 +925,10 @@
                 const button = event.relatedTarget;
                 const sprayfieldId = button.getAttribute('data-sprayfield-id');
                 const sprayfieldName = button.getAttribute('data-sprayfield-name');
-                
+
                 const nameElement = deleteSprayfieldModalCD.querySelector('#deleteSprayfieldNameCD');
                 if (nameElement) nameElement.textContent = sprayfieldName;
-                
+
                 const form = deleteSprayfieldModalCD.querySelector('#deleteSprayfieldFormCD');
                 if (form) {
                     const baseUrl = '@Url.Action("SprayfieldDelete", "SystemAdmin")';
@@ -939,7 +936,7 @@
                 }
             });
         }
-        
+
         // Monitoring Well Modal Handler
         const deleteMonitoringWellModalCD = document.getElementById('deleteMonitoringWellModalCD');
         if (deleteMonitoringWellModalCD) {
@@ -947,10 +944,10 @@
                 const button = event.relatedTarget;
                 const wellId = button.getAttribute('data-well-id');
                 const wellName = button.getAttribute('data-well-name');
-                
+
                 const nameElement = deleteMonitoringWellModalCD.querySelector('#deleteWellNameCD');
                 if (nameElement) nameElement.textContent = wellName;
-                
+
                 const form = deleteMonitoringWellModalCD.querySelector('#deleteWellFormCD');
                 if (form) {
                     const baseUrl = '@Url.Action("MonitoringWellDelete", "SystemAdmin")';

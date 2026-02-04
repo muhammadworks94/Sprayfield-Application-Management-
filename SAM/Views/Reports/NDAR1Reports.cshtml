@@ -16,26 +16,7 @@
     <div>
         <p class="text-muted mb-0">Generate and view Non-Discharge Application Reports (NDAR-1)</p>
     </div>
-    <div class="d-flex align-items-center gap-2">
-        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-            <button type="button"
-                    class="btn btn-outline-secondary active"
-                    id="ndar1ReportsTableViewBtn">
-                <i class="bi bi-table"></i> Table
-            </button>
-            <button type="button"
-                    class="btn btn-outline-secondary"
-                    id="ndar1ReportsCardViewBtn">
-                <i class="bi bi-grid-3x3-gap"></i> Cards
-            </button>
-        </div>
-        @if (canEdit)
-        {
-            <a asp-action="GenerateNDAR1Report" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Generate New Report
-            </a>
-        }
-    </div>
+    
 </div>
 
 <div class="card mb-3">
@@ -69,10 +50,30 @@
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> NDAR-1 Report List</h5>
-    </div>
     <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <h4 class="mb-0">NDAR-1 Reports</h4>
+            <div class="d-flex">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary active"
+                            id="ndar1ReportsTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            id="ndar1ReportsCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+                @if (canEdit)
+                {
+                    <a asp-action="GenerateNDAR1Report" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle"></i> Generate New Report
+                    </a>
+                }
+            </div>
+        </div>
         @if (Model.Any())
         {
             <div id="ndar1ReportsTableView" class="table-responsive">

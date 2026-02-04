@@ -672,6 +672,24 @@ small {
 .irrigates-table {
   min-width: 1200px; /* ensure table can scroll horizontally on smaller screens */
 }
+    /* Chrome, Edge, Safari */
+.table-responsive::-webkit-scrollbar {
+    height: 7px; /* horizontal scrollbar */
+    width: 6px; /* vertical scrollbar */
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: var(--gray-200);
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background-color: var(--gray-400);
+    border-radius: 10px;
+}
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background-color: var(--primary);
+    }
 
 .irrigates-table th,
 .irrigates-table td {

@@ -16,7 +16,7 @@ namespace SAM.Controllers;
 /// <summary>
 /// Controller for Operational Data Entry module - managing daily and monthly logs.
 /// </summary>
-[Authorize(Policy = Policies.RequireOperator)]
+[Authorize(Policy = Policies.RequireTechnicianOrOperator)]
     public class OperationalDataController : BaseController
     {
         private readonly IOperatorLogService _operatorLogService;

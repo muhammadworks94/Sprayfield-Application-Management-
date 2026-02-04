@@ -16,7 +16,7 @@ namespace SAM.Controllers;
 /// <summary>
 /// Controller for System Administration module - managing reference data.
 /// </summary>
-[Authorize(Policy = Policies.RequireCompanyAdmin)]
+
 public class SystemAdminController : BaseController
 {
     private readonly ICompanyService _companyService;
@@ -53,7 +53,7 @@ public class SystemAdminController : BaseController
 
 
     #region SystemAdmin (Tabbed Interface)
-
+    [Authorize(Policy = Policies.RequireTechnicianOrOperator)]
     [HttpGet]
     public async Task<IActionResult> SystemAdmin(string tab = "facilities", Guid? companyId = null)
     {
@@ -189,8 +189,9 @@ public class SystemAdminController : BaseController
         
         return View(viewModel);
     }
-    
+
     // Helper methods to create filter ViewModels
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     private async Task<FilterViewModel> CreateFacilitiesFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
     {
         var filterViewModel = new FilterViewModel
@@ -220,6 +221,7 @@ public class SystemAdminController : BaseController
         return filterViewModel;
     }
     
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     private async Task<FilterViewModel> CreateSoilsFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
     {
         var filterViewModel = new FilterViewModel
@@ -248,7 +250,8 @@ public class SystemAdminController : BaseController
 
         return filterViewModel;
     }
-    
+
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     private async Task<FilterViewModel> CreateCropsFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
     {
         var filterViewModel = new FilterViewModel
@@ -277,7 +280,8 @@ public class SystemAdminController : BaseController
 
         return filterViewModel;
     }
-    
+
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     private async Task<FilterViewModel> CreateNozzlesFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
     {
         var filterViewModel = new FilterViewModel
@@ -306,7 +310,8 @@ public class SystemAdminController : BaseController
 
         return filterViewModel;
     }
-    
+
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     private async Task<FilterViewModel> CreateSprayfieldsFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
     {
         var filterViewModel = new FilterViewModel
@@ -335,7 +340,8 @@ public class SystemAdminController : BaseController
 
         return filterViewModel;
     }
-    
+
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     private async Task<FilterViewModel> CreateMonitoringWellsFilterViewModelAsync(bool isGlobalAdmin, Guid? companyId)
     {
         var filterViewModel = new FilterViewModel
@@ -370,6 +376,7 @@ public class SystemAdminController : BaseController
     #region Facilities
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityDetails(Guid id)
     {
         var facility = await _facilityService.GetByIdAsync(id);
@@ -399,6 +406,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -426,6 +434,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityCreate(FacilityCreateViewModel viewModel)
     {
         // Ensure company access
@@ -480,6 +489,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityEdit(Guid id)
     {
         var facility = await _facilityService.GetByIdAsync(id);
@@ -510,6 +520,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityEdit(FacilityEditViewModel viewModel)
     {
         // Ensure company access
@@ -551,6 +562,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityDelete(Guid id)
     {
         try
@@ -583,6 +595,7 @@ public class SystemAdminController : BaseController
     #region Soils
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SoilCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -610,6 +623,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SoilCreate(SoilCreateViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -656,6 +670,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SoilEdit(Guid id)
     {
         var soil = await _soilService.GetByIdAsync(id);
@@ -679,6 +694,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SoilEdit(SoilEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -713,6 +729,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SoilDelete(Guid id)
     {
         try
@@ -745,6 +762,7 @@ public class SystemAdminController : BaseController
     #region Crops
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> CropCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -772,6 +790,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> CropCreate(CropCreateViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -823,6 +842,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> CropEdit(Guid id)
     {
         var crop = await _cropService.GetByIdAsync(id);
@@ -846,6 +866,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> CropEdit(CropEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -880,6 +901,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> CropDelete(Guid id)
     {
         try
@@ -912,6 +934,7 @@ public class SystemAdminController : BaseController
     #region Nozzles
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NozzleCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -939,6 +962,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NozzleCreate(NozzleCreateViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -992,6 +1016,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NozzleEdit(Guid id)
     {
         var nozzle = await _nozzleService.GetByIdAsync(id);
@@ -1016,6 +1041,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NozzleEdit(NozzleEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -1051,6 +1077,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NozzleDelete(Guid id)
     {
         try
@@ -1083,6 +1110,7 @@ public class SystemAdminController : BaseController
     #region Sprayfields
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SprayfieldDetails(Guid id)
     {
         var sprayfield = await _sprayfieldService.GetByIdAsync(id);
@@ -1115,6 +1143,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SprayfieldCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -1142,6 +1171,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SprayfieldCreate(SprayfieldCreateViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -1181,6 +1211,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SprayfieldEdit(Guid id)
     {
         var sprayfield = await _sprayfieldService.GetByIdAsync(id);
@@ -1210,6 +1241,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SprayfieldEdit(SprayfieldEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -1250,6 +1282,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SprayfieldDelete(Guid id)
     {
         try
@@ -1282,6 +1315,7 @@ public class SystemAdminController : BaseController
     #region Monitoring Wells
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> MonitoringWellDetails(Guid id)
     {
         var monitoringWell = await _monitoringWellService.GetByIdAsync(id);
@@ -1305,6 +1339,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> MonitoringWellCreate(Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -1332,6 +1367,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> MonitoringWellCreate(MonitoringWellCreateViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -1366,6 +1402,7 @@ public class SystemAdminController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> MonitoringWellEdit(Guid id)
     {
         var monitoringWell = await _monitoringWellService.GetByIdAsync(id);
@@ -1390,6 +1427,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> MonitoringWellEdit(MonitoringWellEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -1425,6 +1463,7 @@ public class SystemAdminController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> MonitoringWellDelete(Guid id)
     {
         try
@@ -1456,6 +1495,7 @@ public class SystemAdminController : BaseController
 
     #region Helper Methods
 
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     private async Task<SelectList> GetCompanySelectListAsync()
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -1472,6 +1512,7 @@ public class SystemAdminController : BaseController
         return new SelectList(companies, "Id", "Name");
     }
 
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     private async Task PopulateSprayfieldDropdownsAsync(Guid companyId)
     {
         var soils = await _soilService.GetByCompanyIdAsync(companyId);

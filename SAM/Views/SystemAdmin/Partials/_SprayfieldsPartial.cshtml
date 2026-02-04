@@ -53,8 +53,8 @@
                             @if (isGlobalAdmin)
                             {
                                 <th><i class="bi bi-briefcase"></i> Company</th>
+                                <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                             }
-                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -210,12 +210,12 @@
                 const button = event.relatedTarget;
                 const sprayfieldId = button.getAttribute('data-sprayfield-id');
                 const sprayfieldName = button.getAttribute('data-sprayfield-name');
-                
+
                 const sprayfieldNameElement = deleteModal.querySelector('#deleteSprayfieldName');
                 if (sprayfieldNameElement) {
                     sprayfieldNameElement.textContent = sprayfieldName;
                 }
-                
+
                 const form = deleteModal.querySelector('#deleteSprayfieldForm');
                 if (form) {
                     const baseUrl = '@Url.Action("SprayfieldDelete", "SystemAdmin")';

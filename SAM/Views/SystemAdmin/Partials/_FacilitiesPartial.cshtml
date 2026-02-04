@@ -52,7 +52,10 @@
                             }
                             <th><i class="bi bi-geo-alt"></i> City, State</th>
                             <th><i class="bi bi-map"></i> County</th>
-                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                            @if (isGlobalAdmin)
+                            {
+                                <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
