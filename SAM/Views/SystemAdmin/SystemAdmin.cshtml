@@ -14,8 +14,7 @@
         <a class="system-admin-tab @(Model.ActiveTab == "facilities" ? "active" : "")" 
            asp-action="SystemAdmin" 
            asp-controller="SystemAdmin" 
-           asp-route-tab="facilities" 
-           asp-route-companyId="@Model.SelectedCompanyId">
+           asp-route-tab="facilities" >
             <div class="system-admin-tab-icon">
                 <i class="bi bi-building-fill"></i>
             </div>
@@ -24,8 +23,7 @@
         <a class="system-admin-tab @(Model.ActiveTab == "soils" ? "active" : "")" 
            asp-action="SystemAdmin" 
            asp-controller="SystemAdmin" 
-           asp-route-tab="soils" 
-           asp-route-companyId="@Model.SelectedCompanyId">
+           asp-route-tab="soils" >
             <div class="system-admin-tab-icon">
                 <i class="bi bi-layers"></i>
             </div>
@@ -34,8 +32,7 @@
         <a class="system-admin-tab @(Model.ActiveTab == "crops" ? "active" : "")" 
            asp-action="SystemAdmin" 
            asp-controller="SystemAdmin" 
-           asp-route-tab="crops" 
-           asp-route-companyId="@Model.SelectedCompanyId">
+           asp-route-tab="crops" >
             <div class="system-admin-tab-icon">
                 <i class="bi bi-flower1"></i>
             </div>
@@ -44,8 +41,7 @@
         <a class="system-admin-tab @(Model.ActiveTab == "nozzles" ? "active" : "")" 
            asp-action="SystemAdmin" 
            asp-controller="SystemAdmin" 
-           asp-route-tab="nozzles" 
-           asp-route-companyId="@Model.SelectedCompanyId">
+           asp-route-tab="nozzles" >
             <div class="system-admin-tab-icon">
                 <i class="bi bi-droplet"></i>
             </div>
@@ -54,8 +50,7 @@
         <a class="system-admin-tab @(Model.ActiveTab == "sprayfields" ? "active" : "")" 
            asp-action="SystemAdmin" 
            asp-controller="SystemAdmin" 
-           asp-route-tab="sprayfields" 
-           asp-route-companyId="@Model.SelectedCompanyId">
+           asp-route-tab="sprayfields" >
             <div class="system-admin-tab-icon">
                 <i class="bi bi-grid"></i>
             </div>
@@ -64,8 +59,7 @@
         <a class="system-admin-tab @(Model.ActiveTab == "monitoringwells" ? "active" : "")" 
            asp-action="SystemAdmin" 
            asp-controller="SystemAdmin" 
-           asp-route-tab="monitoringwells" 
-           asp-route-companyId="@Model.SelectedCompanyId">
+           asp-route-tab="monitoringwells" >
             <div class="system-admin-tab-icon">
                 <i class="bi bi-water"></i>
             </div>

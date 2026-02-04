@@ -286,7 +286,7 @@ public class ReportsController : BaseController
 
             await _irrRprtService.DeleteAsync(id);
             TempData["SuccessMessage"] = "Irrigation report deleted successfully.";
-            return RedirectToAction(nameof(IrrigationReports), new { companyId = report.CompanyId, facilityId = report.FacilityId });
+            return RedirectToAction(nameof(IrrigationReports), new {  facilityId = report.FacilityId });
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
@@ -297,7 +297,7 @@ public class ReportsController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(IrrigationReports), new { companyId = report?.CompanyId, facilityId = report?.FacilityId });
+        return RedirectToAction(nameof(IrrigationReports), new { facilityId = report?.FacilityId });
     }
 
     #endregion
@@ -596,7 +596,7 @@ public class ReportsController : BaseController
 
             await _ndar1Service.DeleteAsync(id);
             TempData["SuccessMessage"] = "NDAR-1 report deleted successfully.";
-            return RedirectToAction(nameof(NDAR1Reports), new { companyId = report.CompanyId, facilityId = report.FacilityId });
+            return RedirectToAction(nameof(NDAR1Reports), new { facilityId = report.FacilityId });
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
@@ -607,7 +607,7 @@ public class ReportsController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(NDAR1Reports), new { companyId = report?.CompanyId, facilityId = report?.FacilityId });
+        return RedirectToAction(nameof(NDAR1Reports), new { facilityId = report?.FacilityId });
     }
 
     [HttpGet]

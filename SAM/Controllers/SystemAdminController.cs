@@ -55,8 +55,9 @@ public class SystemAdminController : BaseController
     #region SystemAdmin (Tabbed Interface)
     [Authorize(Policy = Policies.RequireTechnicianOrOperator)]
     [HttpGet]
-    public async Task<IActionResult> SystemAdmin(string tab = "facilities", Guid? companyId = null)
+    public async Task<IActionResult> SystemAdmin(string tab = "facilities")
     {
+        Guid? companyId = null;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
         
@@ -470,7 +471,7 @@ public class SystemAdminController : BaseController
             }
 
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' created successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "facilities", companyId = facility.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "facilities" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -550,7 +551,7 @@ public class SystemAdminController : BaseController
 
             await _facilityService.UpdateAsync(facility);
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "facilities", companyId = facility.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "facilities" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -587,7 +588,7 @@ public class SystemAdminController : BaseController
 
         var facility = await _facilityService.GetByIdAsync(id);
         var companyId = facility?.CompanyId;
-        return RedirectToAction("SystemAdmin", new { tab = "facilities", companyId = companyId });
+        return RedirectToAction("SystemAdmin", new { tab = "facilities"});
     }
 
     #endregion
@@ -655,7 +656,7 @@ public class SystemAdminController : BaseController
             }
 
             TempData["SuccessMessage"] = $"Soil type '{soil.TypeName}' created successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "soils", companyId = soil.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "soils" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -717,7 +718,7 @@ public class SystemAdminController : BaseController
 
             await _soilService.UpdateAsync(soil);
             TempData["SuccessMessage"] = $"Soil type '{soil.TypeName}' updated successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "soils", companyId = soil.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "soils" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -754,7 +755,7 @@ public class SystemAdminController : BaseController
 
         var soil = await _soilService.GetByIdAsync(id);
         var companyId = soil?.CompanyId;
-        return RedirectToAction("SystemAdmin", new { tab = "soils", companyId = companyId });
+        return RedirectToAction("SystemAdmin", new { tab = "soils" });
     }
 
     #endregion
@@ -825,7 +826,7 @@ public class SystemAdminController : BaseController
             }
 
             TempData["SuccessMessage"] = $"Crop '{crop.Name}' created successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "crops", companyId = crop.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "crops" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -889,7 +890,7 @@ public class SystemAdminController : BaseController
 
             await _cropService.UpdateAsync(crop);
             TempData["SuccessMessage"] = $"Crop '{crop.Name}' updated successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "crops", companyId = crop.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "crops" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -926,7 +927,7 @@ public class SystemAdminController : BaseController
 
         var crop = await _cropService.GetByIdAsync(id);
         var companyId = crop?.CompanyId;
-        return RedirectToAction("SystemAdmin", new { tab = "crops", companyId = companyId });
+        return RedirectToAction("SystemAdmin", new { tab = "crops"});
     }
 
     #endregion
@@ -999,7 +1000,7 @@ public class SystemAdminController : BaseController
             }
 
             TempData["SuccessMessage"] = $"Nozzle '{nozzle.Manufacturer} {nozzle.Model}' created successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "nozzles", companyId = nozzle.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "nozzles" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1065,7 +1066,7 @@ public class SystemAdminController : BaseController
 
             await _nozzleService.UpdateAsync(nozzle);
             TempData["SuccessMessage"] = $"Nozzle '{nozzle.Manufacturer} {nozzle.Model}' updated successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "nozzles", companyId = nozzle.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "nozzles" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1102,7 +1103,7 @@ public class SystemAdminController : BaseController
 
         var nozzle = await _nozzleService.GetByIdAsync(id);
         var companyId = nozzle?.CompanyId;
-        return RedirectToAction("SystemAdmin", new { tab = "nozzles", companyId = companyId });
+        return RedirectToAction("SystemAdmin", new { tab = "nozzles" });
     }
 
     #endregion
@@ -1200,7 +1201,7 @@ public class SystemAdminController : BaseController
 
             await _sprayfieldService.CreateAsync(sprayfield);
             TempData["SuccessMessage"] = $"Sprayfield '{sprayfield.FieldId}' created successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "sprayfields", companyId = sprayfield.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "sprayfields" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1270,7 +1271,7 @@ public class SystemAdminController : BaseController
 
             await _sprayfieldService.UpdateAsync(sprayfield);
             TempData["SuccessMessage"] = $"Sprayfield '{sprayfield.FieldId}' updated successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "sprayfields", companyId = sprayfield.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "sprayfields" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1307,7 +1308,7 @@ public class SystemAdminController : BaseController
 
         var sprayfield = await _sprayfieldService.GetByIdAsync(id);
         var companyId = sprayfield?.CompanyId;
-        return RedirectToAction("SystemAdmin", new { tab = "sprayfields", companyId = companyId });
+        return RedirectToAction("SystemAdmin", new { tab = "sprayfields"});
     }
 
     #endregion
@@ -1391,7 +1392,7 @@ public class SystemAdminController : BaseController
 
             await _monitoringWellService.CreateAsync(monitoringWell);
             TempData["SuccessMessage"] = $"Monitoring well '{monitoringWell.WellId}' created successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "monitoringwells", companyId = monitoringWell.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "monitoringwells" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1451,7 +1452,7 @@ public class SystemAdminController : BaseController
 
             await _monitoringWellService.UpdateAsync(monitoringWell);
             TempData["SuccessMessage"] = $"Monitoring well '{monitoringWell.WellId}' updated successfully.";
-            return RedirectToAction("SystemAdmin", new { tab = "monitoringwells", companyId = monitoringWell.CompanyId });
+            return RedirectToAction("SystemAdmin", new { tab = "monitoringwells" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1488,7 +1489,7 @@ public class SystemAdminController : BaseController
 
         var monitoringWell = await _monitoringWellService.GetByIdAsync(id);
         var companyId = monitoringWell?.CompanyId;
-        return RedirectToAction("SystemAdmin", new { tab = "monitoringwells", companyId = companyId });
+        return RedirectToAction("SystemAdmin", new { tab = "monitoringwells"});
     }
 
     #endregion

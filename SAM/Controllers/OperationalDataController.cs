@@ -565,7 +565,7 @@ namespace SAM.Controllers;
             }
             else
             {
-                return RedirectToAction(nameof(Irrigates), new { companyId = irrigate.CompanyId, facilityId = irrigate.FacilityId });
+                return RedirectToAction(nameof(Irrigates), new { facilityId = irrigate.FacilityId });
                
             }
         }
@@ -647,7 +647,7 @@ namespace SAM.Controllers;
 
             await _irrigateService.UpdateAsync(irrigate);
             TempData["SuccessMessage"] = "Irrigation log updated successfully.";
-            return RedirectToAction(nameof(Irrigates), new { companyId = irrigate.CompanyId, facilityId = irrigate.FacilityId });
+            return RedirectToAction(nameof(Irrigates), new { facilityId = irrigate.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -877,7 +877,7 @@ namespace SAM.Controllers;
 
             await _wwCharService.CreateAsync(wwChar);
             TempData["SuccessMessage"] = $"Wastewater characteristics record created for {wwChar.Month} {wwChar.Year}.";
-            return RedirectToAction(nameof(WWChars), new { companyId = wwChar.CompanyId, facilityId = wwChar.FacilityId });
+            return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -977,7 +977,7 @@ namespace SAM.Controllers;
 
             await _wwCharService.UpdateAsync(wwChar);
             TempData["SuccessMessage"] = $"Wastewater characteristics record updated for {wwChar.Month} {wwChar.Year}.";
-            return RedirectToAction(nameof(WWChars), new { companyId = wwChar.CompanyId, facilityId = wwChar.FacilityId });
+            return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1228,7 +1228,7 @@ namespace SAM.Controllers;
 
             await _gwMonitService.CreateAsync(gwMonit);
             TempData["SuccessMessage"] = "Groundwater monitoring record created successfully.";
-            return RedirectToAction(nameof(GWMonits), new { companyId = gwMonit.CompanyId, facilityId = gwMonit.FacilityId });
+            return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1330,7 +1330,7 @@ namespace SAM.Controllers;
 
             await _gwMonitService.UpdateAsync(gwMonit);
             TempData["SuccessMessage"] = "Groundwater monitoring record updated successfully.";
-            return RedirectToAction(nameof(GWMonits), new { companyId = gwMonit.CompanyId, facilityId = gwMonit.FacilityId });
+            return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
