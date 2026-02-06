@@ -27,7 +27,9 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
         var bod5DailyProperty = builder.Property(w => w.BOD5Daily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>());
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>());
         
         bod5DailyProperty.Metadata.SetValueComparer(new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<decimal?>>(
             (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
@@ -39,55 +41,97 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
         builder.Property(w => w.TSSDaily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.FlowRateDaily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.PHDaily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.NH3NDaily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.FecalColiformDaily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
-            .HasColumnType("nvarchar(max)");
-
-        builder.Property(w => w.TotalColiformDaily)
-            .HasConversion(
-                v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.ChlorideDaily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
-        builder.Property(w => w.TDSDaily)
+        builder.Property(w => w.CaDaily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+            .HasColumnType("nvarchar(max)");
+
+        builder.Property(w => w.MgDaily)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, jsonOptions),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+            .HasColumnType("nvarchar(max)");
+
+        builder.Property(w => w.NaDaily)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, jsonOptions),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+            .HasColumnType("nvarchar(max)");
+
+        builder.Property(w => w.SARDaily)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, jsonOptions),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+            .HasColumnType("nvarchar(max)");
+
+        builder.Property(w => w.TNDaily)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, jsonOptions),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.CompositeTime)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<string?>>(v, jsonOptions) ?? new List<string?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<string?>()
+                    : JsonSerializer.Deserialize<List<string?>>(v, jsonOptions) ?? new List<string?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.ORCOnSite)
@@ -97,7 +141,9 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
         builder.Property(w => w.LagoonFreeboard)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new List<decimal?>()
+                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.LabCertification)

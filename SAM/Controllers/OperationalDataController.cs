@@ -725,9 +725,12 @@ namespace SAM.Controllers;
             PHDaily = w.PHDaily,
             NH3NDaily = w.NH3NDaily,
             FecalColiformDaily = w.FecalColiformDaily,
-            TotalColiformDaily = w.TotalColiformDaily,
             ChlorideDaily = w.ChlorideDaily,
-            TDSDaily = w.TDSDaily,
+            CaDaily = w.CaDaily,
+            MgDaily = w.MgDaily,
+            NaDaily = w.NaDaily,
+            SARDaily = w.SARDaily,
+            TNDaily = w.TNDaily,
             CompositeTime = w.CompositeTime,
             ORCOnSite = w.ORCOnSite,
             LagoonFreeboard = w.LagoonFreeboard,
@@ -768,9 +771,12 @@ namespace SAM.Controllers;
             PHDaily = wwChar.PHDaily,
             NH3NDaily = wwChar.NH3NDaily,
             FecalColiformDaily = wwChar.FecalColiformDaily,
-            TotalColiformDaily = wwChar.TotalColiformDaily,
             ChlorideDaily = wwChar.ChlorideDaily,
-            TDSDaily = wwChar.TDSDaily,
+            CaDaily = wwChar.CaDaily,
+            MgDaily = wwChar.MgDaily,
+            NaDaily = wwChar.NaDaily,
+            SARDaily = wwChar.SARDaily,
+            TNDaily = wwChar.TNDaily,
             CompositeTime = wwChar.CompositeTime,
             ORCOnSite = wwChar.ORCOnSite,
             LagoonFreeboard = wwChar.LagoonFreeboard,
@@ -870,9 +876,12 @@ namespace SAM.Controllers;
                 PHDaily = viewModel.PHDaily,
                 NH3NDaily = viewModel.NH3NDaily,
                 FecalColiformDaily = viewModel.FecalColiformDaily,
-                TotalColiformDaily = viewModel.TotalColiformDaily,
                 ChlorideDaily = viewModel.ChlorideDaily,
-                TDSDaily = viewModel.TDSDaily,
+                CaDaily = viewModel.CaDaily,
+                MgDaily = viewModel.MgDaily,
+                NaDaily = viewModel.NaDaily,
+                SARDaily = viewModel.SARDaily,
+                TNDaily = viewModel.TNDaily,
                 CompositeTime = viewModel.CompositeTime,
                 ORCOnSite = viewModel.ORCOnSite,
                 LagoonFreeboard = viewModel.LagoonFreeboard,
@@ -918,9 +927,12 @@ namespace SAM.Controllers;
             PHDaily = wwChar.PHDaily,
             NH3NDaily = wwChar.NH3NDaily,
             FecalColiformDaily = wwChar.FecalColiformDaily,
-            TotalColiformDaily = wwChar.TotalColiformDaily,
             ChlorideDaily = wwChar.ChlorideDaily,
-            TDSDaily = wwChar.TDSDaily,
+            CaDaily = wwChar.CaDaily,
+            MgDaily = wwChar.MgDaily,
+            NaDaily = wwChar.NaDaily,
+            SARDaily = wwChar.SARDaily,
+            TNDaily = wwChar.TNDaily,
             CompositeTime = wwChar.CompositeTime,
             ORCOnSite = wwChar.ORCOnSite,
             LagoonFreeboard = wwChar.LagoonFreeboard,
@@ -971,9 +983,12 @@ namespace SAM.Controllers;
             wwChar.PHDaily = viewModel.PHDaily;
             wwChar.NH3NDaily = viewModel.NH3NDaily;
             wwChar.FecalColiformDaily = viewModel.FecalColiformDaily;
-            wwChar.TotalColiformDaily = viewModel.TotalColiformDaily;
             wwChar.ChlorideDaily = viewModel.ChlorideDaily;
-            wwChar.TDSDaily = viewModel.TDSDaily;
+            wwChar.CaDaily = viewModel.CaDaily;
+            wwChar.MgDaily = viewModel.MgDaily;
+            wwChar.NaDaily = viewModel.NaDaily;
+            wwChar.SARDaily = viewModel.SARDaily;
+            wwChar.TNDaily = viewModel.TNDaily;
             wwChar.CompositeTime = viewModel.CompositeTime;
             wwChar.ORCOnSite = viewModel.ORCOnSite;
             wwChar.LagoonFreeboard = viewModel.LagoonFreeboard;
@@ -1480,9 +1495,12 @@ namespace SAM.Controllers;
         EnsureArraySize(viewModel.PHDaily, 31);
         EnsureArraySize(viewModel.NH3NDaily, 31);
         EnsureArraySize(viewModel.FecalColiformDaily, 31);
-        EnsureArraySize(viewModel.TotalColiformDaily, 31);
         EnsureArraySize(viewModel.ChlorideDaily, 31);
-        EnsureArraySize(viewModel.TDSDaily, 31);
+        EnsureArraySize(viewModel.CaDaily, 31);
+        EnsureArraySize(viewModel.MgDaily, 31);
+        EnsureArraySize(viewModel.NaDaily, 31);
+        EnsureArraySize(viewModel.SARDaily, 31);
+        EnsureArraySize(viewModel.TNDaily, 31);
         EnsureStringArraySize(viewModel.CompositeTime, 31);
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
         EnsureArraySize(viewModel.LagoonFreeboard, 31);
@@ -1496,9 +1514,12 @@ namespace SAM.Controllers;
         EnsureArraySize(viewModel.PHDaily, 31);
         EnsureArraySize(viewModel.NH3NDaily, 31);
         EnsureArraySize(viewModel.FecalColiformDaily, 31);
-        EnsureArraySize(viewModel.TotalColiformDaily, 31);
         EnsureArraySize(viewModel.ChlorideDaily, 31);
-        EnsureArraySize(viewModel.TDSDaily, 31);
+        EnsureArraySize(viewModel.CaDaily, 31);
+        EnsureArraySize(viewModel.MgDaily, 31);
+        EnsureArraySize(viewModel.NaDaily, 31);
+        EnsureArraySize(viewModel.SARDaily, 31);
+        EnsureArraySize(viewModel.TNDaily, 31);
         EnsureStringArraySize(viewModel.CompositeTime, 31);
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
         EnsureArraySize(viewModel.LagoonFreeboard, 31);

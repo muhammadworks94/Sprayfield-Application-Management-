@@ -55,19 +55,34 @@ public class WWChar : CompanyScopedEntity
     public List<decimal?> FecalColiformDaily { get; set; } = new List<decimal?>();
 
     /// <summary>
-    /// Array of daily Total Coliform values (max 31 items, stored as JSON).
-    /// </summary>
-    public List<decimal?> TotalColiformDaily { get; set; } = new List<decimal?>();
-
-    /// <summary>
-    /// Array of daily Chloride values (max 31 items, stored as JSON).
+    /// Array of daily Residual Chloride values (max 31 items, stored as JSON).
     /// </summary>
     public List<decimal?> ChlorideDaily { get; set; } = new List<decimal?>();
 
     /// <summary>
-    /// Array of daily TDS values (max 31 items, stored as JSON).
+    /// Array of daily Calcium values (max 31 items, stored as JSON).
     /// </summary>
-    public List<decimal?> TDSDaily { get; set; } = new List<decimal?>();
+    public List<decimal?> CaDaily { get; set; } = new List<decimal?>();
+
+    /// <summary>
+    /// Array of daily Magnesium values (max 31 items, stored as JSON).
+    /// </summary>
+    public List<decimal?> MgDaily { get; set; } = new List<decimal?>();
+
+    /// <summary>
+    /// Array of daily Sodium values (max 31 items, stored as JSON).
+    /// </summary>
+    public List<decimal?> NaDaily { get; set; } = new List<decimal?>();
+
+    /// <summary>
+    /// Array of daily SAR values (max 31 items, stored as JSON).
+    /// </summary>
+    public List<decimal?> SARDaily { get; set; } = new List<decimal?>();
+
+    /// <summary>
+    /// Array of daily Total Nitrogen values (max 31 items, stored as JSON).
+    /// </summary>
+    public List<decimal?> TNDaily { get; set; } = new List<decimal?>();
 
     /// <summary>
     /// Array of daily composite sample times (max 31 items, stored as JSON).

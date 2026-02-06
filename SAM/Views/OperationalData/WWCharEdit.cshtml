@@ -27,7 +27,7 @@
                 <ul class="small mb-0 ps-3">
                     <li class="mb-1"><strong>Record context</strong>: This record represents one facility’s effluent data for a specific month and year. Verify you are editing the correct period.</li>
                     <li class="mb-1"><strong>Daily rows</strong>: Each row is a calendar day. Only revise values when you are correcting data entry errors or applying updated lab results.</li>
-                    <li class="mb-1"><strong>Analytical data</strong>: For BOD5, TSS, nutrients, coliforms, chloride, and TDS, align edits with final lab reports. Do not “smooth” results to fit expectations.</li>
+                    <li class="mb-1"><strong>Analytical data</strong>: For BOD5, TSS, nutrients, coliforms, residual chloride, Ca, Mg, Na, SAR, and TN, align edits with final lab reports. Do not “smooth” results to fit expectations.</li>
                     <li class="mb-1"><strong>Missing vs zero</strong>: Use blanks when no sample or measurement exists. Reserve zeros for true zero results as reported by the lab or meter.</li>
                     <li class="mb-1"><strong>Composite time & ORC on site</strong>: Ensure these fields still reflect actual sampling practices and staffing for each day.</li>
                     <li class="mb-1"><strong>Lagoon freeboard</strong>: Correct only if the original measurement was clearly wrong. These values support storage and freeboard compliance evaluations.</li>
@@ -90,9 +90,12 @@
                                 <th>pH</th>
                                 <th>NH3-N<br/>(mg/L)</th>
                                 <th>Fecal Coliform<br/>(CFU/100mL)</th>
-                                <th>Total Coliform<br/>(CFU/100mL)</th>
-                                <th>Chloride<br/>(mg/L)</th>
-                                <th>TDS<br/>(mg/L)</th>
+                                <th>Residual Chloride<br/>(mg/L)</th>
+                                <th>Ca<br/>(mg/L)</th>
+                                <th>Mg<br/>(mg/L)</th>
+                                <th>Na<br/>(mg/L)</th>
+                                <th>SAR<br/>(mg/L)</th>
+                                <th>TN<br/>(mg/L)</th>
                                 <th>Composite<br/>Time</th>
                                 <th>ORC<br/>On Site</th>
                                 <th>Lagoon<br/>Freeboard<br/>(inches)</th>
@@ -122,13 +125,22 @@
                                         <input asp-for="FecalColiformDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
                                     </td>
                                     <td>
-                                        <input asp-for="TotalColiformDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
                                         <input asp-for="ChlorideDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
                                     </td>
                                     <td>
-                                        <input asp-for="TDSDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        <input asp-for="CaDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="MgDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="NaDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="SARDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="TNDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
                                     </td>
                                     <td>
                                         <input asp-for="CompositeTime[i]" type="time" class="form-control form-control-sm" />

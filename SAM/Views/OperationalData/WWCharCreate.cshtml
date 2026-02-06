@@ -32,8 +32,8 @@
                     <li class="mb-1"><strong>Flow Rate (GPM)</strong>: Use representative plant flow for that day (daily average or as defined in your permit).</li>
                     <li class="mb-1"><strong>pH</strong>: Enter daily pH as measured in the field or lab. If multiple readings exist, use the value required by your monitoring plan.</li>
                     <li class="mb-1"><strong>NH3‑N and other nutrients</strong>: Record lab‑reported ammonia as N (mg/L); use blanks for missing data rather than zeros.</li>
-                    <li class="mb-1"><strong>Coliforms</strong> (fecal & total): Enter counts in CFU/100mL. If the lab reports “&lt;DL”, use the numeric detection limit according to your SOP and note details elsewhere if needed.</li>
-                    <li class="mb-1"><strong>Chloride & TDS</strong>: Record mg/L values from lab or field instruments as required by your permit.</li>
+                    <li class="mb-1"><strong>Coliforms</strong> (fecal): Enter counts in CFU/100mL. If the lab reports “&lt;DL”, use the numeric detection limit according to your SOP and note details elsewhere if needed.</li>
+                    <li class="mb-1"><strong>Residual Chloride & cations</strong> (Ca, Mg, Na, SAR, TN): Record mg/L values from lab or field instruments as required by your permit.</li>
                     <li class="mb-1"><strong>Composite Time</strong>: Time the composite sample represents (e.g., end of composite). Use 24‑hour time for clarity.</li>
                     <li class="mb-1"><strong>ORC On Site</strong>: Indicate whether the ORC (Operator in Responsible Charge) was on site that day, using the provided options.</li>
                     <li class="mb-1"><strong>Lagoon Freeboard</strong>: Enter measured distance from liquid surface to the top of the lagoon berm (inches). This helps track available storage and compliance with freeboard limits.</li>
@@ -96,9 +96,12 @@
                                 <th>pH</th>
                                 <th>NH3-N<br/>(mg/L)</th>
                                 <th>Fecal Coliform<br/>(CFU/100mL)</th>
-                                <th>Total Coliform<br/>(CFU/100mL)</th>
-                                <th>Chloride<br/>(mg/L)</th>
-                                <th>TDS<br/>(mg/L)</th>
+                                <th>Residual Chloride<br/>(mg/L)</th>
+                                <th>Ca<br/>(mg/L)</th>
+                                <th>Mg<br/>(mg/L)</th>
+                                <th>Na<br/>(mg/L)</th>
+                                <th>SAR<br/>(mg/L)</th>
+                                <th>TN<br/>(mg/L)</th>
                                 <th>Composite<br/>Time</th>
                                 <th>ORC<br/>On Site</th>
                                 <th>Lagoon<br/>Freeboard<br/>(inches)</th>
@@ -128,13 +131,22 @@
                                         <input asp-for="FecalColiformDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
                                     </td>
                                     <td>
-                                        <input asp-for="TotalColiformDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
                                         <input asp-for="ChlorideDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
                                     </td>
                                     <td>
-                                        <input asp-for="TDSDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        <input asp-for="CaDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="MgDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="NaDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="SARDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="TNDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
                                     </td>
                                     <td>
                                         <input asp-for="CompositeTime[i]" type="time" class="form-control form-control-sm" />

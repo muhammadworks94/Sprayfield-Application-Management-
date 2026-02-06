@@ -68,9 +68,12 @@
                         <th>pH</th>
                         <th>NH3-N<br/>(mg/L)</th>
                         <th>Fecal Coliform<br/>(CFU/100mL)</th>
-                        <th>Total Coliform<br/>(CFU/100mL)</th>
-                        <th>Chloride<br/>(mg/L)</th>
-                        <th>TDS<br/>(mg/L)</th>
+                        <th>Residual Chloride<br/>(mg/L)</th>
+                        <th>Ca<br/>(mg/L)</th>
+                        <th>Mg<br/>(mg/L)</th>
+                        <th>Na<br/>(mg/L)</th>
+                        <th>SAR<br/>(mg/L)</th>
+                        <th>TN<br/>(mg/L)</th>
                         <th>Composite<br/>Time</th>
                         <th>ORC<br/>On Site</th>
                         <th>Lagoon<br/>Freeboard<br/>(inches)</th>
@@ -87,9 +90,12 @@
                             <td>@(Model.PHDaily != null && i < Model.PHDaily.Count && Model.PHDaily[i].HasValue ? Model.PHDaily[i].Value.ToString("F2") : "-")</td>
                             <td>@(Model.NH3NDaily != null && i < Model.NH3NDaily.Count && Model.NH3NDaily[i].HasValue ? Model.NH3NDaily[i].Value.ToString("F2") : "-")</td>
                             <td>@(Model.FecalColiformDaily != null && i < Model.FecalColiformDaily.Count && Model.FecalColiformDaily[i].HasValue ? Model.FecalColiformDaily[i].Value.ToString("F0") : "-")</td>
-                            <td>@(Model.TotalColiformDaily != null && i < Model.TotalColiformDaily.Count && Model.TotalColiformDaily[i].HasValue ? Model.TotalColiformDaily[i].Value.ToString("F0") : "-")</td>
                             <td>@(Model.ChlorideDaily != null && i < Model.ChlorideDaily.Count && Model.ChlorideDaily[i].HasValue ? Model.ChlorideDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.TDSDaily != null && i < Model.TDSDaily.Count && Model.TDSDaily[i].HasValue ? Model.TDSDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.CaDaily != null && i < Model.CaDaily.Count && Model.CaDaily[i].HasValue ? Model.CaDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.MgDaily != null && i < Model.MgDaily.Count && Model.MgDaily[i].HasValue ? Model.MgDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.NaDaily != null && i < Model.NaDaily.Count && Model.NaDaily[i].HasValue ? Model.NaDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.SARDaily != null && i < Model.SARDaily.Count && Model.SARDaily[i].HasValue ? Model.SARDaily[i].Value.ToString("F2") : "-")</td>
+                            <td>@(Model.TNDaily != null && i < Model.TNDaily.Count && Model.TNDaily[i].HasValue ? Model.TNDaily[i].Value.ToString("F2") : "-")</td>
                             <td>@(Model.CompositeTime != null && i < Model.CompositeTime.Count && !string.IsNullOrEmpty(Model.CompositeTime[i]) ? Model.CompositeTime[i] : "-")</td>
                             <td>@(Model.ORCOnSite != null && i < Model.ORCOnSite.Count && Model.ORCOnSite[i].HasValue ? Model.ORCOnSite[i].Value.ToString() : "-")</td>
                             <td>@(Model.LagoonFreeboard != null && i < Model.LagoonFreeboard.Count && Model.LagoonFreeboard[i].HasValue ? Model.LagoonFreeboard[i].Value.ToString("F2") : "-")</td>
