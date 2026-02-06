@@ -35,15 +35,11 @@
             <dt class="col-sm-3">Operator Name:</dt>
             <dd class="col-sm-9">@Model.OperatorName</dd>
 
-            <dt class="col-sm-3">Shift:</dt>
-            <dd class="col-sm-9">@Model.Shift</dd>
+            <dt class="col-sm-3">Arrival Time:</dt>
+            <dd class="col-sm-9">@Model.ArrivalTime</dd>
 
-            <dt class="col-sm-3">System Status:</dt>
-            <dd class="col-sm-9">
-                <span class="badge bg-@(Model.SystemStatus == SAM.Domain.Enums.SystemStatusEnum.Normal ? "success" : Model.SystemStatus == SAM.Domain.Enums.SystemStatusEnum.Alert ? "warning" : Model.SystemStatus == SAM.Domain.Enums.SystemStatusEnum.Emergency ? "danger" : "secondary")">
-                    @Model.SystemStatus
-                </span>
-            </dd>
+            <dt class="col-sm-3">Time on Site (hours):</dt>
+            <dd class="col-sm-9">@(Model.TimeOnSiteHours.HasValue ? Model.TimeOnSiteHours.Value.ToString("F2") : "N/A")</dd>
 
             <dt class="col-sm-3">Weather Conditions:</dt>
             <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.WeatherConditions) ? "-" : Model.WeatherConditions)</dd>

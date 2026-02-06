@@ -84,9 +84,9 @@ namespace SAM.Controllers;
             FacilityName = l.Facility?.Name,
             LogDate = l.LogDate,
             OperatorName = l.OperatorName,
-            Shift = l.Shift,
             WeatherConditions = l.WeatherConditions,
-            SystemStatus = l.SystemStatus,
+            ArrivalTime = l.ArrivalTime.ToString(@"hh\:mm"),
+            TimeOnSiteHours = l.TimeOnSiteHours,
             MaintenancePerformed = l.MaintenancePerformed,
             EquipmentInspected = l.EquipmentInspected,
             IssuesNoted = l.IssuesNoted,
@@ -120,9 +120,9 @@ namespace SAM.Controllers;
             FacilityName = log.Facility?.Name,
             LogDate = log.LogDate,
             OperatorName = log.OperatorName,
-            Shift = log.Shift,
             WeatherConditions = log.WeatherConditions,
-            SystemStatus = log.SystemStatus,
+            ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
+            TimeOnSiteHours = log.TimeOnSiteHours,
             MaintenancePerformed = log.MaintenancePerformed,
             EquipmentInspected = log.EquipmentInspected,
             IssuesNoted = log.IssuesNoted,
@@ -168,8 +168,6 @@ namespace SAM.Controllers;
         };
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.Shifts = GetShiftSelectList();
-        ViewBag.SystemStatuses = GetSystemStatusSelectList();
 
         return View(viewModel);
     }
@@ -204,22 +202,25 @@ namespace SAM.Controllers;
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Shifts = GetShiftSelectList();
-            ViewBag.SystemStatuses = GetSystemStatusSelectList();
             return View(viewModel);
         }
 
         try
         {
+            var currentUser = await GetCurrentUserAsync();
+            var operatorName = currentUser == null
+                ? null
+                : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
+
             var operatorLog = new OperatorLog
             {
                 CompanyId = viewModel.CompanyId,
                 FacilityId = viewModel.FacilityId,
                 LogDate = viewModel.LogDate,
-                OperatorName = viewModel.OperatorName,
-                Shift = viewModel.Shift,
+                OperatorName = operatorName ?? string.Empty,
                 WeatherConditions = viewModel.WeatherConditions,
-                SystemStatus = viewModel.SystemStatus,
+                ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime),
+                TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0,
                 MaintenancePerformed = viewModel.MaintenancePerformed,
                 EquipmentInspected = viewModel.EquipmentInspected,
                 IssuesNoted = viewModel.IssuesNoted,
@@ -235,8 +236,6 @@ namespace SAM.Controllers;
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Shifts = GetShiftSelectList();
-            ViewBag.SystemStatuses = GetSystemStatusSelectList();
             return View(viewModel);
         }
     }
@@ -244,6 +243,11 @@ namespace SAM.Controllers;
     [HttpGet]
     public async Task<IActionResult> OperatorLogEdit(Guid id)
     {
+        var currentUser = await GetCurrentUserAsync();
+        var operatorName = currentUser == null
+            ? null
+            : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
+
         var log = await _operatorLogService.GetByIdAsync(id);
         if (log == null)
             return NotFound();
@@ -256,10 +260,10 @@ namespace SAM.Controllers;
             CompanyId = log.CompanyId,
             FacilityId = log.FacilityId,
             LogDate = log.LogDate,
-            OperatorName = log.OperatorName,
-            Shift = log.Shift,
+            OperatorName = operatorName == null ? log.OperatorName : operatorName,
             WeatherConditions = log.WeatherConditions,
-            SystemStatus = log.SystemStatus,
+            ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
+            TimeOnSiteHours = log.TimeOnSiteHours,
             MaintenancePerformed = log.MaintenancePerformed,
             EquipmentInspected = log.EquipmentInspected,
             IssuesNoted = log.IssuesNoted,
@@ -268,8 +272,6 @@ namespace SAM.Controllers;
         };
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(log.CompanyId);
-        ViewBag.Shifts = GetShiftSelectList();
-        ViewBag.SystemStatuses = GetSystemStatusSelectList();
 
         return View(viewModel);
     }
@@ -283,8 +285,6 @@ namespace SAM.Controllers;
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Shifts = GetShiftSelectList();
-            ViewBag.SystemStatuses = GetSystemStatusSelectList();
             return View(viewModel);
         }
 
@@ -295,10 +295,9 @@ namespace SAM.Controllers;
                 return NotFound();
 
             operatorLog.LogDate = viewModel.LogDate;
-            operatorLog.OperatorName = viewModel.OperatorName;
-            operatorLog.Shift = viewModel.Shift;
             operatorLog.WeatherConditions = viewModel.WeatherConditions;
-            operatorLog.SystemStatus = viewModel.SystemStatus;
+            operatorLog.ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime);
+            operatorLog.TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0;
             operatorLog.MaintenancePerformed = viewModel.MaintenancePerformed;
             operatorLog.EquipmentInspected = viewModel.EquipmentInspected;
             operatorLog.IssuesNoted = viewModel.IssuesNoted;
@@ -313,8 +312,6 @@ namespace SAM.Controllers;
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Shifts = GetShiftSelectList();
-            ViewBag.SystemStatuses = GetSystemStatusSelectList();
             return View(viewModel);
         }
     }
@@ -1448,26 +1445,6 @@ namespace SAM.Controllers;
 
         var monitoringWells = await _monitoringWellService.GetAllAsync(companyId);
         return new SelectList(monitoringWells, "Id", "WellId");
-    }
-
-    private SelectList GetShiftSelectList()
-    {
-        return new SelectList(Enum.GetValues(typeof(ShiftEnum)).Cast<ShiftEnum>()
-            .Select(e => new SelectListItem
-            {
-                Value = e.ToString(),
-                Text = e.ToString()
-            }), "Value", "Text");
-    }
-
-    private SelectList GetSystemStatusSelectList()
-    {
-        return new SelectList(Enum.GetValues(typeof(SystemStatusEnum)).Cast<SystemStatusEnum>()
-            .Select(e => new SelectListItem
-            {
-                Value = e.ToString(),
-                Text = e.ToString()
-            }), "Value", "Text");
     }
 
     private SelectList GetMonthSelectList()

@@ -100,9 +100,9 @@ public class OperatorLogService : IOperatorLogService
 
         existing.LogDate = operatorLog.LogDate;
         existing.OperatorName = operatorLog.OperatorName;
-        existing.Shift = operatorLog.Shift;
         existing.WeatherConditions = operatorLog.WeatherConditions;
-        existing.SystemStatus = operatorLog.SystemStatus;
+        existing.ArrivalTime = operatorLog.ArrivalTime;
+        existing.TimeOnSiteHours = operatorLog.TimeOnSiteHours;
         existing.MaintenancePerformed = operatorLog.MaintenancePerformed;
         existing.EquipmentInspected = operatorLog.EquipmentInspected;
         existing.IssuesNoted = operatorLog.IssuesNoted;

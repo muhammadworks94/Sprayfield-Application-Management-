@@ -47,7 +47,7 @@ public class FacilityViewModel
     public string ZipCode { get; set; } = string.Empty;
 
     [StringLength(100)]
-    [Display(Name = "Permittee County")]
+    [Display(Name = "County")]
     public string County { get; set; } = string.Empty;
 
     // Permit / facility details
@@ -154,7 +154,7 @@ public class FacilityCreateViewModel
 
     [Required]
     [StringLength(100)]
-    [Display(Name = "Permittee County")]
+    [Display(Name = "County")]
     public string County { get; set; } = string.Empty;
 
     [Display(Name = "Permit Expiration Date")]
@@ -261,7 +261,7 @@ public class FacilityEditViewModel
 
     [Required]
     [StringLength(100)]
-    [Display(Name = "Permittee County")]
+    [Display(Name = "County")]
     public string County { get; set; } = string.Empty;
 
     [Display(Name = "Permit Expiration Date")]

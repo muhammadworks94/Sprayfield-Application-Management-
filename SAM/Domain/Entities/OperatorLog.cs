@@ -24,19 +24,19 @@ public class OperatorLog : CompanyScopedEntity
     public string OperatorName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Shift worked.
-    /// </summary>
-    public ShiftEnum Shift { get; set; }
-
-    /// <summary>
     /// Weather conditions.
     /// </summary>
     public string WeatherConditions { get; set; } = string.Empty;
 
     /// <summary>
-    /// System status.
+    /// 24-hour arrival time of the operator.
     /// </summary>
-    public SystemStatusEnum SystemStatus { get; set; }
+    public TimeSpan ArrivalTime { get; set; }
+
+    /// <summary>
+    /// Total time spent on site for this log (in hours).
+    /// </summary>
+    public decimal TimeOnSiteHours { get; set; }
 
     /// <summary>
     /// Details of maintenance performed.
