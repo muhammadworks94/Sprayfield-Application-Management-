@@ -31,15 +31,15 @@ public class FacilityViewModel
     public string FacilityClass { get; set; } = string.Empty;
     
     [StringLength(500)]
-    [Display(Name = "Address")]
+    [Display(Name = "Permittee Street Address")]
     public string Address { get; set; } = string.Empty;
     
     [StringLength(100)]
-    [Display(Name = "City")]
+    [Display(Name = "Permittee City")]
     public string City { get; set; } = string.Empty;
     
     [StringLength(50)]
-    [Display(Name = "State")]
+    [Display(Name = "Permittee State")]
     public string State { get; set; } = string.Empty;
     
     [StringLength(20)]
@@ -47,7 +47,7 @@ public class FacilityViewModel
     public string ZipCode { get; set; } = string.Empty;
 
     [StringLength(100)]
-    [Display(Name = "County")]
+    [Display(Name = "Permittee County")]
     public string County { get; set; } = string.Empty;
 
     // Permit / facility details
@@ -57,7 +57,7 @@ public class FacilityViewModel
     public DateTime? PermitExpirationDate { get; set; }
 
     [StringLength(50)]
-    [Display(Name = "Permit Phone")]
+    [Display(Name = "Permittee Phone")]
     public string PermitPhone { get; set; } = string.Empty;
 
     [StringLength(50)]
@@ -134,17 +134,17 @@ public class FacilityCreateViewModel
     
     [Required]
     [StringLength(500)]
-    [Display(Name = "Address")]
+    [Display(Name = "Permittee Street Address")]
     public string Address { get; set; } = string.Empty;
     
     [Required]
     [StringLength(100)]
-    [Display(Name = "City")]
+    [Display(Name = "Permittee City")]
     public string City { get; set; } = string.Empty;
     
     [Required]
     [StringLength(50)]
-    [Display(Name = "State")]
+    [Display(Name = "Permittee State")]
     public string State { get; set; } = string.Empty;
     
     [Required]
@@ -154,7 +154,7 @@ public class FacilityCreateViewModel
 
     [Required]
     [StringLength(100)]
-    [Display(Name = "County")]
+    [Display(Name = "Permittee County")]
     public string County { get; set; } = string.Empty;
 
     [Display(Name = "Permit Expiration Date")]
@@ -162,7 +162,7 @@ public class FacilityCreateViewModel
     public DateTime? PermitExpirationDate { get; set; }
 
     [StringLength(50)]
-    [Display(Name = "Permit Phone")]
+    [Display(Name = "Permittee Phone")]
     public string? PermitPhone { get; set; }
 
     [StringLength(50)]
@@ -241,17 +241,17 @@ public class FacilityEditViewModel
     
     [Required]
     [StringLength(500)]
-    [Display(Name = "Address")]
+    [Display(Name = "Permittee StreetAddress")]
     public string Address { get; set; } = string.Empty;
     
     [Required]
     [StringLength(100)]
-    [Display(Name = "City")]
+    [Display(Name = "Permittee City")]
     public string City { get; set; } = string.Empty;
     
     [Required]
     [StringLength(50)]
-    [Display(Name = "State")]
+    [Display(Name = "Permittee State")]
     public string State { get; set; } = string.Empty;
     
     [Required]
@@ -261,7 +261,7 @@ public class FacilityEditViewModel
 
     [Required]
     [StringLength(100)]
-    [Display(Name = "County")]
+    [Display(Name = "Permittee County")]
     public string County { get; set; } = string.Empty;
 
     [Display(Name = "Permit Expiration Date")]
@@ -269,7 +269,7 @@ public class FacilityEditViewModel
     public DateTime? PermitExpirationDate { get; set; }
 
     [StringLength(50)]
-    [Display(Name = "Permit Phone")]
+    [Display(Name = "Permittee Phone")]
     public string? PermitPhone { get; set; }
 
     [StringLength(50)]

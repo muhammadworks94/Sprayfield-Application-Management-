@@ -60,7 +60,7 @@
                                     <label asp-for="StartTime" class="form-label required"></label>
                                     <input asp-for="StartTime" type="time" class="form-control" />
                                     <span asp-validation-for="StartTime" class="text-danger"></span>
-                                    <small class="form-text text-muted">Format: HH:MM (24‑hour time preferred for clarity).</small>
+                                    <small class="form-text text-muted">Use 24-hour time (HH:MM) via the time picker.</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -68,15 +68,15 @@
                                     <label asp-for="EndTime" class="form-label required"></label>
                                     <input asp-for="EndTime" type="time" class="form-control" />
                                     <span asp-validation-for="EndTime" class="text-danger"></span>
-                                    <small class="form-text text-muted">If irrigation runs past midnight, ensure the <strong>date</strong> reflects the start of the event.</small>
+                                    <small class="form-text text-muted">If End Time is earlier than Start Time, it will be treated as the next day for duration.</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label asp-for="DurationHours" class="form-label"></label>
-                                    <input asp-for="DurationHours" type="number" step="0.01" class="form-control" />
+                                    <input asp-for="DurationHours" type="number" step="0.01" class="form-control" readonly />
                                     <span asp-validation-for="DurationHours" class="text-danger"></span>
-                                    <small class="form-text text-muted">If left blank, the system will calculate duration from start and end times.</small>
+                                    <small class="form-text text-muted">Duration (hours) is automatically calculated from Start and End Time.</small>
                                 </div>
                             </div>
                         </div>
@@ -119,26 +119,34 @@
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label asp-for="WindSpeed" class="form-label"></label>
-                                    <input asp-for="WindSpeed" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="WindSpeed" class="text-danger"></span>
-                                    <small class="form-text text-muted">Wind speed at or near the field (mph). Verify against permit limits for drift control.</small>
+                                    <label asp-for="PrecipitationIn" class="form-label"></label>
+                                    <input asp-for="PrecipitationIn" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="PrecipitationIn" class="text-danger"></span>
+                                    <small class="form-text text-muted">Measured precipitation during the event (inches).</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label asp-for="WindDirection" class="form-label"></label>
-                                    <input asp-for="WindDirection" class="form-control" />
-                                    <span asp-validation-for="WindDirection" class="text-danger"></span>
-                                    <small class="form-text text-muted">Use cardinal directions (e.g., N, SW) or degrees; be consistent with site practices.</small>
+                                    <label asp-for="TemperatureF" class="form-label"></label>
+                                    <input asp-for="TemperatureF" type="number" step="0.1" class="form-control" />
+                                    <span asp-validation-for="TemperatureF" class="text-danger"></span>
+                                    <small class="form-text text-muted">Ambient temperature during irrigation (°F).</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label asp-for="WeatherConditions" class="form-label"></label>
-                                    <input asp-for="WeatherConditions" class="form-control" />
+                                    <select asp-for="WeatherConditions" class="form-select">
+                                        <option value="">-- Select Weather --</option>
+                                        <option value="C">Clear (C)</option>
+                                        <option value="CL">Cloudy (CL)</option>
+                                        <option value="PC">Partly Cloudy (PC)</option>
+                                        <option value="R">Rain (R)</option>
+                                        <option value="SL">Sleet (SL)</option>
+                                        <option value="SN">Snow (SN)</option>
+                                    </select>
                                     <span asp-validation-for="WeatherConditions" class="text-danger"></span>
-                                    <small class="form-text text-muted">Briefly note conditions that affect application (e.g., sunny, light rain, overcast, fog).</small>
+                                    <small class="form-text text-muted">Select weather using descriptions; the code in parentheses is used for reporting.</small>
                                 </div>
                             </div>
                         </div>
@@ -147,12 +155,6 @@
                     <div class="form-section">
                         <div class="form-section-title">Additional Information</div>
                         
-                        <div class="mb-3">
-                            <label asp-for="Operator" class="form-label"></label>
-                            <input asp-for="Operator" class="form-control" />
-                            <span asp-validation-for="Operator" class="text-danger"></span>
-                        </div>
-
                         <div class="mb-3">
                             <label asp-for="Comments" class="form-label"></label>
                             <textarea asp-for="Comments" class="form-control" rows="3"></textarea>
@@ -218,6 +220,102 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
+        (function () {
+            function computeDuration() {
+                var startInput = document.querySelector('input[name="StartTime"]');
+                var endInput = document.querySelector('input[name="EndTime"]');
+                var durationInput = document.querySelector('input[name="DurationHours"]');
+
+                if (!startInput || !endInput || !durationInput) {
+                    return;
+                }
+
+                var startStr = startInput.value;
+                var endStr = endInput.value;
+
+                if (!startStr || !endStr) {
+                    durationInput.value = '';
+                    return;
+                }
+
+                var startParts = startStr.split(':');
+                var endParts = endStr.split(':');
+                if (startParts.length < 2 || endParts.length < 2) {
+                    durationInput.value = '';
+                    return;
+                }
+
+                var startHours = parseInt(startParts[0], 10);
+                var startMinutes = parseInt(startParts[1], 10);
+                var endHours = parseInt(endParts[0], 10);
+                var endMinutes = parseInt(endParts[1], 10);
+
+                if (isNaN(startHours) || isNaN(startMinutes) || isNaN(endHours) || isNaN(endMinutes)) {
+                    durationInput.value = '';
+                    return;
+                }
+
+                var referenceDate = new Date();
+                var startDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate(), startHours, startMinutes, 0, 0);
+                var endDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate(), endHours, endMinutes, 0, 0);
+
+                if (endDate < startDate) {
+                    // Treat end as next day for cross-midnight events
+                    endDate.setDate(endDate.getDate() + 1);
+                }
+
+                var diffMs = endDate.getTime() - startDate.getTime();
+                if (diffMs <= 0) {
+                    durationInput.value = '';
+                    return;
+                }
+
+                var hours = diffMs / (1000 * 60 * 60);
+                durationInput.value = hours.toFixed(2);
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                var startInput = document.querySelector('input[name="StartTime"]');
+                var endInput = document.querySelector('input[name="EndTime"]');
+
+                if (typeof flatpickr === 'function') {
+                    if (startInput) {
+                        flatpickr(startInput, {
+                            enableTime: true,
+                            noCalendar: true,
+                            dateFormat: "H:i",
+                            time_24hr: true,
+                            allowInput: true,
+                            onChange: computeDuration,
+                            onClose: computeDuration
+                        });
+                    }
+
+                    if (endInput) {
+                        flatpickr(endInput, {
+                            enableTime: true,
+                            noCalendar: true,
+                            dateFormat: "H:i",
+                            time_24hr: true,
+                            allowInput: true,
+                            onChange: computeDuration,
+                            onClose: computeDuration
+                        });
+                    }
+                } else {
+                    if (startInput) {
+                        startInput.addEventListener('change', computeDuration);
+                    }
+                    if (endInput) {
+                        endInput.addEventListener('change', computeDuration);
+                    }
+                }
+
+                // Initial calculation in case values are pre-populated
+                computeDuration();
+            });
+        })();
+
         // Update sprayfields and company when facility changes (AJAX, no page reload)
         document.getElementById('facilitySelect')?.addEventListener('change', function () {
             var facilityId = this.value;

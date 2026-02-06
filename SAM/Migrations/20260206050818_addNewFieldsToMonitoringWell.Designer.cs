@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SAM.Data;
 
@@ -11,9 +12,11 @@ using SAM.Data;
 namespace SAM.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260206050818_addNewFieldsToMonitoringWell")]
+    partial class addNewFieldsToMonitoringWell
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -795,21 +798,16 @@ namespace SAM.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("ModifiedBy")
+                    b.Property<string>("Operator")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<decimal?>("PrecipitationIn")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("SprayfieldId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("time");
-
-                    b.Property<decimal?>("TemperatureF")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("TotalVolumeGallons")
                         .HasColumnType("decimal(18,2)");
@@ -821,6 +819,14 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("WindDirection")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("WindSpeed")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 

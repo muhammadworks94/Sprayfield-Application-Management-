@@ -54,6 +54,10 @@
                                 {
                                     <th><i class="bi bi-shield-check"></i> isSystemAdmin</th>
                                 }
+                                @if (canManageUsers)
+                                {
+                                    <th><i class="bi bi-shield"></i> isCompanyAdmin</th>
+                                }
                                 <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                             </tr>
                         </thead>
@@ -93,6 +97,19 @@
                                                        type="checkbox"
                                                        data-user-id="@userItem.Id"
                                                        @(isAdminUser ? "checked" : "")
+                                                       @(currentUser != null && currentUser.Id == userItem.Id ? "disabled" : "") />
+                                            </div>
+                                        </td>
+                                    }
+                                    @if (canManageUsers)
+                                    {
+                                        var isCompanyAdminUser = userItem.Roles.Contains("company_admin");
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input mx-auto company-admin-toggle"
+                                                       type="checkbox"
+                                                       data-user-id="@userItem.Id"
+                                                       @(isCompanyAdminUser ? "checked" : "")
                                                        @(currentUser != null && currentUser.Id == userItem.Id ? "disabled" : "") />
                                             </div>
                                         </td>
@@ -160,6 +177,21 @@
                                                 <span class="badge bg-secondary me-1">@role.Replace("_", " ")</span>
                                             }
                                         </dd>
+
+                                        @if (canManageUsers)
+                                        {
+                                            var isCompanyAdminUser = userItem.Roles.Contains("company_admin");
+                                            <dt class="col-5"><i class="bi bi-shield me-1"></i>isCompanyAdmin</dt>
+                                            <dd class="col-7 mb-1">
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input company-admin-toggle"
+                                                           type="checkbox"
+                                                           data-user-id="@userItem.Id"
+                                                           @(isCompanyAdminUser ? "checked" : "")
+                                                           @(currentUser != null && currentUser.Id == userItem.Id ? "disabled" : "") />
+                                                </div>
+                                            </dd>
+                                        }
                                     </dl>
 
                                     <div class="mt-auto d-flex justify-content-end">
@@ -244,6 +276,27 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="systemAdminConfirmButton">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (canManageUsers)
+{
+    <!-- Company Admin Toggle Confirmation Modal -->
+    <div class="modal fade" id="companyAdminConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="companyAdminConfirmTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="companyAdminConfirmBody">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="companyAdminConfirmButton">Confirm</button>
                 </div>
             </div>
         </div>
@@ -398,6 +451,92 @@
                                 });
                         });
                     }
+                }
+
+                // Company admin toggle (admins and company admins)
+                const companyAdminModalElement = document.getElementById('companyAdminConfirmModal');
+                let companyAdminModal = null;
+                let pendingCompanyUserId = null;
+                let pendingCompanyAction = null; // 'assign' | 'remove'
+
+                if (companyAdminModalElement && window.bootstrap) {
+                    companyAdminModal = new bootstrap.Modal(companyAdminModalElement);
+                }
+
+                const companyTitleElement = document.getElementById('companyAdminConfirmTitle');
+                const companyBodyElement = document.getElementById('companyAdminConfirmBody');
+                const companyConfirmButton = document.getElementById('companyAdminConfirmButton');
+
+                const companyToggles = document.querySelectorAll('.company-admin-toggle');
+
+                companyToggles.forEach(function (checkbox) {
+                    checkbox.addEventListener('change', function () {
+                        if (!companyAdminModal) return;
+
+                        const isChecked = checkbox.checked;
+                        const userId = checkbox.getAttribute('data-user-id');
+                        const row = checkbox.closest('tr') || checkbox.closest('.card');
+                        const nameCell = row ? row.querySelector('td:first-child a, td:first-child, .card-header-light h6 a, .card-header-light h6') : null;
+                        const userName = nameCell ? nameCell.textContent.trim() : 'this user';
+
+                        if (!userId) return;
+
+                        // Immediately revert checkbox; will be updated after successful action
+                        checkbox.checked = !isChecked;
+
+                        pendingCompanyUserId = userId;
+                        pendingCompanyAction = isChecked ? 'assign' : 'remove';
+
+                        if (pendingCompanyAction === 'assign') {
+                            if (companyTitleElement) companyTitleElement.textContent = 'Assign Company Admin Role';
+                            if (companyBodyElement) companyBodyElement.innerHTML = `Are you sure you want to assign the company admin role to <strong>${userName}</strong>? This will remove other company-level roles (operator, technician).`;
+                        } else {
+                            if (companyTitleElement) companyTitleElement.textContent = 'Remove Company Admin Role';
+                            if (companyBodyElement) companyBodyElement.innerHTML = `Are you sure you want to remove the company admin role from <strong>${userName}</strong>?`;
+                        }
+
+                        companyAdminModal.show();
+                    });
+                });
+
+                if (companyConfirmButton && companyAdminModalElement) {
+                    companyConfirmButton.addEventListener('click', function () {
+                        if (!pendingCompanyUserId || !pendingCompanyAction) {
+                            companyAdminModal.hide();
+                            return;
+                        }
+
+                        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                        const token = tokenInput ? tokenInput.value : null;
+
+                        const url = pendingCompanyAction === 'assign'
+                            ? '@Url.Action("CompanyAdminAssign", "UserManagement")'
+                            : '@Url.Action("CompanyAdminRemove", "UserManagement")';
+
+                        const body = new URLSearchParams();
+                        body.append('userId', pendingCompanyUserId);
+
+                        fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                ...(token ? { 'RequestVerificationToken': token } : {})
+                            },
+                            body: body.toString()
+                        })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Request failed');
+                                }
+                                companyAdminModal.hide();
+                                // Reload to reflect updated roles / UI
+                                window.location.reload();
+                            })
+                            .catch(error => {
+                                console.error('Error updating company admin role:', error);
+                                companyAdminModal.hide();
+                            });
+                    });
                 }
             }
         });

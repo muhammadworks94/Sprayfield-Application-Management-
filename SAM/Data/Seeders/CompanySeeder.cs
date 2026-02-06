@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SAM.Data;
 using SAM.Domain.Entities;
+using SAM.Domain.Enums;
 
 namespace SAM.Data.Seeders;
 
@@ -144,8 +145,17 @@ public static class CompanySeeder
         {
             Id = Guid.NewGuid(),
             CompanyId = company1.Id,
-            WellId = "MW-001",
-            LocationDescription = "Northwest corner of facility",
+            WellId = "1-Upgradient",
+            WellPermitNumber = "WQ0004332",
+            LocationDescription = "614 Macedonia Rd.",
+            DiameterInches = 2m,
+            WellDepthFeet = 30m,
+            DepthToScreenFeet = null,
+            LowScreenDepthFeet = 15m,
+            HighScreenDepthFeet = null,
+            TopOfCasingElevationMsl = 2m,
+            TreatmentSystemLocation = TreatmentSystemLocationEnum.Influent,
+            NumberOfWellsToBeSampled = 6,
             Latitude = 35.7796m,
             Longitude = -78.6382m,
             CreatedDate = DateTime.UtcNow,
@@ -158,7 +168,16 @@ public static class CompanySeeder
             Id = Guid.NewGuid(),
             CompanyId = company1.Id,
             WellId = "MW-002",
+            WellPermitNumber = "WQ0004333",
             LocationDescription = "Southeast corner of facility",
+            DiameterInches = 2m,
+            WellDepthFeet = 28m,
+            DepthToScreenFeet = 12m,
+            LowScreenDepthFeet = 14m,
+            HighScreenDepthFeet = 18m,
+            TopOfCasingElevationMsl = 3m,
+            TreatmentSystemLocation = TreatmentSystemLocationEnum.Effluent,
+            NumberOfWellsToBeSampled = 6,
             Latitude = 35.7780m,
             Longitude = -78.6360m,
             CreatedDate = DateTime.UtcNow,
@@ -284,7 +303,16 @@ public static class CompanySeeder
             Id = Guid.NewGuid(),
             CompanyId = company2.Id,
             WellId = "MW-101",
+            WellPermitNumber = "WQ0004400",
             LocationDescription = "Northeast corner",
+            DiameterInches = 2m,
+            WellDepthFeet = 25m,
+            DepthToScreenFeet = 10m,
+            LowScreenDepthFeet = 12m,
+            HighScreenDepthFeet = 16m,
+            TopOfCasingElevationMsl = 2.5m,
+            TreatmentSystemLocation = TreatmentSystemLocationEnum.Influent,
+            NumberOfWellsToBeSampled = 4,
             Latitude = 35.2271m,
             Longitude = -80.8431m,
             CreatedDate = DateTime.UtcNow,

@@ -1,6 +1,13 @@
 @model SAM.ViewModels.SystemAdmin.MonitoringWellViewModel
+@using SAM.Domain.Enums
 @{
     ViewData["Title"] = "Monitoring Well Details";
+    var treatmentLocationText = Model.TreatmentSystemLocation switch
+    {
+        TreatmentSystemLocationEnum.Influent => "Influent (98)",
+        TreatmentSystemLocationEnum.Effluent => "Effluent (99)",
+        _ => (string?)null
+    };
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -26,17 +33,44 @@
             <dt class="col-sm-3">Company:</dt>
             <dd class="col-sm-9">@Model.CompanyName</dd>
 
-            <dt class="col-sm-3">Well ID:</dt>
+            <dt class="col-sm-3">Well Identifier #:</dt>
             <dd class="col-sm-9">@Model.WellId</dd>
 
-            <dt class="col-sm-3">Location Description:</dt>
+            <dt class="col-sm-3">Well Permit #:</dt>
+            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.WellPermitNumber) ? "-" : Model.WellPermitNumber)</dd>
+
+            <dt class="col-sm-3">Well Location:</dt>
             <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.LocationDescription) ? "-" : Model.LocationDescription)</dd>
 
+            <dt class="col-sm-3">Diameter (inches):</dt>
+            <dd class="col-sm-9">@(Model.DiameterInches.HasValue ? Model.DiameterInches.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">Well Depth (feet):</dt>
+            <dd class="col-sm-9">@(Model.WellDepthFeet.HasValue ? Model.WellDepthFeet.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">Depth to Screen (feet):</dt>
+            <dd class="col-sm-9">@(Model.DepthToScreenFeet.HasValue ? Model.DepthToScreenFeet.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">Low Screen Depth (feet):</dt>
+            <dd class="col-sm-9">@(Model.LowScreenDepthFeet.HasValue ? Model.LowScreenDepthFeet.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">High Screen Depth (feet):</dt>
+            <dd class="col-sm-9">@(Model.HighScreenDepthFeet.HasValue ? Model.HighScreenDepthFeet.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">Top of Casing Elevation (msl):</dt>
+            <dd class="col-sm-9">@(Model.TopOfCasingElevationMsl.HasValue ? Model.TopOfCasingElevationMsl.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">Location of Well in regards to Treatment System:</dt>
+            <dd class="col-sm-9">@(treatmentLocationText ?? "-")</dd>
+
+            <dt class="col-sm-3">No. of Wells to be Sampled:</dt>
+            <dd class="col-sm-9">@(Model.NumberOfWellsToBeSampled.HasValue ? Model.NumberOfWellsToBeSampled.Value.ToString() : "-")</dd>
+
             <dt class="col-sm-3">Latitude:</dt>
-            <dd class="col-sm-9">@Model.Latitude.ToString("F6")</dd>
+            <dd class="col-sm-9">@(Model.Latitude.HasValue ? Model.Latitude.Value.ToString("F6") : "-")</dd>
 
             <dt class="col-sm-3">Longitude:</dt>
-            <dd class="col-sm-9">@Model.Longitude.ToString("F6")</dd>
+            <dd class="col-sm-9">@(Model.Longitude.HasValue ? Model.Longitude.Value.ToString("F6") : "-")</dd>
         </dl>
     </div>
 </div>

@@ -88,11 +88,11 @@
     </div>
     <div class="card-body">
         <dl class="row">
-            <dt class="col-sm-3">Wind Speed:</dt>
-            <dd class="col-sm-9">@(Model.WindSpeed.HasValue ? Model.WindSpeed.Value.ToString("F1") : "N/A") mph</dd>
+            <dt class="col-sm-3">Precipitation (in):</dt>
+            <dd class="col-sm-9">@(Model.PrecipitationIn.HasValue ? Model.PrecipitationIn.Value.ToString("F2") + " in" : "N/A")</dd>
 
-            <dt class="col-sm-3">Wind Direction:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.WindDirection) ? "N/A" : Model.WindDirection)</dd>
+            <dt class="col-sm-3">Temperature (°F):</dt>
+            <dd class="col-sm-9">@(Model.TemperatureF.HasValue ? Model.TemperatureF.Value.ToString("F1") + " °F" : "N/A")</dd>
 
             <dt class="col-sm-3">Weather Conditions:</dt>
             <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.WeatherConditions) ? "N/A" : Model.WeatherConditions)</dd>
@@ -106,8 +106,8 @@
     </div>
     <div class="card-body">
         <dl class="row">
-            <dt class="col-sm-3">Operator:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.Operator) ? "N/A" : Model.Operator)</dd>
+            <dt class="col-sm-3">Modified by:</dt>
+            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.ModifiedBy) ? "N/A" : Model.ModifiedBy)</dd>
 
             <dt class="col-sm-3">Comments:</dt>
             <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.Comments) ? "N/A" : Model.Comments)</dd>

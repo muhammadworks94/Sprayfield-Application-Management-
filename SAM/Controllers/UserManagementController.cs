@@ -525,7 +525,7 @@ public class UserManagementController : BaseController
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
-        ViewBag.Roles = GetAppRoleSelectList(includeAdmin: false, includeDefaultOption: true);
+        ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin, includeDefaultOption: true);
 
         return View(viewModel);
     }
@@ -568,7 +568,7 @@ public class UserManagementController : BaseController
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: false, includeDefaultOption: true);
+            ViewBag.Roles = GetAppRoleSelectList(includeAdmin: isGlobalAdmin, includeDefaultOption: true);
             return View(viewModel);
         }
 
@@ -865,6 +865,101 @@ public class UserManagementController : BaseController
             TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
             return RedirectToAction(nameof(ManageAdmins));
         }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> CompanyAdminAssign(string userId)
+    {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+
+        var user = await _userService.GetUserByIdAsync(userId);
+        if (user == null)
+        {
+            return NotFound("User not found.");
+        }
+
+        if (!user.CompanyId.HasValue)
+        {
+            return BadRequest("User must be assigned to a company to be a company admin.");
+        }
+
+        if (!isGlobalAdmin)
+        {
+            await EnsureCompanyAccessAsync(user.CompanyId.Value);
+        }
+
+        var roles = await UserManager.GetRolesAsync(user);
+
+        // Do not allow modifying system admins via this endpoint
+        if (roles.Contains("admin"))
+        {
+            return BadRequest("Cannot modify roles for system administrators via this action.");
+        }
+
+        // Remove other company-level roles so user ends up only with company_admin at company level
+        var companyRoles = new[] { "company_admin", "operator", "technician" };
+        foreach (var role in companyRoles)
+        {
+            if (roles.Contains(role))
+            {
+                var removeResult = await UserManager.RemoveFromRoleAsync(user, role);
+                if (!removeResult.Succeeded)
+                {
+                    var errors = string.Join(", ", removeResult.Errors.Select(e => e.Description));
+                    return StatusCode(500, $"Failed to remove {role} role: {errors}");
+                }
+            }
+        }
+
+        var addResult = await UserManager.AddToRoleAsync(user, "company_admin");
+        if (!addResult.Succeeded)
+        {
+            var errors = string.Join(", ", addResult.Errors.Select(e => e.Description));
+            return StatusCode(500, $"Failed to assign company_admin role: {errors}");
+        }
+
+        return Ok();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> CompanyAdminRemove(string userId)
+    {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+
+        var user = await _userService.GetUserByIdAsync(userId);
+        if (user == null)
+        {
+            return NotFound("User not found.");
+        }
+
+        if (user.CompanyId.HasValue && !isGlobalAdmin)
+        {
+            await EnsureCompanyAccessAsync(user.CompanyId.Value);
+        }
+
+        var roles = await UserManager.GetRolesAsync(user);
+
+        // Do not allow modifying system admins via this endpoint
+        if (roles.Contains("admin"))
+        {
+            return BadRequest("Cannot modify roles for system administrators via this action.");
+        }
+
+        if (roles.Contains("company_admin"))
+        {
+            var removeResult = await UserManager.RemoveFromRoleAsync(user, "company_admin");
+            if (!removeResult.Succeeded)
+            {
+                var errors = string.Join(", ", removeResult.Errors.Select(e => e.Description));
+                return StatusCode(500, $"Failed to remove company_admin role: {errors}");
+            }
+        }
+
+        return Ok();
     }
 
     #endregion

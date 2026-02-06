@@ -2,10 +2,10 @@ using SAM.Domain.Entities.Base;
 
 namespace SAM.Domain.Entities;
 
-/// <summary>
-/// Records details for each individual irrigation event.
-/// </summary>
-public class Irrigate : CompanyScopedEntity
+    /// <summary>
+    /// Records details for each individual irrigation event.
+    /// </summary>
+    public class Irrigate : CompanyScopedEntity
 {
     /// <summary>
     /// Reference to the Facility entity.
@@ -53,14 +53,14 @@ public class Irrigate : CompanyScopedEntity
     public decimal ApplicationRateInches { get; set; }
 
     /// <summary>
-    /// Wind speed during irrigation.
+    /// Measured temperature during irrigation (°F).
     /// </summary>
-    public decimal? WindSpeed { get; set; }
+    public decimal? TemperatureF { get; set; }
 
     /// <summary>
-    /// Wind direction during irrigation.
+    /// Measured precipitation during irrigation (inches).
     /// </summary>
-    public string WindDirection { get; set; } = string.Empty;
+    public decimal? PrecipitationIn { get; set; }
 
     /// <summary>
     /// Weather conditions during irrigation.
@@ -68,14 +68,14 @@ public class Irrigate : CompanyScopedEntity
     public string WeatherConditions { get; set; } = string.Empty;
 
     /// <summary>
-    /// Name of the operator.
-    /// </summary>
-    public string Operator { get; set; } = string.Empty;
-
-    /// <summary>
     /// Additional comments.
     /// </summary>
     public string Comments { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Name of the user who last created or modified this record.
+    /// </summary>
+    public string? ModifiedBy { get; set; }
 
     // Navigation properties
     public Facility? Facility { get; set; }

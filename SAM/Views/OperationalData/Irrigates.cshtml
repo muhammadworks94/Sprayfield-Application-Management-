@@ -127,7 +127,7 @@
                             </th>
                             <th>
                                 <div class="d-flex flex-column">
-                                    <span><i class="bi bi-person me-1"></i>Operator</span>
+                                    <span><i class="bi bi-person me-1"></i>Modified by</span>
                                 </div>
                             </th>
                             @if (isGlobalAdmin)
@@ -156,7 +156,7 @@
                                 <td>@(irrigate.DurationHours?.ToString("F2") ?? "N/A") hrs</td>
                                 <td class="text-end">@(irrigate.TotalVolumeGallons?.ToString("N0") ?? "N/A")</td>
                                 <td class="text-end">@(irrigate.FlowRateGpm?.ToString("F2") ?? "N/A")</td>
-                                <td>@irrigate.Operator</td>
+                                <td>@(string.IsNullOrEmpty(irrigate.ModifiedBy) ? "N/A" : irrigate.ModifiedBy)</td>
                                 @if (isGlobalAdmin)
                                 {
                                     <td>@irrigate.CompanyName</td>
@@ -223,8 +223,8 @@
                                     <dt class="col-6"><i class="bi bi-speedometer2 me-1"></i>Flow Rate</dt>
                                     <dd class="col-6 mb-1">@((irrigate.FlowRateGpm?.ToString("F2") ?? "N/A")) gpm</dd>
 
-                                    <dt class="col-6"><i class="bi bi-person me-1"></i>Operator</dt>
-                                    <dd class="col-6 mb-1">@irrigate.Operator</dd>
+                                    <dt class="col-6"><i class="bi bi-person me-1"></i>Modified by</dt>
+                                    <dd class="col-6 mb-1">@((string.IsNullOrEmpty(irrigate.ModifiedBy) ? "N/A" : irrigate.ModifiedBy))</dd>
 
                                     @if (isGlobalAdmin)
                                     {

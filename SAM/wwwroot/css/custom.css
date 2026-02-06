@@ -1628,22 +1628,22 @@ small {
 /* System Status Badges */
 .badge-normal {
   color: var(--white);
-  background-color: var(--success);
+  background-color: var(--success) !important;
 }
 
 .badge-alert {
   color: var(--white);
-  background-color: var(--warning);
+  background-color: var(--warning) !important;
 }
 
 .badge-maintenance {
-  color: var(--white);
-  background-color: var(--info);
+    color: var(--white);
+    background-color: var(--info) !important;
 }
 
 .badge-emergency {
-  color: var(--white);
-  background-color: var(--danger);
+    color: var(--white);
+    background-color: var(--danger) !important;
 }
 
 /* ============================================

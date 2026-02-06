@@ -160,11 +160,11 @@ public class IrrigateService : IIrrigateService
         existing.FlowRateGpm = irrigate.FlowRateGpm;
         existing.TotalVolumeGallons = irrigate.TotalVolumeGallons;
         existing.ApplicationRateInches = irrigate.ApplicationRateInches;
-        existing.WindSpeed = irrigate.WindSpeed;
-        existing.WindDirection = irrigate.WindDirection;
+        existing.TemperatureF = irrigate.TemperatureF;
+        existing.PrecipitationIn = irrigate.PrecipitationIn;
         existing.WeatherConditions = irrigate.WeatherConditions;
-        existing.Operator = irrigate.Operator;
         existing.Comments = irrigate.Comments;
+        existing.ModifiedBy = irrigate.ModifiedBy;
 
         await _context.SaveChangesAsync();
 

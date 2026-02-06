@@ -364,7 +364,7 @@ namespace SAM.Controllers;
         }
 
         var irrigates = await _irrigateService.GetAllAsync(companyId, facilityId, sprayfieldId);
-        
+
         var viewModels = irrigates.Select(i => new IrrigateViewModel
         {
             Id = i.Id,
@@ -381,11 +381,11 @@ namespace SAM.Controllers;
             FlowRateGpm = i.FlowRateGpm,
             TotalVolumeGallons = i.TotalVolumeGallons,
             ApplicationRateInches = i.ApplicationRateInches,
-            WindSpeed = i.WindSpeed,
-            WindDirection = i.WindDirection,
+            TemperatureF = i.TemperatureF,
+            PrecipitationIn = i.PrecipitationIn,
             WeatherConditions = i.WeatherConditions,
-            Operator = i.Operator,
-            Comments = i.Comments
+            Comments = i.Comments,
+            ModifiedBy = i.ModifiedBy
         });
 
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
@@ -423,11 +423,11 @@ namespace SAM.Controllers;
             FlowRateGpm = irrigate.FlowRateGpm,
             TotalVolumeGallons = irrigate.TotalVolumeGallons,
             ApplicationRateInches = irrigate.ApplicationRateInches,
-            WindSpeed = irrigate.WindSpeed,
-            WindDirection = irrigate.WindDirection,
+            TemperatureF = irrigate.TemperatureF,
+            PrecipitationIn = irrigate.PrecipitationIn,
             WeatherConditions = irrigate.WeatherConditions,
-            Operator = irrigate.Operator,
-            Comments = irrigate.Comments
+            Comments = irrigate.Comments,
+            ModifiedBy = irrigate.ModifiedBy
         };
 
         return View(viewModel);
@@ -536,6 +536,11 @@ namespace SAM.Controllers;
 
         try
         {
+            var currentUser = await GetCurrentUserAsync();
+            var modifiedBy = currentUser == null
+                ? null
+                : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
+
             var irrigate = new Irrigate
             {
                 CompanyId = viewModel.CompanyId,
@@ -548,11 +553,11 @@ namespace SAM.Controllers;
                 FlowRateGpm = viewModel.FlowRateGpm ?? 0,
                 TotalVolumeGallons = viewModel.TotalVolumeGallons ?? 0,
                 ApplicationRateInches = viewModel.ApplicationRateInches ?? 0,
-                WindSpeed = viewModel.WindSpeed,
-                WindDirection = viewModel.WindDirection,
+                TemperatureF = viewModel.TemperatureF,
+                PrecipitationIn = viewModel.PrecipitationIn,
                 WeatherConditions = viewModel.WeatherConditions,
-                Operator = viewModel.Operator,
-                Comments = viewModel.Comments
+                Comments = viewModel.Comments,
+                ModifiedBy = modifiedBy
             };
 
             await _irrigateService.CreateAsync(irrigate);
@@ -600,10 +605,9 @@ namespace SAM.Controllers;
             FlowRateGpm = irrigate.FlowRateGpm,
             TotalVolumeGallons = irrigate.TotalVolumeGallons,
             ApplicationRateInches = irrigate.ApplicationRateInches,
-            WindSpeed = irrigate.WindSpeed,
-            WindDirection = irrigate.WindDirection,
+            TemperatureF = irrigate.TemperatureF,
+            PrecipitationIn = irrigate.PrecipitationIn,
             WeatherConditions = irrigate.WeatherConditions,
-            Operator = irrigate.Operator,
             Comments = irrigate.Comments
         };
 
@@ -632,6 +636,11 @@ namespace SAM.Controllers;
             if (irrigate == null)
                 return NotFound();
 
+            var currentUser = await GetCurrentUserAsync();
+            var modifiedBy = currentUser == null
+                ? null
+                : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
+
             irrigate.IrrigationDate = viewModel.IrrigationDate;
             irrigate.StartTime = TimeSpan.Parse(viewModel.StartTime);
             irrigate.EndTime = TimeSpan.Parse(viewModel.EndTime);
@@ -639,11 +648,11 @@ namespace SAM.Controllers;
             irrigate.FlowRateGpm = viewModel.FlowRateGpm ?? 0;
             irrigate.TotalVolumeGallons = viewModel.TotalVolumeGallons ?? 0;
             irrigate.ApplicationRateInches = viewModel.ApplicationRateInches ?? 0;
-            irrigate.WindSpeed = viewModel.WindSpeed;
-            irrigate.WindDirection = viewModel.WindDirection;
+            irrigate.TemperatureF = viewModel.TemperatureF;
+            irrigate.PrecipitationIn = viewModel.PrecipitationIn;
             irrigate.WeatherConditions = viewModel.WeatherConditions;
-            irrigate.Operator = viewModel.Operator;
             irrigate.Comments = viewModel.Comments;
+            irrigate.ModifiedBy = modifiedBy;
 
             await _irrigateService.UpdateAsync(irrigate);
             TempData["SuccessMessage"] = "Irrigation log updated successfully.";

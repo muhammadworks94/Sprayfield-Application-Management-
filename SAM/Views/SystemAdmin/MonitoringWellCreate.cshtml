@@ -1,6 +1,7 @@
 @model SAM.ViewModels.SystemAdmin.MonitoringWellCreateViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
+@using SAM.Domain.Enums
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Create Monitoring Well";
@@ -10,19 +11,19 @@
 }
 
 <div class="mb-4">
-    <p class="text-muted mb-0">Add a new monitoring well to the system</p>
+    <p class="text-muted mb-0">Add a new monitoring well to the system. One new record per monitoring well.</p>
 </div>
 
 <div class="card">
     <div class="card-body">
         <form asp-action="MonitoringWellCreate" method="post">
             @Html.AntiForgeryToken()
-            
+
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
             <div class="form-section">
                 <div class="form-section-title">Company Information</div>
-                
+
                 <div class="mb-3">
                     <label asp-for="CompanyId" class="form-label required"></label>
                     @if (isGlobalAdmin && companies != null)
@@ -41,24 +42,105 @@
             </div>
 
             <div class="form-section">
-                <div class="form-section-title">Monitoring Well Information</div>
-                
-                <div class="mb-3">
-                    <label asp-for="WellId" class="form-label required"></label>
-                    <input asp-for="WellId" class="form-control" />
-                    <span asp-validation-for="WellId" class="text-danger"></span>
-                </div>
+                <div class="form-section-title">MONITORING WELL DATA</div>
+                <p class="small text-muted">* One New Record per Monitoring Well *</p>
+                <div class="row mb-3">
+                    <div class="col-4 col-sm-12 col-md-4">
+                        <label asp-for="WellId" class="form-label required"></label>
+                        <input asp-for="WellId" class="form-control" />
+                        <span asp-validation-for="WellId" class="text-danger"></span>
+                    </div>
 
-                <div class="mb-3">
-                    <label asp-for="LocationDescription" class="form-label"></label>
-                    <textarea asp-for="LocationDescription" class="form-control" rows="3"></textarea>
-                    <span asp-validation-for="LocationDescription" class="text-danger"></span>
+                    <div class="col-4 col-sm-12 col-md-4">
+                        <label asp-for="WellPermitNumber" class="form-label"></label>
+                        <input asp-for="WellPermitNumber" class="form-control" />
+                        <span asp-validation-for="WellPermitNumber" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-4 col-sm-12 col-md-4">
+                        <label asp-for="LocationDescription" class="form-label"></label>
+                        <input asp-for="LocationDescription" class="form-control" />
+                        <span asp-validation-for="LocationDescription" class="text-danger"></span>
+                    </div>
+                </div>
+                
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="DiameterInches" class="form-label"></label>
+                            <input asp-for="DiameterInches" type="number" step="0.01" min="0" class="form-control" />
+                            <span asp-validation-for="DiameterInches" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="WellDepthFeet" class="form-label"></label>
+                            <input asp-for="WellDepthFeet" type="number" step="0.01" min="0" class="form-control" />
+                            <span asp-validation-for="WellDepthFeet" class="text-danger"></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label asp-for="Latitude" class="form-label required"></label>
+                            <label asp-for="DepthToScreenFeet" class="form-label"></label>
+                            <input asp-for="DepthToScreenFeet" type="number" step="0.01" min="0" class="form-control" />
+                            <span asp-validation-for="DepthToScreenFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="LowScreenDepthFeet" class="form-label"></label>
+                            <input asp-for="LowScreenDepthFeet" type="number" step="0.01" min="0" class="form-control" />
+                            <span asp-validation-for="LowScreenDepthFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="HighScreenDepthFeet" class="form-label"></label>
+                            <input asp-for="HighScreenDepthFeet" type="number" step="0.01" min="0" class="form-control" />
+                            <span asp-validation-for="HighScreenDepthFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="TopOfCasingElevationMsl" class="form-label"></label>
+                            <input asp-for="TopOfCasingElevationMsl" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="TopOfCasingElevationMsl" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="TreatmentSystemLocation" class="form-label"></label>
+                    <p class="small text-muted">(Choose only one)</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="TreatmentSystemLocation" value="@((int)TreatmentSystemLocationEnum.Influent)" id="TreatmentSystemLocation_Influent" />
+                        <label class="form-check-label" for="TreatmentSystemLocation_Influent">Influent (98)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="TreatmentSystemLocation" value="@((int)TreatmentSystemLocationEnum.Effluent)" id="TreatmentSystemLocation_Effluent" />
+                        <label class="form-check-label" for="TreatmentSystemLocation_Effluent">Effluent (99)</label>
+                    </div>
+                    <span asp-validation-for="TreatmentSystemLocation" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="NumberOfWellsToBeSampled" class="form-label"></label>
+                    <input asp-for="NumberOfWellsToBeSampled" type="number" min="0" class="form-control" />
+                    <span asp-validation-for="NumberOfWellsToBeSampled" class="text-danger"></span>
+                </div>
+
+                <div class="form-section-title mt-4">Coordinates (optional)</div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Latitude" class="form-label"></label>
                             <input asp-for="Latitude" type="number" step="0.000001" min="-90" max="90" class="form-control" />
                             <span asp-validation-for="Latitude" class="text-danger"></span>
                             <small class="form-text text-muted">Latitude (-90 to 90)</small>
@@ -66,7 +148,7 @@
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label asp-for="Longitude" class="form-label required"></label>
+                            <label asp-for="Longitude" class="form-label"></label>
                             <input asp-for="Longitude" type="number" step="0.000001" min="-180" max="180" class="form-control" />
                             <span asp-validation-for="Longitude" class="text-danger"></span>
                             <small class="form-text text-muted">Longitude (-180 to 180)</small>
@@ -86,6 +168,8 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }
 

@@ -42,14 +42,14 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th><i class="bi bi-hash"></i> Well ID</th>
-                            <th><i class="bi bi-geo-alt"></i> Location Description</th>
-                            <th><i class="bi bi-geo-alt-fill"></i> Latitude</th>
-                            <th><i class="bi bi-geo-alt-fill"></i> Longitude</th>
+                            <th><i class="bi bi-hash"></i> Well Identifier #</th>
+                            <th><i class="bi bi-file-text"></i> Well Permit #</th>
+                            <th><i class="bi bi-geo-alt"></i> Well Location</th>
+                            <th><i class="bi bi-rulers"></i> Well Depth (ft)</th>
                             @if (isGlobalAdmin)
                             {
                                 <th><i class="bi bi-briefcase"></i> Company</th>
-                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                                <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                             }
                         </tr>
                     </thead>
@@ -60,9 +60,9 @@
                                 <td>
                                     <a asp-action="MonitoringWellDetails" asp-route-id="@well.Id">@well.WellId</a>
                                 </td>
+                                <td>@(string.IsNullOrEmpty(well.WellPermitNumber) ? "-" : well.WellPermitNumber)</td>
                                 <td>@(string.IsNullOrEmpty(well.LocationDescription) ? "-" : well.LocationDescription)</td>
-                                <td>@well.Latitude.ToString("F6")</td>
-                                <td>@well.Longitude.ToString("F6")</td>
+                                <td>@(well.WellDepthFeet.HasValue ? well.WellDepthFeet.Value.ToString("F2") : "-")</td>
                                 @if (isGlobalAdmin)
                                 {
                                     <td>@well.CompanyName</td>
@@ -101,11 +101,11 @@
                                 </small>
 
                                 <dl class="row small mb-3">
-                                    <dt class="col-6"><i class="bi bi-geo-alt-fill me-1"></i>Latitude</dt>
-                                    <dd class="col-6 mb-1">@well.Latitude.ToString("F6")</dd>
+                                    <dt class="col-6"><i class="bi bi-file-text me-1"></i>Well Permit #</dt>
+                                    <dd class="col-6 mb-1">@(string.IsNullOrEmpty(well.WellPermitNumber) ? "-" : well.WellPermitNumber)</dd>
 
-                                    <dt class="col-6"><i class="bi bi-geo-alt-fill me-1"></i>Longitude</dt>
-                                    <dd class="col-6 mb-1">@well.Longitude.ToString("F6")</dd>
+                                    <dt class="col-6"><i class="bi bi-rulers me-1"></i>Well Depth (ft)</dt>
+                                    <dd class="col-6 mb-1">@(well.WellDepthFeet.HasValue ? well.WellDepthFeet.Value.ToString("F2") : "-")</dd>
 
                                     @if (isGlobalAdmin)
                                     {

@@ -181,7 +181,16 @@ public class SystemAdminController : BaseController
                     CompanyId = m.CompanyId,
                     CompanyName = m.Company?.Name,
                     WellId = m.WellId,
+                    WellPermitNumber = m.WellPermitNumber,
                     LocationDescription = m.LocationDescription,
+                    DiameterInches = m.DiameterInches,
+                    WellDepthFeet = m.WellDepthFeet,
+                    DepthToScreenFeet = m.DepthToScreenFeet,
+                    LowScreenDepthFeet = m.LowScreenDepthFeet,
+                    HighScreenDepthFeet = m.HighScreenDepthFeet,
+                    TopOfCasingElevationMsl = m.TopOfCasingElevationMsl,
+                    TreatmentSystemLocation = m.TreatmentSystemLocation,
+                    NumberOfWellsToBeSampled = m.NumberOfWellsToBeSampled,
                     Latitude = m.Latitude,
                     Longitude = m.Longitude
                 });
@@ -1391,7 +1400,16 @@ public class SystemAdminController : BaseController
             CompanyId = monitoringWell.CompanyId,
             CompanyName = monitoringWell.Company?.Name,
             WellId = monitoringWell.WellId,
+            WellPermitNumber = monitoringWell.WellPermitNumber,
             LocationDescription = monitoringWell.LocationDescription,
+            DiameterInches = monitoringWell.DiameterInches,
+            WellDepthFeet = monitoringWell.WellDepthFeet,
+            DepthToScreenFeet = monitoringWell.DepthToScreenFeet,
+            LowScreenDepthFeet = monitoringWell.LowScreenDepthFeet,
+            HighScreenDepthFeet = monitoringWell.HighScreenDepthFeet,
+            TopOfCasingElevationMsl = monitoringWell.TopOfCasingElevationMsl,
+            TreatmentSystemLocation = monitoringWell.TreatmentSystemLocation,
+            NumberOfWellsToBeSampled = monitoringWell.NumberOfWellsToBeSampled,
             Latitude = monitoringWell.Latitude,
             Longitude = monitoringWell.Longitude
         };
@@ -1445,7 +1463,16 @@ public class SystemAdminController : BaseController
             {
                 CompanyId = viewModel.CompanyId,
                 WellId = viewModel.WellId,
+                WellPermitNumber = viewModel.WellPermitNumber,
                 LocationDescription = viewModel.LocationDescription,
+                DiameterInches = viewModel.DiameterInches,
+                WellDepthFeet = viewModel.WellDepthFeet,
+                DepthToScreenFeet = viewModel.DepthToScreenFeet,
+                LowScreenDepthFeet = viewModel.LowScreenDepthFeet,
+                HighScreenDepthFeet = viewModel.HighScreenDepthFeet,
+                TopOfCasingElevationMsl = viewModel.TopOfCasingElevationMsl,
+                TreatmentSystemLocation = viewModel.TreatmentSystemLocation,
+                NumberOfWellsToBeSampled = viewModel.NumberOfWellsToBeSampled,
                 Latitude = viewModel.Latitude,
                 Longitude = viewModel.Longitude
             };
@@ -1477,7 +1504,16 @@ public class SystemAdminController : BaseController
             Id = monitoringWell.Id,
             CompanyId = monitoringWell.CompanyId,
             WellId = monitoringWell.WellId,
+            WellPermitNumber = monitoringWell.WellPermitNumber,
             LocationDescription = monitoringWell.LocationDescription,
+            DiameterInches = monitoringWell.DiameterInches,
+            WellDepthFeet = monitoringWell.WellDepthFeet,
+            DepthToScreenFeet = monitoringWell.DepthToScreenFeet,
+            LowScreenDepthFeet = monitoringWell.LowScreenDepthFeet,
+            HighScreenDepthFeet = monitoringWell.HighScreenDepthFeet,
+            TopOfCasingElevationMsl = monitoringWell.TopOfCasingElevationMsl,
+            TreatmentSystemLocation = monitoringWell.TreatmentSystemLocation,
+            NumberOfWellsToBeSampled = monitoringWell.NumberOfWellsToBeSampled,
             Latitude = monitoringWell.Latitude,
             Longitude = monitoringWell.Longitude
         };
@@ -1506,7 +1542,16 @@ public class SystemAdminController : BaseController
                 return NotFound();
 
             monitoringWell.WellId = viewModel.WellId;
+            monitoringWell.WellPermitNumber = viewModel.WellPermitNumber;
             monitoringWell.LocationDescription = viewModel.LocationDescription;
+            monitoringWell.DiameterInches = viewModel.DiameterInches;
+            monitoringWell.WellDepthFeet = viewModel.WellDepthFeet;
+            monitoringWell.DepthToScreenFeet = viewModel.DepthToScreenFeet;
+            monitoringWell.LowScreenDepthFeet = viewModel.LowScreenDepthFeet;
+            monitoringWell.HighScreenDepthFeet = viewModel.HighScreenDepthFeet;
+            monitoringWell.TopOfCasingElevationMsl = viewModel.TopOfCasingElevationMsl;
+            monitoringWell.TreatmentSystemLocation = viewModel.TreatmentSystemLocation;
+            monitoringWell.NumberOfWellsToBeSampled = viewModel.NumberOfWellsToBeSampled;
             monitoringWell.Latitude = viewModel.Latitude;
             monitoringWell.Longitude = viewModel.Longitude;
 
