@@ -89,6 +89,39 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="GallonsPumped" class="form-label"></label>
+                                    <input asp-for="GallonsPumped" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="GallonsPumped" class="text-danger"></span>
+                                    <small class="form-text text-muted">Total gallons pumped during the sampling event, if applicable.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="Odor" class="form-label"></label>
+                                    <select asp-for="Odor" class="form-select">
+                                        <option value="">Select Odor</option>
+                                        <option value="None">None</option>
+                                        <option value="Slight">Slight</option>
+                                        <option value="Strong">Strong</option>
+                                    </select>
+                                    <span asp-validation-for="Odor" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="Appearance" class="form-label"></label>
+                                    <select asp-for="Appearance" class="form-select">
+                                        <option value="">Select Appearance</option>
+                                        <option value="Clear">Clear</option>
+                                        <option value="Turbid">Turbid</option>
+                                    </select>
+                                    <span asp-validation-for="Appearance" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-section">
@@ -100,15 +133,7 @@
                                     <label asp-for="Conductivity" class="form-label"></label>
                                     <input asp-for="Conductivity" type="number" step="0.01" class="form-control" />
                                     <span asp-validation-for="Conductivity" class="text-danger"></span>
-                                    <small class="form-text text-muted">Electrical conductivity (μS/cm). Check meter calibration regularly.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="TDS" class="form-label"></label>
-                                    <input asp-for="TDS" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="TDS" class="text-danger"></span>
-                                    <small class="form-text text-muted">Total dissolved solids (mg/L), field or lab measured.</small>
+                                    <small class="form-text text-muted">Specific conductance (uMhos). Check meter calibration regularly.</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -126,22 +151,6 @@
                         <div class="form-section-title">Chemical Parameters</div>
                         
                         <div class="row">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="BOD5" class="form-label"></label>
-                                    <input asp-for="BOD5" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="BOD5" class="text-danger"></span>
-                                    <small class="form-text text-muted">Biochemical Oxygen Demand (mg/L), typically from certified lab.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="COD" class="form-label"></label>
-                                    <input asp-for="COD" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="COD" class="text-danger"></span>
-                                    <small class="form-text text-muted">Chemical Oxygen Demand (mg/L).</small>
-                                </div>
-                            </div>
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label asp-for="TSS" class="form-label"></label>
@@ -179,10 +188,10 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="mb-3">
-                                    <label asp-for="TotalPhosphorus" class="form-label"></label>
-                                    <input asp-for="TotalPhosphorus" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="TotalPhosphorus" class="text-danger"></span>
-                                    <small class="form-text text-muted">Total Phosphorus (mg/L).</small>
+                                    <label asp-for="TDS" class="form-label"></label>
+                                    <input asp-for="TDS" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TDS" class="text-danger"></span>
+                                    <small class="form-text text-muted">Total dissolved solids (mg/L), field or lab measured.</small>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -191,6 +200,69 @@
                                     <input asp-for="Chloride" type="number" step="0.01" class="form-control" />
                                     <span asp-validation-for="Chloride" class="text-danger"></span>
                                     <small class="form-text text-muted">Chloride (mg/L).</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="TOC" class="form-label"></label>
+                                    <input asp-for="TOC" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TOC" class="text-danger"></span>
+                                    <small class="form-text text-muted">Total Organic Carbon (mg/L).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="Calcium" class="form-label"></label>
+                                    <input asp-for="Calcium" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="Calcium" class="text-danger"></span>
+                                    <small class="form-text text-muted">Calcium (mg/L).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="Magnesium" class="form-label"></label>
+                                    <input asp-for="Magnesium" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="Magnesium" class="text-danger"></span>
+                                    <small class="form-text text-muted">Magnesium (mg/L).</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3 form-check">
+                                    <input class="form-check-input" asp-for="MetalsSamplesCollectedUnfiltered" type="checkbox" />
+                                    <label class="form-check-label" asp-for="MetalsSamplesCollectedUnfiltered"></label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3 form-check">
+                                    <input class="form-check-input" asp-for="MetalSamplesFieldAcidified" type="checkbox" />
+                                    <label class="form-check-label" asp-for="MetalSamplesFieldAcidified"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Organics</div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3 form-check">
+                                    <input class="form-check-input" asp-for="VOCReportAttached" type="checkbox" />
+                                    <label class="form-check-label" asp-for="VOCReportAttached"></label>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label asp-for="VOCMethodNumber" class="form-label"></label>
+                                    <input asp-for="VOCMethodNumber" class="form-control" />
+                                    <span asp-validation-for="VOCMethodNumber" class="text-danger"></span>
+                                    <small class="form-text text-muted">Enter VOC analytical method number reported by the lab (if tested).</small>
                                 </div>
                             </div>
                         </div>

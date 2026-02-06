@@ -870,7 +870,7 @@ public class UserManagementController : BaseController
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> CompanyAdminAssign(string userId)
+    public async Task<IActionResult> CompanyAdminAssign(string userId, Guid? companyId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
 
@@ -880,11 +880,38 @@ public class UserManagementController : BaseController
             return NotFound("User not found.");
         }
 
+        // If a companyId is supplied, assign the user to that company first
+        if (companyId.HasValue)
+        {
+            // Validate target company exists
+            var company = await _companyService.GetByIdAsync(companyId.Value);
+            if (company == null)
+            {
+                return NotFound("Company not found.");
+            }
+
+            // Non-global admins can only assign within accessible company
+            if (!isGlobalAdmin)
+            {
+                await EnsureCompanyAccessAsync(companyId.Value);
+            }
+
+            user.CompanyId = companyId.Value;
+            var updateResult = await UserManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+                return StatusCode(500, $"Failed to assign company to user: {errors}");
+            }
+        }
+
+        // After optional assignment, ensure user has a company
         if (!user.CompanyId.HasValue)
         {
             return BadRequest("User must be assigned to a company to be a company admin.");
         }
 
+        // Permission check for non-global admins based on the user's company
         if (!isGlobalAdmin)
         {
             await EnsureCompanyAccessAsync(user.CompanyId.Value);
@@ -892,14 +919,8 @@ public class UserManagementController : BaseController
 
         var roles = await UserManager.GetRolesAsync(user);
 
-        // Do not allow modifying system admins via this endpoint
-        if (roles.Contains("admin"))
-        {
-            return BadRequest("Cannot modify roles for system administrators via this action.");
-        }
-
         // Remove other company-level roles so user ends up only with company_admin at company level
-        var companyRoles = new[] { "company_admin", "operator", "technician" };
+        var companyRoles = new[] { "company_admin", "operator", "technician", "admin" };
         foreach (var role in companyRoles)
         {
             if (roles.Contains(role))
@@ -961,6 +982,7 @@ public class UserManagementController : BaseController
 
         return Ok();
     }
+
 
     #endregion
 

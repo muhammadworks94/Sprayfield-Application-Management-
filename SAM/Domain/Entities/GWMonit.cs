@@ -43,7 +43,22 @@ public class GWMonit : CompanyScopedEntity
     public decimal? PH { get; set; }
 
     /// <summary>
-    /// Conductivity.
+    /// Gallons pumped during sampling.
+    /// </summary>
+    public decimal? GallonsPumped { get; set; }
+
+    /// <summary>
+    /// Odor observation (None/Slight/Strong).
+    /// </summary>
+    public string Odor { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Appearance observation (Clear/Turbid).
+    /// </summary>
+    public string Appearance { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Specific conductance.
     /// </summary>
     public decimal? Conductivity { get; set; }
 
@@ -56,16 +71,6 @@ public class GWMonit : CompanyScopedEntity
     /// Turbidity.
     /// </summary>
     public decimal? Turbidity { get; set; }
-
-    /// <summary>
-    /// Biological Oxygen Demand (5-day).
-    /// </summary>
-    public decimal? BOD5 { get; set; }
-
-    /// <summary>
-    /// Chemical Oxygen Demand.
-    /// </summary>
-    public decimal? COD { get; set; }
 
     /// <summary>
     /// Total Suspended Solids.
@@ -88,14 +93,34 @@ public class GWMonit : CompanyScopedEntity
     public decimal? TKN { get; set; }
 
     /// <summary>
-    /// Total Phosphorus.
+    /// Total Organic Carbon.
     /// </summary>
-    public decimal? TotalPhosphorus { get; set; }
+    public decimal? TOC { get; set; }
 
     /// <summary>
     /// Chloride.
     /// </summary>
     public decimal? Chloride { get; set; }
+
+    /// <summary>
+    /// Calcium.
+    /// </summary>
+    public decimal? Calcium { get; set; }
+
+    /// <summary>
+    /// Magnesium.
+    /// </summary>
+    public decimal? Magnesium { get; set; }
+
+    /// <summary>
+    /// Indicates if metals samples were collected unfiltered.
+    /// </summary>
+    public bool? MetalsSamplesCollectedUnfiltered { get; set; }
+
+    /// <summary>
+    /// Indicates if metal samples were field acidified.
+    /// </summary>
+    public bool? MetalSamplesFieldAcidified { get; set; }
 
     /// <summary>
     /// Fecal Coliform count.
@@ -106,6 +131,16 @@ public class GWMonit : CompanyScopedEntity
     /// Total Coliform count.
     /// </summary>
     public decimal? TotalColiform { get; set; }
+
+    /// <summary>
+    /// Indicates if VOC report is attached.
+    /// </summary>
+    public bool? VOCReportAttached { get; set; }
+
+    /// <summary>
+    /// VOC analytical method number, if tested.
+    /// </summary>
+    public string VOCMethodNumber { get; set; } = string.Empty;
 
     /// <summary>
     /// Lab certification details.

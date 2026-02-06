@@ -33,10 +33,22 @@ public class GWMonitViewModel
     [Range(0, 14)]
     public decimal? PH { get; set; }
     
-    [Display(Name = "Conductivity (µS/cm)")]
+    [Display(Name = "Specific Conductance (uMhos)")]
     [Range(0, double.MaxValue)]
     public decimal? Conductivity { get; set; }
-    
+
+    [Display(Name = "Gallons Pumped")]
+    [Range(0, double.MaxValue)]
+    public decimal? GallonsPumped { get; set; }
+
+    [StringLength(100)]
+    [Display(Name = "Odor")]
+    public string Odor { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    [Display(Name = "Appearance")]
+    public string Appearance { get; set; } = string.Empty;
+
     [Display(Name = "TDS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TDS { get; set; }
@@ -44,14 +56,6 @@ public class GWMonitViewModel
     [Display(Name = "Turbidity (NTU)")]
     [Range(0, double.MaxValue)]
     public decimal? Turbidity { get; set; }
-    
-    [Display(Name = "BOD5 (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? BOD5 { get; set; }
-    
-    [Display(Name = "COD (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? COD { get; set; }
     
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
@@ -69,13 +73,27 @@ public class GWMonitViewModel
     [Range(0, double.MaxValue)]
     public decimal? TKN { get; set; }
     
-    [Display(Name = "Total Phosphorus (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TotalPhosphorus { get; set; }
-    
     [Display(Name = "Chloride (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? Chloride { get; set; }
+
+    [Display(Name = "TOC (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? TOC { get; set; }
+
+    [Display(Name = "Calcium (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? Calcium { get; set; }
+
+    [Display(Name = "Magnesium (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? Magnesium { get; set; }
+
+    [Display(Name = "Metals Samples Collected Unfiltered")]
+    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+
+    [Display(Name = "Metal Samples Field Acidified")]
+    public bool MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
@@ -84,6 +102,13 @@ public class GWMonitViewModel
     [Display(Name = "Total Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
     public decimal? TotalColiform { get; set; }
+
+    [Display(Name = "VOC Report Attached")]
+    public bool VOCReportAttached { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "VOC Method #")]
+    public string VOCMethodNumber { get; set; } = string.Empty;
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -137,10 +162,21 @@ public class GWMonitCreateViewModel
     [Range(0, 14)]
     public decimal? PH { get; set; }
     
-    [Display(Name = "Conductivity (µS/cm)")]
+    [Display(Name = "Specific Conductance (uMhos)")]
     [Range(0, double.MaxValue)]
     public decimal? Conductivity { get; set; }
-    
+
+    [Display(Name = "Gallons Pumped")]
+    [Range(0, double.MaxValue)]
+    public decimal? GallonsPumped { get; set; }
+
+    [StringLength(100)]
+    [Display(Name = "Odor")]
+    public string Odor { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    [Display(Name = "Appearance")]
+    public string Appearance { get; set; } = string.Empty;
     [Display(Name = "TDS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TDS { get; set; }
@@ -148,14 +184,6 @@ public class GWMonitCreateViewModel
     [Display(Name = "Turbidity (NTU)")]
     [Range(0, double.MaxValue)]
     public decimal? Turbidity { get; set; }
-    
-    [Display(Name = "BOD5 (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? BOD5 { get; set; }
-    
-    [Display(Name = "COD (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? COD { get; set; }
     
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
@@ -173,13 +201,27 @@ public class GWMonitCreateViewModel
     [Range(0, double.MaxValue)]
     public decimal? TKN { get; set; }
     
-    [Display(Name = "Total Phosphorus (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TotalPhosphorus { get; set; }
-    
     [Display(Name = "Chloride (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? Chloride { get; set; }
+
+    [Display(Name = "TOC (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? TOC { get; set; }
+
+    [Display(Name = "Calcium (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? Calcium { get; set; }
+
+    [Display(Name = "Magnesium (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? Magnesium { get; set; }
+
+    [Display(Name = "Metals Samples Collected Unfiltered")]
+    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+
+    [Display(Name = "Metal Samples Field Acidified")]
+    public bool MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
@@ -188,6 +230,13 @@ public class GWMonitCreateViewModel
     [Display(Name = "Total Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
     public decimal? TotalColiform { get; set; }
+
+    [Display(Name = "VOC Report Attached")]
+    public bool VOCReportAttached { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "VOC Method #")]
+    public string VOCMethodNumber { get; set; } = string.Empty;
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -243,10 +292,21 @@ public class GWMonitEditViewModel
     [Range(0, 14)]
     public decimal? PH { get; set; }
     
-    [Display(Name = "Conductivity (µS/cm)")]
+    [Display(Name = "Specific Conductance (uMhos)")]
     [Range(0, double.MaxValue)]
     public decimal? Conductivity { get; set; }
-    
+
+    [Display(Name = "Gallons Pumped")]
+    [Range(0, double.MaxValue)]
+    public decimal? GallonsPumped { get; set; }
+
+    [StringLength(100)]
+    [Display(Name = "Odor")]
+    public string Odor { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    [Display(Name = "Appearance")]
+    public string Appearance { get; set; } = string.Empty;
     [Display(Name = "TDS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TDS { get; set; }
@@ -254,14 +314,6 @@ public class GWMonitEditViewModel
     [Display(Name = "Turbidity (NTU)")]
     [Range(0, double.MaxValue)]
     public decimal? Turbidity { get; set; }
-    
-    [Display(Name = "BOD5 (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? BOD5 { get; set; }
-    
-    [Display(Name = "COD (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? COD { get; set; }
     
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
@@ -279,13 +331,27 @@ public class GWMonitEditViewModel
     [Range(0, double.MaxValue)]
     public decimal? TKN { get; set; }
     
-    [Display(Name = "Total Phosphorus (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TotalPhosphorus { get; set; }
-    
     [Display(Name = "Chloride (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? Chloride { get; set; }
+
+    [Display(Name = "TOC (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? TOC { get; set; }
+
+    [Display(Name = "Calcium (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? Calcium { get; set; }
+
+    [Display(Name = "Magnesium (mg/L)")]
+    [Range(0, double.MaxValue)]
+    public decimal? Magnesium { get; set; }
+
+    [Display(Name = "Metals Samples Collected Unfiltered")]
+    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+
+    [Display(Name = "Metal Samples Field Acidified")]
+    public bool MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
@@ -294,6 +360,13 @@ public class GWMonitEditViewModel
     [Display(Name = "Total Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
     public decimal? TotalColiform { get; set; }
+
+    [Display(Name = "VOC Report Attached")]
+    public bool VOCReportAttached { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "VOC Method #")]
+    public string VOCMethodNumber { get; set; } = string.Empty;
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]

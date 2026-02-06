@@ -63,6 +63,15 @@
 
             <dt class="col-sm-3">pH:</dt>
             <dd class="col-sm-9">@(Model.PH?.ToString("F2") ?? "N/A")</dd>
+
+            <dt class="col-sm-3">Gallons Pumped:</dt>
+            <dd class="col-sm-9">@(Model.GallonsPumped?.ToString("F2") ?? "N/A")</dd>
+
+            <dt class="col-sm-3">Odor:</dt>
+            <dd class="col-sm-9">@(!string.IsNullOrWhiteSpace(Model.Odor) ? Model.Odor : "N/A")</dd>
+
+            <dt class="col-sm-3">Appearance:</dt>
+            <dd class="col-sm-9">@(!string.IsNullOrWhiteSpace(Model.Appearance) ? Model.Appearance : "N/A")</dd>
         </dl>
     </div>
 </div>
@@ -73,11 +82,8 @@
     </div>
     <div class="card-body">
         <dl class="row">
-            <dt class="col-sm-3">Conductivity:</dt>
+            <dt class="col-sm-3">Specific Conductance:</dt>
             <dd class="col-sm-9">@(Model.Conductivity?.ToString("F2") ?? "N/A") μS/cm</dd>
-
-            <dt class="col-sm-3">TDS:</dt>
-            <dd class="col-sm-9">@(Model.TDS?.ToString("F2") ?? "N/A") mg/L</dd>
 
             <dt class="col-sm-3">Turbidity:</dt>
             <dd class="col-sm-9">@(Model.Turbidity?.ToString("F2") ?? "N/A") NTU</dd>
@@ -91,12 +97,6 @@
     </div>
     <div class="card-body">
         <dl class="row">
-            <dt class="col-sm-3">BOD5:</dt>
-            <dd class="col-sm-9">@(Model.BOD5?.ToString("F2") ?? "N/A") mg/L</dd>
-
-            <dt class="col-sm-3">COD:</dt>
-            <dd class="col-sm-9">@(Model.COD?.ToString("F2") ?? "N/A") mg/L</dd>
-
             <dt class="col-sm-3">TSS:</dt>
             <dd class="col-sm-9">@(Model.TSS?.ToString("F2") ?? "N/A") mg/L</dd>
 
@@ -109,11 +109,47 @@
             <dt class="col-sm-3">TKN:</dt>
             <dd class="col-sm-9">@(Model.TKN?.ToString("F2") ?? "N/A") mg/L</dd>
 
-            <dt class="col-sm-3">Total Phosphorus:</dt>
-            <dd class="col-sm-9">@(Model.TotalPhosphorus?.ToString("F2") ?? "N/A") mg/L</dd>
+            <dt class="col-sm-3">TDS:</dt>
+            <dd class="col-sm-9">@(Model.TDS?.ToString("F2") ?? "N/A") mg/L</dd>
 
             <dt class="col-sm-3">Chloride:</dt>
             <dd class="col-sm-9">@(Model.Chloride?.ToString("F2") ?? "N/A") mg/L</dd>
+
+            <dt class="col-sm-3">TOC:</dt>
+            <dd class="col-sm-9">@(Model.TOC?.ToString("F2") ?? "N/A") mg/L</dd>
+
+            <dt class="col-sm-3">Calcium:</dt>
+            <dd class="col-sm-9">@(Model.Calcium?.ToString("F2") ?? "N/A") mg/L</dd>
+
+            <dt class="col-sm-3">Magnesium:</dt>
+            <dd class="col-sm-9">@(Model.Magnesium?.ToString("F2") ?? "N/A") mg/L</dd>
+
+            <dt class="col-sm-3">Metals Samples Collected Unfiltered:</dt>
+            <dd class="col-sm-9">
+                @(Model.MetalsSamplesCollectedUnfiltered ? "Yes" : "No")
+            </dd>
+
+            <dt class="col-sm-3">Metal Samples Field Acidified:</dt>
+            <dd class="col-sm-9">
+                @(Model.MetalSamplesFieldAcidified ? "Yes" : "No")
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0">Organics</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">VOC Report Attached:</dt>
+            <dd class="col-sm-9">
+                @(Model.VOCReportAttached ? "Yes" : "No")
+            </dd>
+
+            <dt class="col-sm-3">VOC Method #:</dt>
+            <dd class="col-sm-9">@(!string.IsNullOrWhiteSpace(Model.VOCMethodNumber) ? Model.VOCMethodNumber : "N/A")</dd>
         </dl>
     </div>
 </div>
