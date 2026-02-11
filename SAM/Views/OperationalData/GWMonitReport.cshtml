@@ -1,0 +1,219 @@
+@model SAM.ViewModels.OperationalData.GW59ReportViewModel
+
+@{
+    ViewData["Title"] = "GW-59 Groundwater Monitoring Report";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0 small">Auto-generated from groundwater monitoring data</p>
+    </div>
+    <div>
+        <a asp-action="GWMonitDetails" asp-route-id="@Model.MonitoringWellId" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Facility Information</h6>
+    </div>
+    <div class="card-body">
+        <dl class="row small mb-0">
+            <dt class="col-sm-3">Facility Name</dt>
+            <dd class="col-sm-9">@Model.FacilityName</dd>
+
+            <dt class="col-sm-3">Permit Number</dt>
+            <dd class="col-sm-3">@Model.PermitNumber</dd>
+
+            <dt class="col-sm-3">Permittee</dt>
+            <dd class="col-sm-3">@Model.Permittee</dd>
+
+            <dt class="col-sm-3">Address</dt>
+            <dd class="col-sm-9">
+                @Model.Address<br />
+                @Model.City, @Model.State @Model.ZipCode
+            </dd>
+
+            <dt class="col-sm-3">County</dt>
+            <dd class="col-sm-3">@Model.County</dd>
+
+            <dt class="col-sm-3">Facility Phone</dt>
+            <dd class="col-sm-3">@Model.FacilityPhone</dd>
+
+            <dt class="col-sm-3">Permit Expiration</dt>
+            <dd class="col-sm-3">@Model.PermitExpirationDate?.ToString("MM/dd/yyyy")</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Sampling Information &amp; Well Details</h6>
+    </div>
+    <div class="card-body">
+        <dl class="row small mb-0">
+            <dt class="col-sm-3">Well ID (from Permit)</dt>
+            <dd class="col-sm-3">@Model.WellId</dd>
+
+            <dt class="col-sm-3">Well Location / Site Name</dt>
+            <dd class="col-sm-3">@Model.WellLocation</dd>
+
+            <dt class="col-sm-3">Well Depth</dt>
+            <dd class="col-sm-3">@(Model.WellDepthFeet?.ToString("F2") ?? "N/A") ft</dd>
+
+            <dt class="col-sm-3">Well Diameter</dt>
+            <dd class="col-sm-3">@(Model.DiameterInches?.ToString("F2") ?? "N/A") in</dd>
+
+            <dt class="col-sm-3">Screened Interval</dt>
+            <dd class="col-sm-3">
+                @if (Model.LowScreenDepthFeet.HasValue || Model.HighScreenDepthFeet.HasValue)
+                {
+                    @($"{Model.LowScreenDepthFeet?.ToString("F2") ?? "?"} to {Model.HighScreenDepthFeet?.ToString("F2") ?? "?"} ft")
+                }
+                else
+                {
+                    @:N/A
+                }
+            </dd>
+
+            <dt class="col-sm-3">No. of Wells to be Sampled</dt>
+            <dd class="col-sm-3">@Model.NumberOfWellsToBeSampled</dd>
+
+            <dt class="col-sm-3">Date Sample Collected</dt>
+            <dd class="col-sm-3">@Model.SampleDate.ToString("MM/dd/yyyy")</dd>
+
+            <dt class="col-sm-3">Sample Depth</dt>
+            <dd class="col-sm-3">@(Model.SampleDepth?.ToString("F2") ?? "N/A") ft</dd>
+
+            <dt class="col-sm-3">Depth to Water Level</dt>
+            <dd class="col-sm-3">@(Model.WaterLevel?.ToString("F2") ?? "N/A") ft</dd>
+
+            <dt class="col-sm-3">Volume Pumped/Bailed Before Sampling</dt>
+            <dd class="col-sm-3">@(Model.GallonsPumped?.ToString("F2") ?? "N/A") gallons</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Field Analyses</h6>
+    </div>
+    <div class="card-body">
+        <dl class="row small mb-0">
+            <dt class="col-sm-3">pH (field)</dt>
+            <dd class="col-sm-3">@(Model.PHField?.ToString("F2") ?? "N/A") units</dd>
+
+            <dt class="col-sm-3">Temperature (field)</dt>
+            <dd class="col-sm-3">@(Model.TemperatureField?.ToString("F1") ?? "N/A") °C</dd>
+
+            <dt class="col-sm-3">Specific Conductance</dt>
+            <dd class="col-sm-3">@(Model.SpecificConductance?.ToString("F2") ?? "N/A") μMhos</dd>
+
+            <dt class="col-sm-3">Odor</dt>
+            <dd class="col-sm-3">@(!string.IsNullOrWhiteSpace(Model.Odor) ? Model.Odor : "N/A")</dd>
+
+            <dt class="col-sm-3">Appearance</dt>
+            <dd class="col-sm-3">@(!string.IsNullOrWhiteSpace(Model.Appearance) ? Model.Appearance : "N/A")</dd>
+
+            <dt class="col-sm-5">Samples for metals were collected unfiltered</dt>
+            <dd class="col-sm-7">@(Model.MetalsUnfiltered ? "Yes" : "No")</dd>
+
+            <dt class="col-sm-5">and field acidified</dt>
+            <dd class="col-sm-7">@(Model.MetalsAcidified ? "Yes" : "No")</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Laboratory Information &amp; Parameters</h6>
+    </div>
+    <div class="card-body">
+        <dl class="row small mb-3">
+            <dt class="col-sm-3">Laboratory Name</dt>
+            <dd class="col-sm-3">@Model.LabName</dd>
+
+            <dt class="col-sm-3">Certification No.</dt>
+            <dd class="col-sm-3">@Model.LabCertificationNumber</dd>
+        </dl>
+
+        <div class="row small">
+            <div class="col-md-6">
+                <dl class="row mb-0">
+                    <dt class="col-sm-6">Dissolved Solids: Total</dt>
+                    <dd class="col-sm-6">@(Model.TDS?.ToString("F2") ?? "N/A") mg/L</dd>
+
+                    <dt class="col-sm-6">TOC</dt>
+                    <dd class="col-sm-6">@(Model.TOC?.ToString("F2") ?? "N/A") mg/L</dd>
+
+                    <dt class="col-sm-6">Chloride</dt>
+                    <dd class="col-sm-6">@(Model.Chloride?.ToString("F2") ?? "N/A") mg/L</dd>
+
+                    <dt class="col-sm-6">NH3-N (Total Ammonia)</dt>
+                    <dd class="col-sm-6">@(Model.NH3N?.ToString("F2") ?? "N/A") mg/L</dd>
+
+                    <dt class="col-sm-6">NO3-N</dt>
+                    <dd class="col-sm-6">@(Model.NO3N?.ToString("F2") ?? "N/A") mg/L</dd>
+
+                    <dt class="col-sm-6">TKN as N</dt>
+                    <dd class="col-sm-6">@(Model.TKN?.ToString("F2") ?? "N/A") mg/L</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <dl class="row mb-0">
+                    <dt class="col-sm-6">Calcium</dt>
+                    <dd class="col-sm-6">@(Model.Calcium?.ToString("F2") ?? "N/A") mg/L</dd>
+
+                    <dt class="col-sm-6">Magnesium</dt>
+                    <dd class="col-sm-6">@(Model.Magnesium?.ToString("F2") ?? "N/A") mg/L</dd>
+
+                    <dt class="col-sm-6">Fecal Coliform</dt>
+                    <dd class="col-sm-6">@(Model.FecalColiform?.ToString("F0") ?? "N/A") /100mL</dd>
+
+                    <dt class="col-sm-6">Total Coliform</dt>
+                    <dd class="col-sm-6">@(Model.TotalColiform?.ToString("F0") ?? "N/A") /100mL</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Organics (VOC)</h6>
+    </div>
+    <div class="card-body">
+        <dl class="row small mb-0">
+            <dt class="col-sm-3">Lab Report Attached?</dt>
+            <dd class="col-sm-3">@(Model.LabReportAttached ? "Yes" : "No")</dd>
+
+            <dt class="col-sm-3">VOC Method #</dt>
+            <dd class="col-sm-3">@(!string.IsNullOrWhiteSpace(Model.VOCMethodNumber) ? Model.VOCMethodNumber : "N/A")</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Certification</h6>
+    </div>
+    <div class="card-body">
+        <p class="small">
+            I certify that, to the best of my knowledge and belief, the information submitted in this report is true, accurate, and complete,
+            and that the laboratory analytical data was produced using approved methods of analysis by a certified laboratory.
+        </p>
+        <dl class="row small mb-0">
+            <dt class="col-sm-3">Name</dt>
+            <dd class="col-sm-9">@Model.CertificationName</dd>
+
+            <dt class="col-sm-3">Title</dt>
+            <dd class="col-sm-9">@Model.CertificationTitle</dd>
+
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">@Model.CertificationDate?.ToString("MM/dd/yyyy")</dd>
+        </dl>
+    </div>
+</div>
+

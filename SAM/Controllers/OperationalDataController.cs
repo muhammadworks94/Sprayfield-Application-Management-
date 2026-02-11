@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SAM.Controllers.Base;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
 using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Domain.Enums;
@@ -28,6 +31,7 @@ namespace SAM.Controllers;
         private readonly IMonitoringWellService _monitoringWellService;
         private readonly ICompanyService _companyService;
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _environment;
 
         public OperationalDataController(
             IOperatorLogService operatorLogService,
@@ -39,6 +43,7 @@ namespace SAM.Controllers;
             IMonitoringWellService monitoringWellService,
             ICompanyService companyService,
             ApplicationDbContext context,
+            IWebHostEnvironment environment,
             UserManager<ApplicationUser> userManager,
             ILogger<OperationalDataController> logger)
             : base(userManager, logger)
@@ -52,6 +57,7 @@ namespace SAM.Controllers;
             _monitoringWellService = monitoringWellService;
             _companyService = companyService;
             _context = context;
+            _environment = environment;
         }
 
     #region Operator Logs
@@ -1157,6 +1163,237 @@ namespace SAM.Controllers;
         };
 
         return View(viewModel);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireTechnician)]
+    public async Task<IActionResult> GWMonitReport(Guid id)
+    {
+        var model = await BuildGW59ReportAsync(id);
+        return View(model);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireTechnician)]
+    public async Task<IActionResult> GWMonitReportPdf(Guid id)
+    {
+        var reportModel = await BuildGW59ReportAsync(id);
+
+        var templatePath = Path.Combine(
+            _environment.WebRootPath,
+            "forms",
+            "GW-59 GW-QualityMonitoringReportForm.pdf");
+
+        if (!System.IO.File.Exists(templatePath))
+        {
+            return NotFound("GW-59 template PDF not found.");
+        }
+
+        using var outputStream = new MemoryStream();
+        using (var document = PdfReader.Open(templatePath, PdfDocumentOpenMode.Modify))
+        {
+            var page = document.Pages[0];
+            var gfx = XGraphics.FromPdfPage(page);
+            var font = new XFont("Arial", 8, XFontStyle.Regular);
+
+            void DrawText(string? text, double x, double y)
+            {
+                gfx.DrawString(text ?? string.Empty, font, XBrushes.Black,
+                    new XRect(x, y, 250, font.Height + 2),
+                    XStringFormats.TopLeft);
+            }
+
+            // DEBUG GRID (temporary) - helps calibrate coordinates for fields.
+            // Comment out or remove this block once you've recorded the positions you need.
+            //for (int y = 50; y <= page.Height; y += 20)
+            //{
+            //    gfx.DrawLine(XPens.Red, 40, y, page.Width - 40, y);
+            //    gfx.DrawString(y.ToString(), font, XBrushes.Red,
+            //        new XRect(5, y - 4, 30, font.Height + 2), XStringFormats.TopLeft);
+            //}
+
+            //for (int x = 50; x <= page.Width - 40; x += 20)
+            //{
+            //    gfx.DrawLine(XPens.Red, x, 40, x, page.Height - 40);
+            //    gfx.DrawString(x.ToString(), font, XBrushes.Red,
+            //        new XRect(x - 10, 25, 40, font.Height + 2), XStringFormats.TopLeft);
+            //}
+
+            // NOTE: All coordinates are approximate and may need fine-tuning
+            // Facility information
+            DrawText(reportModel.FacilityName, 120, 74);                  // Facility Name
+            DrawText(reportModel.PermitNumber, 630, 60);                 // Permit Number
+            DrawText(reportModel.Permittee, 170, 90);                    // Permit Name
+            DrawText($"{reportModel.Address}", 120, 106);                 // Address line
+            DrawText(reportModel.City, 80, 140);
+            DrawText(reportModel.ZipCode, 280, 140);
+            DrawText( reportModel.State , 230, 140);
+            DrawText(reportModel.County, 410, 120);                      // County
+
+            // Contact / phone – using facility phone
+            DrawText(reportModel.FacilityPhone, 410, 152);
+
+            // Sampling information / well details
+            DrawText(reportModel.WellId, 210, 204);                       // WELL ID NUMBER
+            DrawText(reportModel.SampleDate.ToString("MM/dd/yyyy"), 460, 204); // Date sample collected
+
+            DrawText(reportModel.WellDepthFeet?.ToString("F2"), 110, 220); // Well Depth
+            DrawText(reportModel.DiameterInches?.ToString("F2"), 457, 220); // Well Diameter
+
+            DrawText(reportModel.SampleDepth?.ToString("F2"), 90, 220);  // Sample depth
+            DrawText(reportModel.WaterLevel?.ToString("F2"), 160, 237);  // Depth to water
+
+            DrawText(reportModel.GallonsPumped?.ToString("F2"), 260, 266); // Volume pumped
+
+            // Field analyses
+            DrawText(reportModel.PHField?.ToString("F2"), 615, 220);     // pH field
+            DrawText(reportModel.TemperatureField?.ToString("F1"), 750, 220); // Temp field
+            DrawText(reportModel.SpecificConductance?.ToString("F2"), 660, 238); // Spec. Cond.
+            DrawText(reportModel.Odor, 650, 252);                        // Odor
+            DrawText(reportModel.Appearance, 650, 267);                  // Appearance
+
+            // Metals handling YES/NO checkboxes (approximate positions)
+            if (reportModel.MetalsUnfiltered)
+            {
+                DrawText("X", 240, 283); // YES box
+            }
+            else
+            {
+                DrawText("X", 301, 282); // NO box
+            }
+
+            if (reportModel.MetalsAcidified)
+            {
+                DrawText("X", 444, 283); // YES box for acidified
+            }
+            else
+            {
+                DrawText("X", 491, 283); // NO box for acidified
+            }
+
+            // Laboratory information
+            DrawText(reportModel.LabName, 450, 308);                      // Laboratory Name
+            DrawText(reportModel.LabCertificationNumber, 740, 308);      // Certification No.
+
+            // Core parameters from GWMonit
+            DrawText(reportModel.TDS?.ToString("F2"), 160, 400);          // Dissolved Solids: Total
+            DrawText(reportModel.TOC?.ToString("F2"), 165, 430);          // TOC
+            DrawText(reportModel.Chloride?.ToString("F2"), 165, 446);     // Chloride
+
+            DrawText(reportModel.NH3N?.ToString("F2"), 165, 538);         // Total Ammonia
+            DrawText(reportModel.TKN?.ToString("F2"), 165, 571);          // TKN as N
+
+            DrawText(reportModel.NO3N?.ToString("F2"), 440, 352);        // Nitrate (NO3) as N
+
+            DrawText(reportModel.Calcium?.ToString("F2"), 440, 430);     // Ca
+            DrawText(reportModel.Magnesium?.ToString("F2"), 440, 538);   // Mg
+
+            DrawText(reportModel.FecalColiform?.ToString("F0"), 165, 352); // Coliform MF Fecal
+            DrawText(reportModel.TotalColiform?.ToString("F0"), 165, 369); // Coliform MF Total
+
+            // Organics section – lab report + VOC method
+            if (reportModel.LabReportAttached)
+            {
+                DrawText("X", 684, 510); // Yes box
+            }
+            else
+            {
+                DrawText("X", 752, 510); // No box
+            }
+
+            DrawText(reportModel.VOCMethodNumber, 750, 525);             // VOC method #
+
+            document.Save(outputStream, false);
+        }
+
+        outputStream.Position = 0;
+        var safeFacility = string.IsNullOrWhiteSpace(reportModel.FacilityName)
+            ? "Facility"
+            : reportModel.FacilityName.Replace(' ', '_');
+        var fileName = $"GW59_{safeFacility}_{reportModel.SampleDate:yyyyMMdd}.pdf";
+        return File(outputStream.ToArray(), "application/pdf", fileName);
+    }
+
+    private async Task<GW59ReportViewModel> BuildGW59ReportAsync(Guid gwMonitId)
+    {
+        var gwMonit = await _gwMonitService.GetByIdAsync(gwMonitId);
+        if (gwMonit == null)
+        {
+            throw new Infrastructure.Exceptions.EntityNotFoundException(nameof(GWMonit), gwMonitId);
+        }
+
+        await EnsureCompanyAccessAsync(gwMonit.CompanyId);
+
+        var facility = gwMonit.Facility;
+        var well = gwMonit.MonitoringWell;
+
+        // Basic mapping from entities to report view model
+        var report = new GW59ReportViewModel
+        {
+            FacilityId = gwMonit.FacilityId,
+            FacilityName = facility?.Name ?? string.Empty,
+            PermitNumber = facility?.PermitNumber ?? string.Empty,
+            Permittee = facility?.Permittee ?? string.Empty,
+            Address = facility?.Address ?? string.Empty,
+            City = facility?.City ?? string.Empty,
+            State = facility?.State ?? string.Empty,
+            ZipCode = facility?.ZipCode ?? string.Empty,
+            County = facility?.County ?? string.Empty,
+            FacilityPhone = facility?.FacilityPhone ?? string.Empty,
+            PermitExpirationDate = facility?.PermitExpirationDate,
+
+            MonitoringWellId = gwMonit.MonitoringWellId,
+            WellId = well?.WellId ?? string.Empty,
+            WellLocation = well?.LocationDescription ?? string.Empty,
+            WellDepthFeet = well?.WellDepthFeet,
+            DiameterInches = well?.DiameterInches,
+            LowScreenDepthFeet = well?.LowScreenDepthFeet,
+            HighScreenDepthFeet = well?.HighScreenDepthFeet,
+            NumberOfWellsToBeSampled = well?.NumberOfWellsToBeSampled,
+
+            SampleDate = gwMonit.SampleDate,
+            SampleDepth = gwMonit.SampleDepth,
+            WaterLevel = gwMonit.WaterLevel,
+            GallonsPumped = gwMonit.GallonsPumped,
+            PHField = gwMonit.PH,
+            TemperatureField = gwMonit.Temperature,
+            SpecificConductance = gwMonit.Conductivity,
+            Odor = gwMonit.Odor,
+            Appearance = gwMonit.Appearance,
+            MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered ?? false,
+            MetalsAcidified = gwMonit.MetalSamplesFieldAcidified ?? false,
+
+            TDS = gwMonit.TDS,
+            TOC = gwMonit.TOC,
+            Chloride = gwMonit.Chloride,
+            NH3N = gwMonit.NH3N,
+            NO3N = gwMonit.NO3N,
+            TKN = gwMonit.TKN,
+            Calcium = gwMonit.Calcium,
+            Magnesium = gwMonit.Magnesium,
+            FecalColiform = gwMonit.FecalColiform,
+            TotalColiform = gwMonit.TotalColiform,
+
+            LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
+                ? (facility?.CertifiedLaboratory1Name ?? string.Empty)
+                : gwMonit.AnalyzedBy,
+            LabCertificationNumber = string.IsNullOrWhiteSpace(gwMonit.LabCertification)
+                ? (facility?.LabCertificationNumber1 ?? string.Empty)
+                : gwMonit.LabCertification,
+            LabReportAttached = gwMonit.VOCReportAttached ?? false,
+            VOCMethodNumber = gwMonit.VOCMethodNumber
+        };
+
+        // Certification block – default name from current user if available
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser != null)
+        {
+            report.CertificationName = string.IsNullOrWhiteSpace(currentUser.FullName)
+                ? currentUser.UserName ?? string.Empty
+                : currentUser.FullName;
+        }
+
+        return report;
     }
 
     [HttpGet]

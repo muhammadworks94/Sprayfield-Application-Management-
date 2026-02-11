@@ -18,6 +18,12 @@
             <a asp-action="GWMonitEdit" asp-route-id="@Model.Id" class="btn btn-primary">
                 <i class="bi bi-pencil"></i> Edit
             </a>
+            <a asp-action="GWMonitReport" asp-route-id="@Model.Id" class="btn btn-outline-secondary ms-2">
+                <i class="bi bi-file-earmark-text"></i> GW-59 Report
+            </a>
+            <a asp-action="GWMonitReportPdf" asp-route-id="@Model.Id" class="btn btn-outline-secondary ms-2">
+                <i class="bi bi-file-earmark-pdf"></i> GW-59 PDF
+            </a>
         }
         <a asp-action="GWMonits" asp-route-companyId="@Model.CompanyId" asp-route-facilityId="@Model.FacilityId" asp-route-monitoringWellId="@Model.MonitoringWellId" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to List
