@@ -3,10 +3,9 @@
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "NDAR-1 Reports";
+    ViewData["Title"] = "Non-Discharge Reports";
     var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
     var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
@@ -14,7 +13,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <p class="text-muted mb-0">Generate and view Non-Discharge Application Reports (NDAR-1)</p>
+        <p class="text-muted mb-0">Generate and view Non-Discharge Application Reports</p>
     </div>
     
 </div>
@@ -22,14 +21,6 @@
 <div class="card mb-3">
     <div class="card-body">
         <form method="get" class="row g-3">
-            @if (isGlobalAdmin)
-            {
-                <div class="col-md-4">
-                    <label for="companyId" class="form-label"><i class="bi bi-building me-1"></i>Company:</label>
-                    <input type="hidden" name="companyId" value="@selectedCompanyId" />
-                    <input type="text" class="form-control" value="@selectedCompanyId" disabled />
-                </div>
-            }
             <div class="col-md-4">
                 <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
                 <select name="facilityId" id="facilityId" class="form-select" onchange="this.form.submit()">
@@ -68,7 +59,7 @@
                 </div>
                 @if (canEdit)
                 {
-                    <a asp-action="GenerateNDAR1Report" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-sm btn-primary">
+                    <a asp-action="GenerateNDAR1Report" asp-route-facilityId="@selectedFacilityId" class="btn btn-sm btn-primary">
                         <i class="bi bi-plus-circle"></i> Generate New Report
                     </a>
                 }
@@ -212,7 +203,7 @@
                 <p class="text-muted mt-3">No NDAR-1 reports found.</p>
                 @if (canEdit)
                 {
-                    <a asp-action="GenerateNDAR1Report" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
+                    <a asp-action="GenerateNDAR1Report" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
                         <i class="bi bi-plus-circle"></i> Generate First Report
                     </a>
                 }

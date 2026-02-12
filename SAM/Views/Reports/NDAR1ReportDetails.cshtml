@@ -3,7 +3,7 @@
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "NDAR-1 Report Details";
+    ViewData["Title"] = "Non-Discharge Reports";
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
     var report = ViewBag.Report as SAM.Domain.Entities.NDAR1;
@@ -11,11 +11,14 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <p class="text-muted mb-0">View detailed NDAR-1 report for @Model.Month @Model.Year</p>
+        <p class="text-muted mb-0">View NDAR-1 and NDMR reports for @Model.Month @Model.Year</p>
     </div>
     <div>
-        <a asp-action="ExportNDAR1Report" asp-route-id="@Model.Id" class="btn btn-success">
-            <i class="bi bi-download"></i> Export to Excel
+        <a asp-action="ExportNDAR1Report" asp-route-id="@Model.Id" class="btn btn-success me-2">
+            <i class="bi bi-download"></i> Export NDAR-1
+        </a>
+        <a asp-action="ExportNDMRReport" asp-route-id="@Model.Id" class="btn btn-success me-2">
+            <i class="bi bi-download"></i> Export NDMR
         </a>
         @if (canEdit)
         {
