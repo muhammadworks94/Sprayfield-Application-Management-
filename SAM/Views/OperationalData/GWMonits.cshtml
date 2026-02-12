@@ -7,7 +7,6 @@
     var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var monitoringWells = ViewBag.MonitoringWells as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
     var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
     var selectedMonitoringWellId = ViewBag.SelectedMonitoringWellId as Guid?;
     var user = await UserManager.GetUserAsync(User);
@@ -23,14 +22,6 @@
 <div class="card mb-3">
     <div class="card-body">
         <form method="get" class="row g-3">
-            @if (isGlobalAdmin)
-            {
-                <div class="col-md-3">
-                    <label for="companyId" class="form-label"><i class="bi bi-building me-1"></i>Company:</label>
-                    <input type="hidden" name="companyId" value="@selectedCompanyId" />
-                    <input type="text" class="form-control" value="@selectedCompanyId" disabled />
-                </div>
-            }
             <div class="col-md-3">
                 <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
                 <select name="facilityId" id="facilityId" class="form-select" onchange="this.form.submit()">
@@ -84,7 +75,7 @@
                 </div>
                 @if (canEdit)
                 {
-                    <a asp-action="GWMonitCreate" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary btn-sm">
+                    <a asp-action="GWMonitCreate" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary btn-sm">
                         <i class="bi bi-plus-circle"></i> Create New Record
                     </a>
                 }
@@ -251,7 +242,7 @@
                 <p class="text-muted mt-3">No groundwater monitoring records found.</p>
                 @if (canEdit)
                 {
-                    <a asp-action="GWMonitCreate" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
+                    <a asp-action="GWMonitCreate" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
                         <i class="bi bi-plus-circle"></i> Create First Record
                     </a>
                 }

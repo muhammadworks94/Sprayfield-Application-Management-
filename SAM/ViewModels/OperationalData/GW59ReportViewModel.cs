@@ -7,6 +7,9 @@ namespace SAM.ViewModels.OperationalData;
 /// </summary>
 public class GW59ReportViewModel
 {
+    // Source groundwater monitoring record
+    public Guid GwMonitId { get; set; }
+
     // Facility information
     public Guid FacilityId { get; set; }
 

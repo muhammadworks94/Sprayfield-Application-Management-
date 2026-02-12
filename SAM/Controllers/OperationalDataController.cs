@@ -1221,29 +1221,46 @@ namespace SAM.Controllers;
 
             // NOTE: All coordinates are approximate and may need fine-tuning
             // Facility information
-            DrawText(reportModel.FacilityName, 120, 74);                  // Facility Name
-            DrawText(reportModel.PermitNumber, 630, 60);                 // Permit Number
-            DrawText(reportModel.Permittee, 170, 90);                    // Permit Name
-            DrawText($"{reportModel.Address}", 120, 106);                 // Address line
+            DrawText(reportModel.FacilityName, 120, 74);                      // Facility Name
+            DrawText(reportModel.PermitNumber, 630, 60);                      // Permit Number
+            DrawText(reportModel.Permittee, 170, 90);                          // Permit Name
+            DrawText($"{reportModel.Address}", 120, 106);                      // Address line
             DrawText(reportModel.City, 80, 140);
             DrawText(reportModel.ZipCode, 280, 140);
-            DrawText( reportModel.State , 230, 140);
-            DrawText(reportModel.County, 410, 120);                      // County
+            DrawText(reportModel.State, 230, 140);
+            DrawText(reportModel.County, 410, 120);                            // County
+
+            // Permit expiration (small box near permit header on template)
+            DrawText(reportModel.PermitExpirationDate?.ToString("MM/dd/yyyy"), 775, 60);
 
             // Contact / phone – using facility phone
             DrawText(reportModel.FacilityPhone, 410, 152);
 
             // Sampling information / well details
-            DrawText(reportModel.WellId, 210, 204);                       // WELL ID NUMBER
-            DrawText(reportModel.SampleDate.ToString("MM/dd/yyyy"), 460, 204); // Date sample collected
+            DrawText(reportModel.WellId, 210, 204);                               // WELL ID NUMBER (from Permit)
+            DrawText(reportModel.SampleDate.ToString("MM/dd/yyyy"), 460, 204);    // Date sample collected
 
-            DrawText(reportModel.WellDepthFeet?.ToString("F2"), 110, 220); // Well Depth
-            DrawText(reportModel.DiameterInches?.ToString("F2"), 457, 220); // Well Diameter
+            // Well location / site name (right-hand box in sampling section)
+            DrawText(reportModel.WellLocation, 150, 168);
 
-            DrawText(reportModel.SampleDepth?.ToString("F2"), 90, 220);  // Sample depth
-            DrawText(reportModel.WaterLevel?.ToString("F2"), 160, 237);  // Depth to water
+            DrawText(reportModel.WellDepthFeet?.ToString("F2"), 158, 222);        // Well Depth
+            DrawText(reportModel.DiameterInches?.ToString("F2"), 455, 222);       // Well Diameter
 
-            DrawText(reportModel.GallonsPumped?.ToString("F2"), 260, 266); // Volume pumped
+            // Screened interval – combined string "{low} to {high} ft" placed on same row
+            string? screenedInterval = null;
+            if (reportModel.LowScreenDepthFeet.HasValue || reportModel.HighScreenDepthFeet.HasValue)
+            {
+                var low = reportModel.LowScreenDepthFeet?.ToString("F2") ?? "?";
+                var high = reportModel.HighScreenDepthFeet?.ToString("F2") ?? "?";
+                screenedInterval = $"{low} to {high} ft";
+            }
+            DrawText(screenedInterval, 260, 220);
+
+            // NOTE: Sample depth is intentionally not drawn; the official GW-59 form
+            // does not provide a dedicated field for sample depth.
+            DrawText(reportModel.WaterLevel?.ToString("F2"), 160, 237);           // Depth to water
+
+            DrawText(reportModel.GallonsPumped?.ToString("F2"), 260, 266);        // Volume pumped
 
             // Field analyses
             DrawText(reportModel.PHField?.ToString("F2"), 615, 220);     // pH field
@@ -1272,24 +1289,24 @@ namespace SAM.Controllers;
             }
 
             // Laboratory information
-            DrawText(reportModel.LabName, 450, 308);                      // Laboratory Name
-            DrawText(reportModel.LabCertificationNumber, 740, 308);      // Certification No.
+            DrawText(reportModel.LabName, 450, 308);                           // Laboratory Name
+            DrawText(reportModel.LabCertificationNumber, 740, 308);           // Certification No.
 
             // Core parameters from GWMonit
-            DrawText(reportModel.TDS?.ToString("F2"), 160, 400);          // Dissolved Solids: Total
-            DrawText(reportModel.TOC?.ToString("F2"), 165, 430);          // TOC
-            DrawText(reportModel.Chloride?.ToString("F2"), 165, 446);     // Chloride
+            DrawText(reportModel.TDS?.ToString("F2"), 160, 400);               // Dissolved Solids: Total
+            DrawText(reportModel.TOC?.ToString("F2"), 165, 430);               // TOC
+            DrawText(reportModel.Chloride?.ToString("F2"), 165, 446);          // Chloride
 
-            DrawText(reportModel.NH3N?.ToString("F2"), 165, 538);         // Total Ammonia
-            DrawText(reportModel.TKN?.ToString("F2"), 165, 571);          // TKN as N
+            DrawText(reportModel.NH3N?.ToString("F2"), 165, 538);              // Total Ammonia
+            DrawText(reportModel.TKN?.ToString("F2"), 165, 571);               // TKN as N
 
-            DrawText(reportModel.NO3N?.ToString("F2"), 440, 352);        // Nitrate (NO3) as N
+            DrawText(reportModel.NO3N?.ToString("F2"), 440, 352);              // Nitrate (NO3) as N
 
-            DrawText(reportModel.Calcium?.ToString("F2"), 440, 430);     // Ca
-            DrawText(reportModel.Magnesium?.ToString("F2"), 440, 538);   // Mg
+            DrawText(reportModel.Calcium?.ToString("F2"), 440, 430);           // Ca
+            DrawText(reportModel.Magnesium?.ToString("F2"), 440, 538);         // Mg
 
-            DrawText(reportModel.FecalColiform?.ToString("F0"), 165, 352); // Coliform MF Fecal
-            DrawText(reportModel.TotalColiform?.ToString("F0"), 165, 369); // Coliform MF Total
+            DrawText(reportModel.FecalColiform?.ToString("F0"), 165, 352);     // Coliform MF Fecal
+            DrawText(reportModel.TotalColiform?.ToString("F0"), 165, 369);     // Coliform MF Total
 
             // Organics section – lab report + VOC method
             if (reportModel.LabReportAttached)
@@ -1302,6 +1319,11 @@ namespace SAM.Controllers;
             }
 
             DrawText(reportModel.VOCMethodNumber, 750, 525);             // VOC method #
+
+            // Certification block – name, title, date in signature area
+            DrawText(reportModel.CertificationName, 140, 690);           // Printed name
+            DrawText(reportModel.CertificationTitle, 140, 708);          // Title
+            DrawText(reportModel.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726); // Date
 
             document.Save(outputStream, false);
         }
@@ -1330,6 +1352,7 @@ namespace SAM.Controllers;
         // Basic mapping from entities to report view model
         var report = new GW59ReportViewModel
         {
+            GwMonitId = gwMonit.Id,
             FacilityId = gwMonit.FacilityId,
             FacilityName = facility?.Name ?? string.Empty,
             PermitNumber = facility?.PermitNumber ?? string.Empty,
