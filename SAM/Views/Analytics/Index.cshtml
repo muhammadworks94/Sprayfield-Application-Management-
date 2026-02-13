@@ -5,29 +5,29 @@
 
 <ul class="nav nav-tabs nav-fill mb-4 w-100" id="analyticsTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active text-secondary" id="well-trends-tab" data-bs-toggle="tab" data-bs-target="#well-trends" type="button" role="tab" aria-controls="well-trends" aria-selected="true">
+        <button class="nav-link @(Model.ActiveTab == "well-trends" ? "active text-secondary" : "text-secondary")" id="well-trends-tab" data-bs-toggle="tab" data-bs-target="#well-trends" type="button" role="tab" aria-controls="well-trends" aria-selected="@(Model.ActiveTab == "well-trends")">
             <i class="bi bi-graph-up me-2"></i>Well Trends
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link text-secondary" id="parameters-tab" data-bs-toggle="tab" data-bs-target="#parameters" type="button" role="tab" aria-controls="parameters" aria-selected="false">
+        <button class="nav-link @(Model.ActiveTab == "parameters" ? "active text-secondary" : "text-secondary")" id="parameters-tab" data-bs-toggle="tab" data-bs-target="#parameters" type="button" role="tab" aria-controls="parameters" aria-selected="@(Model.ActiveTab == "parameters")">
             <i class="bi bi-grid me-2"></i>Parameters
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link text-secondary" id="facilities-tab" data-bs-toggle="tab" data-bs-target="#facilities" type="button" role="tab" aria-controls="facilities" aria-selected="false">
+        <button class="nav-link @(Model.ActiveTab == "facilities" ? "active text-secondary" : "text-secondary")" id="facilities-tab" data-bs-toggle="tab" data-bs-target="#facilities" type="button" role="tab" aria-controls="facilities" aria-selected="@(Model.ActiveTab == "facilities")">
             <i class="bi bi-bar-chart me-2"></i>Facilities
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link text-secondary" id="historical-tab" data-bs-toggle="tab" data-bs-target="#historical" type="button" role="tab" aria-controls="historical" aria-selected="false">
+        <button class="nav-link @(Model.ActiveTab == "historical" ? "active text-secondary" : "text-secondary")" id="historical-tab" data-bs-toggle="tab" data-bs-target="#historical" type="button" role="tab" aria-controls="historical" aria-selected="@(Model.ActiveTab == "historical")">
             <i class="bi bi-graph-up-arrow me-2"></i>Historical
         </button>
     </li>
 </ul>
 
 <div class="tab-content" id="analyticsTabContent">
-    <div class="tab-pane fade show active" id="well-trends" role="tabpanel" aria-labelledby="well-trends-tab">
+    <div class="tab-pane fade @(Model.ActiveTab == "well-trends" ? "show active" : "")" id="well-trends" role="tabpanel" aria-labelledby="well-trends-tab">
         <div class="row g-3 mb-4">
             <div class="col-12">
                 <div class="card dashboard-chart-card h-100">
@@ -85,7 +85,7 @@
         </div>
     </div>
 
-    <div class="tab-pane fade" id="parameters" role="tabpanel" aria-labelledby="parameters-tab">
+    <div class="tab-pane fade @(Model.ActiveTab == "parameters" ? "show active" : "")" id="parameters" role="tabpanel" aria-labelledby="parameters-tab">
         <div class="row g-3 mb-4">
             <div class="col-12">
                 <div class="card dashboard-chart-card h-100">
@@ -93,14 +93,39 @@
                         <h5 class="fw-semibold mb-3">
                             <i class="bi bi-grid me-2"></i>Parameters
                         </h5>
-                        <p class="text-muted mb-0">Compare parameters across wells and time periods. (Content can be added here.)</p>
+                        <form method="get" asp-controller="Analytics" asp-action="Index" class="row g-3 mb-3">
+                            <input type="hidden" name="activeTab" value="parameters" />
+                            <div class="col-md-6">
+                                <label class="form-label">Parameter</label>
+                                <select name="parameterKey" class="form-select" onchange="this.form.submit()">
+                                    @if (Model.ParameterOptions != null)
+                                    {
+                                        @foreach (var item in Model.ParameterOptions)
+                                        {
+                                            <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </form>
+
+                        @if (Model.HasParameterData)
+                        {
+                            <div class="dashboard-chart-wrap dashboard-chart-wrap-tall">
+                                <canvas id="chartParameterComparison"></canvas>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0 py-4 text-center">No parameter data available to compare across wells.</p>
+                        }
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="tab-pane fade" id="facilities" role="tabpanel" aria-labelledby="facilities-tab">
+    <div class="tab-pane fade @(Model.ActiveTab == "facilities" ? "show active" : "")" id="facilities" role="tabpanel" aria-labelledby="facilities-tab">
         <div class="row g-3 mb-4">
             <div class="col-12">
                 <div class="card dashboard-chart-card h-100">
@@ -108,14 +133,84 @@
                         <h5 class="fw-semibold mb-3">
                             <i class="bi bi-bar-chart me-2"></i>Facilities
                         </h5>
-                        <p class="text-muted mb-0">Facility-level analytics. (Content can be added here.)</p>
+                        @if (Model.FacilityAnalytics.Any())
+                        {
+                            var alertCount = Model.FacilityAnalytics.Count(f => f.Status == "Alert");
+                            var watchCount = Model.FacilityAnalytics.Count(f => f.Status == "Watch");
+                            var normalCount = Model.FacilityAnalytics.Count(f => f.Status == "Normal");
+                            var noDataCount = Model.FacilityAnalytics.Count(f => f.Status == "No Data");
+
+                            <div class="d-flex flex-wrap gap-3 mb-3">
+                                <span class="badge bg-danger-subtle text-danger">Alert: @alertCount</span>
+                                <span class="badge bg-warning-subtle text-warning">Watch: @watchCount</span>
+                                <span class="badge bg-success-subtle text-success">Normal: @normalCount</span>
+                                <span class="badge bg-secondary-subtle text-secondary">No Data: @noDataCount</span>
+                            </div>
+
+                            <div class="table-responsive mb-3">
+                                <table class="table table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Facility</th>
+                                            <th class="text-center">Monitoring Wells</th>
+                                            <th class="text-center">Samples</th>
+                                            <th class="text-center">Avg pH</th>
+                                            <th class="text-center">Avg Conductivity (µS/cm)</th>
+                                            <th class="text-center">Status</th>
+                                            <th class="text-center">pH Out-of-Range</th>
+                                            <th class="text-center">High Conductivity</th>
+                                            <th class="text-center">Last Sample</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var facility in Model.FacilityAnalytics)
+                                        {
+                                            <tr>
+                                                <td>@facility.FacilityName</td>
+                                                <td class="text-center">@facility.MonitoringWellCount</td>
+                                                <td class="text-center">@facility.SampleCount</td>
+                                                <td class="text-center">@((facility.AvgPH?.ToString("F2")) ?? "N/A")</td>
+                                                <td class="text-center">@((facility.AvgConductivity?.ToString("F0")) ?? "N/A")</td>
+                                                <td class="text-center">
+                                                    @{
+                                                        var statusClass = facility.Status switch
+                                                        {
+                                                            "Alert" => "badge bg-danger-subtle text-danger",
+                                                            "Watch" => "badge bg-warning-subtle text-warning",
+                                                            "Normal" => "badge bg-success-subtle text-success",
+                                                            "No Data" => "badge bg-secondary-subtle text-secondary",
+                                                            _ => "badge bg-secondary"
+                                                        };
+                                                    }
+                                                    <span class="@statusClass">@facility.Status</span>
+                                                </td>
+                                                <td class="text-center">@facility.OutOfRangePhPercent.ToString("F0")%</td>
+                                                <td class="text-center">@facility.HighConductivityPercent.ToString("F0")%</td>
+                                                <td class="text-center">@(facility.LastSampleDate?.ToString("MM/dd/yyyy") ?? "—")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            @if (Model.FacilityRiskLabels.Any())
+                            {
+                                <div class="dashboard-chart-wrap" style="height: 260px;">
+                                    <canvas id="chartFacilityRisk"></canvas>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0 py-4 text-center">No facility-level groundwater data available.</p>
+                        }
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="tab-pane fade" id="historical" role="tabpanel" aria-labelledby="historical-tab">
+    <div class="tab-pane fade @(Model.ActiveTab == "historical" ? "show active" : "")" id="historical" role="tabpanel" aria-labelledby="historical-tab">
         <div class="row g-3 mb-4">
             <div class="col-12">
                 <div class="card dashboard-chart-card h-100">
@@ -123,7 +218,16 @@
                         <h5 class="fw-semibold mb-3">
                             <i class="bi bi-graph-up-arrow me-2"></i>Historical
                         </h5>
-                        <p class="text-muted mb-0">Historical data and trends. (Content can be added here.)</p>
+                        @if (Model.HasHistoricalData)
+                        {
+                            <div class="dashboard-chart-wrap dashboard-chart-wrap-tall">
+                                <canvas id="chartHistorical"></canvas>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0 py-4 text-center">No historical groundwater data available.</p>
+                        }
                     </div>
                 </div>
             </div>
@@ -132,40 +236,138 @@
 </div>
 
 @section Scripts {
-    @if (Model.SelectedWellId.HasValue && Model.HasWellTrendData)
-    {
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-        <script>
-            (function() {
-                const primaryColor = '#2563eb';
-                const greenTeal = '#14b8a6';
-                document.addEventListener('DOMContentLoaded', function() {
-                    const canvas = document.getElementById('chartWellTrend');
-                    if (!canvas) return;
-                    const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendDateLabels));
-                    const phData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendPH));
-                    const conductivityData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendConductivity));
-                    new Chart(canvas, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                { label: 'pH', data: phData, borderColor: primaryColor, backgroundColor: 'transparent', pointStyle: 'circle', pointRadius: 5, tension: 0.2 },
-                                { label: 'Conductivity (µS/cm)', data: conductivityData, borderColor: greenTeal, backgroundColor: 'transparent', pointStyle: 'diamond', pointRadius: 5, tension: 0.2 }
-                            ]
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <script>
+        (function () {
+            const primaryColor = '#2563eb';
+            const greenTeal = '#14b8a6';
+            document.addEventListener('DOMContentLoaded', function () {
+                const canvas = document.getElementById('chartWellTrend');
+                if (!canvas) return;
+                const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendDateLabels));
+                const phData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendPH));
+                const conductivityData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WellTrendConductivity));
+                if (!labels || labels.length === 0) return;
+                new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'pH', data: phData, borderColor: primaryColor, backgroundColor: 'transparent', pointStyle: 'circle', pointRadius: 5, tension: 0.2 },
+                            { label: 'Conductivity (µS/cm)', data: conductivityData, borderColor: greenTeal, backgroundColor: 'transparent', pointStyle: 'diamond', pointRadius: 5, tension: 0.2 }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            y: { min: 0, grid: { color: 'rgba(0,0,0,0.06)' } },
+                            x: { grid: { color: 'rgba(0,0,0,0.06)' } }
                         },
-                        options: {
-                            scales: {
-                                y: { min: 0, grid: { color: 'rgba(0,0,0,0.06)' } },
-                                x: { grid: { color: 'rgba(0,0,0,0.06)' } }
-                            },
-                            plugins: { legend: { display: false } },
-                            responsive: true,
-                            maintainAspectRatio: false
-                        }
-                    });
+                        plugins: { legend: { display: false } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
                 });
-            })();
-        </script>
-    }
+            });
+        })();
+
+        (function () {
+            const primaryColor = '#2563eb';
+            document.addEventListener('DOMContentLoaded', function () {
+                const canvas = document.getElementById('chartParameterComparison');
+                if (!canvas) return;
+                const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ParameterChartLabels));
+                const values = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ParameterChartValues));
+                if (!labels || labels.length === 0) return;
+                new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Parameter value',
+                                data: values,
+                                backgroundColor: primaryColor
+                            }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' } },
+                            x: { grid: { color: 'rgba(0,0,0,0.06)' } }
+                        },
+                        plugins: { legend: { display: false } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            });
+        })();
+
+        (function () {
+            const primaryColor = '#2563eb';
+            const greenTeal = '#14b8a6';
+            document.addEventListener('DOMContentLoaded', function () {
+                const canvas = document.getElementById('chartHistorical');
+                if (!canvas) return;
+                const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HistoricalDateLabels));
+                const phData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HistoricalAvgPH));
+                const condData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HistoricalAvgConductivity));
+                if (!labels || labels.length === 0) return;
+                new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Avg pH', data: phData, borderColor: primaryColor, backgroundColor: 'transparent', pointStyle: 'circle', pointRadius: 4, tension: 0.2 },
+                            { label: 'Avg Conductivity (µS/cm)', data: condData, borderColor: greenTeal, backgroundColor: 'transparent', pointStyle: 'triangle', pointRadius: 4, tension: 0.2 }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            y: { min: 0, grid: { color: 'rgba(0,0,0,0.06)' } },
+                            x: { grid: { color: 'rgba(0,0,0,0.06)' } }
+                        },
+                        plugins: { legend: { display: true } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            });
+        })();
+
+        (function () {
+            const primaryColor = '#ef4444';
+            document.addEventListener('DOMContentLoaded', function () {
+                const canvas = document.getElementById('chartFacilityRisk');
+                if (!canvas) return;
+                const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FacilityRiskLabels));
+                const values = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FacilityRiskValues));
+                if (!labels || labels.length === 0) return;
+                new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Risk score (max % out-of-range)',
+                                data: values,
+                                backgroundColor: primaryColor
+                            }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        scales: {
+                            x: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,0,0,0.06)' } },
+                            y: { grid: { color: 'rgba(0,0,0,0.06)' } }
+                        },
+                        plugins: { legend: { display: false } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            });
+        })();
+    </script>
 }

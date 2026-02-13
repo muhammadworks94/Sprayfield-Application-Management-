@@ -698,16 +698,13 @@ namespace SAM.Controllers;
     #region Wastewater Characteristics (WWChar)
 
     [HttpGet]
-    public async Task<IActionResult> WWChars(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> WWChars(Guid? facilityId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        // Use effective company ID if no companyId specified (respects session selection for admins)
-        if (!companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
+        // Resolve company from global selection (header) only; no companyId is passed via query anymore
+        Guid? companyId = effectiveCompanyId;
 
         if (companyId.HasValue)
         {
