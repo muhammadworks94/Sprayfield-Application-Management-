@@ -13,16 +13,29 @@
     <div>
         <p class="text-muted mb-0">View NDAR-1 and NDMR reports for @Model.Month @Model.Year</p>
     </div>
-    <div>
-        <a asp-action="ExportNDAR1Report" asp-route-id="@Model.Id" class="btn btn-success me-2">
-            <i class="bi bi-download"></i> Export NDAR-1
-        </a>
-        <a asp-action="ExportNDMRReport" asp-route-id="@Model.Id" class="btn btn-success me-2">
-            <i class="bi bi-download"></i> Export NDMR
-        </a>
-        <a asp-action="ExportNDMLRReport" asp-route-id="@Model.Id" class="btn btn-success me-2">
-            <i class="bi bi-download"></i> Export NDMLR
-        </a>
+    <div class="d-flex align-items-center gap-2">
+        <div class="dropdown">
+            <button class="btn btn-success dropdown-toggle" type="button" id="reportExportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-download"></i> Generate Report
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="reportExportDropdown">
+                <li>
+                    <a class="dropdown-item" asp-action="ExportNDAR1Report" asp-route-id="@Model.Id">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDAR-1
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-action="ExportNDMRReport" asp-route-id="@Model.Id">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDMR
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-action="ExportNDMLRReport" asp-route-id="@Model.Id">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDMLR
+                    </a>
+                </li>
+            </ul>
+        </div>
         @if (canEdit)
         {
             <a asp-action="NDAR1ReportEdit" asp-route-id="@Model.Id" class="btn btn-primary">
