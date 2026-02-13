@@ -33,6 +33,7 @@ public class CompanyManagementController : BaseController
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly ApplicationDbContext _context;
+    private readonly IUserService _userService;
 
     public CompanyManagementController(
         ICompanyService companyService,
@@ -44,6 +45,7 @@ public class CompanyManagementController : BaseController
         ISprayfieldService sprayfieldService,
         IMonitoringWellService monitoringWellService,
         ApplicationDbContext context,
+        IUserService userService,
         UserManager<ApplicationUser> userManager,
         ILogger<CompanyManagementController> logger)
         : base(userManager, logger)
@@ -57,6 +59,7 @@ public class CompanyManagementController : BaseController
         _sprayfieldService = sprayfieldService;
         _monitoringWellService = monitoringWellService;
         _context = context;
+        _userService = userService;
     }
 
     [HttpGet]
@@ -403,6 +406,19 @@ public class CompanyManagementController : BaseController
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompanyCreate(CompanyCreateViewModel viewModel)
     {
+        if (viewModel.CreateInitialAdmin)
+        {
+            if (string.IsNullOrWhiteSpace(viewModel.AdminFullName))
+            {
+                ModelState.AddModelError(nameof(viewModel.AdminFullName), "Admin full name is required when creating an initial admin.");
+            }
+
+            if (string.IsNullOrWhiteSpace(viewModel.AdminEmail))
+            {
+                ModelState.AddModelError(nameof(viewModel.AdminEmail), "Admin email is required when creating an initial admin.");
+            }
+        }
+
         if (!ModelState.IsValid)
             return View(viewModel);
 
@@ -423,7 +439,26 @@ public class CompanyManagementController : BaseController
             };
 
             await _companyService.CreateAsync(company);
-            TempData["SuccessMessage"] = $"Company '{company.Name}' created successfully.";
+            if (viewModel.CreateInitialAdmin)
+            {
+                try
+                {
+                    await _userService.CreateUserAsync(
+                        email: viewModel.AdminEmail!,
+                        fullName: viewModel.AdminFullName!,
+                        companyId: company.Id,
+                        role: SAM.Domain.Enums.AppRoleEnum.company_admin,
+                        generatePassword: true);
+                }
+                catch (Infrastructure.Exceptions.BusinessRuleException ex)
+                {
+                    TempData["WarningMessage"] = $"Company '{company.Name}' was created, but the initial company admin user could not be created: {ex.Message}";
+                }
+            }
+
+            TempData["SuccessMessage"] = viewModel.CreateInitialAdmin
+                ? $"Company '{company.Name}' and initial company admin user created successfully."
+                : $"Company '{company.Name}' created successfully.";
             return RedirectToAction(nameof(Index), new { tab = "companies" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)

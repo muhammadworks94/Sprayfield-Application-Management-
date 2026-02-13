@@ -7,7 +7,20 @@
     ViewData["Title"] = "Dashboard";
     var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
     var user = await UserManager.GetUserAsync(User);
+    var isAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+    var isCompanyAdmin = user != null && await UserManager.IsInRoleAsync(user, "company_admin");
+    var isTechnician = user != null && await UserManager.IsInRoleAsync(user, "technician");
+    var isOperator = user != null && await UserManager.IsInRoleAsync(user, "operator");
     var canManageUsers = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
+    var roleViewLabel = isAdmin
+        ? "Global Admin View"
+        : isCompanyAdmin
+            ? "Company Admin View"
+            : isTechnician
+                ? "Technician View"
+                : isOperator
+                    ? "Operator View"
+                    : null;
     var selectedCompanyName = ViewBag.SelectedCompanyName as string;
 }
 
@@ -20,9 +33,9 @@
 }
 
 @section PageTitleExtra {
-    @if (isGlobalAdmin)
+    @if (!string.IsNullOrEmpty(roleViewLabel))
     {
-        <a asp-controller="Dashboard" asp-action="Index" class="text-primary small text-decoration-none">Global Admin View</a>
+        <a asp-controller="Dashboard" asp-action="Index" class="text-primary small text-decoration-none">@roleViewLabel</a>
     }
 }
 
