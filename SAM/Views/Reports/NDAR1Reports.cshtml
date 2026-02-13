@@ -43,7 +43,7 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex align-items-center justify-content-between mb-5">
-            <h4 class="mb-0">NDAR-1 Reports</h4>
+            <h4 class="mb-0">Non-Discharge Reports</h4>
             <div class="d-flex">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
@@ -200,7 +200,7 @@
         {
             <div class="text-center py-5">
                 <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
-                <p class="text-muted mt-3">No NDAR-1 reports found.</p>
+                <p class="text-muted mt-3">No Non-Discharge Reports found.</p>
                 @if (canEdit)
                 {
                     <a asp-action="GenerateNDAR1Report" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">

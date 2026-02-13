@@ -29,6 +29,110 @@ public class NDMRService : INDMRService
     }
 
     /// <summary>
+    /// Writes the standard NDMR header block (permit, facility, county, month, year,
+    /// PPI label and parameter code/label) into the given worksheet.
+    /// This mirrors the layout used on the PPI 001 sheet.
+    /// </summary>
+    private static void WriteStandardHeader(
+        IXLWorksheet worksheet,
+        Facility facility,
+        SAM.Domain.Enums.MonthEnum monthEnum,
+        int year,
+        string ppiLabel,
+        string parameterCode,
+        string parameterName,
+        string measuringPointLabel)
+    {
+        // Core report identification
+        worksheet.Cell("C1").Value = facility.PermitNumber;              // Permit number
+        worksheet.Cell("G1").Value = facility.Name;                      // Facility name
+        worksheet.Cell("M1").Value = facility.County;                    // County
+        worksheet.Cell("P1").Value = monthEnum.ToString();               // Month label
+        worksheet.Cell("S1").Value = year;                               // Year
+
+        // PPI and parameter identification
+        worksheet.Cell("C2").Value = ppiLabel;                           // PPI label
+        worksheet.Cell("D2").Value = measuringPointLabel;                // Flow / parameter measuring point
+        worksheet.Cell("K2").Value = "Parameter Monitoring Point";       // Generic text; can be edited in Excel
+
+        // Parameter code: label in B3, value in D3 (match template layout; avoid duplicate code in F3)
+        worksheet.Cell("B3").Value = "Parameter Code";                   // Label
+        worksheet.Cell("D3").Value = parameterCode;                      // Code value (e.g. 50050, 00625)
+
+        // Parameter name/units label above the value column (assumes result column D)
+        worksheet.Cell("D4").Value = parameterName;
+    }
+
+    /// <summary>
+    /// Populates a nitrogen PPI worksheet (one parameter per sheet) using
+    /// GWMonit data for the specified reporting period.
+    /// </summary>
+    private void PopulateNitrogenPpi(
+        IXLWorkbook workbook,
+        string sheetName,
+        Facility facility,
+        SAM.Domain.Enums.MonthEnum monthEnum,
+        int year,
+        string ppiLabel,
+        string parameterCode,
+        string parameterName,
+        string measuringPointLabel,
+        IReadOnlyList<GWMonit> gwMonits,
+        int daysInMonth,
+        int startRow,
+        Func<GWMonit, decimal?> selector)
+    {
+        var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name == sheetName);
+        if (worksheet == null)
+        {
+            _logger.LogWarning(
+                "NDMR nitrogen PPI worksheet '{SheetName}' not found in template. Skipping population for parameter {Parameter}.",
+                sheetName,
+                parameterName);
+            return;
+        }
+
+        WriteStandardHeader(worksheet, facility, monthEnum, year, ppiLabel, parameterCode, parameterName, measuringPointLabel);
+
+        for (int day = 1; day <= daysInMonth; day++)
+        {
+            var currentDate = new DateTime(year, (int)monthEnum, day);
+            var row = startRow + (day - 1);
+
+            // Day number in first column
+            worksheet.Cell($"A{row}").Value = day;
+
+            var daySamples = gwMonits
+                .Where(g => g.SampleDate.Date == currentDate.Date)
+                .ToList();
+
+            if (daySamples.Any())
+            {
+                var values = daySamples
+                    .Select(selector)
+                    .Where(v => v.HasValue)
+                    .Select(v => v!.Value)
+                    .ToList();
+
+                if (values.Any())
+                {
+                    var average = values.Average();
+                    worksheet.Cell($"D{row}").Value = average;
+                }
+                else
+                {
+                    worksheet.Cell($"D{row}").Clear(XLClearOptions.Contents);
+                }
+            }
+            else
+            {
+                // No samples on this day – leave the value cell blank but preserve formatting.
+                worksheet.Cell($"D{row}").Clear(XLClearOptions.Contents);
+            }
+        }
+    }
+
+    /// <summary>
     /// Exports an NDMR Excel file for the specified NDAR-1 report.
     /// The NDAR-1 report is used only as a convenient way to select
     /// the facility, month, and year for the monitoring period.
@@ -64,42 +168,19 @@ public class NDMRService : INDMRService
 
         using var workbook = new XLWorkbook(templatePath);
 
-        // PPI 001 worksheet (daily monitoring)
-        var worksheet = workbook.Worksheet("PPI 001");
+        // PPI 001 worksheet (daily flow monitoring)
+        var flowWorksheet = workbook.Worksheet("PPI 001");
 
-        // Header cells (provided by the user)
-        worksheet.Cell("C1").Value = facility.PermitNumber;        // Permit number
-        worksheet.Cell("G1").Value = facility.Name;                // Facility name
-        worksheet.Cell("M1").Value = facility.County;              // County
-        worksheet.Cell("P1").Value = ndar1.Month.ToString();       // Month label
-        worksheet.Cell("S1").Value = year;                         // Year
-
-        // Parameter code / identifiers (overall)
-        // These are mostly static values in the template; we only set them if blank
-        if (worksheet.Cell("A3").IsEmpty())
-        {
-            // Default parameter code for flow; caller can overwrite in Excel if needed
-            worksheet.Cell("A3").Value = "50050";
-        }
-
-        if (worksheet.Cell("C2").IsEmpty())
-        {
-            worksheet.Cell("C2").Value = "PPI 001";
-        }
-
-        // Flow measuring point and parameter monitoring point are often labels like
-        // "Flow, Maximum" plus the PCS code. We do not attempt to compute them
-        // dynamically; instead, if the template leaves them blank we populate
-        // simple defaults that can be edited later.
-        if (worksheet.Cell("D2").IsEmpty())
-        {
-            worksheet.Cell("D2").Value = "Flow 50050";
-        }
-
-        if (worksheet.Cell("K2").IsEmpty())
-        {
-            worksheet.Cell("K2").Value = "Monitoring Point";
-        }
+        // Always write a consistent header for the flow sheet.
+        WriteStandardHeader(
+            flowWorksheet,
+            facility,
+            ndar1.Month,
+            year,
+            "PPI 001",
+            "50050",
+            "Flow (GPD)",
+            "Flow Measuring Point");
 
         // Preload irrigation events and groundwater samples for the month
         var irrigations = await _context.Irrigates
@@ -117,13 +198,14 @@ public class NDMRService : INDMRService
         // Daily grid starts at row 6 (Day 1)
         const int startRow = 6;
 
+        // Populate flow values on PPI 001
         for (int day = 1; day <= daysInMonth; day++)
         {
             var currentDate = new DateTime(year, month, day);
             var row = startRow + (day - 1);
 
             // Column A: Day number
-            worksheet.Cell($"A{row}").Value = day;
+            flowWorksheet.Cell($"A{row}").Value = day;
 
             // Column D: Flow (GPD)
             var dayIrrigations = irrigations
@@ -135,62 +217,81 @@ public class NDMRService : INDMRService
                 // Sum of total volume applied in gallons during the day.
                 // Interpreted as daily total flow (GPD) for NDMR purposes.
                 var totalGallons = dayIrrigations.Sum(i => i.TotalVolumeGallons);
-                worksheet.Cell($"D{row}").Value = totalGallons;
+                flowWorksheet.Cell($"D{row}").Value = totalGallons;
             }
             else
             {
                 // Leave blank if no flow recorded, but preserve template formatting.
-                worksheet.Cell($"D{row}").Clear(XLClearOptions.Contents);
-            }
-
-            // Groundwater monitoring analytes for this date
-            var daySamples = gwMonits
-                .Where(g => g.SampleDate.Date == currentDate.Date)
-                .ToList();
-
-            if (daySamples.Any())
-            {
-                decimal? Avg(IEnumerable<decimal?> values) =>
-                    values.Where(v => v.HasValue).Select(v => v!.Value).DefaultIfEmpty().Average();
-
-                var avgTkn = Avg(daySamples.Select(s => s.TKN));
-                var avgNh3 = Avg(daySamples.Select(s => s.NH3N));
-                var avgNo3 = Avg(daySamples.Select(s => s.NO3N));
-
-                // Column I: TKN (mg/L)
-                if (avgTkn.HasValue)
-                    worksheet.Cell($"I{row}").Value = avgTkn.Value;
-
-                // Column F: NH3 (mg/L)
-                if (avgNh3.HasValue)
-                    worksheet.Cell($"F{row}").Value = avgNh3.Value;
-
-                // Column H: NO3 (mg/L)
-                if (avgNo3.HasValue)
-                    worksheet.Cell($"H{row}").Value = avgNo3.Value;
-
-                // Column E: Total Nitrogen (as N) – approximate as TKN + NO3
-                if (avgTkn.HasValue || avgNo3.HasValue)
-                {
-                    var totalN = (avgTkn ?? 0m) + (avgNo3 ?? 0m);
-                    worksheet.Cell($"E{row}").Value = totalN;
-                }
-
-                // Column G: Nitrite (NO2) – not stored in the current data model.
-                // We intentionally leave column G blank so the user can enter
-                // values manually if needed.
-            }
-            else
-            {
-                // No groundwater sample for this date; leave nitrogen cells blank
-                // but preserve template formatting (shading, borders, etc.).
-                worksheet.Cell($"E{row}").Clear(XLClearOptions.Contents);
-                worksheet.Cell($"F{row}").Clear(XLClearOptions.Contents);
-                worksheet.Cell($"G{row}").Clear(XLClearOptions.Contents);
-                worksheet.Cell($"H{row}").Clear(XLClearOptions.Contents);
-                worksheet.Cell($"I{row}").Clear(XLClearOptions.Contents);
+                flowWorksheet.Cell($"D{row}").Clear(XLClearOptions.Contents);
             }
         }
+
+        // Populate nitrogen PPIs (one parameter per sheet) using GWMonit data.
+        PopulateNitrogenPpi(
+            workbook,
+            sheetName: "PPI_TKN",
+            facility: facility,
+            monthEnum: ndar1.Month,
+            year: year,
+            ppiLabel: "PPI TKN",
+            parameterCode: "00625",
+            parameterName: "Total Kjeldahl Nitrogen (TKN) (mg/L)",
+            measuringPointLabel: "TKN Sample Point",
+            gwMonits: gwMonits,
+            daysInMonth: daysInMonth,
+            startRow: startRow,
+            selector: g => g.TKN);
+
+        PopulateNitrogenPpi(
+            workbook,
+            sheetName: "PPI_NH3N",
+            facility: facility,
+            monthEnum: ndar1.Month,
+            year: year,
+            ppiLabel: "PPI NH3-N",
+            parameterCode: "00610",
+            parameterName: "Ammonia Nitrogen (NH3-N) (mg/L)",
+            measuringPointLabel: "NH3-N Sample Point",
+            gwMonits: gwMonits,
+            daysInMonth: daysInMonth,
+            startRow: startRow,
+            selector: g => g.NH3N);
+
+        PopulateNitrogenPpi(
+            workbook,
+            sheetName: "PPI_NO3N",
+            facility: facility,
+            monthEnum: ndar1.Month,
+            year: year,
+            ppiLabel: "PPI NO3-N",
+            parameterCode: "00620",
+            parameterName: "Nitrate Nitrogen (NO3-N) (mg/L)",
+            measuringPointLabel: "NO3-N Sample Point",
+            gwMonits: gwMonits,
+            daysInMonth: daysInMonth,
+            startRow: startRow,
+            selector: g => g.NO3N);
+
+        // Total Nitrogen (as N) approximated as TKN + NO3-N
+        PopulateNitrogenPpi(
+            workbook,
+            sheetName: "PPI_TN",
+            facility: facility,
+            monthEnum: ndar1.Month,
+            year: year,
+            ppiLabel: "PPI TN",
+            parameterCode: "00600",
+            parameterName: "Total Nitrogen (as N) (mg/L)",
+            measuringPointLabel: "Total Nitrogen Sample Point",
+            gwMonits: gwMonits,
+            daysInMonth: daysInMonth,
+            startRow: startRow,
+            selector: g =>
+            {
+                if (!g.TKN.HasValue && !g.NO3N.HasValue)
+                    return null;
+                return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
+            });
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);

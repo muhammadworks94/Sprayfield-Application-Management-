@@ -21,6 +21,7 @@ public class ReportsController : BaseController
     private readonly INDAR1Service _ndar1Service;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly INDMRService _ndmrService;
+    private readonly INDMLRService _ndmlrService;
 
     public ReportsController(
         IIrrRprtService irrRprtService,
@@ -28,6 +29,7 @@ public class ReportsController : BaseController
         INDAR1Service ndar1Service,
         ISprayfieldService sprayfieldService,
         INDMRService ndmrService,
+        INDMLRService ndmlrService,
         UserManager<ApplicationUser> userManager,
         ILogger<ReportsController> logger)
         : base(userManager, logger)
@@ -37,6 +39,7 @@ public class ReportsController : BaseController
         _ndar1Service = ndar1Service;
         _sprayfieldService = sprayfieldService;
         _ndmrService = ndmrService;
+        _ndmlrService = ndmlrService;
     }
 
     #region Irrigation Reports
@@ -653,6 +656,28 @@ public class ReportsController : BaseController
         catch (Exception ex)
         {
             TempData["ErrorMessage"] = $"Error exporting NDMR report: {ex.Message}";
+            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportNDMLRReport(Guid id)
+    {
+        var report = await _ndar1Service.GetByIdAsync(id);
+        if (report == null)
+            return NotFound();
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        try
+        {
+            var excelBytes = await _ndmlrService.ExportToExcelAsync(id);
+            var fileName = $"NDMLR_{report.Facility?.Name}_{report.Month}_{report.Year}.xlsx";
+            return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"Error exporting NDMLR report: {ex.Message}";
             return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
         }
     }
