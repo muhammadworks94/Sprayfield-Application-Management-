@@ -6,6 +6,14 @@
     ViewData["Title"] = "Wastewater Characteristics Details";
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
+    var nh3Values = Model.NH3NDaily?.Where(x => x.HasValue).Select(x => x!.Value).ToList() ?? new List<decimal>();
+    var bod5Values = Model.BOD5Daily?.Where(x => x.HasValue).Select(x => x!.Value).ToList() ?? new List<decimal>();
+    var tssValues = Model.TSSDaily?.Where(x => x.HasValue).Select(x => x!.Value).ToList() ?? new List<decimal>();
+    var flowValues = Model.FlowRateDaily?.Where(x => x.HasValue).Select(x => x!.Value).ToList() ?? new List<decimal>();
+    var avgNH3 = nh3Values.Any() ? nh3Values.Average() : (decimal?)null;
+    var avgBOD5 = bod5Values.Any() ? bod5Values.Average() : (decimal?)null;
+    var avgTSS = tssValues.Any() ? tssValues.Average() : (decimal?)null;
+    var avgFlow = flowValues.Any() ? flowValues.Average() : (decimal?)null;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -26,66 +34,131 @@
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">Basic Information</h5>
-    </div>
     <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">Facility:</dt>
-            <dd class="col-sm-9">@Model.FacilityName</dd>
+        <h4 class="mb-4"><i class="bi bi-droplet-half me-2"></i>@(Model.FacilityName ?? "Wastewater") – @Model.Month @Model.Year</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-3">Record Context</h5>
+                <dl class="row">
+                    <dd class="col-sm-5"><i class="bi bi-building me-1"></i>Facility:</dd>
+                    <dd class="col-sm-7">@(Model.FacilityName ?? "N/A")</dd>
 
-            <dt class="col-sm-3">Company:</dt>
-            <dd class="col-sm-9">@Model.CompanyName</dd>
+                    <dd class="col-sm-5"><i class="bi bi-briefcase me-1"></i>Company:</dd>
+                    <dd class="col-sm-7">@(Model.CompanyName ?? "N/A")</dd>
 
-            <dt class="col-sm-3">Period:</dt>
-            <dd class="col-sm-9">@Model.Month @Model.Year</dd>
+                    <dd class="col-sm-5"><i class="bi bi-calendar3 me-1"></i>Period:</dd>
+                    <dd class="col-sm-7">@Model.Month @Model.Year</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-3">Nitrogen / PAN Parameters</h5>
+                <dl class="row">
+                    <dd class="col-sm-5"><i class="bi bi-droplet me-1"></i>NO2 as N (mg/L):</dd>
+                    <dd class="col-sm-7">@(Model.NO2N.HasValue? Model.NO2N.Value.ToString("F2") : "N/A")</dd>
 
-            <dt class="col-sm-3">NO2 as N (mg/L):</dt>
-            <dd class="col-sm-9">@(Model.NO2N.HasValue ? Model.NO2N.Value.ToString("F2") : "N/A")</dd>
+                    <dd class="col-sm-5"><i class="bi bi-droplet me-1"></i>TKN as N (mg/L):</dd>
+                    <dd class="col-sm-7">@(Model.TKNN.HasValue? Model.TKNN.Value.ToString("F2") : "N/A")</dd>
 
-            <dt class="col-sm-3">TKN as N (mg/L):</dt>
-            <dd class="col-sm-9">@(Model.TKNN.HasValue ? Model.TKNN.Value.ToString("F2") : "N/A")</dd>
+                    <dd class="col-sm-5"><i class="bi bi-droplet me-1"></i>NO3 as N (mg/L):</dd>
+                    <dd class="col-sm-7">@(Model.NO3N.HasValue? Model.NO3N.Value.ToString("F2") : "N/A")</dd>
+                </dl>
+            </div>
+        </div>
+        <hr />
+        <div class="row">
+            <div class="col-12">
+                <h5 class="detail-section-label mb-3">Lab and Sampling</h5>
 
-            <dt class="col-sm-3">NO3 as N (mg/L):</dt>
-            <dd class="col-sm-9">@(Model.NO3N.HasValue ? Model.NO3N.Value.ToString("F2") : "N/A")</dd>
+                <div class="row g-2">
 
-            <dt class="col-sm-3">Lab Certification:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.LabCertification) ? "N/A" : Model.LabCertification)</dd>
+                    <!-- Lab Certification -->
+                    <div class="col-md-4 d-flex">
+                        <div class="fw-semibold me-2">
+                            <i class="bi bi-clipboard-check me-1"></i>Lab Certification:
+                        </div>
+                        <div>
+                            @(string.IsNullOrEmpty(Model.LabCertification) ? "N/A" : Model.LabCertification)
+                        </div>
+                    </div>
 
-            <dt class="col-sm-3">Collected By:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.CollectedBy) ? "N/A" : Model.CollectedBy)</dd>
+                    <!-- Collected By -->
+                    <div class="col-md-4 d-flex">
+                        <div class="fw-semibold me-2">
+                            <i class="bi bi-person me-1"></i>Collected By:
+                        </div>
+                        <div>
+                            @(string.IsNullOrEmpty(Model.CollectedBy) ? "N/A" : Model.CollectedBy)
+                        </div>
+                    </div>
 
-            <dt class="col-sm-3">Analyzed By:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.AnalyzedBy) ? "N/A" : Model.AnalyzedBy)</dd>
-        </dl>
+                    <!-- Analyzed By -->
+                    <div class="col-md-4 d-flex">
+                        <div class="fw-semibold me-2">
+                            <i class="bi bi-person-badge me-1"></i>Analyzed By:
+                        </div>
+                        <div>
+                            @(string.IsNullOrEmpty(Model.AnalyzedBy) ? "N/A" : Model.AnalyzedBy)
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <div class="card mt-3">
-    <div class="card-header">
-        <h5 class="mb-0">Daily Data</h5>
-    </div>
     <div class="card-body">
+        <div class="d-flex justify-content-between">
+            <div>
+                <h4 class="mb-0">Daily Data</h4>
+                <p class="text-muted small mb-0 mt-1">Days 1–31</p>
+            </div>
+
+            @if (avgNH3.HasValue || avgBOD5.HasValue || avgTSS.HasValue || avgFlow.HasValue)
+            {
+                <div class="border rounded p-2 mb-3 bg-light">
+                    <span class="small fw-semibold">Monthly summary:</span>
+                    @if (avgNH3.HasValue)
+                    {
+                        <span class="small">Average NH3-N: @avgNH3.Value.ToString("F2") mg/L</span>
+                    }
+                    @if (avgBOD5.HasValue)
+                    {
+                        <span class="small">@(avgNH3.HasValue ? " | " : "")Average BOD5: @avgBOD5.Value.ToString("F2") mg/L</span>
+                    }
+                    @if (avgTSS.HasValue)
+                    {
+                        <span class="small">@(avgNH3.HasValue || avgBOD5.HasValue ? " | " : "")Average TSS: @avgTSS.Value.ToString("F2") mg/L</span>
+                    }
+                    @if (avgFlow.HasValue)
+                    {
+                        <span class="small">@(avgNH3.HasValue || avgBOD5.HasValue || avgTSS.HasValue ? " | " : "")Average Flow: @avgFlow.Value.ToString("F2") GPM</span>
+                    }
+                </div>
+            }
+        </div>
         <div class="table-responsive">
-            <table class="table table-sm table-bordered">
+            <table class="table table-sm table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th>Day</th>
-                        <th>BOD5<br/>(mg/L)</th>
-                        <th>TSS<br/>(mg/L)</th>
-                        <th>Flow Rate<br/>(GPM)</th>
-                        <th>pH</th>
-                        <th>NH3-N<br/>(mg/L)</th>
-                        <th>Fecal Coliform<br/>(CFU/100mL)</th>
-                        <th>Residual Chloride<br/>(mg/L)</th>
-                        <th>Ca<br/>(mg/L)</th>
-                        <th>Mg<br/>(mg/L)</th>
-                        <th>Na<br/>(mg/L)</th>
-                        <th>SAR<br/>(mg/L)</th>
-                        <th>TN<br/>(mg/L)</th>
-                        <th>Composite<br/>Time</th>
-                        <th>ORC<br/>On Site</th>
-                        <th>Lagoon<br/>Freeboard<br/>(inches)</th>
+                        <th scope="col">Day</th>
+                        <th scope="col">BOD5<br />(mg/L)</th>
+                        <th scope="col">TSS<br />(mg/L)</th>
+                        <th scope="col">Flow Rate<br />(GPM)</th>
+                        <th scope="col">pH</th>
+                        <th scope="col">NH3-N<br />(mg/L)</th>
+                        <th scope="col">Fecal Coliform<br />(CFU/100mL)</th>
+                        <th scope="col">Residual Chloride<br />(mg/L)</th>
+                        <th scope="col">Ca<br />(mg/L)</th>
+                        <th scope="col">Mg<br />(mg/L)</th>
+                        <th scope="col">Na<br />(mg/L)</th>
+                        <th scope="col">SAR<br />(mg/L)</th>
+                        <th scope="col">TN<br />(mg/L)</th>
+                        <th scope="col">Composite<br />Time</th>
+                        <th scope="col">ORC<br />On Site</th>
+                        <th scope="col">Lagoon<br />Freeboard<br />(inches)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -115,4 +188,3 @@
         </div>
     </div>
 </div>
-

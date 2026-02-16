@@ -1625,6 +1625,10 @@ small {
     background-color: var(--under-review) !important;
 }
 
+.compliance-status-icon {
+    font-size: 4rem;
+}
+
 /* System Status Badges */
 .badge-normal {
   color: var(--white);
@@ -2054,7 +2058,7 @@ small {
     left: 0;
     height: 100vh;
     width: 270px;
-    background: #1f2937;
+    background: var(--gray-800);
     border-right: 1px solid var(--border-color-dark);
     padding: 0.3rem 0.5rem 0rem 0.5rem;
     overflow-y: auto;
@@ -2103,6 +2107,26 @@ small {
   .app-sidebar {
     transform: translateX(0);
   }
+}
+
+/* ============================================
+   Detail Page Section Labels (Ribbon / Tag)
+   ============================================ */
+.detail-section-label {
+    margin: 0;
+    padding: 0.35rem 1rem 0.45rem 2rem;
+    display: inline-block;
+    background: var(--gray-700);
+    color: var(--white);
+    font-weight: 600;
+    font-size: 1rem;
+    clip-path: polygon( 12px 0, /* start after left cut */
+    calc(100% - 12px) 0, /* top line */
+    100% 50%, /* RIGHT arrow tip */
+    calc(100% - 12px) 100%, /* bottom slope */
+    12px 100%, /* bottom line */
+    24px 50% /* LEFT arrow tip (also pointing right) */
+    );
 }
 
 /* Mobile collapsed state */
