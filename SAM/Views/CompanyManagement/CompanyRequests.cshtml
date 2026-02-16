@@ -77,6 +77,13 @@
                                         <span class="badge bg-success">Approved</span>
                                         <br />
                                         <small class="text-muted">Company Created</small>
+                                        @if (validCompanyIds.ContainsKey(request.CreatedCompanyId.Value) && !validCompanyIds[request.CreatedCompanyId.Value])
+                                        {
+                                            <br />
+                                            <span class="badge bg-secondary mt-1" title="The company associated with this request has been deleted.">
+                                                <i class="bi bi-exclamation-triangle"></i> Company Deleted
+                                            </span>
+                                        }
                                     }
                                     else
                                     {
@@ -113,14 +120,29 @@
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary" title="The company associated with this request has been deleted.">
-                                                <i class="bi bi-exclamation-triangle"></i> Company Deleted
-                                            </span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
                                         }
                                     }
                                     else
                                     {
-                                        <span class="text-muted">-</span>
+                                        <div class="d-flex gap-2">
+                                            <a asp-action="CompanyRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
                                     }
                                 </td>
                             </tr>
@@ -168,6 +190,13 @@
                                             <span class="badge bg-success">Approved</span>
                                             <br />
                                             <small class="text-muted">Company Created</small>
+                                            @if (validCompanyIds.ContainsKey(request.CreatedCompanyId.Value) && !validCompanyIds[request.CreatedCompanyId.Value])
+                                            {
+                                                <br />
+                                                <span class="badge bg-secondary mt-1" title="The company associated with this request has been deleted.">
+                                                    <i class="bi bi-exclamation-triangle"></i> Company Deleted
+                                                </span>
+                                            }
                                         }
                                         else
                                         {
@@ -210,14 +239,29 @@
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary" title="The company associated with this request has been deleted.">
-                                                <i class="bi bi-exclamation-triangle"></i> Company Deleted
-                                            </span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
                                         }
                                     }
                                     else
                                     {
-                                        <span class="text-muted small">No actions</span>
+                                        <div class="d-flex gap-2">
+                                            <a asp-action="CompanyRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
                                     }
                                 </div>
                             </div>
@@ -256,6 +300,29 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">Reject Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Company Request Modal -->
+<div class="modal fade" id="deleteCompanyRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Company Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteCompanyRequestForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the company request for <strong id="deleteCompanyName"></strong>?</p>
+                    <p class="text-muted small mb-0">This action will remove the request from the list.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Request</button>
                 </div>
             </form>
         </div>
@@ -325,6 +392,27 @@
                     const reasonTextarea = rejectModal.querySelector('#rejectCompanyReason');
                     if (reasonTextarea) {
                         reasonTextarea.value = '';
+                    }
+                });
+            }
+
+            // Delete modal handling
+            const deleteModal = document.getElementById('deleteCompanyRequestModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const requestId = button.getAttribute('data-request-id');
+                    const requestName = button.getAttribute('data-request-name');
+
+                    const nameElement = deleteModal.querySelector('#deleteCompanyName');
+                    if (nameElement) {
+                        nameElement.textContent = requestName;
+                    }
+
+                    const form = deleteModal.querySelector('#deleteCompanyRequestForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("CompanyRequestDelete", "CompanyManagement")';
+                        form.action = baseUrl + '/' + requestId;
                     }
                 });
             }

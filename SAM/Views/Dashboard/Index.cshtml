@@ -164,7 +164,7 @@
                     <div class="dashboard-chart-wrap d-flex align-items-center justify-content-center flex-shrink-0">
                         <div class="position-relative" style="width: 180px; height: 180px;">
                             <canvas id="chartIrrigationCompliance" width="180" height="180"></canvas>
-                            <div class="position-absolute top-50 start-50 translate-middle text-center">
+                            <div id="complianceCenterLabel" class="position-absolute top-50 start-50 translate-middle text-center">
                                 <span class="fw-bold fs-6" style="color: #14b8a6;">Compliant @Model.IrrigationCompliance.CompliantPercent.ToString("F0")%</span>
                             </div>
                         </div>
@@ -273,6 +273,39 @@
             const successColor = '#28a745';
             const greenTeal = '#14b8a6';
             const greenTealDark = '#0d9488';
+            const complianceCenterLabel = document.getElementById('complianceCenterLabel');
+
+            if (window.Chart?.Tooltip?.positioners && !window.Chart.Tooltip.positioners.donutOutside) {
+                window.Chart.Tooltip.positioners.donutOutside = function(items) {
+                    if (!items || items.length === 0) {
+                        return false;
+                    }
+
+                    const firstItem = items[0];
+                    const point = firstItem.element?.tooltipPosition?.();
+                    if (!point) {
+                        return false;
+                    }
+
+                    const chart = firstItem.chart;
+                    const chartArea = chart?.chartArea;
+                    const centerX = chartArea ? (chartArea.left + chartArea.right) / 2 : point.x;
+                    const centerY = chartArea ? (chartArea.top + chartArea.bottom) / 2 : point.y;
+
+                    let dx = point.x - centerX;
+                    let dy = point.y - centerY;
+                    const distance = Math.hypot(dx, dy) || 1;
+                    const offset = 44;
+
+                    dx /= distance;
+                    dy /= distance;
+
+                    return {
+                        x: point.x + dx * offset,
+                        y: point.y + dy * offset
+                    };
+                };
+            }
 
             document.addEventListener('DOMContentLoaded', function() {
                 // 1. Irrigation Compliance (doughnut) - greenish-teal for Compliant
@@ -295,7 +328,21 @@
                         cutout: '70%',
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: { legend: { display: false } }
+                        onHover: function(event, activeElements) {
+                            if (complianceCenterLabel) {
+                                complianceCenterLabel.style.opacity = activeElements && activeElements.length > 0 ? '0' : '1';
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            intersect: true
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                position: 'donutOutside'
+                            }
+                        }
                     }
                 });
 

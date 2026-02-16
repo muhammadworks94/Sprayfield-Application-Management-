@@ -236,6 +236,41 @@ public class CompanyManagementController : BaseController
         }
     }
 
+    /// <summary>
+    /// Soft-deletes a company request record.
+    /// Only non-approved requests can be deleted.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CompanyRequestDelete(Guid id)
+    {
+        var request = await _context.CompanyRequests.FirstOrDefaultAsync(r => r.Id == id);
+        if (request == null)
+        {
+            TempData["ErrorMessage"] = "Company request not found.";
+            return RedirectToAction(nameof(CompanyRequests));
+        }
+
+        if (request.CreatedCompanyId.HasValue)
+        {
+            var linkedCompany = await _context.Companies
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Id == request.CreatedCompanyId.Value);
+
+            if (linkedCompany != null && !linkedCompany.IsDeleted)
+            {
+                TempData["ErrorMessage"] = "Approved company requests cannot be deleted while the linked company still exists.";
+                return RedirectToAction(nameof(CompanyRequests));
+            }
+        }
+
+        request.IsDeleted = true;
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Company request deleted.";
+
+        return RedirectToAction(nameof(CompanyRequests));
+    }
+
     #region Company CRUD
 
     [HttpGet]

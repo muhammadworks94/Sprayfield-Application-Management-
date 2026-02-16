@@ -1,16 +1,58 @@
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Http
+@using Microsoft.EntityFrameworkCore
+@using SAM.Data
 @using SAM.Domain.Entities
+@using SAM.Domain.Enums
 @inject UserManager<ApplicationUser> UserManager
+@inject ApplicationDbContext DbContext
 
 @{
     var user = await UserManager.GetUserAsync(User);
     var isAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
     var isCompanyAdmin = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
+
+    var pendingUserRequestCount = 0;
+    var pendingCompanyRequestCount = 0;
+
+    if (isCompanyAdmin)
+    {
+        if (isAdmin)
+        {
+            var selectedCompanyIdString = Context.Session.GetString("SelectedCompanyId");
+            Guid? selectedCompanyId = null;
+            if (!string.IsNullOrWhiteSpace(selectedCompanyIdString) &&
+                Guid.TryParse(selectedCompanyIdString, out var parsedCompanyId))
+            {
+                selectedCompanyId = parsedCompanyId;
+            }
+
+            pendingUserRequestCount = selectedCompanyId.HasValue
+                ? await DbContext.UserRequests.CountAsync(r => r.Status == RequestStatusEnum.Pending && r.CompanyId == selectedCompanyId.Value)
+                : await DbContext.UserRequests.CountAsync(r => r.Status == RequestStatusEnum.Pending);
+        }
+        else if (user?.CompanyId.HasValue == true)
+        {
+            pendingUserRequestCount = await DbContext.UserRequests.CountAsync(r => r.Status == RequestStatusEnum.Pending && r.CompanyId == user.CompanyId.Value);
+        }
+    }
+
+    if (isAdmin)
+    {
+        pendingCompanyRequestCount = await DbContext.CompanyRequests.CountAsync(r => r.Status == RequestStatusEnum.Pending);
+    }
+
+    var pendingTotalCount = pendingUserRequestCount + pendingCompanyRequestCount;
 }
 
 <div class="dropdown">
     <button class="btn btn-link dropdown-toggle text-decoration-none d-flex align-items-center" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-        <i class="bi bi-person-circle me-2"></i> <span>@(user?.FullName ?? User.Identity?.Name ?? "User")</span>
+        <i class="bi bi-person-circle me-2"></i>
+        <span>@(user?.FullName ?? User.Identity?.Name ?? "User")</span>
+        @if (pendingTotalCount > 0)
+        {
+            <span class="badge bg-danger rounded-pill ms-2">@pendingTotalCount</span>
+        }
     </button>
     <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="userMenuButton" style="min-width: 200px;">
         <li>
@@ -29,16 +71,24 @@
         @if (isAdmin)
         {
             <li>
-                <a class="dropdown-item" asp-controller="CompanyManagement" asp-action="CompanyRequests">
-                    <i class="bi bi-building-add me-2"></i> Company Requests
+                <a class="dropdown-item d-flex justify-content-between align-items-center" asp-controller="CompanyManagement" asp-action="CompanyRequests">
+                    <span><i class="bi bi-building-add me-2"></i> Company Requests</span>
+                    @if (pendingCompanyRequestCount > 0)
+                    {
+                        <span class="badge bg-danger rounded-pill ms-2">@pendingCompanyRequestCount</span>
+                    }
                 </a>
             </li>
         }
         @if (isCompanyAdmin)
         {
             <li>
-                <a class="dropdown-item" asp-controller="UserManagement" asp-action="UserRequests">
-                    <i class="bi bi-person-plus me-2"></i> User Requests
+                <a class="dropdown-item d-flex justify-content-between align-items-center" asp-controller="UserManagement" asp-action="UserRequests">
+                    <span><i class="bi bi-person-plus me-2"></i> User Requests</span>
+                    @if (pendingUserRequestCount > 0)
+                    {
+                        <span class="badge bg-danger rounded-pill ms-2">@pendingUserRequestCount</span>
+                    }
                 </a>
             </li>
             <li><hr class="dropdown-divider"></li>

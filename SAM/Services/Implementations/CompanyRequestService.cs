@@ -88,8 +88,9 @@ public class CompanyRequestService : ICompanyRequestService
         if (request == null)
             throw new EntityNotFoundException(nameof(CompanyRequest), requestId);
 
-        if (request.Status != RequestStatusEnum.Pending)
-            throw new BusinessRuleException("Only pending requests can be approved.");
+        // Allow re-approval for previously rejected requests, but block already-approved requests.
+        if (request.CreatedCompanyId.HasValue || request.CreatedUserId.HasValue)
+            throw new BusinessRuleException("This request has already been approved.");
 
         // Check if user already exists
         var existingUser = await _userManager.FindByEmailAsync(request.RequesterEmail);
@@ -161,6 +162,7 @@ public class CompanyRequestService : ICompanyRequestService
         request.CreatedCompanyId = company.Id;
         Guid.TryParse(user.Id, out var GuidUserId);
         request.CreatedUserId = GuidUserId;
+        request.RejectionReason = null;
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Company request approved: '{CompanyName}' (Request ID: {RequestId}, Company ID: {CompanyId}, User ID: {UserId})",
