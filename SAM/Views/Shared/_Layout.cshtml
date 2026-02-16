@@ -148,32 +148,25 @@
             const dropdownItems = document.querySelectorAll('.nav-dropdown-item');
             const dropdownToggles = document.querySelectorAll('.nav-dropdown-toggle');
             
-            // Load saved dropdown states
-            function loadDropdownStates() {
-                dropdownItems.forEach(item => {
-                    const dropdownId = item.querySelector('.nav-dropdown-toggle')?.getAttribute('data-dropdown');
-                    if (dropdownId) {
-                        const savedState = localStorage.getItem(`dropdown-${dropdownId}`);
-                        if (savedState === 'expanded') {
-                            item.classList.add('expanded');
-                            const toggle = item.querySelector('.nav-dropdown-toggle');
-                            toggle?.setAttribute('aria-expanded', 'true');
-                        }
-                    }
-                });
-            }
-            
-            // Save dropdown state
-            function saveDropdownState(dropdownId, isExpanded) {
-                localStorage.setItem(`dropdown-${dropdownId}`, isExpanded ? 'expanded' : 'collapsed');
-            }
-            
             // Toggle dropdown
             function toggleDropdown(item, forceState) {
                 const toggle = item.querySelector('.nav-dropdown-toggle');
-                const dropdownId = toggle?.getAttribute('data-dropdown');
                 const isExpanded = item.classList.contains('expanded');
                 const newState = forceState !== undefined ? forceState : !isExpanded;
+
+                if (newState) {
+                    dropdownItems.forEach(otherItem => {
+                        if (otherItem !== item) {
+                            otherItem.classList.remove('expanded');
+                            const otherToggle = otherItem.querySelector('.nav-dropdown-toggle');
+                            otherToggle?.setAttribute('aria-expanded', 'false');
+
+                            if (!otherItem.querySelector('.nav-link.active')) {
+                                otherItem.classList.remove('has-active');
+                            }
+                        }
+                    });
+                }
                 
                 if (newState) {
                     item.classList.add('expanded');
@@ -181,10 +174,6 @@
                 } else {
                     item.classList.remove('expanded');
                     toggle?.setAttribute('aria-expanded', 'false');
-                }
-                
-                if (dropdownId) {
-                    saveDropdownState(dropdownId, newState);
                 }
             }
             
@@ -332,12 +321,10 @@
                 dropdownItems.forEach(item => {
                     if (item !== activeDropdown) {
                         item.classList.remove('has-active');
+                        toggleDropdown(item, false);
                     }
                 });
             }
-            
-            // Initialize dropdowns
-            loadDropdownStates();
             
             // Set active nav link on page load
             setActiveNavLink();

@@ -1811,23 +1811,10 @@ small {
         color: var(--white);
         /*  font-weight: var(--font-weight-semibold);*/
         background: var(--secondary);
-        /*  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15), inset 4px 0 0 var(--primary);*/
+        box-shadow: inset -3px 0 0 var(--primary-light);
         /*  border-left: 4px solid var(--primary);*/
         position: relative;
     }
-
-.sidebar-nav .nav-link.active::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 60%;
-  background: linear-gradient(180deg, transparent, var(--primary-light), transparent);
-  border-radius: 3px 0 0 3px;
-}
-
 
 .sidebar-nav .nav-link.active i {
 /*  color: var(--primary);*/
@@ -1891,7 +1878,7 @@ small {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 1000;
+  z-index: 1102;
   box-shadow: var(--shadow-lg);
 }
 
@@ -1906,7 +1893,7 @@ small {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
-  z-index: 1001;
+  z-index: 1103;
 }
 
 .app-sidebar.sidebar-collapsed-desktop .sidebar-nav .nav-link[data-tooltip]:hover::after,
@@ -2157,6 +2144,8 @@ small {
   .app-sidebar.sidebar-collapsed-desktop {
     width: 70px;
     transform: translateX(0);
+    overflow: visible;
+    z-index: 1002;
   }
 
   .app-sidebar.sidebar-collapsed-desktop .sidebar-brand-text,
@@ -2169,9 +2158,9 @@ small {
 
   .app-sidebar.sidebar-collapsed-desktop .sidebar-header {
     padding: 1rem 0.5rem;
-    flex-direction: column;
+    min-height: 58px;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
   }
 
   .app-sidebar.sidebar-collapsed-desktop .sidebar-brand-wrapper {
@@ -2188,7 +2177,7 @@ small {
   }
 
   .app-sidebar.sidebar-collapsed-desktop .nav-link {
-    justify-content: center;
+/*    justify-content: center;*/
     padding: 0.75rem;
   }
 
@@ -2278,15 +2267,25 @@ small {
 }
 
 .app-sidebar.sidebar-collapsed-desktop .sidebar-toggle {
-  width: 100%;
-  margin: 0.5rem 0;
-  background-color: var(--gray-50);
+    position: absolute;
+    top: 16px;
+    left: calc(100% + 8px);
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0.5rem;
+    border: 1px solid var(--gray-800);
+    border-radius: 0 0.625rem 0.625rem 0;
+    background-color: var(--gray-800);
+    box-shadow: var(--shadow-lg);
+    z-index: 1101;
 }
 
-.app-sidebar.sidebar-collapsed-desktop .sidebar-toggle:hover {
-  background-color: var(--primary-lighter);
-  color: var(--primary);
-}
+    .app-sidebar.sidebar-collapsed-desktop .sidebar-toggle:hover {
+        background-color: var(--primary-lighter);
+        color: var(--gray-800);
+        border: 1px solid var(--gray-800);
+    }
 
 .app-sidebar.sidebar-collapsed-desktop .sidebar-toggle i {
   transform: rotate(180deg);
@@ -2487,27 +2486,34 @@ small {
 
 .app-sidebar.sidebar-collapsed-desktop .nav-dropdown-toggle {
   justify-content: center;
+  gap: 0;
   padding: 0.75rem;
   width: 100%;
 }
 
-.app-sidebar.sidebar-collapsed-desktop .nav-dropdown-toggle .nav-link-text,
+.app-sidebar.sidebar-collapsed-desktop .nav-dropdown-toggle .nav-link-text {
+  display: none;
+}
+
 .app-sidebar.sidebar-collapsed-desktop .nav-dropdown-toggle .nav-dropdown-chevron {
-  opacity: 0;
-  width: 0;
-  overflow: hidden;
+  display: none;
+  margin-left: 0;
+}
+
+.app-sidebar.sidebar-collapsed-desktop .nav-dropdown-toggle i:first-child {
+  margin-right: 0;
 }
 
 .app-sidebar.sidebar-collapsed-desktop .nav-dropdown {
   position: absolute;
   left: calc(100% + 8px);
   top: 0;
-  background-color: var(--white);
-  border: 1px solid var(--border-color);
+  background-color: var(--gray-800);
+  border: 1px solid var(--border-color-dark);
   border-radius: 0.5rem;
   box-shadow: var(--shadow-xl);
   min-width: 220px;
-  z-index: 1000;
+  z-index: 1104;
   max-height: none;
   padding: 0.5rem 0;
   opacity: 0;
@@ -2527,6 +2533,29 @@ small {
   padding-left: 1rem;
   padding-right: 1rem;
   white-space: nowrap;
+  color: var(--gray-200);
+}
+
+.app-sidebar.sidebar-collapsed-desktop .nav-dropdown .nav-link i {
+  color: var(--gray-200);
+}
+
+.app-sidebar.sidebar-collapsed-desktop .nav-dropdown .nav-link:hover {
+  background: rgba(37, 99, 235, 0.14);
+  color: var(--white);
+}
+
+.app-sidebar.sidebar-collapsed-desktop .nav-dropdown .nav-link:hover i {
+  color: var(--white);
+}
+
+.app-sidebar.sidebar-collapsed-desktop .nav-dropdown .nav-link.active {
+  background: var(--secondary);
+  color: var(--white);
+}
+
+.app-sidebar.sidebar-collapsed-desktop .nav-dropdown .nav-link.active i {
+  color: var(--white);
 }
 
 .app-sidebar.sidebar-collapsed-desktop .nav-dropdown .nav-link::before {
