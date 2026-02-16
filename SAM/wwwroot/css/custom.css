@@ -1612,17 +1612,17 @@ small {
 /* Compliance Status Badges */
 .badge-compliant {
   color: var(--white);
-  background-color: var(--compliant);
+  background-color: var(--compliant) !important;
 }
 
 .badge-non-compliant {
-  color: var(--white);
-  background-color: var(--non-compliant);
+    color: var(--white);
+    background-color: var(--non-compliant) !important;
 }
 
 .badge-under-review {
-  color: var(--white);
-  background-color: var(--under-review);
+    color: var(--white);
+    background-color: var(--under-review) !important;
 }
 
 /* System Status Badges */

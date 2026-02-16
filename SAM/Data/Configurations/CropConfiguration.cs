@@ -16,9 +16,6 @@ public class CropConfiguration : IEntityTypeConfiguration<Crop>
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(c => c.PanFactor)
-            .HasColumnType("decimal(18,2)");
-
         builder.Property(c => c.NUptake)
             .HasColumnType("decimal(18,2)");
 

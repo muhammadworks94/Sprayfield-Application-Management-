@@ -76,7 +76,6 @@ public class CropService : ICropService
             throw new EntityNotFoundException(nameof(Company), crop.CompanyId);
 
         existing.Name = crop.Name;
-        existing.PanFactor = crop.PanFactor;
         existing.NUptake = crop.NUptake;
 
         await _context.SaveChangesAsync();

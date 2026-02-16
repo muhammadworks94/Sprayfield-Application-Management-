@@ -101,6 +101,12 @@
                             ? $"{Model.PermittedMinimumFreeboardFeet.Value} ft"
                             : "N/A")
                     </dd>
+
+                    <dt class="col-sm-6">Mineralization Rate (%):</dt>
+                    <dd class="col-sm-6">@(Model.MineralizationRatePercent.HasValue ? $"{Model.MineralizationRatePercent.Value}%" : "N/A")</dd>
+
+                    <dt class="col-sm-6">Volatilization Rate (%):</dt>
+                    <dd class="col-sm-6">@(Model.VolatilizationRatePercent.HasValue ? $"{Model.VolatilizationRatePercent.Value}%" : "N/A")</dd>
                 </dl>
             </div>
 

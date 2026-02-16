@@ -124,6 +124,16 @@ public class Facility : CompanyScopedEntity
     /// </summary>
     public decimal? PermittedMinimumFreeboardFeet { get; set; }
 
+    /// <summary>
+    /// Mineralization rate (%), used for PAN calculation. Default 40%.
+    /// </summary>
+    public decimal? MineralizationRatePercent { get; set; }
+
+    /// <summary>
+    /// Volatilization rate (%), used for PAN calculation. Default 50%.
+    /// </summary>
+    public decimal? VolatilizationRatePercent { get; set; }
+
     // Navigation properties
     public ICollection<WWChar> WWChars { get; set; } = new List<WWChar>();
     public ICollection<GWMonit> GWMonits { get; set; } = new List<GWMonit>();

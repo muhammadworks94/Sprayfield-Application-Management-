@@ -40,6 +40,15 @@
             <dt class="col-sm-3">Period:</dt>
             <dd class="col-sm-9">@Model.Month @Model.Year</dd>
 
+            <dt class="col-sm-3">NO2 as N (mg/L):</dt>
+            <dd class="col-sm-9">@(Model.NO2N.HasValue ? Model.NO2N.Value.ToString("F2") : "N/A")</dd>
+
+            <dt class="col-sm-3">TKN as N (mg/L):</dt>
+            <dd class="col-sm-9">@(Model.TKNN.HasValue ? Model.TKNN.Value.ToString("F2") : "N/A")</dd>
+
+            <dt class="col-sm-3">NO3 as N (mg/L):</dt>
+            <dd class="col-sm-9">@(Model.NO3N.HasValue ? Model.NO3N.Value.ToString("F2") : "N/A")</dd>
+
             <dt class="col-sm-3">Lab Certification:</dt>
             <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.LabCertification) ? "N/A" : Model.LabCertification)</dd>
 

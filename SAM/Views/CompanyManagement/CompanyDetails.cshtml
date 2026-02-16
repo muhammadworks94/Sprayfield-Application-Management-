@@ -413,7 +413,6 @@
                             <thead>
                                 <tr>
                                     <th><i class="bi bi-layers"></i> Name</th>
-                                    <th><i class="bi bi-percent"></i> PAN Factor</th>
                                     <th><i class="bi bi-arrow-up"></i> N Uptake</th>
                                     <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                                 </tr>
@@ -427,7 +426,6 @@
                                                 @crop.Name
                                             </a>
                                         </td>
-                                        <td>@crop.PanFactor.ToString("F2")</td>
                                         <td>@crop.NUptake.ToString("F2") lbs/acre/year</td>
                                         <td class="table-actions">
                                             <a asp-controller="SystemAdmin" asp-action="CropEdit" asp-route-id="@crop.Id" class="btn btn-sm btn-outline-primary">

@@ -785,7 +785,10 @@ namespace SAM.Controllers;
             LagoonFreeboard = wwChar.LagoonFreeboard,
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
-            AnalyzedBy = wwChar.AnalyzedBy
+            AnalyzedBy = wwChar.AnalyzedBy,
+            NO2N = wwChar.NO2N,
+            TKNN = wwChar.TKNN,
+            NO3N = wwChar.NO3N
         };
 
         return View(viewModel);
@@ -890,7 +893,10 @@ namespace SAM.Controllers;
                 LagoonFreeboard = viewModel.LagoonFreeboard,
                 LabCertification = viewModel.LabCertification,
                 CollectedBy = viewModel.CollectedBy,
-                AnalyzedBy = viewModel.AnalyzedBy
+                AnalyzedBy = viewModel.AnalyzedBy,
+                NO2N = viewModel.NO2N,
+                TKNN = viewModel.TKNN,
+                NO3N = viewModel.NO3N
             };
 
             await _wwCharService.CreateAsync(wwChar);
@@ -941,7 +947,10 @@ namespace SAM.Controllers;
             LagoonFreeboard = wwChar.LagoonFreeboard,
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
-            AnalyzedBy = wwChar.AnalyzedBy
+            AnalyzedBy = wwChar.AnalyzedBy,
+            NO2N = wwChar.NO2N.HasValue ? Math.Round(wwChar.NO2N.Value, 2) : (decimal?)null,
+            TKNN = wwChar.TKNN.HasValue ? Math.Round(wwChar.TKNN.Value, 2) : (decimal?)null,
+            NO3N = wwChar.NO3N.HasValue ? Math.Round(wwChar.NO3N.Value, 2) : (decimal?)null
         };
 
         // Ensure arrays are initialized with 31 entries
@@ -998,6 +1007,9 @@ namespace SAM.Controllers;
             wwChar.LabCertification = viewModel.LabCertification;
             wwChar.CollectedBy = viewModel.CollectedBy;
             wwChar.AnalyzedBy = viewModel.AnalyzedBy;
+            wwChar.NO2N = viewModel.NO2N;
+            wwChar.TKNN = viewModel.TKNN;
+            wwChar.NO3N = viewModel.NO3N;
 
             await _wwCharService.UpdateAsync(wwChar);
             TempData["SuccessMessage"] = $"Wastewater characteristics record updated for {wwChar.Month} {wwChar.Year}.";

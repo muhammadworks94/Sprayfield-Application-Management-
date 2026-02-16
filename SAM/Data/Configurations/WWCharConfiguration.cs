@@ -126,6 +126,15 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
                     : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
+        builder.Property(w => w.NO2N)
+            .HasPrecision(18, 4);
+
+        builder.Property(w => w.TKNN)
+            .HasPrecision(18, 4);
+
+        builder.Property(w => w.NO3N)
+            .HasPrecision(18, 4);
+
         builder.Property(w => w.CompositeTime)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),

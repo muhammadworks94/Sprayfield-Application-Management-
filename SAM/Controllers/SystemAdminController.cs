@@ -130,7 +130,6 @@ public class SystemAdminController : BaseController
                     CompanyId = c.CompanyId,
                     CompanyName = c.Company?.Name,
                     Name = c.Name,
-                    PanFactor = c.PanFactor,
                     NUptake = c.NUptake
                 });
                 viewModel.CropsFilter = await CreateCropsFilterViewModelAsync(isGlobalAdmin, companyId);
@@ -424,7 +423,9 @@ public class SystemAdminController : BaseController
             LabCertificationNumber1 = facility.LabCertificationNumber1,
             LabCertificationNumber2 = facility.LabCertificationNumber2,
             PersonsCollectingSamples = facility.PersonsCollectingSamples,
-            PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet
+            PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet,
+            MineralizationRatePercent = facility.MineralizationRatePercent,
+            VolatilizationRatePercent = facility.VolatilizationRatePercent
         };
 
         return View(viewModel);
@@ -498,7 +499,9 @@ public class SystemAdminController : BaseController
                 LabCertificationNumber1 = viewModel.LabCertificationNumber1,
                 LabCertificationNumber2 = viewModel.LabCertificationNumber2,
                 PersonsCollectingSamples = viewModel.PersonsCollectingSamples,
-                PermittedMinimumFreeboardFeet = viewModel.PermittedMinimumFreeboardFeet
+                PermittedMinimumFreeboardFeet = viewModel.PermittedMinimumFreeboardFeet,
+                MineralizationRatePercent = viewModel.MineralizationRatePercent ?? 40m,
+                VolatilizationRatePercent = viewModel.VolatilizationRatePercent ?? 50m
             };
 
             await _facilityService.CreateAsync(facility);
@@ -564,7 +567,9 @@ public class SystemAdminController : BaseController
             LabCertificationNumber1 = facility.LabCertificationNumber1,
             LabCertificationNumber2 = facility.LabCertificationNumber2,
             PersonsCollectingSamples = facility.PersonsCollectingSamples,
-            PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet
+            PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet,
+            MineralizationRatePercent = facility.MineralizationRatePercent,
+            VolatilizationRatePercent = facility.VolatilizationRatePercent
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
@@ -614,6 +619,8 @@ public class SystemAdminController : BaseController
             facility.LabCertificationNumber2 = viewModel.LabCertificationNumber2;
             facility.PersonsCollectingSamples = viewModel.PersonsCollectingSamples;
             facility.PermittedMinimumFreeboardFeet = viewModel.PermittedMinimumFreeboardFeet;
+            facility.MineralizationRatePercent = viewModel.MineralizationRatePercent;
+            facility.VolatilizationRatePercent = viewModel.VolatilizationRatePercent;
 
             await _facilityService.UpdateAsync(facility);
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";
@@ -880,7 +887,6 @@ public class SystemAdminController : BaseController
             {
                 CompanyId = viewModel.CompanyId,
                 Name = viewModel.Name,
-                PanFactor = viewModel.PanFactor,
                 NUptake = viewModel.NUptake
             };
 
@@ -923,7 +929,6 @@ public class SystemAdminController : BaseController
             Id = crop.Id,
             CompanyId = crop.CompanyId,
             Name = crop.Name,
-            PanFactor = crop.PanFactor,
             NUptake = crop.NUptake
         };
 
@@ -950,8 +955,8 @@ public class SystemAdminController : BaseController
             if (crop == null)
                 return NotFound();
 
+            crop.CompanyId = viewModel.CompanyId;
             crop.Name = viewModel.Name;
-            crop.PanFactor = viewModel.PanFactor;
             crop.NUptake = viewModel.NUptake;
 
             await _cropService.UpdateAsync(crop);

@@ -104,6 +104,14 @@ public class FacilityViewModel
 
     [Display(Name = "Permitted Minimum Freeboard (ft)")]
     public decimal? PermittedMinimumFreeboardFeet { get; set; }
+
+    [Display(Name = "Mineralization Rate (%)")]
+    [Range(0, 100)]
+    public decimal? MineralizationRatePercent { get; set; }
+
+    [Display(Name = "Volatilization Rate (%)")]
+    [Range(0, 100)]
+    public decimal? VolatilizationRatePercent { get; set; }
 }
 
 public class FacilityCreateViewModel
@@ -209,6 +217,14 @@ public class FacilityCreateViewModel
 
     [Display(Name = "Permitted Minimum Freeboard (ft)")]
     public decimal? PermittedMinimumFreeboardFeet { get; set; }
+
+    [Display(Name = "Mineralization Rate (%)")]
+    [Range(0, 100)]
+    public decimal? MineralizationRatePercent { get; set; }
+
+    [Display(Name = "Volatilization Rate (%)")]
+    [Range(0, 100)]
+    public decimal? VolatilizationRatePercent { get; set; }
 }
 
 public class FacilityEditViewModel
@@ -316,6 +332,14 @@ public class FacilityEditViewModel
 
     [Display(Name = "Permitted Minimum Freeboard (ft)")]
     public decimal? PermittedMinimumFreeboardFeet { get; set; }
+
+    [Display(Name = "Mineralization Rate (%)")]
+    [Range(0, 100)]
+    public decimal? MineralizationRatePercent { get; set; }
+
+    [Display(Name = "Volatilization Rate (%)")]
+    [Range(0, 100)]
+    public decimal? VolatilizationRatePercent { get; set; }
 }
 
 

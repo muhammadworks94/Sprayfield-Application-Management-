@@ -98,6 +98,7 @@ builder.Services.AddScoped<SAM.Services.Interfaces.IIrrigateService, IrrigateSer
 builder.Services.AddScoped<SAM.Services.Interfaces.IWWCharService, WWCharService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IGWMonitService, GWMonitService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IIrrRprtService, IrrRprtService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IPANCalculationService, PANCalculationService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDAR1Service, NDAR1Service>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDMRService, NDMRService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDMLRService, NDMLRService>();

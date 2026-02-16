@@ -85,6 +85,21 @@ public class WWChar : CompanyScopedEntity
     public List<decimal?> TNDaily { get; set; } = new List<decimal?>();
 
     /// <summary>
+    /// Nitrite as N (mg/L) for the period. Used for PAN calculation.
+    /// </summary>
+    public decimal? NO2N { get; set; }
+
+    /// <summary>
+    /// Total Kjeldahl Nitrogen as N (mg/L) for the period. Used for PAN calculation.
+    /// </summary>
+    public decimal? TKNN { get; set; }
+
+    /// <summary>
+    /// Nitrate as N (mg/L) for the period. Used for PAN calculation.
+    /// </summary>
+    public decimal? NO3N { get; set; }
+
+    /// <summary>
     /// Array of daily composite sample times (max 31 items, stored as JSON).
     /// </summary>
     public List<string?> CompositeTime { get; set; } = new List<string?>();

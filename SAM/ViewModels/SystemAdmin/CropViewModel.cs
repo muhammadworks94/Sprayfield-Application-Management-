@@ -14,11 +14,6 @@ public class CropViewModel
     public string Name { get; set; } = string.Empty;
     
     [Required]
-    [Display(Name = "PAN Factor")]
-    [Range(0, 1, ErrorMessage = "PAN factor must be between 0 and 1.")]
-    public decimal PanFactor { get; set; }
-    
-    [Required]
     [Display(Name = "N Uptake (lbs/acre/year)")]
     [Range(0, double.MaxValue, ErrorMessage = "N Uptake must be a positive number.")]
     public decimal NUptake { get; set; }
@@ -34,11 +29,6 @@ public class CropCreateViewModel
     [StringLength(200)]
     [Display(Name = "Crop Name")]
     public string Name { get; set; } = string.Empty;
-    
-    [Required]
-    [Display(Name = "PAN Factor")]
-    [Range(0, 1, ErrorMessage = "PAN factor must be between 0 and 1.")]
-    public decimal PanFactor { get; set; }
     
     [Required]
     [Display(Name = "N Uptake (lbs/acre/year)")]
@@ -58,11 +48,6 @@ public class CropEditViewModel
     [StringLength(200)]
     [Display(Name = "Crop Name")]
     public string Name { get; set; } = string.Empty;
-    
-    [Required]
-    [Display(Name = "PAN Factor")]
-    [Range(0, 1, ErrorMessage = "PAN factor must be between 0 and 1.")]
-    public decimal PanFactor { get; set; }
     
     [Required]
     [Display(Name = "N Uptake (lbs/acre/year)")]

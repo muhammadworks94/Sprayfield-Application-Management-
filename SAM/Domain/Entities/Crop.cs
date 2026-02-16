@@ -13,11 +13,6 @@ public class Crop : CompanyScopedEntity
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Plant-available nitrogen (PAN) factor.
-    /// </summary>
-    public decimal PanFactor { get; set; }
-
-    /// <summary>
     /// Nitrogen uptake rate in lbs/acre/year.
     /// </summary>
     public decimal NUptake { get; set; }

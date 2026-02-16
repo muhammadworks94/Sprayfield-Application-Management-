@@ -307,7 +307,6 @@ public class CompanyManagementController : BaseController
             CompanyId = c.CompanyId,
             CompanyName = c.Company?.Name,
             Name = c.Name,
-            PanFactor = c.PanFactor,
             NUptake = c.NUptake
         }).ToList();
 

@@ -73,6 +73,12 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
         builder.Property(f => f.PersonsCollectingSamples)
             .HasMaxLength(200);
 
+        builder.Property(f => f.MineralizationRatePercent)
+            .HasPrecision(5, 2);
+
+        builder.Property(f => f.VolatilizationRatePercent)
+            .HasPrecision(5, 2);
+
         builder.HasIndex(f => f.CompanyId);
         builder.HasIndex(f => f.PermitNumber);
 

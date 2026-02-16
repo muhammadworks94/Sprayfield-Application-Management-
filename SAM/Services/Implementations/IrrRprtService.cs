@@ -18,17 +18,20 @@ public class IrrRprtService : IIrrRprtService
     private readonly ILogger<IrrRprtService> _logger;
     private readonly IIrrigateService _irrigateService;
     private readonly ISprayfieldService _sprayfieldService;
+    private readonly IPANCalculationService _panCalculationService;
 
     public IrrRprtService(
         ApplicationDbContext context,
         ILogger<IrrRprtService> logger,
         IIrrigateService irrigateService,
-        ISprayfieldService sprayfieldService)
+        ISprayfieldService sprayfieldService,
+        IPANCalculationService panCalculationService)
     {
         _context = context;
         _logger = logger;
         _irrigateService = irrigateService;
         _sprayfieldService = sprayfieldService;
+        _panCalculationService = panCalculationService;
     }
 
     public async Task<IEnumerable<IrrRprt>> GetAllAsync(Guid? companyId = null, Guid? facilityId = null)
@@ -230,28 +233,33 @@ public class IrrRprtService : IIrrRprtService
             }
         }
 
-        // Calculate PAN uptake rate from crop data
-        if (sprayfieldList.Any())
+        // Calculate PAN uptake rate using PAN calculation service (wastewater chemistry + volume + acres)
+        if (sprayfieldList.Any() && totalAcres > 0)
         {
-            var weightedPanUptake = sprayfieldList
-                .Where(s => s.Crop != null)
-                .Select(s => new
-                {
-                    Acres = s.SizeAcres,
-                    PanFactor = s.Crop!.PanFactor,
-                    NUptake = s.Crop!.NUptake
-                })
-                .ToList();
+            var mr = (facility.MineralizationRatePercent ?? 40m) / 100m;
+            var vr = (facility.VolatilizationRatePercent ?? 50m) / 100m;
+            var tkn = wwChar?.TKNN ?? 0m;
+            var nh3 = wwChar?.NH3NDaily != null && wwChar.NH3NDaily.Any(v => v.HasValue)
+                ? wwChar.NH3NDaily.Where(v => v.HasValue).Average(v => v!.Value)
+                : 0m;
+            var no2 = wwChar?.NO2N ?? 0m;
+            var no3 = wwChar?.NO3N ?? 0m;
 
-            if (weightedPanUptake.Any())
+            var volumeBySprayfield = irrigations
+                .GroupBy(i => i.SprayfieldId)
+                .ToDictionary(g => g.Key, g => g.Sum(i => i.TotalVolumeGallons));
+
+            decimal totalPanLbs = 0m;
+            foreach (var sprayfield in sprayfieldList)
             {
-                var totalWeightedAcres = weightedPanUptake.Sum(w => w.Acres);
-                if (totalWeightedAcres > 0)
-                {
-                    panUptakeRate = weightedPanUptake
-                        .Sum(w => w.Acres * w.NUptake * w.PanFactor) / totalWeightedAcres;
-                }
+                var volume = volumeBySprayfield.GetValueOrDefault(sprayfield.Id, 0m);
+                if (volume <= 0 || sprayfield.SizeAcres <= 0) continue;
+                var result = _panCalculationService.Calculate(tkn, nh3, no2, no3, mr, vr, volume, sprayfield.SizeAcres);
+                totalPanLbs += result.PanLbs;
             }
+
+            var panLoadingLbsPerAcreMonth = totalPanLbs / totalAcres;
+            panUptakeRate = panLoadingLbsPerAcreMonth * 12m; // annualize to lbs/acre/year for report
         }
 
         // Calculate application efficiency
