@@ -1,7 +1,6 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using MimeKit;
 using SAM.Services.Interfaces;
 
@@ -12,19 +11,21 @@ namespace SAM.Services.Implementations;
 /// </summary>
 public class EmailService : IEmailService
 {
-    private readonly EmailOptions _options;
+    private readonly ISmtpSettingsService _smtpSettingsService;
     private readonly ILogger<EmailService> _logger;
 
-    public EmailService(IOptions<EmailOptions> options, ILogger<EmailService> logger)
+    public EmailService(ISmtpSettingsService smtpSettingsService, ILogger<EmailService> logger)
     {
-        _options = options.Value;
+        _smtpSettingsService = smtpSettingsService;
         _logger = logger;
     }
 
     public async Task SendEmailAsync(string to, string subject, string htmlBody)
     {
+        var options = await _smtpSettingsService.GetRuntimeOptionsAsync();
+
         var message = new MimeMessage();
-        message.From.Add(MailboxAddress.Parse(_options.From));
+        message.From.Add(MailboxAddress.Parse(options.FromEmail));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
 
@@ -38,15 +39,15 @@ public class EmailService : IEmailService
 
         try
         {
-            var secureSocketOptions = _options.EnableSsl
+            var secureSocketOptions = options.EnableSsl
                 ? SecureSocketOptions.StartTls
                 : SecureSocketOptions.Auto;
 
-            await client.ConnectAsync(_options.Host, _options.Port, secureSocketOptions);
+            await client.ConnectAsync(options.Host, options.Port, secureSocketOptions);
 
-            if (!string.IsNullOrWhiteSpace(_options.Username))
+            if (!string.IsNullOrWhiteSpace(options.Username))
             {
-                await client.AuthenticateAsync(_options.Username, _options.Password);
+                await client.AuthenticateAsync(options.Username, options.Password);
             }
 
             await client.SendAsync(message);

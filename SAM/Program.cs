@@ -107,9 +107,8 @@ builder.Services.AddScoped<SAM.Services.Interfaces.IUserRequestService, UserRequ
 builder.Services.AddScoped<SAM.Services.Interfaces.ISearchService, SearchService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService, SAM.Services.Implementations.CompanyRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailService, EmailService>();
-
-// Configure Email options
-builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email:Smtp"));
+builder.Services.AddScoped<SAM.Services.Interfaces.ISmtpSettingsService, SmtpSettingsService>();
+builder.Services.AddDataProtection();
 
 // Configure Authorization Policies
 builder.Services.AddAuthorization(options =>
