@@ -6,6 +6,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 
 namespace SAM.Services.Implementations;
 
@@ -19,17 +20,20 @@ public class UserService : IUserService
     private readonly ILogger<UserService> _logger;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
 
     public UserService(
         ApplicationDbContext context,
         ILogger<UserService> logger,
         UserManager<ApplicationUser> userManager,
-        IEmailService emailService)
+        IEmailService emailService,
+        IEmailTemplateService emailTemplateService)
     {
         _context = context;
         _logger = logger;
         _userManager = userManager;
         _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
     }
 
     public async Task<ApplicationUser> CreateUserAsync(string email, string fullName, Guid? companyId, AppRoleEnum role, bool generatePassword = true, string? password = null)
@@ -107,11 +111,18 @@ public class UserService : IUserService
                 // Format role for display
                 var roleDisplayName = FormatRoleForDisplay(role);
 
-                // Build and send email
-                var emailBody = BuildUserCreationEmailBody(email, userPassword, companyName, roleDisplayName);
-                var subject = "Your SAM Account Credentials";
+                var renderedEmail = await _emailTemplateService.RenderAsync(
+                    EmailTemplateCatalog.UserCredentials,
+                    new Dictionary<string, string>
+                    {
+                        ["AppName"] = EmailTemplateCatalog.AppName,
+                        ["RecipientEmail"] = email,
+                        ["TemporaryPassword"] = userPassword,
+                        ["CompanyName"] = companyName ?? "N/A",
+                        ["RoleName"] = roleDisplayName
+                    });
 
-                await _emailService.SendEmailAsync(email, subject, emailBody);
+                await _emailService.SendEmailAsync(email, renderedEmail.Subject, renderedEmail.HtmlBody);
 
                 _logger.LogInformation("User creation email sent to {Email}", email);
             }
@@ -294,132 +305,5 @@ public class UserService : IUserService
         };
     }
 
-    /// <summary>
-    /// Builds HTML email body for user creation notification.
-    /// </summary>
-    private string BuildUserCreationEmailBody(string email, string password, string? companyName, string roleDisplayName)
-    {
-        var companyInfo = string.IsNullOrWhiteSpace(companyName) ? "N/A" : companyName;
-
-        return $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset=""utf-8"">
-    <style>
-        body {{
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .header {{
-            background-color: #2563eb;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            border-radius: 5px 5px 0 0;
-        }}
-        .content {{
-            background-color: #f9fafb;
-            padding: 20px;
-            border: 1px solid #e5e7eb;
-            border-top: none;
-        }}
-        .credentials {{
-            background-color: white;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-            border-left: 4px solid #2563eb;
-        }}
-        .info-row {{
-            margin: 10px 0;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-        .info-row:last-child {{
-            border-bottom: none;
-        }}
-        .label {{
-            font-weight: bold;
-            color: #4b5563;
-            display: inline-block;
-            width: 120px;
-        }}
-        .value {{
-            color: #111827;
-        }}
-        .password {{
-            font-family: monospace;
-            font-size: 16px;
-            font-weight: bold;
-            color: #dc2626;
-            background-color: #fee2e2;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
-            margin: 10px 0;
-        }}
-        .warning {{
-            background-color: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 4px;
-        }}
-        .footer {{
-            text-align: center;
-            color: #6b7280;
-            font-size: 12px;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-        }}
-    </style>
-</head>
-<body>
-    <div class=""header"">
-        <h1>Welcome to SAM</h1>
-    </div>
-    <div class=""content"">
-        <p>Hello,</p>
-        <p>Your account has been created in the SAM system. Please find your login credentials below:</p>
-        
-        <div class=""credentials"">
-            <div class=""info-row"">
-                <span class=""label"">Email:</span>
-                <span class=""value"">{email}</span>
-            </div>
-            <div class=""info-row"">
-                <span class=""label"">Temporary Password:</span>
-            </div>
-            <div class=""password"">{password}</div>
-            <div class=""info-row"">
-                <span class=""label"">Company:</span>
-                <span class=""value"">{companyInfo}</span>
-            </div>
-            <div class=""info-row"">
-                <span class=""label"">Role:</span>
-                <span class=""value"">{roleDisplayName}</span>
-            </div>
-        </div>
-
-        <div class=""warning"">
-            <strong>Important:</strong> This is a temporary password. Please change your password immediately after your first login for security purposes.
-        </div>
-
-        <p>You can now log in to the SAM system using the credentials provided above.</p>
-        
-        <p>If you have any questions or need assistance, please contact your system administrator.</p>
-    </div>
-    <div class=""footer"">
-        <p>This is an automated message. Please do not reply to this email.</p>
-    </div>
-</body>
-</html>";
-    }
 }
 

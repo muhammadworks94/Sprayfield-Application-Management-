@@ -3422,3 +3422,24 @@ small {
 .dropdown-item.active, .dropdown-item:active{
     color:var(--primary);
 }
+
+/* Email template tabs (System Settings) */
+.email-template-tabs .list-group-item {
+  border-color: var(--border-color);
+  transition: var(--transition-fast);
+}
+
+.email-template-tabs .list-group-item:hover {
+  background-color: var(--primary-lighter);
+  border-color: var(--border-accent);
+}
+
+.email-template-tabs .list-group-item.active {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border-color: var(--primary);
+  color: var(--white);
+}
+
+.email-template-tabs .list-group-item.active small {
+  color: rgba(255, 255, 255, 0.8) !important;
+}

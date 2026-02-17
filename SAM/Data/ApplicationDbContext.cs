@@ -36,6 +36,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserRequest> UserRequests => Set<UserRequest>();
     public DbSet<CompanyRequest> CompanyRequests => Set<CompanyRequest>();
     public DbSet<SmtpSettings> SmtpSettings => Set<SmtpSettings>();
+    public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -71,6 +72,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new UserRequestConfiguration());
         builder.ApplyConfiguration(new CompanyRequestConfiguration());
         builder.ApplyConfiguration(new SmtpSettingsConfiguration());
+        builder.ApplyConfiguration(new EmailTemplateConfiguration());
 
         // Configure Identity table names and ApplicationUser
         builder.Entity<ApplicationUser>(entity =>

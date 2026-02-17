@@ -107,6 +107,7 @@ builder.Services.AddScoped<SAM.Services.Interfaces.IUserRequestService, UserRequ
 builder.Services.AddScoped<SAM.Services.Interfaces.ISearchService, SearchService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService, SAM.Services.Implementations.CompanyRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailService, EmailService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISmtpSettingsService, SmtpSettingsService>();
 builder.Services.AddDataProtection();
 
