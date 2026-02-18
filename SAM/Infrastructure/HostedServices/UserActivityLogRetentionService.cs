@@ -33,8 +33,14 @@ public class UserActivityLogRetentionService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<IUserActivityLogService>();
+                var errorLogService = scope.ServiceProvider.GetRequiredService<IErrorLogService>();
                 var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
-                await service.PurgeOlderThanAsync(cutoff, stoppingToken);
+                var activityPurged = await service.PurgeOlderThanAsync(cutoff, stoppingToken);
+                var errorPurged = await errorLogService.PurgeOlderThanAsync(cutoff, stoppingToken);
+                _logger.LogInformation(
+                    "Log retention run completed. Purged {ActivityCount} user activity logs and {ErrorCount} error logs.",
+                    activityPurged,
+                    errorPurged);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -49,4 +55,3 @@ public class UserActivityLogRetentionService : BackgroundService
         }
     }
 }
-

@@ -41,6 +41,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SmtpSettings> SmtpSettings => Set<SmtpSettings>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<UserActivityLog> UserActivityLogs => Set<UserActivityLog>();
+    public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
 
     private static readonly HashSet<string> IgnoredActivityFields = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -92,6 +93,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new SmtpSettingsConfiguration());
         builder.ApplyConfiguration(new EmailTemplateConfiguration());
         builder.ApplyConfiguration(new UserActivityLogConfiguration());
+        builder.ApplyConfiguration(new ErrorLogConfiguration());
 
         // Configure Identity table names and ApplicationUser
         builder.Entity<ApplicationUser>(entity =>
@@ -190,7 +192,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         var entries = ChangeTracker.Entries()
             .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
-            .Where(e => e.Entity is not UserActivityLog)
+            .Where(e => e.Entity is not UserActivityLog && e.Entity is not ErrorLog)
             .ToList();
 
         foreach (var entry in entries)

@@ -107,11 +107,12 @@ builder.Services.AddScoped<SAM.Services.Interfaces.INDMLRService, NDMLRService>(
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserService, UserService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserRequestService, UserRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISearchService, SearchService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService, SAM.Services.Implementations.CompanyRequestService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService,CompanyRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailService, EmailService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISmtpSettingsService, SmtpSettingsService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserActivityLogService, UserActivityLogService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IErrorLogService, ErrorLogService>();
 builder.Services.AddDataProtection();
 builder.Services.Configure<ActivityLogOptions>(builder.Configuration.GetSection(ActivityLogOptions.SectionName));
 builder.Services.AddHostedService<UserActivityLogRetentionService>();

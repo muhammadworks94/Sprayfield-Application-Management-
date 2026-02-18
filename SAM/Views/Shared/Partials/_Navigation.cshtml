@@ -141,11 +141,26 @@
                         <span class="nav-link-text">Global Admins</span>
                     </a>
                 </li>
-                <li class="nav-item" role="none">
-                    <a class="nav-link" asp-controller="UserActivityLogs" asp-action="Index" role="menuitem" data-tooltip="User Activity Logs">
-                        <i class="bi bi-clock-history"></i>
-                        <span class="nav-link-text">User Activity Logs</span>
-                    </a>
+                <li class="nav-item nav-dropdown-item" role="none">
+                    <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-logs" data-dropdown="logs" data-tooltip="Logs">
+                        <i class="bi bi-journal-text"></i>
+                        <span class="nav-link-text">Logs</span>
+                        <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
+                    </button>
+                    <ul class="nav-dropdown" id="dropdown-logs" role="menu">
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="UserActivityLogs" asp-action="Index" role="menuitem" data-tooltip="User Activity Logs">
+                                <i class="bi bi-clock-history"></i>
+                                <span class="nav-link-text">User Activity Logs</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="ErrorLogs" asp-action="Index" role="menuitem" data-tooltip="Error Logs">
+                                <i class="bi bi-exclamation-octagon"></i>
+                                <span class="nav-link-text">Error Logs</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
             </ul>
         </div>
