@@ -129,18 +129,6 @@
     {
         <div class="sidebar-footer">
             <ul class="sidebar-nav" role="menubar">
-                <li class="nav-item" role="none">
-                    <a class="nav-link" asp-controller="CompanyManagement" asp-action="Index" role="menuitem" data-tooltip="Manage Companies">
-                        <i class="bi bi-building-gear"></i>
-                        <span class="nav-link-text">Manage Companies</span>
-                    </a>
-                </li>
-                <li class="nav-item" role="none">
-                    <a class="nav-link" asp-controller="UserManagement" asp-action="ManageAdmins" role="menuitem" data-tooltip="Manage Admins">
-                        <i class="bi bi-shield-check"></i>
-                        <span class="nav-link-text">Global Admins</span>
-                    </a>
-                </li>
                 <li class="nav-item nav-dropdown-item" role="none">
                     <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-logs" data-dropdown="logs" data-tooltip="Logs">
                         <i class="bi bi-journal-text"></i>
@@ -161,6 +149,18 @@
                             </a>
                         </li>
                     </ul>
+                </li>
+                <li class="nav-item" role="none">
+                    <a class="nav-link" asp-controller="CompanyManagement" asp-action="Index" role="menuitem" data-tooltip="Manage Companies">
+                        <i class="bi bi-building-gear"></i>
+                        <span class="nav-link-text">Manage Companies</span>
+                    </a>
+                </li>
+                <li class="nav-item" role="none">
+                    <a class="nav-link" asp-controller="UserManagement" asp-action="ManageAdmins" role="menuitem" data-tooltip="Manage Admins">
+                        <i class="bi bi-shield-check"></i>
+                        <span class="nav-link-text">Global Admins</span>
+                    </a>
                 </li>
             </ul>
         </div>
