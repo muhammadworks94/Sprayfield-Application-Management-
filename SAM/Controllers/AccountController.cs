@@ -26,6 +26,7 @@ public class AccountController : Controller
     private readonly ICompanyRequestService _companyRequestService;
     private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
+    private readonly IUserActivityLogService _userActivityLogService;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
@@ -35,7 +36,8 @@ public class AccountController : Controller
         IUserRequestService userRequestService,
         ICompanyRequestService companyRequestService,
         IEmailService emailService,
-        IEmailTemplateService emailTemplateService)
+        IEmailTemplateService emailTemplateService,
+        IUserActivityLogService userActivityLogService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -45,6 +47,7 @@ public class AccountController : Controller
         _companyRequestService = companyRequestService;
         _emailService = emailService;
         _emailTemplateService = emailTemplateService;
+        _userActivityLogService = userActivityLogService;
     }
 
     [HttpGet]
@@ -87,6 +90,7 @@ public class AccountController : Controller
 
         if (result.Succeeded)
         {
+            await _userActivityLogService.LogAuthenticationEventAsync(UserActivityType.Login, user, HttpContext);
             _logger.LogInformation("User {Email} logged in.", model.Email);
             return RedirectToLocal(returnUrl);
         }
@@ -218,7 +222,9 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        var user = await _userManager.GetUserAsync(User);
         var userEmail = User.Identity?.Name ?? "Unknown";
+        await _userActivityLogService.LogAuthenticationEventAsync(UserActivityType.Logout, user, HttpContext);
         await _signInManager.SignOutAsync();
         _logger.LogInformation("User {Email} logged out.", userEmail);
         return RedirectToAction("Login", "Account");

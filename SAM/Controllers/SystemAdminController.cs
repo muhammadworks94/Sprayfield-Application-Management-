@@ -59,6 +59,7 @@ public class SystemAdminController : BaseController
     {
         Guid? companyId = null;
         var isGlobalAdmin = await IsGlobalAdminAsync();
+        var canManageRecords = isGlobalAdmin || await IsInRoleAsync("company_admin");
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
         
         // Use effective company ID if no companyId specified (respects session selection for admins)
@@ -83,6 +84,7 @@ public class SystemAdminController : BaseController
         {
             ActiveTab = tab.ToLower(),
             IsGlobalAdmin = isGlobalAdmin,
+            CanManageRecords = canManageRecords,
             SelectedCompanyId = companyId,
             Companies = await GetCompanySelectListAsync()
         };
@@ -1648,4 +1650,3 @@ public class SystemAdminController : BaseController
 
     #endregion
 }
-

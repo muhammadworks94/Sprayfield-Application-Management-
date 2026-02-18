@@ -5,8 +5,10 @@ using SAM.Data;
 using SAM.Data.Seeders;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
+using SAM.Infrastructure.HostedServices;
 using SAM.Infrastructure.Middleware;
 using SAM.Services.Implementations;
+using SAM.Services.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -109,7 +111,10 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService, SAM.S
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailService, EmailService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISmtpSettingsService, SmtpSettingsService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IUserActivityLogService, UserActivityLogService>();
 builder.Services.AddDataProtection();
+builder.Services.Configure<ActivityLogOptions>(builder.Configuration.GetSection(ActivityLogOptions.SectionName));
+builder.Services.AddHostedService<UserActivityLogRetentionService>();
 
 // Configure Authorization Policies
 builder.Services.AddAuthorization(options =>

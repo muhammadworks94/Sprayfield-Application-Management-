@@ -5,7 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using SAM.Data.Configurations;
 using SAM.Domain.Entities;
 using SAM.Domain.Entities.Base;
+using SAM.Domain.Enums;
 using SAM.Infrastructure;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace SAM.Data;
 
@@ -37,6 +40,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CompanyRequest> CompanyRequests => Set<CompanyRequest>();
     public DbSet<SmtpSettings> SmtpSettings => Set<SmtpSettings>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
+    public DbSet<UserActivityLog> UserActivityLogs => Set<UserActivityLog>();
+
+    private static readonly HashSet<string> IgnoredActivityFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ConcurrencyStamp",
+        "SecurityStamp",
+        "PasswordHash",
+        "NormalizedUserName",
+        "NormalizedEmail",
+        "LockoutEnd",
+        "AccessFailedCount",
+        "TwoFactorEnabled",
+        "UpdatedDate",
+        "CreatedDate"
+    };
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -73,6 +91,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new CompanyRequestConfiguration());
         builder.ApplyConfiguration(new SmtpSettingsConfiguration());
         builder.ApplyConfiguration(new EmailTemplateConfiguration());
+        builder.ApplyConfiguration(new UserActivityLogConfiguration());
 
         // Configure Identity table names and ApplicationUser
         builder.Entity<ApplicationUser>(entity =>
@@ -133,6 +152,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        var activityEvents = BuildActivityLogEvents();
         var entries = ChangeTracker.Entries<AuditableEntity>();
 
         foreach (var entry in entries)
@@ -154,7 +174,209 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             }
         }
 
+        if (activityEvents.Count > 0)
+        {
+            UserActivityLogs.AddRange(activityEvents);
+        }
+
         return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    private List<UserActivityLog> BuildActivityLogEvents()
+    {
+        var now = DateTime.UtcNow;
+        var context = GetCurrentRequestContext();
+        var events = new List<UserActivityLog>();
+
+        var entries = ChangeTracker.Entries()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            .Where(e => e.Entity is not UserActivityLog)
+            .ToList();
+
+        foreach (var entry in entries)
+        {
+            var entityName = entry.Metadata.ClrType.Name;
+
+            var activityType = entry.State switch
+            {
+                EntityState.Added => UserActivityType.Create,
+                EntityState.Deleted => UserActivityType.Delete,
+                EntityState.Modified when IsSoftDelete(entry) => UserActivityType.Delete,
+                EntityState.Modified => UserActivityType.Update,
+                _ => (UserActivityType?)null
+            };
+
+            if (!activityType.HasValue)
+            {
+                continue;
+            }
+
+            var changedFields = activityType.Value == UserActivityType.Update || activityType.Value == UserActivityType.Delete
+                ? GetChangedFieldNames(entry)
+                : new List<string>();
+
+            // For updates where no meaningful field changed, skip noisy events.
+            if (activityType.Value == UserActivityType.Update && changedFields.Count == 0)
+            {
+                continue;
+            }
+
+            var companyId = ResolveCompanyId(entry);
+            var entityId = ResolveEntityId(entry);
+            var module = ResolveModuleName(context.Path);
+
+            events.Add(new UserActivityLog
+            {
+                OccurredAtUtc = now,
+                ActivityType = activityType.Value,
+                Module = module,
+                EntityName = entityName,
+                EntityId = entityId,
+                CompanyId = companyId,
+                ActorUserId = context.ActorUserId,
+                ActorEmail = context.ActorEmail,
+                ActorDisplayName = context.ActorDisplayName,
+                HttpMethod = context.HttpMethod,
+                Path = context.Path,
+                IpAddress = context.IpAddress,
+                ChangedFields = changedFields.Count > 0 ? JsonSerializer.Serialize(changedFields) : null,
+                Summary = BuildSummary(context.ActorEmail, activityType.Value, entityName, entityId),
+                CorrelationId = context.CorrelationId
+            });
+        }
+
+        return events;
+    }
+
+    private static bool IsSoftDelete(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+    {
+        var isDeletedProperty = entry.Properties.FirstOrDefault(x => x.Metadata.Name == nameof(AuditableEntity.IsDeleted));
+        if (isDeletedProperty == null)
+        {
+            return false;
+        }
+
+        return isDeletedProperty.OriginalValue is bool original
+            && isDeletedProperty.CurrentValue is bool current
+            && !original
+            && current;
+    }
+
+    private static List<string> GetChangedFieldNames(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+    {
+        var changedFields = new List<string>();
+
+        foreach (var property in entry.Properties)
+        {
+            if (!property.IsModified)
+            {
+                continue;
+            }
+
+            var propertyName = property.Metadata.Name;
+            if (IgnoredActivityFields.Contains(propertyName))
+            {
+                continue;
+            }
+
+            changedFields.Add(propertyName);
+        }
+
+        return changedFields;
+    }
+
+    private static string? ResolveEntityId(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+    {
+        var pk = entry.Metadata.FindPrimaryKey();
+        if (pk == null || pk.Properties.Count == 0)
+        {
+            return null;
+        }
+
+        var keyName = pk.Properties[0].Name;
+        var current = entry.Property(keyName).CurrentValue;
+        var original = entry.Property(keyName).OriginalValue;
+
+        return current?.ToString() ?? original?.ToString();
+    }
+
+    private static Guid? ResolveCompanyId(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+    {
+        if (entry.Entity is CompanyScopedEntity scoped)
+        {
+            return scoped.CompanyId;
+        }
+
+        if (entry.Entity is ApplicationUser user)
+        {
+            return user.CompanyId;
+        }
+
+        var companyIdProperty = entry.Properties.FirstOrDefault(x => x.Metadata.Name == "CompanyId");
+        if (companyIdProperty?.CurrentValue is Guid current)
+        {
+            return current;
+        }
+
+        if (companyIdProperty?.OriginalValue is Guid original)
+        {
+            return original;
+        }
+
+        return null;
+    }
+
+    private static string ResolveModuleName(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return "Background";
+        }
+
+        var parts = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 0 ? parts[0] : "Unknown";
+    }
+
+    private static string BuildSummary(string actorEmail, UserActivityType activityType, string entityName, string? entityId)
+    {
+        if (!string.IsNullOrWhiteSpace(entityId))
+        {
+            return $"{actorEmail} {activityType}d {entityName} ({entityId})";
+        }
+
+        return $"{actorEmail} {activityType}d {entityName}";
+    }
+
+    private RequestContext GetCurrentRequestContext()
+    {
+        try
+        {
+            var accessor = ServiceLocator.GetService<IHttpContextAccessor>();
+            var httpContext = accessor?.HttpContext;
+            var user = httpContext?.User;
+
+            var actorUserId = user?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var actorEmail = user?.Identity?.Name ?? "system";
+            var actorDisplayName = user?.FindFirstValue("FullName") ?? user?.FindFirstValue(ClaimTypes.Name);
+
+            return new RequestContext
+            {
+                ActorUserId = actorUserId,
+                ActorEmail = actorEmail,
+                ActorDisplayName = actorDisplayName,
+                HttpMethod = httpContext?.Request?.Method,
+                Path = httpContext?.Request?.Path.Value,
+                IpAddress = httpContext?.Connection?.RemoteIpAddress?.ToString(),
+                CorrelationId = httpContext?.TraceIdentifier
+            };
+        }
+        catch
+        {
+            return new RequestContext
+            {
+                ActorEmail = "system"
+            };
+        }
     }
 
     /// <summary>
@@ -178,6 +400,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         }
 
         return "system";
+    }
+
+    private sealed class RequestContext
+    {
+        public string? ActorUserId { get; set; }
+        public string ActorEmail { get; set; } = "system";
+        public string? ActorDisplayName { get; set; }
+        public string? HttpMethod { get; set; }
+        public string? Path { get; set; }
+        public string? IpAddress { get; set; }
+        public string? CorrelationId { get; set; }
     }
 }
 

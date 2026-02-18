@@ -1,6 +1,7 @@
 @model SAM.ViewModels.SystemAdmin.CropsPartialViewModel
 @{
     var isGlobalAdmin = Model.IsGlobalAdmin;
+    var canManageRecords = Model.CanManageRecords;
     var companies = Model.Companies;
     var selectedCompanyId = Model.SelectedCompanyId;
 }
@@ -28,7 +29,7 @@
                         <i class="bi bi-grid-3x3-gap"></i> Cards
                     </button>
                 </div>
-                @if (isGlobalAdmin)
+                @if (canManageRecords)
                 {
                     <a asp-action="CropCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
                         <i class="bi bi-plus-circle"></i> Add Crop
@@ -47,7 +48,10 @@
                             @if (isGlobalAdmin)
                             {
                                 <th><i class="bi bi-briefcase"></i> Company</th>
-                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                            }
+                            @if (canManageRecords)
+                            {
+                                <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                             }
                         </tr>
                     </thead>
@@ -61,9 +65,9 @@
                                 {
                                     <td>@crop.CompanyName</td>
                                 }
-                                <td class="table-actions">
-                                    @if (isGlobalAdmin)
-                                    {
+                                @if (canManageRecords)
+                                {
+                                    <td class="table-actions">
                                         <a asp-action="CropEdit" asp-route-id="@crop.Id" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
@@ -74,8 +78,8 @@
                                                 data-crop-name="@crop.Name">
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
-                                    }
-                                </td>
+                                    </td>
+                                }
                             </tr>
                         }
                     </tbody>
@@ -104,7 +108,7 @@
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">
-                                    @if (isGlobalAdmin)
+                                    @if (canManageRecords)
                                     {
                                         <a asp-action="CropEdit" asp-route-id="@crop.Id" class="btn btn-sm btn-outline-primary me-2">
                                             <i class="bi bi-pencil"></i> Edit
@@ -129,7 +133,7 @@
             <div class="text-center py-5">
                 <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
                 <p class="text-muted mt-3">No crops found.</p>
-                @if (isGlobalAdmin)
+                @if (canManageRecords)
                 {
                     <a asp-action="CropCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
                         <i class="bi bi-plus-circle"></i> Create First Crop

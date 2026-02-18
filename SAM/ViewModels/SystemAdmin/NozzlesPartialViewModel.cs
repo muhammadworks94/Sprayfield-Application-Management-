@@ -11,6 +11,7 @@ public class NozzlesPartialViewModel
     public IEnumerable<NozzleViewModel> Nozzles { get; set; } = new List<NozzleViewModel>();
     public FilterViewModel? Filter { get; set; }
     public bool IsGlobalAdmin { get; set; }
+    public bool CanManageRecords { get; set; }
     public SelectList? Companies { get; set; }
     public Guid? SelectedCompanyId { get; set; }
 }
