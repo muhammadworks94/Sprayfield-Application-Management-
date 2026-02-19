@@ -10,7 +10,7 @@
     var isTechnician = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
 }
 
-<nav class="app-sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+<nav class="app-sidebar enterprise-sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="sidebar-header">
         <div class="sidebar-brand-wrapper">
             <a class="sidebar-brand" asp-controller="Dashboard" asp-action="Index" aria-label="SAM Dashboard">

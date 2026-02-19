@@ -47,12 +47,11 @@
 }
 
 <div class="dropdown header-dropdown user-menu-dropdown">
-    <button class="btn btn-link dropdown-toggle text-decoration-none d-flex align-items-center header-dropdown-trigger user-menu-trigger" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-        <i class="bi bi-person-circle me-2"></i>
-        <span>@(user?.FullName ?? User.Identity?.Name ?? "User")</span>
+    <button class="btn btn-link text-decoration-none d-flex align-items-center justify-content-center header-dropdown-trigger user-menu-trigger position-relative" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open user menu for @(user?.FullName ?? User.Identity?.Name ?? "User")">
+        <i class="bi bi-person-circle user-menu-trigger-icon"></i>
         @if (pendingTotalCount > 0)
         {
-            <span class="badge bg-danger rounded-pill ms-2 user-menu-badge">@pendingTotalCount</span>
+            <span class="badge bg-danger rounded-pill user-menu-badge user-menu-trigger-badge">@pendingTotalCount</span>
         }
     </button>
     <ul class="dropdown-menu dropdown-menu-end shadow-lg header-dropdown-panel user-menu-panel" aria-labelledby="userMenuButton">
@@ -64,7 +63,10 @@
                 <div class="user-menu-meta">
                     <h6 class="user-menu-name mb-0">@(user?.FullName ?? "User")</h6>
                     <span class="user-menu-role">@roleLabel</span>
-                    <span class="user-menu-email"><i class="bi bi-envelope me-1"></i>@(user?.Email ?? "")</span>
+                    <span class="user-menu-email">
+                        <i class="bi bi-envelope"></i>
+                        <span class="user-menu-email-text">@(user?.Email ?? "")</span>
+                    </span>
                 </div>
             </div>
         </li>

@@ -3531,12 +3531,14 @@ small {
 .header-dropdown .header-dropdown-trigger i {
   font-size: 0.95rem;
 }
-
+    .header-dropdown .header-dropdown-trigger .user-menu-trigger-icon {
+        font-size: 2rem;
+    }
 .header-dropdown .header-dropdown-trigger:hover {
-  color: var(--primary-dark);
-  border-color: var(--primary-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(22, 58, 104, 0.14);
+    color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(22, 58, 104, 0.14);
 }
 
 .header-dropdown .header-dropdown-trigger:focus-visible {
@@ -3553,6 +3555,11 @@ small {
   font-size: 0.92rem;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.user-menu-dropdown .user-menu-panel {
+  min-width: 310px;
+  max-width: 360px;
 }
 .btn-outline-secondary.dropdown-toggle.show {
     color: var(--primary);
@@ -3592,7 +3599,7 @@ small {
 }
 
 /* User menu specific enhancements */
-    .user-menu-dropdown .user-menu-badge {
+.user-menu-dropdown .user-menu-badge {
   min-width: 1.15rem;
   height: 1.15rem;
   padding: 0 0.35rem;
@@ -3601,6 +3608,40 @@ small {
   justify-content: center;
   font-size: 0.68rem;
   font-weight: var(--font-weight-bold);
+}
+
+.user-menu-dropdown .user-menu-trigger {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0rem !important;
+/*  min-width: 2.9rem;*/
+/*  min-height: 2.9rem;*/
+  color: var(--primary-dark);
+  border-radius: 999px;
+}
+
+.user-menu-dropdown .user-menu-trigger:hover {
+  border: 0;
+  background: rgba(31, 79, 138, 0.08);
+  box-shadow: none;
+  transform: none;
+}
+
+.user-menu-dropdown .user-menu-trigger:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(31, 79, 138, 0.2);
+}
+
+.user-menu-dropdown .user-menu-trigger-icon {
+  font-size: 2.15rem;
+  line-height: 1;
+}
+
+.user-menu-dropdown .user-menu-trigger-badge {
+  position: absolute;
+  top: 0.05rem;
+  right: 0.05rem;
 }
 
 .user-menu-dropdown .user-menu-summary {
@@ -3653,10 +3694,28 @@ small {
 
 .user-menu-dropdown .user-menu-email {
   margin-top: 0.22rem;
-  font-size: 0.76rem;
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.9rem;
   color: var(--text-secondary);
-  line-height: 1.3;
-  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.user-menu-dropdown .user-menu-email i {
+  flex-shrink: 0;
+  line-height: 1;
+  font-size: 0.86rem;
+}
+
+.user-menu-dropdown .user-menu-email-text {
+  min-width: 0;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-menu-dropdown .user-menu-company {
@@ -3706,4 +3765,285 @@ small {
 
 .email-template-tabs .list-group-item.active small {
   color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ============================================
+   Enterprise Modern Refresh (Low-Risk Layer)
+   ============================================ */
+:root {
+  --surface-1: #ffffff;
+  --surface-2: #f8fafc;
+  --text-1: #0f172a;
+  --text-2: #475569;
+  --border-1: #dbe1ea;
+  --accent-1: rgba(37, 99, 235, 0.14);
+  --elevation-1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --elevation-2: 0 10px 22px rgba(15, 23, 42, 0.09);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+.app-main-shell {
+  max-width: 1600px;
+}
+
+.page-title-header {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-1);
+  margin-bottom: 1.5rem;
+}
+
+.page-title-header h1 {
+  letter-spacing: -0.015em;
+  color: var(--text-1);
+}
+
+.page-title-header p {
+  color: var(--text-2) !important;
+}
+
+.app-alert {
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+.app-alert i {
+  font-size: 1rem;
+}
+
+.app-alert-success {
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.app-alert-danger {
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.enterprise-sidebar .nav-link {
+  border-radius: 0.65rem;
+}
+
+.enterprise-sidebar .nav-link:hover,
+.enterprise-sidebar .nav-dropdown-toggle:hover {
+  background-color: rgba(37, 99, 235, 0.08);
+}
+
+.enterprise-sidebar .nav-link.active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.14) 0%, rgba(37, 99, 235, 0.07) 100%);
+  color: var(--primary-dark);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.22);
+}
+
+.enterprise-sidebar .nav-link:focus-visible,
+.enterprise-sidebar .nav-dropdown-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.enterprise-sidebar .nav-dropdown-chevron {
+  transition: transform 0.2s ease;
+}
+
+.enterprise-sidebar .nav-dropdown-item.expanded .nav-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+.filter-card {
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.filter-form .form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: 0.01em;
+}
+
+.filter-control {
+  min-height: 42px;
+  border-radius: 0.65rem;
+}
+
+.filter-form .btn {
+  min-height: 42px;
+}
+
+.filter-clear-btn {
+  display: none;
+  border-left: 0;
+}
+
+.table-responsive {
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-1);
+}
+
+.table-responsive .table {
+  margin-bottom: 0;
+}
+
+.table-responsive .table thead th,
+.table-responsive .table.sticky-header thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--surface-1);
+}
+
+.table > tbody > tr:hover {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0.015) 100%);
+}
+
+.table > tbody > tr:focus-within {
+  background-color: rgba(37, 99, 235, 0.08);
+}
+
+.table .table-actions .btn {
+  border-radius: 0.5rem;
+}
+
+.card {
+  border-radius: var(--radius-md);
+  border-color: var(--border-1);
+  box-shadow: var(--elevation-1);
+}
+
+.card .card-header {
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+}
+
+.app-empty-state,
+.dashboard-empty-state {
+  border: 1px dashed var(--border-1);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.dashboard-modern .dashboard-metric-box {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-1);
+}
+
+.dashboard-modern .dashboard-status-tag {
+  border-radius: 999px !important;
+  font-weight: 600;
+}
+
+.compliance-center-label {
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.dashboard-animate-in {
+  animation: dashboardFadeUp 0.42s ease both;
+}
+
+.dashboard-modern .row > div:nth-child(2) .dashboard-animate-in { animation-delay: 40ms; }
+.dashboard-modern .row > div:nth-child(3) .dashboard-animate-in { animation-delay: 80ms; }
+.dashboard-modern .row > div:nth-child(4) .dashboard-animate-in { animation-delay: 120ms; }
+
+@keyframes dashboardFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-modern .login-form-container {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elevation-2);
+}
+
+.login-modern .login-form .form-control {
+  min-height: 44px;
+}
+
+.login-modern .login-form .form-control:focus,
+.login-modern .login-form .form-select:focus,
+.filter-control:focus {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.16);
+}
+
+.system-admin-modern-tabs .system-admin-tabs-container {
+  border-radius: var(--radius-lg);
+  padding: 10px;
+}
+
+.system-admin-modern-tabs .system-admin-tab {
+  border-radius: 0.8rem;
+}
+
+.system-admin-modern-tabs .system-admin-tab.active {
+  box-shadow: inset 0 0 0 1px var(--accent-1), var(--shadow-sm);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-animate-in {
+    animation: none;
+  }
+
+  .enterprise-sidebar .nav-dropdown-chevron,
+  .compliance-center-label,
+  .login-form-panel,
+  .card {
+    transition: none !important;
+  }
+}
+
+/* ============================================
+   Auth Split Layout Scroll Behavior
+   Desktop: only right panel scrolls
+   ============================================ */
+@media (min-width: 992px) {
+  body.login-page {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .login-wrapper {
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .login-promo-panel {
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .login-form-panel {
+    height: 100vh;
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    align-items: flex-start;
+    scrollbar-gutter: stable;
+  }
+
+  .login-form-container {
+    margin: 2rem auto;
+  }
+
+  .login-form-panel::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .login-form-panel::-webkit-scrollbar-thumb {
+    background-color: rgba(37, 99, 235, 0.22);
+    border-radius: 999px;
+  }
 }

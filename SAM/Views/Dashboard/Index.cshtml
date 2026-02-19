@@ -21,6 +21,7 @@
     }
 }
 
+<div class="dashboard-modern">
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         @if (canManageUsers && Model.PendingUserRequests > 0)
@@ -34,7 +35,7 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-6 col-lg-3">
-        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card">
+        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card dashboard-animate-in">
             <div class="card-body">
                 <div class="dashboard-kpi-icon bg-primary bg-opacity-10 rounded-3 p-2">
                     <i class="bi bi-building fs-5 text-primary"></i>
@@ -46,7 +47,7 @@
         </div>
     </div>
     <div class="col-md-6 col-lg-3">
-        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card">
+        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card dashboard-animate-in">
             <div class="card-body">
                 <div class="dashboard-kpi-icon bg-success bg-opacity-10 rounded-3 p-2">
                     <i class="bi bi-grid-3x3-gap fs-5 text-success"></i>
@@ -58,7 +59,7 @@
         </div>
     </div>
     <div class="col-md-6 col-lg-3">
-        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card">
+        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card dashboard-animate-in">
             <div class="card-body">
                 <div class="dashboard-kpi-icon bg-info bg-opacity-10 rounded-3 p-2">
                     <i class="bi bi-geo-alt fs-5 text-info"></i>
@@ -70,7 +71,7 @@
         </div>
     </div>
     <div class="col-md-6 col-lg-3">
-        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card">
+        <div class="card shadow-sm h-100 border-0 rounded-3 dashboard-kpi-card dashboard-animate-in">
             <div class="card-body">
                 <div class="dashboard-kpi-icon bg-warning bg-opacity-10 rounded-3 p-2">
                     <i class="bi bi-calendar3 fs-5 text-warning"></i>
@@ -85,7 +86,7 @@
 
 <div class="row g-3 mb-4">
     <div class="col-lg-6">
-        <div class="card dashboard-chart-card h-100">
+        <div class="card dashboard-chart-card h-100 dashboard-animate-in">
             <div class="card-body">
                 <h5 class="fw-semibold mb-3">
                     <i class="bi bi-droplet me-2"></i>Wastewater Monitoring Trends
@@ -114,7 +115,7 @@
         </div>
     </div>
     <div class="col-lg-6">
-        <div class="card dashboard-chart-card h-100">
+        <div class="card dashboard-chart-card h-100 dashboard-animate-in">
             <div class="card-body">
                 <h5 class="fw-semibold mb-3">
                     <i class="bi bi-funnel me-2"></i>Groundwater Quality Overview
@@ -152,7 +153,7 @@
 
 <div class="row g-3 mb-4">
     <div class="col-lg-6">
-        <div class="card dashboard-chart-card h-100">
+        <div class="card dashboard-chart-card h-100 dashboard-animate-in">
             <div class="card-body">
                 <h5 class="fw-semibold mb-3">
                     <i class="bi bi-check-circle text-success me-2"></i>Irrigation Compliance Status
@@ -163,7 +164,7 @@
                         <div class="dashboard-chart-wrap d-flex align-items-center justify-content-center flex-shrink-0">
                             <div class="position-relative" style="width: 180px; height: 180px;">
                                 <canvas id="chartIrrigationCompliance" width="180" height="180"></canvas>
-                                <div id="complianceCenterLabel" class="position-absolute top-50 start-50 translate-middle text-center">
+                                <div id="complianceCenterLabel" class="position-absolute top-50 start-50 translate-middle text-center compliance-center-label">
                                     <span class="fw-bold fs-6" style="color: #14b8a6;">Compliant @Model.IrrigationCompliance.CompliantPercent.ToString("F0")%</span>
                                 </div>
                             </div>
@@ -189,7 +190,7 @@
         </div>
     </div>
     <div class="col-lg-6">
-        <div class="card dashboard-chart-card h-100">
+        <div class="card dashboard-chart-card h-100 dashboard-animate-in">
             <div class="card-body">
                 <h5 class="fw-semibold mb-3">
                     <i class="bi bi-graph-up-arrow me-2"></i>Operational Efficiency Indicators
@@ -229,7 +230,7 @@
 
 <div class="row g-3 mb-4">
     <div class="col-lg-6">
-        <div class="card dashboard-chart-card h-100">
+        <div class="card dashboard-chart-card h-100 dashboard-animate-in">
             <div class="card-body">
                 <h5 class="fw-semibold mb-3">
                     <i class="bi bi-journal-text me-2"></i>Recent Activity
@@ -257,7 +258,7 @@
         </div>
     </div>
     <div class="col-lg-6">
-        <div class="card dashboard-chart-card h-100">
+        <div class="card dashboard-chart-card h-100 dashboard-animate-in">
             <div class="card-body">
                 <h5 class="fw-semibold mb-3">
                     <i class="bi bi-exclamation-triangle text-warning me-2"></i>System Status
@@ -283,6 +284,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 
 @section Scripts {
@@ -335,6 +337,19 @@
                 const complianceChart = document.getElementById('chartIrrigationCompliance');
 
                 if (complianceChart && totalPie > 0) {
+                    const centerLabelVisibilityPlugin = {
+                        id: 'centerLabelVisibilityPlugin',
+                        afterEvent(chart) {
+                            if (!complianceCenterLabel) {
+                                return;
+                            }
+
+                            // Hide center label whenever a doughnut segment is actively hovered.
+                            const hasActiveSegment = chart.getActiveElements().length > 0;
+                            complianceCenterLabel.style.opacity = hasActiveSegment ? '0' : '1';
+                        }
+                    };
+
                     new Chart(complianceChart, {
                         type: 'doughnut',
                         data: {
@@ -349,11 +364,6 @@
                             cutout: '70%',
                             responsive: true,
                             maintainAspectRatio: true,
-                            onHover: function(event, activeElements) {
-                                if (complianceCenterLabel) {
-                                    complianceCenterLabel.style.opacity = activeElements && activeElements.length > 0 ? '0' : '1';
-                                }
-                            },
                             interaction: {
                                 mode: 'nearest',
                                 intersect: true
@@ -364,6 +374,14 @@
                                     position: 'donutOutside'
                                 }
                             }
+                        },
+                        plugins: [centerLabelVisibilityPlugin]
+                    });
+
+                    // Ensure label always restores when pointer leaves chart area.
+                    complianceChart.addEventListener('mouseleave', function() {
+                        if (complianceCenterLabel) {
+                            complianceCenterLabel.style.opacity = '1';
                         }
                     });
                 }
