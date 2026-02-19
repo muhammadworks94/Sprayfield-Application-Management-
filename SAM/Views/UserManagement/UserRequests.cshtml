@@ -6,7 +6,8 @@
     ViewData["Title"] = "User Requests";
     var user = await UserManager.GetUserAsync(User);
     var isAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
-    var canApprove = isAdmin;
+    var isCompanyAdmin = user != null && await UserManager.IsInRoleAsync(user, "company_admin");
+    var canApprove = isAdmin || isCompanyAdmin;
     var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
 }
 

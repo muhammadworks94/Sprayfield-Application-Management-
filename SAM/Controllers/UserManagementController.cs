@@ -192,6 +192,15 @@ public class UserManagementController : BaseController
         if (request == null)
             return NotFound();
 
+        if (request.CompanyId.HasValue)
+        {
+            await EnsureCompanyAccessAsync(request.CompanyId.Value);
+        }
+        else if (!await IsGlobalAdminAsync())
+        {
+            return Forbid();
+        }
+
         var viewModel = new UserRequestApproveViewModel
         {
             Id = request.Id,
@@ -212,14 +221,23 @@ public class UserManagementController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserRequestApprove(UserRequestApproveViewModel viewModel)
     {
+        var request = await _userRequestService.GetByIdAsync(viewModel.Id);
+        if (request == null)
+            return NotFound();
+
+        if (request.CompanyId.HasValue)
+        {
+            await EnsureCompanyAccessAsync(request.CompanyId.Value);
+        }
+        else if (!await IsGlobalAdminAsync())
+        {
+            return Forbid();
+        }
+
         if (!ModelState.IsValid)
         {
-            // Reload request to get original requested role
-            var request = await _userRequestService.GetByIdAsync(viewModel.Id);
-            if (request != null)
-            {
-                viewModel.RequestedRole = request.AppRole;
-            }
+            // Reload request role context on validation failure.
+            viewModel.RequestedRole = request.AppRole;
             ViewBag.Roles = GetAppRoleSelectList();
             return View(viewModel);
         }
@@ -241,11 +259,24 @@ public class UserManagementController : BaseController
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = Policies.RequireAdmin)]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> UserRequestReject(Guid id, string? reason = null)
     {
         try
         {
+            var request = await _userRequestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound();
+
+            if (request.CompanyId.HasValue)
+            {
+                await EnsureCompanyAccessAsync(request.CompanyId.Value);
+            }
+            else if (!await IsGlobalAdminAsync())
+            {
+                return Forbid();
+            }
+
             var currentUser = await GetCurrentUserAsync();
             await _userRequestService.RejectRequestAsync(id, currentUser?.Email ?? CurrentUserEmail ?? "unknown", reason);
             TempData["SuccessMessage"] = "User request rejected.";
@@ -1034,5 +1065,4 @@ public class UserManagementController : BaseController
 
     #endregion
 }
-
 

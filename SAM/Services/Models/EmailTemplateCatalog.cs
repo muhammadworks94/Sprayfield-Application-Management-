@@ -8,6 +8,9 @@ public static class EmailTemplateCatalog
     public const string PasswordReset = "password_reset";
     public const string UserCredentials = "user_credentials";
     public const string SmtpTest = "smtp_test";
+    public const string CompanyRequestApproved = "company_request_approved";
+    public const string CompanyRequestRejected = "company_request_rejected";
+    public const string UserRequestRejected = "user_request_rejected";
 
     public const string AppName = "SAM";
 
@@ -15,7 +18,10 @@ public static class EmailTemplateCatalog
     [
         PasswordReset,
         UserCredentials,
-        SmtpTest
+        SmtpTest,
+        CompanyRequestApproved,
+        CompanyRequestRejected,
+        UserRequestRejected
     ];
 
     public static bool IsSystemKey(string templateKey) =>
@@ -50,6 +56,28 @@ public static class EmailTemplateCatalog
                 "{{AppName}}",
                 "{{RecipientEmail}}",
                 "{{SentAtUtc}}"
+            ],
+            CompanyRequestApproved =>
+            [
+                "{{AppName}}",
+                "{{RecipientEmail}}",
+                "{{CompanyName}}",
+                "{{TemporaryPassword}}",
+                "{{RoleName}}"
+            ],
+            CompanyRequestRejected =>
+            [
+                "{{AppName}}",
+                "{{RecipientEmail}}",
+                "{{CompanyName}}",
+                "{{RejectionReason}}"
+            ],
+            UserRequestRejected =>
+            [
+                "{{AppName}}",
+                "{{RecipientEmail}}",
+                "{{CompanyName}}",
+                "{{RejectionReason}}"
             ],
             _ => Array.Empty<string>()
         };

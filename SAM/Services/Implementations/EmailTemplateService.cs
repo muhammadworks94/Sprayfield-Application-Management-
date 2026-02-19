@@ -259,5 +259,52 @@ public class EmailTemplateService : IEmailTemplateService
             IsSystemTemplate = true,
             IsActive = true
         };
+
+        yield return new EmailTemplate
+        {
+            TemplateKey = EmailTemplateCatalog.CompanyRequestApproved,
+            DisplayName = "Company Request Approved",
+            Description = "Sent when a company signup request is approved.",
+            SubjectTemplate = "Your {{AppName}} company request has been approved",
+            BodyTemplate =
+                "<p>Hello {{RecipientEmail}},</p>" +
+                "<p>Your request to create company <strong>{{CompanyName}}</strong> has been approved.</p>" +
+                "<p>Your role is <strong>{{RoleName}}</strong>.</p>" +
+                "<p>Temporary password: <strong>{{TemporaryPassword}}</strong></p>" +
+                "<p>Please sign in and change your password immediately.</p>" +
+                "<p>- {{AppName}}</p>",
+            IsSystemTemplate = true,
+            IsActive = true
+        };
+
+        yield return new EmailTemplate
+        {
+            TemplateKey = EmailTemplateCatalog.CompanyRequestRejected,
+            DisplayName = "Company Request Rejected",
+            Description = "Sent when a company signup request is rejected.",
+            SubjectTemplate = "Your {{AppName}} company request was not approved",
+            BodyTemplate =
+                "<p>Hello {{RecipientEmail}},</p>" +
+                "<p>Your request to create company <strong>{{CompanyName}}</strong> was not approved.</p>" +
+                "<p>Reason: {{RejectionReason}}</p>" +
+                "<p>- {{AppName}}</p>",
+            IsSystemTemplate = true,
+            IsActive = true
+        };
+
+        yield return new EmailTemplate
+        {
+            TemplateKey = EmailTemplateCatalog.UserRequestRejected,
+            DisplayName = "User Request Rejected",
+            Description = "Sent when a user access request is rejected.",
+            SubjectTemplate = "Your {{AppName}} user access request was not approved",
+            BodyTemplate =
+                "<p>Hello {{RecipientEmail}},</p>" +
+                "<p>Your request to join <strong>{{CompanyName}}</strong> was not approved.</p>" +
+                "<p>Reason: {{RejectionReason}}</p>" +
+                "<p>- {{AppName}}</p>",
+            IsSystemTemplate = true,
+            IsActive = true
+        };
     }
 }

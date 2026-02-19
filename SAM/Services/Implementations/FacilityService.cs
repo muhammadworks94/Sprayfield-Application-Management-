@@ -25,6 +25,7 @@ public class FacilityService : IFacilityService
     {
         var query = _context.Facilities
             .Include(f => f.Company)
+            .AsNoTracking()
             .AsQueryable();
 
         if (companyId.HasValue)
@@ -41,6 +42,7 @@ public class FacilityService : IFacilityService
     {
         return await _context.Facilities
             .Include(f => f.Company)
+            .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == id);
     }
 
@@ -66,7 +68,8 @@ public class FacilityService : IFacilityService
         if (facility == null)
             throw new ArgumentNullException(nameof(facility));
 
-        var existing = await GetByIdAsync(facility.Id);
+        var existing = await _context.Facilities
+            .FirstOrDefaultAsync(f => f.Id == facility.Id);
         if (existing == null)
             throw new EntityNotFoundException(nameof(Facility), facility.Id);
 
@@ -92,7 +95,8 @@ public class FacilityService : IFacilityService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var facility = await GetByIdAsync(id);
+        var facility = await _context.Facilities
+            .FirstOrDefaultAsync(f => f.Id == id);
         if (facility == null)
             throw new EntityNotFoundException(nameof(Facility), id);
 
@@ -123,6 +127,7 @@ public class FacilityService : IFacilityService
     public async Task<IEnumerable<Facility>> GetByCompanyIdAsync(Guid companyId)
     {
         return await _context.Facilities
+            .AsNoTracking()
             .Where(f => f.CompanyId == companyId)
             .OrderBy(f => f.Name)
             .ToListAsync();
