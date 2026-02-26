@@ -148,7 +148,9 @@ public partial class SystemAdminController : BaseController
                 break;
             case "sprayfields":
                 var sprayfields = await _sprayfieldService.GetAllAsync(companyId);
-                viewModel.Sprayfields = sprayfields.Select(s => new SprayfieldViewModel
+                viewModel.Sprayfields = sprayfields
+                    .OrderBy(s => s.FieldId)
+                    .Select(s => new SprayfieldViewModel
                 {
                     Id = s.Id,
                     CompanyId = s.CompanyId,

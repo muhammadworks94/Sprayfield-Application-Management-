@@ -17,7 +17,7 @@ public class SprayfieldConfiguration : IEntityTypeConfiguration<Sprayfield>
             .HasMaxLength(100);
 
         builder.Property(s => s.SizeAcres)
-            .HasColumnType("decimal(18,2)");
+            .HasColumnType("decimal(18,3)");
 
         builder.Property(s => s.HydraulicLoadingLimitInPerYr)
             .HasColumnType("decimal(18,2)");
