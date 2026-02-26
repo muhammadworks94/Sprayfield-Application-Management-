@@ -6,6 +6,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 
 namespace SAM.Services.Implementations;
 
@@ -18,17 +19,23 @@ public class UserRequestService : IUserRequestService
     private readonly ILogger<UserRequestService> _logger;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IUserService _userService;
+    private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
 
     public UserRequestService(
         ApplicationDbContext context,
         ILogger<UserRequestService> logger,
         UserManager<ApplicationUser> userManager,
-        IUserService userService)
+        IUserService userService,
+        IEmailService emailService,
+        IEmailTemplateService emailTemplateService)
     {
         _context = context;
         _logger = logger;
         _userManager = userManager;
         _userService = userService;
+        _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
     }
 
     public async Task<IEnumerable<UserRequest>> GetAllAsync(Guid? companyId = null)
@@ -185,7 +192,9 @@ public class UserRequestService : IUserRequestService
         _logger.LogInformation("User request approved and user created: {Email} (Request ID: {RequestId}, User ID: {UserId}, Role: {Role})",
             request.Email, requestId, user.Id, roleToAssign);
 
-        // TODO: Send email notification with temporary password
+        _logger.LogInformation(
+            "Approval notification is handled via credentials email in UserService for request {RequestId}.",
+            requestId);
 
         return request;
     }
@@ -207,9 +216,59 @@ public class UserRequestService : IUserRequestService
         _logger.LogInformation("User request rejected: {Email} (Request ID: {RequestId})",
             request.Email, requestId);
 
-        // TODO: Send email notification about rejection
+        var rejectedTokens = new Dictionary<string, string>
+        {
+            ["AppName"] = EmailTemplateCatalog.AppName,
+            ["RecipientEmail"] = request.Email,
+            ["CompanyName"] = string.IsNullOrWhiteSpace(request.CompanyName) ? "the requested company" : request.CompanyName,
+            ["RejectionReason"] = string.IsNullOrWhiteSpace(reason) ? "No reason provided." : reason
+        };
+
+        await TrySendNotificationWithRetryAsync(
+            request.Email,
+            EmailTemplateCatalog.UserRequestRejected,
+            rejectedTokens);
 
         return request;
+    }
+
+    private async Task TrySendNotificationWithRetryAsync(
+        string to,
+        string templateKey,
+        IReadOnlyDictionary<string, string> tokens)
+    {
+        var rendered = await _emailTemplateService.RenderAsync(templateKey, tokens);
+        var delays = new[]
+        {
+            TimeSpan.FromMilliseconds(500),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(2)
+        };
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
+            {
+                await _emailService.SendEmailAsync(to, rendered.Subject, rendered.HtmlBody);
+                return;
+            }
+            catch (Exception ex)
+            {
+                if (attempt == 3)
+                {
+                    _logger.LogError(ex,
+                        "Failed to send notification email. Template: {TemplateKey}, Recipient: {Recipient}, Attempts: {Attempts}",
+                        templateKey, to, attempt);
+                    return;
+                }
+
+                _logger.LogWarning(ex,
+                    "Notification email send attempt {Attempt} failed. Retrying. Template: {TemplateKey}, Recipient: {Recipient}",
+                    attempt, templateKey, to);
+
+                await Task.Delay(delays[attempt - 1]);
+            }
+        }
     }
 
 }

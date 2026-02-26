@@ -74,10 +74,17 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="mb-3">
+                    <label asp-for="Comment" class="form-label"></label>
+                    <textarea asp-for="Comment" class="form-control" rows="3"></textarea>
+                    <span asp-validation-for="Comment" class="text-danger"></span>
+                    <small class="form-text text-muted">Optional notes about this nozzle.</small>
+                </div>
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-                <a asp-action="SystemAdmin" asp-route-tab="nozzles" asp-route-companyId="@Model.CompanyId" class="btn btn-secondary">Cancel</a>
+                <a asp-action="SystemAdmin" asp-route-tab="nozzles" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> Update Nozzle
                 </button>

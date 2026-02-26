@@ -113,7 +113,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label asp-for="ApplicationEfficiency" class="form-label"></label>
-                            <input asp-for="ApplicationEfficiency" type="number" step="0.1" min="0" max="100" class="form-control" />
+                            <input asp-for="ApplicationEfficiency" type="number" step="0.01" min="0" max="100" class="form-control" />
                             <span asp-validation-for="ApplicationEfficiency" class="text-danger"></span>
                             <small class="form-text text-muted">Application efficiency in percentage</small>
                         </div>

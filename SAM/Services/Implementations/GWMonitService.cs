@@ -27,6 +27,7 @@ public class GWMonitService : IGWMonitService
             .Include(g => g.Company)
             .Include(g => g.Facility)
             .Include(g => g.MonitoringWell)
+            .AsNoTracking()
             .AsQueryable();
 
         if (companyId.HasValue)
@@ -55,6 +56,7 @@ public class GWMonitService : IGWMonitService
             .Include(g => g.Company)
             .Include(g => g.Facility)
             .Include(g => g.MonitoringWell)
+            .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == id);
     }
 
@@ -95,7 +97,8 @@ public class GWMonitService : IGWMonitService
         if (gwMonit == null)
             throw new ArgumentNullException(nameof(gwMonit));
 
-        var existing = await GetByIdAsync(gwMonit.Id);
+        var existing = await _context.GWMonits
+            .FirstOrDefaultAsync(g => g.Id == gwMonit.Id);
         if (existing == null)
             throw new EntityNotFoundException(nameof(GWMonit), gwMonit.Id);
 
@@ -123,19 +126,26 @@ public class GWMonitService : IGWMonitService
         existing.WaterLevel = gwMonit.WaterLevel;
         existing.Temperature = gwMonit.Temperature;
         existing.PH = gwMonit.PH;
+        existing.GallonsPumped = gwMonit.GallonsPumped;
+        existing.Odor = gwMonit.Odor;
+        existing.Appearance = gwMonit.Appearance;
         existing.Conductivity = gwMonit.Conductivity;
         existing.TDS = gwMonit.TDS;
         existing.Turbidity = gwMonit.Turbidity;
-        existing.BOD5 = gwMonit.BOD5;
-        existing.COD = gwMonit.COD;
         existing.TSS = gwMonit.TSS;
         existing.NH3N = gwMonit.NH3N;
         existing.NO3N = gwMonit.NO3N;
         existing.TKN = gwMonit.TKN;
-        existing.TotalPhosphorus = gwMonit.TotalPhosphorus;
+        existing.TOC = gwMonit.TOC;
         existing.Chloride = gwMonit.Chloride;
+        existing.Calcium = gwMonit.Calcium;
+        existing.Magnesium = gwMonit.Magnesium;
+        existing.MetalsSamplesCollectedUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered;
+        existing.MetalSamplesFieldAcidified = gwMonit.MetalSamplesFieldAcidified;
         existing.FecalColiform = gwMonit.FecalColiform;
         existing.TotalColiform = gwMonit.TotalColiform;
+        existing.VOCReportAttached = gwMonit.VOCReportAttached;
+        existing.VOCMethodNumber = gwMonit.VOCMethodNumber;
         existing.LabCertification = gwMonit.LabCertification;
         existing.CollectedBy = gwMonit.CollectedBy;
         existing.AnalyzedBy = gwMonit.AnalyzedBy;
@@ -149,7 +159,8 @@ public class GWMonitService : IGWMonitService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var gwMonit = await GetByIdAsync(id);
+        var gwMonit = await _context.GWMonits
+            .FirstOrDefaultAsync(g => g.Id == id);
         if (gwMonit == null)
             throw new EntityNotFoundException(nameof(GWMonit), id);
 
@@ -169,6 +180,7 @@ public class GWMonitService : IGWMonitService
     public async Task<IEnumerable<GWMonit>> GetByMonitoringWellIdAsync(Guid monitoringWellId)
     {
         return await _context.GWMonits
+            .AsNoTracking()
             .Where(g => g.MonitoringWellId == monitoringWellId)
             .OrderByDescending(g => g.SampleDate)
             .ToListAsync();
@@ -176,7 +188,9 @@ public class GWMonitService : IGWMonitService
 
     public async Task<IEnumerable<GWMonit>> GetByDateRangeAsync(Guid? companyId, DateTime startDate, DateTime endDate)
     {
-        var query = _context.GWMonits.AsQueryable();
+        var query = _context.GWMonits
+            .AsNoTracking()
+            .AsQueryable();
 
         if (companyId.HasValue)
         {
@@ -189,5 +203,4 @@ public class GWMonitService : IGWMonitService
             .ToListAsync();
     }
 }
-
 

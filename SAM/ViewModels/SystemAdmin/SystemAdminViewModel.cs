@@ -11,6 +11,7 @@ public class SystemAdminViewModel
 {
     public string ActiveTab { get; set; } = "facilities";
     public bool IsGlobalAdmin { get; set; }
+    public bool CanManageRecords { get; set; }
     public Guid? SelectedCompanyId { get; set; }
     public SelectList? Companies { get; set; }
     

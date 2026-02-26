@@ -2,9 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using SAM.Controllers.Base;
-using SAM.Data;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
 using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
@@ -16,7 +17,7 @@ namespace SAM.Controllers;
 /// <summary>
 /// Controller for Operational Data Entry module - managing daily and monthly logs.
 /// </summary>
-[Authorize(Policy = Policies.RequireOperator)]
+[Authorize(Policy = Policies.RequireTechnicianOrOperator)]
     public class OperationalDataController : BaseController
     {
         private readonly IOperatorLogService _operatorLogService;
@@ -26,8 +27,8 @@ namespace SAM.Controllers;
         private readonly IFacilityService _facilityService;
         private readonly ISprayfieldService _sprayfieldService;
         private readonly IMonitoringWellService _monitoringWellService;
-        private readonly ICompanyService _companyService;
-        private readonly ApplicationDbContext _context;
+        private readonly ILookupQueryService _lookupQueryService;
+        private readonly IWebHostEnvironment _environment;
 
         public OperationalDataController(
             IOperatorLogService operatorLogService,
@@ -37,8 +38,8 @@ namespace SAM.Controllers;
             IFacilityService facilityService,
             ISprayfieldService sprayfieldService,
             IMonitoringWellService monitoringWellService,
-            ICompanyService companyService,
-            ApplicationDbContext context,
+            ILookupQueryService lookupQueryService,
+            IWebHostEnvironment environment,
             UserManager<ApplicationUser> userManager,
             ILogger<OperationalDataController> logger)
             : base(userManager, logger)
@@ -50,8 +51,8 @@ namespace SAM.Controllers;
             _facilityService = facilityService;
             _sprayfieldService = sprayfieldService;
             _monitoringWellService = monitoringWellService;
-            _companyService = companyService;
-            _context = context;
+            _lookupQueryService = lookupQueryService;
+            _environment = environment;
         }
 
     #region Operator Logs
@@ -84,9 +85,9 @@ namespace SAM.Controllers;
             FacilityName = l.Facility?.Name,
             LogDate = l.LogDate,
             OperatorName = l.OperatorName,
-            Shift = l.Shift,
             WeatherConditions = l.WeatherConditions,
-            SystemStatus = l.SystemStatus,
+            ArrivalTime = l.ArrivalTime.ToString(@"hh\:mm"),
+            TimeOnSiteHours = l.TimeOnSiteHours,
             MaintenancePerformed = l.MaintenancePerformed,
             EquipmentInspected = l.EquipmentInspected,
             IssuesNoted = l.IssuesNoted,
@@ -120,9 +121,9 @@ namespace SAM.Controllers;
             FacilityName = log.Facility?.Name,
             LogDate = log.LogDate,
             OperatorName = log.OperatorName,
-            Shift = log.Shift,
             WeatherConditions = log.WeatherConditions,
-            SystemStatus = log.SystemStatus,
+            ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
+            TimeOnSiteHours = log.TimeOnSiteHours,
             MaintenancePerformed = log.MaintenancePerformed,
             EquipmentInspected = log.EquipmentInspected,
             IssuesNoted = log.IssuesNoted,
@@ -168,8 +169,6 @@ namespace SAM.Controllers;
         };
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.Shifts = GetShiftSelectList();
-        ViewBag.SystemStatuses = GetSystemStatusSelectList();
 
         return View(viewModel);
     }
@@ -178,27 +177,51 @@ namespace SAM.Controllers;
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OperatorLogCreate(OperatorLogCreateViewModel viewModel)
     {
+        // If company ID is empty but facility is selected, derive company from facility
+        // This handles the case where admins don't have a company ID
+        if (viewModel.CompanyId == Guid.Empty && viewModel.FacilityId != Guid.Empty)
+        {
+            var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
+            if (facility != null)
+            {
+                viewModel.CompanyId = facility.CompanyId;
+            }
+        }
+
+        // Also check effective company ID from session for admins
+        if (viewModel.CompanyId == Guid.Empty)
+        {
+            var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+            if (effectiveCompanyId.HasValue)
+            {
+                viewModel.CompanyId = effectiveCompanyId.Value;
+            }
+        }
+
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Shifts = GetShiftSelectList();
-            ViewBag.SystemStatuses = GetSystemStatusSelectList();
             return View(viewModel);
         }
 
         try
         {
+            var currentUser = await GetCurrentUserAsync();
+            var operatorName = currentUser == null
+                ? null
+                : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
+
             var operatorLog = new OperatorLog
             {
                 CompanyId = viewModel.CompanyId,
                 FacilityId = viewModel.FacilityId,
                 LogDate = viewModel.LogDate,
-                OperatorName = viewModel.OperatorName,
-                Shift = viewModel.Shift,
+                OperatorName = operatorName ?? string.Empty,
                 WeatherConditions = viewModel.WeatherConditions,
-                SystemStatus = viewModel.SystemStatus,
+                ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime),
+                TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0,
                 MaintenancePerformed = viewModel.MaintenancePerformed,
                 EquipmentInspected = viewModel.EquipmentInspected,
                 IssuesNoted = viewModel.IssuesNoted,
@@ -208,14 +231,12 @@ namespace SAM.Controllers;
 
             await _operatorLogService.CreateAsync(operatorLog);
             TempData["SuccessMessage"] = "Operator log created successfully.";
-            return RedirectToAction(nameof(OperatorLogs), new { companyId = operatorLog.CompanyId, facilityId = operatorLog.FacilityId });
+            return RedirectToAction(nameof(OperatorLogs));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Shifts = GetShiftSelectList();
-            ViewBag.SystemStatuses = GetSystemStatusSelectList();
             return View(viewModel);
         }
     }
@@ -223,6 +244,11 @@ namespace SAM.Controllers;
     [HttpGet]
     public async Task<IActionResult> OperatorLogEdit(Guid id)
     {
+        var currentUser = await GetCurrentUserAsync();
+        var operatorName = currentUser == null
+            ? null
+            : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
+
         var log = await _operatorLogService.GetByIdAsync(id);
         if (log == null)
             return NotFound();
@@ -235,10 +261,10 @@ namespace SAM.Controllers;
             CompanyId = log.CompanyId,
             FacilityId = log.FacilityId,
             LogDate = log.LogDate,
-            OperatorName = log.OperatorName,
-            Shift = log.Shift,
+            OperatorName = operatorName == null ? log.OperatorName : operatorName,
             WeatherConditions = log.WeatherConditions,
-            SystemStatus = log.SystemStatus,
+            ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
+            TimeOnSiteHours = log.TimeOnSiteHours,
             MaintenancePerformed = log.MaintenancePerformed,
             EquipmentInspected = log.EquipmentInspected,
             IssuesNoted = log.IssuesNoted,
@@ -247,8 +273,6 @@ namespace SAM.Controllers;
         };
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(log.CompanyId);
-        ViewBag.Shifts = GetShiftSelectList();
-        ViewBag.SystemStatuses = GetSystemStatusSelectList();
 
         return View(viewModel);
     }
@@ -262,8 +286,6 @@ namespace SAM.Controllers;
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Shifts = GetShiftSelectList();
-            ViewBag.SystemStatuses = GetSystemStatusSelectList();
             return View(viewModel);
         }
 
@@ -274,10 +296,9 @@ namespace SAM.Controllers;
                 return NotFound();
 
             operatorLog.LogDate = viewModel.LogDate;
-            operatorLog.OperatorName = viewModel.OperatorName;
-            operatorLog.Shift = viewModel.Shift;
             operatorLog.WeatherConditions = viewModel.WeatherConditions;
-            operatorLog.SystemStatus = viewModel.SystemStatus;
+            operatorLog.ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime);
+            operatorLog.TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0;
             operatorLog.MaintenancePerformed = viewModel.MaintenancePerformed;
             operatorLog.EquipmentInspected = viewModel.EquipmentInspected;
             operatorLog.IssuesNoted = viewModel.IssuesNoted;
@@ -286,14 +307,12 @@ namespace SAM.Controllers;
 
             await _operatorLogService.UpdateAsync(operatorLog);
             TempData["SuccessMessage"] = "Operator log updated successfully.";
-            return RedirectToAction(nameof(OperatorLogs), new { companyId = operatorLog.CompanyId, facilityId = operatorLog.FacilityId });
+            return RedirectToAction(nameof(OperatorLogs));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Shifts = GetShiftSelectList();
-            ViewBag.SystemStatuses = GetSystemStatusSelectList();
             return View(viewModel);
         }
     }
@@ -343,7 +362,7 @@ namespace SAM.Controllers;
         }
 
         var irrigates = await _irrigateService.GetAllAsync(companyId, facilityId, sprayfieldId);
-        
+
         var viewModels = irrigates.Select(i => new IrrigateViewModel
         {
             Id = i.Id,
@@ -360,11 +379,11 @@ namespace SAM.Controllers;
             FlowRateGpm = i.FlowRateGpm,
             TotalVolumeGallons = i.TotalVolumeGallons,
             ApplicationRateInches = i.ApplicationRateInches,
-            WindSpeed = i.WindSpeed,
-            WindDirection = i.WindDirection,
+            TemperatureF = i.TemperatureF,
+            PrecipitationIn = i.PrecipitationIn,
             WeatherConditions = i.WeatherConditions,
-            Operator = i.Operator,
-            Comments = i.Comments
+            Comments = i.Comments,
+            ModifiedBy = i.ModifiedBy
         });
 
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
@@ -402,11 +421,11 @@ namespace SAM.Controllers;
             FlowRateGpm = irrigate.FlowRateGpm,
             TotalVolumeGallons = irrigate.TotalVolumeGallons,
             ApplicationRateInches = irrigate.ApplicationRateInches,
-            WindSpeed = irrigate.WindSpeed,
-            WindDirection = irrigate.WindDirection,
+            TemperatureF = irrigate.TemperatureF,
+            PrecipitationIn = irrigate.PrecipitationIn,
             WeatherConditions = irrigate.WeatherConditions,
-            Operator = irrigate.Operator,
-            Comments = irrigate.Comments
+            Comments = irrigate.Comments,
+            ModifiedBy = irrigate.ModifiedBy
         };
 
         return View(viewModel);
@@ -456,6 +475,37 @@ namespace SAM.Controllers;
         return View(viewModel);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetSprayfieldsForFacility(Guid facilityId)
+    {
+        if (facilityId == Guid.Empty)
+            return BadRequest("Facility is required.");
+
+        var facility = await _facilityService.GetByIdAsync(facilityId);
+        if (facility == null)
+            return NotFound("Facility not found.");
+
+        // Enforce access using the facility's company
+        await EnsureCompanyAccessAsync(facility.CompanyId);
+
+        // Get sprayfields for this facility only
+        var sprayfields = await _sprayfieldService.GetAllAsync(facility.CompanyId);
+        var filtered = sprayfields
+            .Where(s => s.FacilityId == facilityId)
+            .Select(s => new
+            {
+                id = s.Id,
+                name = s.FieldId
+            })
+            .ToList();
+
+        return Json(new
+        {
+            companyId = facility.CompanyId,
+            sprayfields = filtered
+        });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> IrrigateCreate(IrrigateCreateViewModel viewModel)
@@ -484,6 +534,11 @@ namespace SAM.Controllers;
 
         try
         {
+            var currentUser = await GetCurrentUserAsync();
+            var modifiedBy = currentUser == null
+                ? null
+                : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
+
             var irrigate = new Irrigate
             {
                 CompanyId = viewModel.CompanyId,
@@ -496,16 +551,26 @@ namespace SAM.Controllers;
                 FlowRateGpm = viewModel.FlowRateGpm ?? 0,
                 TotalVolumeGallons = viewModel.TotalVolumeGallons ?? 0,
                 ApplicationRateInches = viewModel.ApplicationRateInches ?? 0,
-                WindSpeed = viewModel.WindSpeed,
-                WindDirection = viewModel.WindDirection,
+                TemperatureF = viewModel.TemperatureF,
+                PrecipitationIn = viewModel.PrecipitationIn,
                 WeatherConditions = viewModel.WeatherConditions,
-                Operator = viewModel.Operator,
-                Comments = viewModel.Comments
+                Comments = viewModel.Comments,
+                ModifiedBy = modifiedBy
             };
 
             await _irrigateService.CreateAsync(irrigate);
             TempData["SuccessMessage"] = "Irrigation log created successfully.";
-            return RedirectToAction(nameof(Irrigates), new { companyId = irrigate.CompanyId, facilityId = irrigate.FacilityId });
+            var isGlobalAdmin = await IsGlobalAdminAsync();
+            if (isGlobalAdmin)
+            {
+                return RedirectToAction(nameof(Irrigates));
+
+            }
+            else
+            {
+                return RedirectToAction(nameof(Irrigates), new { facilityId = irrigate.FacilityId });
+               
+            }
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -538,10 +603,9 @@ namespace SAM.Controllers;
             FlowRateGpm = irrigate.FlowRateGpm,
             TotalVolumeGallons = irrigate.TotalVolumeGallons,
             ApplicationRateInches = irrigate.ApplicationRateInches,
-            WindSpeed = irrigate.WindSpeed,
-            WindDirection = irrigate.WindDirection,
+            TemperatureF = irrigate.TemperatureF,
+            PrecipitationIn = irrigate.PrecipitationIn,
             WeatherConditions = irrigate.WeatherConditions,
-            Operator = irrigate.Operator,
             Comments = irrigate.Comments
         };
 
@@ -570,6 +634,11 @@ namespace SAM.Controllers;
             if (irrigate == null)
                 return NotFound();
 
+            var currentUser = await GetCurrentUserAsync();
+            var modifiedBy = currentUser == null
+                ? null
+                : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
+
             irrigate.IrrigationDate = viewModel.IrrigationDate;
             irrigate.StartTime = TimeSpan.Parse(viewModel.StartTime);
             irrigate.EndTime = TimeSpan.Parse(viewModel.EndTime);
@@ -577,15 +646,15 @@ namespace SAM.Controllers;
             irrigate.FlowRateGpm = viewModel.FlowRateGpm ?? 0;
             irrigate.TotalVolumeGallons = viewModel.TotalVolumeGallons ?? 0;
             irrigate.ApplicationRateInches = viewModel.ApplicationRateInches ?? 0;
-            irrigate.WindSpeed = viewModel.WindSpeed;
-            irrigate.WindDirection = viewModel.WindDirection;
+            irrigate.TemperatureF = viewModel.TemperatureF;
+            irrigate.PrecipitationIn = viewModel.PrecipitationIn;
             irrigate.WeatherConditions = viewModel.WeatherConditions;
-            irrigate.Operator = viewModel.Operator;
             irrigate.Comments = viewModel.Comments;
+            irrigate.ModifiedBy = modifiedBy;
 
             await _irrigateService.UpdateAsync(irrigate);
             TempData["SuccessMessage"] = "Irrigation log updated successfully.";
-            return RedirectToAction(nameof(Irrigates), new { companyId = irrigate.CompanyId, facilityId = irrigate.FacilityId });
+            return RedirectToAction(nameof(Irrigates), new { facilityId = irrigate.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -624,16 +693,13 @@ namespace SAM.Controllers;
     #region Wastewater Characteristics (WWChar)
 
     [HttpGet]
-    public async Task<IActionResult> WWChars(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> WWChars(Guid? facilityId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        // Use effective company ID if no companyId specified (respects session selection for admins)
-        if (!companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
+        // Resolve company from global selection (header) only; no companyId is passed via query anymore
+        Guid? companyId = effectiveCompanyId;
 
         if (companyId.HasValue)
         {
@@ -657,9 +723,12 @@ namespace SAM.Controllers;
             PHDaily = w.PHDaily,
             NH3NDaily = w.NH3NDaily,
             FecalColiformDaily = w.FecalColiformDaily,
-            TotalColiformDaily = w.TotalColiformDaily,
             ChlorideDaily = w.ChlorideDaily,
-            TDSDaily = w.TDSDaily,
+            CaDaily = w.CaDaily,
+            MgDaily = w.MgDaily,
+            NaDaily = w.NaDaily,
+            SARDaily = w.SARDaily,
+            TNDaily = w.TNDaily,
             CompositeTime = w.CompositeTime,
             ORCOnSite = w.ORCOnSite,
             LagoonFreeboard = w.LagoonFreeboard,
@@ -700,15 +769,21 @@ namespace SAM.Controllers;
             PHDaily = wwChar.PHDaily,
             NH3NDaily = wwChar.NH3NDaily,
             FecalColiformDaily = wwChar.FecalColiformDaily,
-            TotalColiformDaily = wwChar.TotalColiformDaily,
             ChlorideDaily = wwChar.ChlorideDaily,
-            TDSDaily = wwChar.TDSDaily,
+            CaDaily = wwChar.CaDaily,
+            MgDaily = wwChar.MgDaily,
+            NaDaily = wwChar.NaDaily,
+            SARDaily = wwChar.SARDaily,
+            TNDaily = wwChar.TNDaily,
             CompositeTime = wwChar.CompositeTime,
             ORCOnSite = wwChar.ORCOnSite,
             LagoonFreeboard = wwChar.LagoonFreeboard,
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
-            AnalyzedBy = wwChar.AnalyzedBy
+            AnalyzedBy = wwChar.AnalyzedBy,
+            NO2N = wwChar.NO2N,
+            TKNN = wwChar.TKNN,
+            NO3N = wwChar.NO3N
         };
 
         return View(viewModel);
@@ -725,6 +800,17 @@ namespace SAM.Controllers;
         if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
+        }
+
+        // If facility is selected but companyId is still unknown (e.g., global admin),
+        // derive the company from the facility so downstream logic has a valid company.
+        if (!companyId.HasValue && facilityId.HasValue)
+        {
+            var facility = await _facilityService.GetByIdAsync(facilityId.Value);
+            if (facility != null)
+            {
+                companyId = facility.CompanyId;
+            }
         }
 
         if (companyId.HasValue)
@@ -753,6 +839,17 @@ namespace SAM.Controllers;
     [Authorize(Policy = Policies.RequireTechnician)]
     public async Task<IActionResult> WWCharCreate(WWCharCreateViewModel viewModel)
     {
+        // If CompanyId is not set (e.g., global admin without a company) but FacilityId is,
+        // resolve the company from the selected facility.
+        if ((viewModel.CompanyId == Guid.Empty || viewModel.CompanyId == default) && viewModel.FacilityId != Guid.Empty)
+        {
+            var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
+            if (facility != null)
+            {
+                viewModel.CompanyId = facility.CompanyId;
+            }
+        }
+
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
         // Ensure arrays are initialized
@@ -780,20 +877,26 @@ namespace SAM.Controllers;
                 PHDaily = viewModel.PHDaily,
                 NH3NDaily = viewModel.NH3NDaily,
                 FecalColiformDaily = viewModel.FecalColiformDaily,
-                TotalColiformDaily = viewModel.TotalColiformDaily,
                 ChlorideDaily = viewModel.ChlorideDaily,
-                TDSDaily = viewModel.TDSDaily,
+                CaDaily = viewModel.CaDaily,
+                MgDaily = viewModel.MgDaily,
+                NaDaily = viewModel.NaDaily,
+                SARDaily = viewModel.SARDaily,
+                TNDaily = viewModel.TNDaily,
                 CompositeTime = viewModel.CompositeTime,
                 ORCOnSite = viewModel.ORCOnSite,
                 LagoonFreeboard = viewModel.LagoonFreeboard,
                 LabCertification = viewModel.LabCertification,
                 CollectedBy = viewModel.CollectedBy,
-                AnalyzedBy = viewModel.AnalyzedBy
+                AnalyzedBy = viewModel.AnalyzedBy,
+                NO2N = viewModel.NO2N,
+                TKNN = viewModel.TKNN,
+                NO3N = viewModel.NO3N
             };
 
             await _wwCharService.CreateAsync(wwChar);
             TempData["SuccessMessage"] = $"Wastewater characteristics record created for {wwChar.Month} {wwChar.Year}.";
-            return RedirectToAction(nameof(WWChars), new { companyId = wwChar.CompanyId, facilityId = wwChar.FacilityId });
+            return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -828,15 +931,21 @@ namespace SAM.Controllers;
             PHDaily = wwChar.PHDaily,
             NH3NDaily = wwChar.NH3NDaily,
             FecalColiformDaily = wwChar.FecalColiformDaily,
-            TotalColiformDaily = wwChar.TotalColiformDaily,
             ChlorideDaily = wwChar.ChlorideDaily,
-            TDSDaily = wwChar.TDSDaily,
+            CaDaily = wwChar.CaDaily,
+            MgDaily = wwChar.MgDaily,
+            NaDaily = wwChar.NaDaily,
+            SARDaily = wwChar.SARDaily,
+            TNDaily = wwChar.TNDaily,
             CompositeTime = wwChar.CompositeTime,
             ORCOnSite = wwChar.ORCOnSite,
             LagoonFreeboard = wwChar.LagoonFreeboard,
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
-            AnalyzedBy = wwChar.AnalyzedBy
+            AnalyzedBy = wwChar.AnalyzedBy,
+            NO2N = wwChar.NO2N.HasValue ? Math.Round(wwChar.NO2N.Value, 2) : (decimal?)null,
+            TKNN = wwChar.TKNN.HasValue ? Math.Round(wwChar.TKNN.Value, 2) : (decimal?)null,
+            NO3N = wwChar.NO3N.HasValue ? Math.Round(wwChar.NO3N.Value, 2) : (decimal?)null
         };
 
         // Ensure arrays are initialized with 31 entries
@@ -881,19 +990,25 @@ namespace SAM.Controllers;
             wwChar.PHDaily = viewModel.PHDaily;
             wwChar.NH3NDaily = viewModel.NH3NDaily;
             wwChar.FecalColiformDaily = viewModel.FecalColiformDaily;
-            wwChar.TotalColiformDaily = viewModel.TotalColiformDaily;
             wwChar.ChlorideDaily = viewModel.ChlorideDaily;
-            wwChar.TDSDaily = viewModel.TDSDaily;
+            wwChar.CaDaily = viewModel.CaDaily;
+            wwChar.MgDaily = viewModel.MgDaily;
+            wwChar.NaDaily = viewModel.NaDaily;
+            wwChar.SARDaily = viewModel.SARDaily;
+            wwChar.TNDaily = viewModel.TNDaily;
             wwChar.CompositeTime = viewModel.CompositeTime;
             wwChar.ORCOnSite = viewModel.ORCOnSite;
             wwChar.LagoonFreeboard = viewModel.LagoonFreeboard;
             wwChar.LabCertification = viewModel.LabCertification;
             wwChar.CollectedBy = viewModel.CollectedBy;
             wwChar.AnalyzedBy = viewModel.AnalyzedBy;
+            wwChar.NO2N = viewModel.NO2N;
+            wwChar.TKNN = viewModel.TKNN;
+            wwChar.NO3N = viewModel.NO3N;
 
             await _wwCharService.UpdateAsync(wwChar);
             TempData["SuccessMessage"] = $"Wastewater characteristics record updated for {wwChar.Month} {wwChar.Year}.";
-            return RedirectToAction(nameof(WWChars), new { companyId = wwChar.CompanyId, facilityId = wwChar.FacilityId });
+            return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -966,19 +1081,26 @@ namespace SAM.Controllers;
             WaterLevel = g.WaterLevel,
             Temperature = g.Temperature,
             PH = g.PH,
+            GallonsPumped = g.GallonsPumped,
+            Odor = g.Odor,
+            Appearance = g.Appearance,
             Conductivity = g.Conductivity,
             TDS = g.TDS,
             Turbidity = g.Turbidity,
-            BOD5 = g.BOD5,
-            COD = g.COD,
             TSS = g.TSS,
             NH3N = g.NH3N,
             NO3N = g.NO3N,
             TKN = g.TKN,
-            TotalPhosphorus = g.TotalPhosphorus,
+            TOC = g.TOC,
             Chloride = g.Chloride,
+            Calcium = g.Calcium,
+            Magnesium = g.Magnesium,
+            MetalsSamplesCollectedUnfiltered = g.MetalsSamplesCollectedUnfiltered ?? false,
+            MetalSamplesFieldAcidified = g.MetalSamplesFieldAcidified ?? false,
             FecalColiform = g.FecalColiform,
             TotalColiform = g.TotalColiform,
+            VOCReportAttached = g.VOCReportAttached ?? false,
+            VOCMethodNumber = g.VOCMethodNumber,
             LabCertification = g.LabCertification,
             CollectedBy = g.CollectedBy,
             AnalyzedBy = g.AnalyzedBy,
@@ -1018,19 +1140,26 @@ namespace SAM.Controllers;
             WaterLevel = gwMonit.WaterLevel,
             Temperature = gwMonit.Temperature,
             PH = gwMonit.PH,
+            GallonsPumped = gwMonit.GallonsPumped,
+            Odor = gwMonit.Odor,
+            Appearance = gwMonit.Appearance,
             Conductivity = gwMonit.Conductivity,
             TDS = gwMonit.TDS,
             Turbidity = gwMonit.Turbidity,
-            BOD5 = gwMonit.BOD5,
-            COD = gwMonit.COD,
             TSS = gwMonit.TSS,
             NH3N = gwMonit.NH3N,
             NO3N = gwMonit.NO3N,
             TKN = gwMonit.TKN,
-            TotalPhosphorus = gwMonit.TotalPhosphorus,
+            TOC = gwMonit.TOC,
             Chloride = gwMonit.Chloride,
+            Calcium = gwMonit.Calcium,
+            Magnesium = gwMonit.Magnesium,
+            MetalsSamplesCollectedUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered ?? false,
+            MetalSamplesFieldAcidified = gwMonit.MetalSamplesFieldAcidified ?? false,
             FecalColiform = gwMonit.FecalColiform,
             TotalColiform = gwMonit.TotalColiform,
+            VOCReportAttached = gwMonit.VOCReportAttached ?? false,
+            VOCMethodNumber = gwMonit.VOCMethodNumber,
             LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
             AnalyzedBy = gwMonit.AnalyzedBy,
@@ -1038,6 +1167,260 @@ namespace SAM.Controllers;
         };
 
         return View(viewModel);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireTechnician)]
+    public async Task<IActionResult> GWMonitReport(Guid id)
+    {
+        var model = await BuildGW59ReportAsync(id);
+        return View(model);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireTechnician)]
+    public async Task<IActionResult> GWMonitReportPdf(Guid id)
+    {
+        var reportModel = await BuildGW59ReportAsync(id);
+
+        var templatePath = Path.Combine(
+            _environment.WebRootPath,
+            "forms",
+            "GW-59 GW-QualityMonitoringReportForm.pdf");
+
+        if (!System.IO.File.Exists(templatePath))
+        {
+            return NotFound("GW-59 template PDF not found.");
+        }
+
+        using var outputStream = new MemoryStream();
+        using (var document = PdfReader.Open(templatePath, PdfDocumentOpenMode.Modify))
+        {
+            var page = document.Pages[0];
+            var gfx = XGraphics.FromPdfPage(page);
+            var font = new XFont("Arial", 8, XFontStyle.Regular);
+
+            void DrawText(string? text, double x, double y)
+            {
+                gfx.DrawString(text ?? string.Empty, font, XBrushes.Black,
+                    new XRect(x, y, 250, font.Height + 2),
+                    XStringFormats.TopLeft);
+            }
+
+            // DEBUG GRID (temporary) - helps calibrate coordinates for fields.
+            // Comment out or remove this block once you've recorded the positions you need.
+            //for (int y = 50; y <= page.Height; y += 20)
+            //{
+            //    gfx.DrawLine(XPens.Red, 40, y, page.Width - 40, y);
+            //    gfx.DrawString(y.ToString(), font, XBrushes.Red,
+            //        new XRect(5, y - 4, 30, font.Height + 2), XStringFormats.TopLeft);
+            //}
+
+            //for (int x = 50; x <= page.Width - 40; x += 20)
+            //{
+            //    gfx.DrawLine(XPens.Red, x, 40, x, page.Height - 40);
+            //    gfx.DrawString(x.ToString(), font, XBrushes.Red,
+            //        new XRect(x - 10, 25, 40, font.Height + 2), XStringFormats.TopLeft);
+            //}
+
+            // NOTE: All coordinates are approximate and may need fine-tuning
+            // Facility information
+            DrawText(reportModel.FacilityName, 120, 74);                      // Facility Name
+            DrawText(reportModel.PermitNumber, 630, 60);                      // Permit Number
+            DrawText(reportModel.Permittee, 170, 90);                          // Permit Name
+            DrawText($"{reportModel.Address}", 120, 106);                      // Address line
+            DrawText(reportModel.City, 80, 140);
+            DrawText(reportModel.ZipCode, 280, 140);
+            DrawText(reportModel.State, 230, 140);
+            DrawText(reportModel.County, 410, 120);                            // County
+
+            // Permit expiration (small box near permit header on template)
+            DrawText(reportModel.PermitExpirationDate?.ToString("MM/dd/yyyy"), 775, 60);
+
+            // Contact / phone – using facility phone
+            DrawText(reportModel.FacilityPhone, 410, 152);
+
+            // Sampling information / well details
+            DrawText(reportModel.WellId, 210, 204);                               // WELL ID NUMBER (from Permit)
+            DrawText(reportModel.SampleDate.ToString("MM/dd/yyyy"), 460, 204);    // Date sample collected
+
+            // Well location / site name (right-hand box in sampling section)
+            DrawText(reportModel.WellLocation, 150, 168);
+
+            DrawText(reportModel.WellDepthFeet?.ToString("F2"), 158, 222);        // Well Depth
+            DrawText(reportModel.DiameterInches?.ToString("F2"), 455, 222);       // Well Diameter
+
+            // Screened interval – combined string "{low} to {high} ft" placed on same row
+            string? screenedInterval = null;
+            if (reportModel.LowScreenDepthFeet.HasValue || reportModel.HighScreenDepthFeet.HasValue)
+            {
+                var low = reportModel.LowScreenDepthFeet?.ToString("F2") ?? "?";
+                var high = reportModel.HighScreenDepthFeet?.ToString("F2") ?? "?";
+                screenedInterval = $"{low} to {high} ft";
+            }
+            DrawText(screenedInterval, 260, 220);
+
+            // NOTE: Sample depth is intentionally not drawn; the official GW-59 form
+            // does not provide a dedicated field for sample depth.
+            DrawText(reportModel.WaterLevel?.ToString("F2"), 160, 237);           // Depth to water
+
+            DrawText(reportModel.GallonsPumped?.ToString("F2"), 260, 266);        // Volume pumped
+
+            // Field analyses
+            DrawText(reportModel.PHField?.ToString("F2"), 615, 220);     // pH field
+            DrawText(reportModel.TemperatureField?.ToString("F1"), 750, 220); // Temp field
+            DrawText(reportModel.SpecificConductance?.ToString("F2"), 660, 238); // Spec. Cond.
+            DrawText(reportModel.Odor, 650, 252);                        // Odor
+            DrawText(reportModel.Appearance, 650, 267);                  // Appearance
+
+            // Metals handling YES/NO checkboxes (approximate positions)
+            if (reportModel.MetalsUnfiltered)
+            {
+                DrawText("X", 240, 283); // YES box
+            }
+            else
+            {
+                DrawText("X", 301, 282); // NO box
+            }
+
+            if (reportModel.MetalsAcidified)
+            {
+                DrawText("X", 444, 283); // YES box for acidified
+            }
+            else
+            {
+                DrawText("X", 491, 283); // NO box for acidified
+            }
+
+            // Laboratory information
+            DrawText(reportModel.LabName, 450, 308);                           // Laboratory Name
+            DrawText(reportModel.LabCertificationNumber, 740, 308);           // Certification No.
+
+            // Core parameters from GWMonit
+            DrawText(reportModel.TDS?.ToString("F2"), 160, 400);               // Dissolved Solids: Total
+            DrawText(reportModel.TOC?.ToString("F2"), 165, 430);               // TOC
+            DrawText(reportModel.Chloride?.ToString("F2"), 165, 446);          // Chloride
+
+            DrawText(reportModel.NH3N?.ToString("F2"), 165, 538);              // Total Ammonia
+            DrawText(reportModel.TKN?.ToString("F2"), 165, 571);               // TKN as N
+
+            DrawText(reportModel.NO3N?.ToString("F2"), 440, 352);              // Nitrate (NO3) as N
+
+            DrawText(reportModel.Calcium?.ToString("F2"), 440, 430);           // Ca
+            DrawText(reportModel.Magnesium?.ToString("F2"), 440, 538);         // Mg
+
+            DrawText(reportModel.FecalColiform?.ToString("F0"), 165, 352);     // Coliform MF Fecal
+            DrawText(reportModel.TotalColiform?.ToString("F0"), 165, 369);     // Coliform MF Total
+
+            // Organics section – lab report + VOC method
+            if (reportModel.LabReportAttached)
+            {
+                DrawText("X", 684, 510); // Yes box
+            }
+            else
+            {
+                DrawText("X", 752, 510); // No box
+            }
+
+            DrawText(reportModel.VOCMethodNumber, 750, 525);             // VOC method #
+
+            // Certification block – name, title, date in signature area
+            DrawText(reportModel.CertificationName, 140, 690);           // Printed name
+            DrawText(reportModel.CertificationTitle, 140, 708);          // Title
+            DrawText(reportModel.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726); // Date
+
+            document.Save(outputStream, false);
+        }
+
+        outputStream.Position = 0;
+        var safeFacility = string.IsNullOrWhiteSpace(reportModel.FacilityName)
+            ? "Facility"
+            : reportModel.FacilityName.Replace(' ', '_');
+        var fileName = $"GW59_{safeFacility}_{reportModel.SampleDate:yyyyMMdd}.pdf";
+        return File(outputStream.ToArray(), "application/pdf", fileName);
+    }
+
+    private async Task<GW59ReportViewModel> BuildGW59ReportAsync(Guid gwMonitId)
+    {
+        var gwMonit = await _gwMonitService.GetByIdAsync(gwMonitId);
+        if (gwMonit == null)
+        {
+            throw new Infrastructure.Exceptions.EntityNotFoundException(nameof(GWMonit), gwMonitId);
+        }
+
+        await EnsureCompanyAccessAsync(gwMonit.CompanyId);
+
+        var facility = gwMonit.Facility;
+        var well = gwMonit.MonitoringWell;
+
+        // Basic mapping from entities to report view model
+        var report = new GW59ReportViewModel
+        {
+            GwMonitId = gwMonit.Id,
+            FacilityId = gwMonit.FacilityId,
+            FacilityName = facility?.Name ?? string.Empty,
+            PermitNumber = facility?.PermitNumber ?? string.Empty,
+            Permittee = facility?.Permittee ?? string.Empty,
+            Address = facility?.Address ?? string.Empty,
+            City = facility?.City ?? string.Empty,
+            State = facility?.State ?? string.Empty,
+            ZipCode = facility?.ZipCode ?? string.Empty,
+            County = facility?.County ?? string.Empty,
+            FacilityPhone = facility?.FacilityPhone ?? string.Empty,
+            PermitExpirationDate = facility?.PermitExpirationDate,
+
+            MonitoringWellId = gwMonit.MonitoringWellId,
+            WellId = well?.WellId ?? string.Empty,
+            WellLocation = well?.LocationDescription ?? string.Empty,
+            WellDepthFeet = well?.WellDepthFeet,
+            DiameterInches = well?.DiameterInches,
+            LowScreenDepthFeet = well?.LowScreenDepthFeet,
+            HighScreenDepthFeet = well?.HighScreenDepthFeet,
+            NumberOfWellsToBeSampled = well?.NumberOfWellsToBeSampled,
+
+            SampleDate = gwMonit.SampleDate,
+            SampleDepth = gwMonit.SampleDepth,
+            WaterLevel = gwMonit.WaterLevel,
+            GallonsPumped = gwMonit.GallonsPumped,
+            PHField = gwMonit.PH,
+            TemperatureField = gwMonit.Temperature,
+            SpecificConductance = gwMonit.Conductivity,
+            Odor = gwMonit.Odor,
+            Appearance = gwMonit.Appearance,
+            MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered ?? false,
+            MetalsAcidified = gwMonit.MetalSamplesFieldAcidified ?? false,
+
+            TDS = gwMonit.TDS,
+            TOC = gwMonit.TOC,
+            Chloride = gwMonit.Chloride,
+            NH3N = gwMonit.NH3N,
+            NO3N = gwMonit.NO3N,
+            TKN = gwMonit.TKN,
+            Calcium = gwMonit.Calcium,
+            Magnesium = gwMonit.Magnesium,
+            FecalColiform = gwMonit.FecalColiform,
+            TotalColiform = gwMonit.TotalColiform,
+
+            LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
+                ? (facility?.CertifiedLaboratory1Name ?? string.Empty)
+                : gwMonit.AnalyzedBy,
+            LabCertificationNumber = string.IsNullOrWhiteSpace(gwMonit.LabCertification)
+                ? (facility?.LabCertificationNumber1 ?? string.Empty)
+                : gwMonit.LabCertification,
+            LabReportAttached = gwMonit.VOCReportAttached ?? false,
+            VOCMethodNumber = gwMonit.VOCMethodNumber
+        };
+
+        // Certification block – default name from current user if available
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser != null)
+        {
+            report.CertificationName = string.IsNullOrWhiteSpace(currentUser.FullName)
+                ? currentUser.UserName ?? string.Empty
+                : currentUser.FullName;
+        }
+
+        return report;
     }
 
     [HttpGet]
@@ -1123,19 +1506,26 @@ namespace SAM.Controllers;
                 WaterLevel = viewModel.WaterLevel,
                 Temperature = viewModel.Temperature,
                 PH = viewModel.PH,
+                GallonsPumped = viewModel.GallonsPumped,
+                Odor = viewModel.Odor,
+                Appearance = viewModel.Appearance,
                 Conductivity = viewModel.Conductivity,
                 TDS = viewModel.TDS,
                 Turbidity = viewModel.Turbidity,
-                BOD5 = viewModel.BOD5,
-                COD = viewModel.COD,
                 TSS = viewModel.TSS,
                 NH3N = viewModel.NH3N,
                 NO3N = viewModel.NO3N,
                 TKN = viewModel.TKN,
-                TotalPhosphorus = viewModel.TotalPhosphorus,
+                TOC = viewModel.TOC,
                 Chloride = viewModel.Chloride,
+                Calcium = viewModel.Calcium,
+                Magnesium = viewModel.Magnesium,
+                MetalsSamplesCollectedUnfiltered = viewModel.MetalsSamplesCollectedUnfiltered,
+                MetalSamplesFieldAcidified = viewModel.MetalSamplesFieldAcidified,
                 FecalColiform = viewModel.FecalColiform,
                 TotalColiform = viewModel.TotalColiform,
+                VOCReportAttached = viewModel.VOCReportAttached,
+                VOCMethodNumber = viewModel.VOCMethodNumber,
                 LabCertification = viewModel.LabCertification,
                 CollectedBy = viewModel.CollectedBy,
                 AnalyzedBy = viewModel.AnalyzedBy,
@@ -1144,7 +1534,7 @@ namespace SAM.Controllers;
 
             await _gwMonitService.CreateAsync(gwMonit);
             TempData["SuccessMessage"] = "Groundwater monitoring record created successfully.";
-            return RedirectToAction(nameof(GWMonits), new { companyId = gwMonit.CompanyId, facilityId = gwMonit.FacilityId });
+            return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1176,19 +1566,26 @@ namespace SAM.Controllers;
             WaterLevel = gwMonit.WaterLevel,
             Temperature = gwMonit.Temperature,
             PH = gwMonit.PH,
+            GallonsPumped = gwMonit.GallonsPumped,
+            Odor = gwMonit.Odor,
+            Appearance = gwMonit.Appearance,
             Conductivity = gwMonit.Conductivity,
             TDS = gwMonit.TDS,
             Turbidity = gwMonit.Turbidity,
-            BOD5 = gwMonit.BOD5,
-            COD = gwMonit.COD,
             TSS = gwMonit.TSS,
             NH3N = gwMonit.NH3N,
             NO3N = gwMonit.NO3N,
             TKN = gwMonit.TKN,
-            TotalPhosphorus = gwMonit.TotalPhosphorus,
+            TOC = gwMonit.TOC,
             Chloride = gwMonit.Chloride,
+            Calcium = gwMonit.Calcium,
+            Magnesium = gwMonit.Magnesium,
+            MetalsSamplesCollectedUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered ?? false,
+            MetalSamplesFieldAcidified = gwMonit.MetalSamplesFieldAcidified ?? false,
             FecalColiform = gwMonit.FecalColiform,
             TotalColiform = gwMonit.TotalColiform,
+            VOCReportAttached = gwMonit.VOCReportAttached ?? false,
+            VOCMethodNumber = gwMonit.VOCMethodNumber,
             LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
             AnalyzedBy = gwMonit.AnalyzedBy,
@@ -1226,19 +1623,26 @@ namespace SAM.Controllers;
             gwMonit.WaterLevel = viewModel.WaterLevel;
             gwMonit.Temperature = viewModel.Temperature;
             gwMonit.PH = viewModel.PH;
+            gwMonit.GallonsPumped = viewModel.GallonsPumped;
+            gwMonit.Odor = viewModel.Odor;
+            gwMonit.Appearance = viewModel.Appearance;
             gwMonit.Conductivity = viewModel.Conductivity;
             gwMonit.TDS = viewModel.TDS;
             gwMonit.Turbidity = viewModel.Turbidity;
-            gwMonit.BOD5 = viewModel.BOD5;
-            gwMonit.COD = viewModel.COD;
             gwMonit.TSS = viewModel.TSS;
             gwMonit.NH3N = viewModel.NH3N;
             gwMonit.NO3N = viewModel.NO3N;
             gwMonit.TKN = viewModel.TKN;
-            gwMonit.TotalPhosphorus = viewModel.TotalPhosphorus;
+            gwMonit.TOC = viewModel.TOC;
             gwMonit.Chloride = viewModel.Chloride;
+            gwMonit.Calcium = viewModel.Calcium;
+            gwMonit.Magnesium = viewModel.Magnesium;
+            gwMonit.MetalsSamplesCollectedUnfiltered = viewModel.MetalsSamplesCollectedUnfiltered;
+            gwMonit.MetalSamplesFieldAcidified = viewModel.MetalSamplesFieldAcidified;
             gwMonit.FecalColiform = viewModel.FecalColiform;
             gwMonit.TotalColiform = viewModel.TotalColiform;
+            gwMonit.VOCReportAttached = viewModel.VOCReportAttached;
+            gwMonit.VOCMethodNumber = viewModel.VOCMethodNumber;
             gwMonit.LabCertification = viewModel.LabCertification;
             gwMonit.CollectedBy = viewModel.CollectedBy;
             gwMonit.AnalyzedBy = viewModel.AnalyzedBy;
@@ -1246,7 +1650,7 @@ namespace SAM.Controllers;
 
             await _gwMonitService.UpdateAsync(gwMonit);
             TempData["SuccessMessage"] = "Groundwater monitoring record updated successfully.";
-            return RedirectToAction(nameof(GWMonits), new { companyId = gwMonit.CompanyId, facilityId = gwMonit.FacilityId });
+            return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1287,7 +1691,6 @@ namespace SAM.Controllers;
 
     private async Task<SelectList> GetFacilitySelectListAsync(Guid? companyId = null)
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Use effective company ID if no companyId specified (respects session selection for admins)
@@ -1296,13 +1699,12 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
-        var facilities = await _facilityService.GetAllAsync(companyId);
+        var facilities = await _lookupQueryService.GetFacilitiesAsync(companyId);
         return new SelectList(facilities, "Id", "Name");
     }
 
     private async Task<SelectList> GetSprayfieldSelectListAsync(Guid? companyId = null, Guid? facilityId = null)
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Use effective company ID if no companyId specified (respects session selection for admins)
@@ -1311,12 +1713,7 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
-        var sprayfields = await _sprayfieldService.GetAllAsync(companyId);
-        
-        if (facilityId.HasValue)
-        {
-            sprayfields = sprayfields.Where(s => s.FacilityId == facilityId.Value);
-        }
+        var sprayfields = await _lookupQueryService.GetSprayfieldsAsync(companyId, facilityId);
 
         var items = sprayfields.Select(s => new SelectListItem
         {
@@ -1329,22 +1726,14 @@ namespace SAM.Controllers;
 
     private async Task<SelectList> GetCompanySelectListAsync()
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-        var companies = await _companyService.GetAllAsync();
-
-        // Filter by effective company ID if session has a selection (for admins) or user has a company
-        if (effectiveCompanyId.HasValue)
-        {
-            companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
-        }
+        var companies = await _lookupQueryService.GetCompaniesAsync(effectiveCompanyId);
 
         return new SelectList(companies, "Id", "Name");
     }
 
     private async Task<SelectList> GetMonitoringWellSelectListAsync(Guid? companyId = null, Guid? facilityId = null)
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Use effective company ID if no companyId specified (respects session selection for admins)
@@ -1353,28 +1742,8 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
-        var monitoringWells = await _monitoringWellService.GetAllAsync(companyId);
+        var monitoringWells = await _lookupQueryService.GetMonitoringWellsAsync(companyId, facilityId);
         return new SelectList(monitoringWells, "Id", "WellId");
-    }
-
-    private SelectList GetShiftSelectList()
-    {
-        return new SelectList(Enum.GetValues(typeof(ShiftEnum)).Cast<ShiftEnum>()
-            .Select(e => new SelectListItem
-            {
-                Value = e.ToString(),
-                Text = e.ToString()
-            }), "Value", "Text");
-    }
-
-    private SelectList GetSystemStatusSelectList()
-    {
-        return new SelectList(Enum.GetValues(typeof(SystemStatusEnum)).Cast<SystemStatusEnum>()
-            .Select(e => new SelectListItem
-            {
-                Value = e.ToString(),
-                Text = e.ToString()
-            }), "Value", "Text");
     }
 
     private SelectList GetMonthSelectList()
@@ -1410,9 +1779,12 @@ namespace SAM.Controllers;
         EnsureArraySize(viewModel.PHDaily, 31);
         EnsureArraySize(viewModel.NH3NDaily, 31);
         EnsureArraySize(viewModel.FecalColiformDaily, 31);
-        EnsureArraySize(viewModel.TotalColiformDaily, 31);
         EnsureArraySize(viewModel.ChlorideDaily, 31);
-        EnsureArraySize(viewModel.TDSDaily, 31);
+        EnsureArraySize(viewModel.CaDaily, 31);
+        EnsureArraySize(viewModel.MgDaily, 31);
+        EnsureArraySize(viewModel.NaDaily, 31);
+        EnsureArraySize(viewModel.SARDaily, 31);
+        EnsureArraySize(viewModel.TNDaily, 31);
         EnsureStringArraySize(viewModel.CompositeTime, 31);
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
         EnsureArraySize(viewModel.LagoonFreeboard, 31);
@@ -1426,9 +1798,12 @@ namespace SAM.Controllers;
         EnsureArraySize(viewModel.PHDaily, 31);
         EnsureArraySize(viewModel.NH3NDaily, 31);
         EnsureArraySize(viewModel.FecalColiformDaily, 31);
-        EnsureArraySize(viewModel.TotalColiformDaily, 31);
         EnsureArraySize(viewModel.ChlorideDaily, 31);
-        EnsureArraySize(viewModel.TDSDaily, 31);
+        EnsureArraySize(viewModel.CaDaily, 31);
+        EnsureArraySize(viewModel.MgDaily, 31);
+        EnsureArraySize(viewModel.NaDaily, 31);
+        EnsureArraySize(viewModel.SARDaily, 31);
+        EnsureArraySize(viewModel.TNDaily, 31);
         EnsureStringArraySize(viewModel.CompositeTime, 31);
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
         EnsureArraySize(viewModel.LagoonFreeboard, 31);
@@ -1490,4 +1865,3 @@ namespace SAM.Controllers;
 
     #endregion
 }
-

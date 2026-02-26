@@ -6,7 +6,7 @@
 
 @if (showFilter)
 {
-    <div class="card mb-3">
+    <div class="card mb-3 filter-card">
         <div class="card-body">
             @{
                 var formAction = !string.IsNullOrEmpty(Model.ActionName) && !string.IsNullOrEmpty(Model.ControllerName)
@@ -15,7 +15,8 @@
             }
             <form method="get" 
                   id="filterForm" 
-                  class="row g-3"
+                  class="row g-3 filter-form"
+                  role="search"
                   action="@(string.IsNullOrEmpty(formAction) ? "" : formAction)">
                 @if (hasFields)
                 {
@@ -31,7 +32,7 @@
                             </label>
                             @if (field.Type == SAM.ViewModels.Common.FilterFieldType.Dropdown && field.Options != null)
                             {
-                                <select name="@field.Name" id="@field.Name" class="form-select filter-dropdown" data-submit-on-change="@field.SubmitOnChange.ToString().ToLower()">
+                                <select name="@field.Name" id="@field.Name" class="form-select filter-control filter-dropdown" data-submit-on-change="@field.SubmitOnChange.ToString().ToLower()">
                                     <option value="">All</option>
                                     @foreach (var option in field.Options)
                                     {
@@ -58,7 +59,7 @@
                                 <input type="text" 
                                        name="@field.Name" 
                                        id="@field.Name" 
-                                       class="form-control" 
+                                       class="form-control filter-control" 
                                        value="@field.Value" 
                                        placeholder="@field.Label" />
                             }
@@ -67,7 +68,7 @@
                                 <input type="date" 
                                        name="@field.Name" 
                                        id="@field.Name" 
-                                       class="form-control" 
+                                       class="form-control filter-control" 
                                        value="@field.Value" />
                             }
                             else if (field.Type == SAM.ViewModels.Common.FilterFieldType.Number)
@@ -75,7 +76,7 @@
                                 <input type="number" 
                                        name="@field.Name" 
                                        id="@field.Name" 
-                                       class="form-control" 
+                                       class="form-control filter-control" 
                                        value="@field.Value" 
                                        placeholder="@field.Label" />
                             }
@@ -93,14 +94,14 @@
                             <input type="text" 
                                    name="searchTerm" 
                                    id="searchTerm" 
-                                   class="form-control" 
+                                   class="form-control filter-control" 
                                    value="@Model.SearchTerm" 
                                    placeholder="@Model.SearchPlaceholder"
                                    autocomplete="off" />
-                            <button type="button" class="btn btn-outline-secondary" id="clearSearch" style="display: none;">
+                            <button type="button" class="btn btn-outline-secondary filter-clear-btn" id="clearSearch" aria-label="Clear search">
                                 <i class="bi bi-x"></i>
                             </button>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary filter-search-btn">
                                 <i class="bi bi-search"></i> Search
                             </button>
                         </div>

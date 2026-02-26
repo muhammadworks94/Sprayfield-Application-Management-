@@ -14,7 +14,7 @@ public class Sprayfield : CompanyScopedEntity
     public string FieldId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Size of the field in acres.
+    /// Size of the wetted area in acres.
     /// </summary>
     public decimal SizeAcres { get; set; }
 
@@ -44,9 +44,9 @@ public class Sprayfield : CompanyScopedEntity
     public decimal? HourlyRateInches { get; set; }
 
     /// <summary>
-    /// Annual irrigation rate in inches.
+    /// Weekly irrigation rate in inches per week.
     /// </summary>
-    public decimal? AnnualRateInches { get; set; }
+    public decimal? WeeklyRateInches { get; set; }
 
     // Navigation properties
     public Soil? Soil { get; set; }

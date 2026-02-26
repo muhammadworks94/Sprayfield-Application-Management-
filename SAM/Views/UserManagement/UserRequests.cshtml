@@ -4,54 +4,45 @@
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "User Requests";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
     var user = await UserManager.GetUserAsync(User);
-    var canApprove = user != null && await UserManager.IsInRoleAsync(user, "admin");
-    var canCreate = user != null && (await UserManager.IsInRoleAsync(user, "admin") || 
-                                      await UserManager.IsInRoleAsync(user, "company_admin"));
+    var isAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
+    var isCompanyAdmin = user != null && await UserManager.IsInRoleAsync(user, "company_admin");
+    var canApprove = isAdmin || isCompanyAdmin;
+    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <p class="text-muted mb-0">Review and manage user access requests</p>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-            <button type="button"
-                    class="btn btn-outline-secondary active"
-                    id="userRequestsTableViewBtn">
-                <i class="bi bi-table"></i> Table
-            </button>
-            <button type="button"
-                    class="btn btn-outline-secondary"
-                    id="userRequestsCardViewBtn">
-                <i class="bi bi-grid-3x3-gap"></i> Cards
-            </button>
-        </div>
-        @if (canCreate)
-        {
-            <a asp-action="UserRequestCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Create New Request
-            </a>
-        }
+        <p class="text-muted mb-0">Review and manage user access requests created from signup</p>
     </div>
 </div>
 
-@{
-    var filterViewModel = ViewBag.FilterViewModel as SAM.ViewModels.Common.FilterViewModel;
-}
+@* Optional filter *@
 @if (filterViewModel != null)
 {
     @await Html.PartialAsync("Partials/_Filter", filterViewModel)
 }
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> User Request List</h5>
-    </div>
     <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <h4 class="mb-0">User Request List</h4>
+            <div class="d-flex">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm active"
+                            id="userRequestsTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="userRequestsCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+            </div>
+        </div>
+
         @if (Model.Any())
         {
             <div id="userRequestsTableView" class="table-responsive">
@@ -86,31 +77,32 @@
                                     </span>
                                 </td>
                                 <td>@request.CreatedDate.ToString("MM/dd/yyyy")</td>
-                                @if (canApprove && request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                @if (canApprove)
                                 {
                                     <td class="table-actions">
-                                        <a asp-action="UserRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
-                                            <i class="bi bi-check-circle"></i> Approve
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#rejectUserRequestModal"
-                                                data-request-id="@request.Id"
-                                                data-request-name="@request.FullName">
-                                            <i class="bi bi-x-circle"></i> Reject
-                                        </button>
-                                    </td>
-                                }
-                                else if (canApprove)
-                                {
-                                    <td class="table-actions">
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteUserRequestModal"
-                                                data-request-id="@request.Id"
-                                                data-request-name="@request.FullName">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
+                                        @if (request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                        {
+                                            <a asp-action="UserRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#rejectUserRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.FullName">
+                                                <i class="bi bi-x-circle"></i> Reject
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteUserRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.FullName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        }
                                     </td>
                                 }
                             </tr>
@@ -124,7 +116,7 @@
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
-                                <h6 class="mb-0 card-header-light">@request.FullName</h6>
+                            <h6 class="mb-0 card-header-light">@request.FullName</h6>
                             <div class="card-body d-flex flex-column">
                                 <small class="text-muted d-block">
                                     <i class="bi bi-envelope me-1"></i>@request.Email
@@ -151,33 +143,36 @@
                                     </dd>
                                 </dl>
 
-                                <div class="mt-auto d-flex justify-content-end">
-                                    @if (canApprove && request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
-                                    {
-                                        <div class="btn-group">
-                                            <a asp-action="UserRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
-                                                <i class="bi bi-check-circle"></i> Approve
-                                            </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#rejectUserRequestModal"
+                                @if (canApprove)
+                                {
+                                    <div class="mt-auto d-flex justify-content-end">
+                                        @if (request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                        {
+                                            <div class="btn-group">
+                                                <a asp-action="UserRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                                    <i class="bi bi-check-circle"></i> Approve
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#rejectUserRequestModal"
+                                                        data-request-id="@request.Id"
+                                                        data-request-name="@request.FullName">
+                                                    <i class="bi bi-x-circle"></i> Reject
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteUserRequestModal"
                                                     data-request-id="@request.Id"
                                                     data-request-name="@request.FullName">
-                                                <i class="bi bi-x-circle"></i> Reject
+                                                <i class="bi bi-trash"></i> Delete
                                             </button>
-                                        </div>
-                                    }
-                                    else if (canApprove)
-                                    {
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteUserRequestModal"
-                                                data-request-id="@request.Id"
-                                                data-request-name="@request.FullName">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
-                                    }
-                                </div>
+                                        }
+                                    </div>
+                                }
                             </div>
                         </div>
                     </div>
@@ -187,20 +182,14 @@
         else
         {
             <div class="text-center py-5">
-                <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <i class="bi bi-inbox ui-empty-icon"></i>
                 <p class="text-muted mt-3">No user requests found.</p>
-                @if (canCreate)
-                {
-                    <a asp-action="UserRequestCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
-                        <i class="bi bi-plus-circle"></i> Create First Request
-                    </a>
-                }
             </div>
         }
     </div>
 </div>
 
-<!-- Reject User Request Modal (Outside Table) -->
+<!-- Reject User Request Modal -->
 <div class="modal fade" id="rejectUserRequestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -226,7 +215,7 @@
     </div>
 </div>
 
-<!-- Delete User Request Modal (Outside Table) -->
+<!-- Delete User Request Modal -->
 <div class="modal fade" id="deleteUserRequestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -250,26 +239,56 @@
 
 @section Scripts {
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
+            const requestsTableBtn = document.getElementById('userRequestsTableViewBtn');
+            const requestsCardBtn = document.getElementById('userRequestsCardViewBtn');
+            const requestsTableView = document.getElementById('userRequestsTableView');
+            const requestsCardView = document.getElementById('userRequestsCardView');
+            const requestsStorageKey = 'userRequestsViewMode';
+
+            function setRequestsViewMode(mode) {
+                const isTable = mode === 'table';
+                if (isTable) {
+                    requestsTableView?.classList.remove('d-none');
+                    requestsCardView?.classList.add('d-none');
+                    requestsTableBtn?.classList.add('active');
+                    requestsCardBtn?.classList.remove('active');
+                } else {
+                    requestsTableView?.classList.add('d-none');
+                    requestsCardView?.classList.remove('d-none');
+                    requestsTableBtn?.classList.remove('active');
+                    requestsCardBtn?.classList.add('active');
+                }
+                if (window.localStorage) {
+                    localStorage.setItem(requestsStorageKey, mode);
+                }
+            }
+
+            const savedRequestsMode = window.localStorage ? localStorage.getItem(requestsStorageKey) : null;
+            setRequestsViewMode(savedRequestsMode === 'card' ? 'card' : 'table');
+
+            requestsTableBtn?.addEventListener('click', function () { setRequestsViewMode('table'); });
+            requestsCardBtn?.addEventListener('click', function () { setRequestsViewMode('card'); });
+
+            // Reject user request modal
             const rejectModal = document.getElementById('rejectUserRequestModal');
             if (rejectModal) {
                 rejectModal.addEventListener('show.bs.modal', function(event) {
                     const button = event.relatedTarget;
                     const requestId = button.getAttribute('data-request-id');
                     const requestName = button.getAttribute('data-request-name');
-                    
+
                     const nameElement = rejectModal.querySelector('#rejectUserName');
                     if (nameElement) {
                         nameElement.textContent = requestName;
                     }
-                    
+
                     const form = rejectModal.querySelector('#rejectUserRequestForm');
                     if (form) {
                         const baseUrl = '@Url.Action("UserRequestReject", "UserManagement")';
                         form.action = baseUrl + '/' + requestId;
                     }
-                    
-                    // Clear reason textarea
+
                     const reasonTextarea = rejectModal.querySelector('#rejectUserReason');
                     if (reasonTextarea) {
                         reasonTextarea.value = '';
@@ -277,64 +296,31 @@
                 });
             }
 
-            const deleteModal = document.getElementById('deleteUserRequestModal');
-            if (deleteModal) {
-                deleteModal.addEventListener('show.bs.modal', function(event) {
+            // Delete user request modal
+            const deleteRequestModal = document.getElementById('deleteUserRequestModal');
+            if (deleteRequestModal) {
+                deleteRequestModal.addEventListener('show.bs.modal', function(event) {
                     const button = event.relatedTarget;
                     if (!button) return;
 
                     const requestId = button.getAttribute('data-request-id');
                     const requestName = button.getAttribute('data-request-name');
-                    
-                    const nameElement = deleteModal.querySelector('#deleteUserRequestName');
+
+                    const nameElement = deleteRequestModal.querySelector('#deleteUserRequestName');
                     if (nameElement) {
                         nameElement.textContent = requestName;
                     }
-                    
-                    const form = deleteModal.querySelector('#deleteUserRequestForm');
+
+                    const form = deleteRequestModal.querySelector('#deleteUserRequestForm');
                     if (form) {
                         const baseUrl = '@Url.Action("UserRequestDelete", "UserManagement")';
                         form.action = baseUrl + '/' + requestId;
                     }
                 });
             }
-
-            const tableBtn = document.getElementById('userRequestsTableViewBtn');
-            const cardBtn = document.getElementById('userRequestsCardViewBtn');
-            const tableView = document.getElementById('userRequestsTableView');
-            const cardView = document.getElementById('userRequestsCardView');
-            const storageKey = 'viewMode';
-
-            function setViewMode(mode) {
-                const isTable = mode === 'table';
-
-                if (isTable) {
-                    tableView?.classList.remove('d-none');
-                    cardView?.classList.add('d-none');
-                    tableBtn?.classList.add('active');
-                    cardBtn?.classList.remove('active');
-                } else {
-                    tableView?.classList.add('d-none');
-                    cardView?.classList.remove('d-none');
-                    tableBtn?.classList.remove('active');
-                    cardBtn?.classList.add('active');
-                }
-
-                if (window.localStorage) {
-                    localStorage.setItem(storageKey, mode);
-                }
-            }
-
-            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
-            setViewMode(savedMode === 'card' ? 'card' : 'table');
-
-            tableBtn?.addEventListener('click', function () {
-                setViewMode('table');
-            });
-
-            cardBtn?.addEventListener('click', function () {
-                setViewMode('card');
-            });
         });
     </script>
 }
+
+
+

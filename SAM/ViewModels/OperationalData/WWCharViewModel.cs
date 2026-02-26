@@ -38,14 +38,23 @@ public class WWCharViewModel
     [Display(Name = "Fecal Coliform Daily (CFU/100mL)")]
     public List<decimal?> FecalColiformDaily { get; set; } = new();
     
-    [Display(Name = "Total Coliform Daily (CFU/100mL)")]
-    public List<decimal?> TotalColiformDaily { get; set; } = new();
-    
-    [Display(Name = "Chloride Daily (mg/L)")]
+    [Display(Name = "Residual Chloride Daily (mg/L)")]
     public List<decimal?> ChlorideDaily { get; set; } = new();
-    
-    [Display(Name = "TDS Daily (mg/L)")]
-    public List<decimal?> TDSDaily { get; set; } = new();
+
+    [Display(Name = "Ca Daily (mg/L)")]
+    public List<decimal?> CaDaily { get; set; } = new();
+
+    [Display(Name = "Mg Daily (mg/L)")]
+    public List<decimal?> MgDaily { get; set; } = new();
+
+    [Display(Name = "Na Daily (mg/L)")]
+    public List<decimal?> NaDaily { get; set; } = new();
+
+    [Display(Name = "SAR Daily (mg/L)")]
+    public List<decimal?> SARDaily { get; set; } = new();
+
+    [Display(Name = "TN Daily (mg/L)")]
+    public List<decimal?> TNDaily { get; set; } = new();
     
     [Display(Name = "Composite Time Daily")]
     public List<string?> CompositeTime { get; set; } = new();
@@ -55,6 +64,18 @@ public class WWCharViewModel
     
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
+
+    [Display(Name = "NO2 as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
+    public decimal? NO2N { get; set; }
+
+    [Display(Name = "TKN as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "TKN as N must be 0 or greater.")]
+    public decimal? TKNN { get; set; }
+
+    [Display(Name = "NO3 as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
+    public decimal? NO3N { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -106,14 +127,23 @@ public class WWCharCreateViewModel
     [Display(Name = "Fecal Coliform Daily (CFU/100mL)")]
     public List<decimal?> FecalColiformDaily { get; set; } = new();
     
-    [Display(Name = "Total Coliform Daily (CFU/100mL)")]
-    public List<decimal?> TotalColiformDaily { get; set; } = new();
-    
-    [Display(Name = "Chloride Daily (mg/L)")]
+    [Display(Name = "Residual Chloride Daily (mg/L)")]
     public List<decimal?> ChlorideDaily { get; set; } = new();
-    
-    [Display(Name = "TDS Daily (mg/L)")]
-    public List<decimal?> TDSDaily { get; set; } = new();
+
+    [Display(Name = "Ca Daily (mg/L)")]
+    public List<decimal?> CaDaily { get; set; } = new();
+
+    [Display(Name = "Mg Daily (mg/L)")]
+    public List<decimal?> MgDaily { get; set; } = new();
+
+    [Display(Name = "Na Daily (mg/L)")]
+    public List<decimal?> NaDaily { get; set; } = new();
+
+    [Display(Name = "SAR Daily (mg/L)")]
+    public List<decimal?> SARDaily { get; set; } = new();
+
+    [Display(Name = "TN Daily (mg/L)")]
+    public List<decimal?> TNDaily { get; set; } = new();
     
     [Display(Name = "Composite Time Daily")]
     public List<string?> CompositeTime { get; set; } = new();
@@ -123,6 +153,18 @@ public class WWCharCreateViewModel
     
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
+
+    [Display(Name = "NO2 as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
+    public decimal? NO2N { get; set; }
+
+    [Display(Name = "TKN as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "TKN as N must be 0 or greater.")]
+    public decimal? TKNN { get; set; }
+
+    [Display(Name = "NO3 as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
+    public decimal? NO3N { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -176,14 +218,23 @@ public class WWCharEditViewModel
     [Display(Name = "Fecal Coliform Daily (CFU/100mL)")]
     public List<decimal?> FecalColiformDaily { get; set; } = new();
     
-    [Display(Name = "Total Coliform Daily (CFU/100mL)")]
-    public List<decimal?> TotalColiformDaily { get; set; } = new();
-    
-    [Display(Name = "Chloride Daily (mg/L)")]
+    [Display(Name = "Residual Chloride Daily (mg/L)")]
     public List<decimal?> ChlorideDaily { get; set; } = new();
-    
-    [Display(Name = "TDS Daily (mg/L)")]
-    public List<decimal?> TDSDaily { get; set; } = new();
+
+    [Display(Name = "Ca Daily (mg/L)")]
+    public List<decimal?> CaDaily { get; set; } = new();
+
+    [Display(Name = "Mg Daily (mg/L)")]
+    public List<decimal?> MgDaily { get; set; } = new();
+
+    [Display(Name = "Na Daily (mg/L)")]
+    public List<decimal?> NaDaily { get; set; } = new();
+
+    [Display(Name = "SAR Daily (mg/L)")]
+    public List<decimal?> SARDaily { get; set; } = new();
+
+    [Display(Name = "TN Daily (mg/L)")]
+    public List<decimal?> TNDaily { get; set; } = new();
     
     [Display(Name = "Composite Time Daily")]
     public List<string?> CompositeTime { get; set; } = new();
@@ -193,6 +244,18 @@ public class WWCharEditViewModel
     
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
+
+    [Display(Name = "NO2 as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
+    public decimal? NO2N { get; set; }
+
+    [Display(Name = "TKN as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "TKN as N must be 0 or greater.")]
+    public decimal? TKNN { get; set; }
+
+    [Display(Name = "NO3 as N (mg/L)")]
+    [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
+    public decimal? NO3N { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]

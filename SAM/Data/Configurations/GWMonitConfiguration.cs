@@ -27,6 +27,9 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
         builder.Property(g => g.PH)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(g => g.GallonsPumped)
+            .HasColumnType("decimal(18,2)");
+
         builder.Property(g => g.Conductivity)
             .HasColumnType("decimal(18,2)");
 
@@ -34,12 +37,6 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
             .HasColumnType("decimal(18,2)");
 
         builder.Property(g => g.Turbidity)
-            .HasColumnType("decimal(18,2)");
-
-        builder.Property(g => g.BOD5)
-            .HasColumnType("decimal(18,2)");
-
-        builder.Property(g => g.COD)
             .HasColumnType("decimal(18,2)");
 
         builder.Property(g => g.TSS)
@@ -54,10 +51,16 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
         builder.Property(g => g.TKN)
             .HasColumnType("decimal(18,2)");
 
-        builder.Property(g => g.TotalPhosphorus)
+        builder.Property(g => g.Chloride)
             .HasColumnType("decimal(18,2)");
 
-        builder.Property(g => g.Chloride)
+        builder.Property(g => g.TOC)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(g => g.Calcium)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(g => g.Magnesium)
             .HasColumnType("decimal(18,2)");
 
         builder.Property(g => g.FecalColiform)
@@ -65,6 +68,15 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
 
         builder.Property(g => g.TotalColiform)
             .HasColumnType("decimal(18,2)");
+
+        builder.Property(g => g.Odor)
+            .HasMaxLength(100);
+
+        builder.Property(g => g.Appearance)
+            .HasMaxLength(100);
+
+        builder.Property(g => g.VOCMethodNumber)
+            .HasMaxLength(200);
 
         builder.Property(g => g.LabCertification)
             .HasMaxLength(500);

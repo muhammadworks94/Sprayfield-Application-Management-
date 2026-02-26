@@ -19,14 +19,13 @@ public class OperatorLogConfiguration : IEntityTypeConfiguration<OperatorLog>
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(o => o.Shift)
-            .HasConversion<int>();
-
         builder.Property(o => o.WeatherConditions)
             .HasMaxLength(200);
 
-        builder.Property(o => o.SystemStatus)
-            .HasConversion<int>();
+        builder.Property(o => o.ArrivalTime);
+
+        builder.Property(o => o.TimeOnSiteHours)
+            .HasColumnType("decimal(18,2)");
 
         builder.Property(o => o.MaintenancePerformed)
             .HasMaxLength(2000);

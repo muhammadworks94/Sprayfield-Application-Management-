@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using SAM.Controllers.Base;
-using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
@@ -18,13 +16,11 @@ namespace SAM.Controllers;
 [Authorize]
 public class DashboardController : BaseController
 {
-    private readonly ApplicationDbContext _context;
     private readonly IFacilityService _facilityService;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly ICompanyService _companyService;
     private readonly IUserRequestService _userRequestService;
-    private readonly IAdminRequestService _adminRequestService;
     private readonly IOperatorLogService _operatorLogService;
     private readonly IIrrigateService _irrigateService;
     private readonly IWWCharService _wwCharService;
@@ -32,13 +28,11 @@ public class DashboardController : BaseController
     private readonly IIrrRprtService _irrRprtService;
 
     public DashboardController(
-        ApplicationDbContext context,
         IFacilityService facilityService,
         ISprayfieldService sprayfieldService,
         IMonitoringWellService monitoringWellService,
         ICompanyService companyService,
         IUserRequestService userRequestService,
-        IAdminRequestService adminRequestService,
         IOperatorLogService operatorLogService,
         IIrrigateService irrigateService,
         IWWCharService wwCharService,
@@ -48,13 +42,11 @@ public class DashboardController : BaseController
         ILogger<DashboardController> logger)
         : base(userManager, logger)
     {
-        _context = context;
         _facilityService = facilityService;
         _sprayfieldService = sprayfieldService;
         _monitoringWellService = monitoringWellService;
         _companyService = companyService;
         _userRequestService = userRequestService;
-        _adminRequestService = adminRequestService;
         _operatorLogService = operatorLogService;
         _irrigateService = irrigateService;
         _wwCharService = wwCharService;
@@ -68,7 +60,6 @@ public class DashboardController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        // Global admin may filter by company via query string
         Guid? selectedCompanyId = null;
         if (isGlobalAdmin && Guid.TryParse(Request.Query["companyId"].FirstOrDefault(), out var parsedId))
         {
@@ -76,90 +67,95 @@ public class DashboardController : BaseController
         }
 
         var companyId = selectedCompanyId ?? effectiveCompanyId;
+        var isAdmin = User.IsInRole("admin");
+        var isCompanyAdmin = User.IsInRole("company_admin");
+        var isTechnician = User.IsInRole("technician");
+        var isOperator = User.IsInRole("operator");
 
-        var viewModel = new DashboardViewModel();
+        var viewModel = new DashboardViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            IsAdmin = isAdmin,
+            IsCompanyAdmin = isCompanyAdmin,
+            IsTechnician = isTechnician,
+            IsOperator = isOperator,
+            CanManageUsers = isAdmin || isCompanyAdmin,
+            RoleViewLabel = isAdmin
+                ? "Global Admin View"
+                : isCompanyAdmin
+                    ? "Company Admin View"
+                    : isTechnician
+                        ? "Technician View"
+                        : isOperator
+                            ? "Operator View"
+                            : null
+        };
 
-        // Count facilities
-        var facilities = await _facilityService.GetAllAsync(companyId);
-        viewModel.TotalFacilities = facilities.Count();
+        var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
 
-        // Count sprayfields and total acres
-        var sprayfields = await _sprayfieldService.GetAllAsync(companyId);
-        viewModel.TotalSprayfields = sprayfields.Count();
+        var facilities = (await _facilityService.GetAllAsync(companyId)).ToList();
+        var sprayfields = (await _sprayfieldService.GetAllAsync(companyId)).ToList();
+        var monitoringWells = (await _monitoringWellService.GetAllAsync(companyId)).ToList();
+        var recentLogs = (await _operatorLogService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
+        var recentIrrigations = (await _irrigateService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
+        var allWWChars = (await _wwCharService.GetAllAsync(companyId)).ToList();
+        var recentGWMonits = (await _gwMonitService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
+        var reports = (await _irrRprtService.GetAllAsync(companyId)).ToList();
+
+        viewModel.TotalFacilities = facilities.Count;
+        viewModel.TotalSprayfields = sprayfields.Count;
         viewModel.TotalSprayfieldAcres = sprayfields.Sum(s => s.SizeAcres);
-
-        // Count monitoring wells
-        var monitoringWells = await _monitoringWellService.GetAllAsync(companyId);
-        viewModel.TotalMonitoringWells = monitoringWells.Count();
+        viewModel.TotalMonitoringWells = monitoringWells.Count;
 
         if (isGlobalAdmin)
         {
             var companies = await _companyService.GetAllAsync();
-            // Filter by effectiveCompanyId if session has a selection
             if (effectiveCompanyId.HasValue)
             {
                 companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
             }
+
             viewModel.TotalCompanies = companies.Count();
         }
 
-        // Pending requests
         if (isGlobalAdmin)
         {
             viewModel.PendingUserRequests = (await _userRequestService.GetPendingRequestsAsync()).Count();
-            viewModel.PendingAdminRequests = (await _adminRequestService.GetPendingRequestsAsync()).Count();
         }
         else if (effectiveCompanyId.HasValue)
         {
             viewModel.PendingUserRequests = (await _userRequestService.GetPendingRequestsAsync(effectiveCompanyId.Value)).Count();
         }
 
-        var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
-
-        var recentLogs = await _operatorLogService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow);
-        viewModel.RecentOperatorLogs = recentLogs.Count();
-
-        var recentIrrigations = await _irrigateService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow);
-        viewModel.RecentIrrigations = recentIrrigations.Count();
+        viewModel.RecentOperatorLogs = recentLogs.Count;
+        viewModel.RecentIrrigations = recentIrrigations.Count;
         viewModel.RecentActivityCount = recentIrrigations.OrderByDescending(i => i.CreatedDate).Take(10).Count();
-
-        var allWWChars = await _wwCharService.GetAllAsync(companyId);
         viewModel.RecentWWCharRecords = allWWChars.Count(r => r.CreatedDate >= thirtyDaysAgo);
+        viewModel.RecentGWMonitRecords = recentGWMonits.Count;
 
-        var recentGWMonits = await _gwMonitService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow);
-        viewModel.RecentGWMonitRecords = recentGWMonits.Count();
-
-        var reports = await _irrRprtService.GetAllAsync(companyId);
         var recentReports = reports.Where(r => r.CreatedDate >= thirtyDaysAgo).ToList();
-
         viewModel.CompliantReports = recentReports.Count(r => r.ComplianceStatus == ComplianceStatusEnum.Compliant);
         viewModel.NonCompliantReports = recentReports.Count(r => r.ComplianceStatus == ComplianceStatusEnum.NonCompliant);
         viewModel.UnderReviewReports = recentReports.Count(r => r.ComplianceStatus == ComplianceStatusEnum.UnderReview);
 
-        // Irrigation compliance pie (last 30 days)
         var totalReports = viewModel.CompliantReports + viewModel.UnderReviewReports + viewModel.NonCompliantReports;
         viewModel.IrrigationCompliance.CompliantCount = viewModel.CompliantReports;
-        viewModel.IrrigationCompliance.CompliantPercent = totalReports > 0 ? (viewModel.CompliantReports * 100.0 / totalReports) : 100;
+        viewModel.IrrigationCompliance.CompliantPercent = totalReports > 0 ? (viewModel.CompliantReports * 100.0 / totalReports) : 0;
         viewModel.IrrigationCompliance.UnderReviewCount = viewModel.UnderReviewReports;
         viewModel.IrrigationCompliance.UnderReviewPercent = totalReports > 0 ? (viewModel.UnderReviewReports * 100.0 / totalReports) : 0;
         viewModel.IrrigationCompliance.NonCompliantCount = viewModel.NonCompliantReports;
         viewModel.IrrigationCompliance.NonCompliantPercent = totalReports > 0 ? (viewModel.NonCompliantReports * 100.0 / totalReports) : 0;
 
-        viewModel.SystemUptimePercent = 100.0;
-        var today = DateTime.UtcNow.Date;
-        var yesterday = today.AddDays(-1);
-        var efficiencyDates = recentIrrigations.OrderByDescending(i => i.CreatedDate).Take(5).Select(i => i.CreatedDate.Date).Distinct().OrderByDescending(d => d).Take(2).ToList();
-        if (efficiencyDates.Count == 0)
-        {
-            efficiencyDates.Add(yesterday);
-            efficiencyDates.Add(today);
-        }
-        else if (efficiencyDates.Count == 1)
-        {
-            var single = efficiencyDates[0];
-            efficiencyDates.Add(single == today ? yesterday : today);
-            efficiencyDates = efficiencyDates.OrderByDescending(d => d).ToList();
-        }
+        viewModel.SystemUptimePercent = recentIrrigations.Count > 0 ? 100.0 : 0.0;
+        var efficiencyDates = recentIrrigations
+            .OrderByDescending(i => i.CreatedDate)
+            .Take(5)
+            .Select(i => i.CreatedDate.Date)
+            .Distinct()
+            .OrderByDescending(d => d)
+            .Take(2)
+            .ToList();
+
         foreach (var d in efficiencyDates)
         {
             viewModel.OperationalEfficiencyByDate.Add(new OperationalEfficiencyPointViewModel
@@ -170,12 +166,14 @@ public class DashboardController : BaseController
             });
         }
 
-        // Wastewater trends: group WWChar by month/year, avg BOD5 and TSS
-        var wwList = allWWChars.ToList();
-        var wastewaterByPeriod = wwList
+        var wastewaterByPeriod = allWWChars
             .GroupBy(w => new { w.Month, w.Year })
-            .OrderByDescending(g => g.Key.Year).ThenByDescending(g => g.Key.Month)
-            .Take(6);
+            .OrderByDescending(g => g.Key.Year)
+            .ThenByDescending(g => g.Key.Month)
+            .Take(6)
+            .OrderBy(g => g.Key.Year)
+            .ThenBy(g => g.Key.Month);
+
         foreach (var g in wastewaterByPeriod)
         {
             decimal? avgBod5 = null;
@@ -191,63 +189,44 @@ public class DashboardController : BaseController
                 AvgTSS = avgTss
             });
         }
-        viewModel.WastewaterTrends = viewModel.WastewaterTrends.OrderBy(x => x.PeriodLabel).ToList();
 
-        // When no wastewater data, add placeholder so the chart shows something
-        if (viewModel.WastewaterTrends.Count == 0)
-        {
-            var now = DateTime.UtcNow;
-            var prev = now.AddMonths(-1);
-            viewModel.WastewaterTrends = new List<WastewaterTrendPointViewModel>
-            {
-                new() { PeriodLabel = $"{(MonthEnum)prev.Month} {prev.Year}", AvgBOD5 = 10m, AvgTSS = 6m },
-                new() { PeriodLabel = $"{(MonthEnum)now.Month} {now.Year}", AvgBOD5 = 12m, AvgTSS = 8m }
-            };
-        }
-
-        // Groundwater overview: avg pH, avg conductivity, last pH per well
         var gwList = (await _gwMonitService.GetAllAsync(companyId)).ToList();
         var phValues = gwList.Where(g => g.PH.HasValue).Select(g => g.PH!.Value).ToList();
         var condValues = gwList.Where(g => g.Conductivity.HasValue).Select(g => g.Conductivity!.Value).ToList();
         viewModel.GroundwaterOverview.AvgPH = phValues.Count > 0 ? (decimal)phValues.Average() : null;
         viewModel.GroundwaterOverview.AvgConductivity = condValues.Count > 0 ? (decimal)condValues.Average() : null;
-        var wells = await _monitoringWellService.GetAllAsync(companyId);
-        foreach (var well in wells)
+
+        var latestPhByWell = gwList
+            .Where(g => g.PH.HasValue)
+            .GroupBy(g => g.MonitoringWellId)
+            .Select(g => g.OrderByDescending(x => x.SampleDate).First())
+            .ToDictionary(x => x.MonitoringWellId, x => x.PH);
+
+        foreach (var well in monitoringWells)
         {
-            var wellReadings = gwList.Where(g => g.MonitoringWellId == well.Id).OrderByDescending(g => g.SampleDate).ToList();
-            var lastPh = wellReadings.FirstOrDefault(r => r.PH.HasValue)?.PH;
             viewModel.GroundwaterOverview.ByWell.Add(new GroundwaterWellPointViewModel
             {
                 WellId = well.WellId,
-                PH = lastPh
+                PH = latestPhByWell.TryGetValue(well.Id, out var lastPh) ? lastPh : null
             });
         }
         viewModel.GroundwaterOverview.ByWell = viewModel.GroundwaterOverview.ByWell.OrderBy(w => w.WellId).ToList();
 
-        // When no groundwater data, add placeholder so the chart and metrics show something
-        if (viewModel.GroundwaterOverview.ByWell.Count == 0)
-        {
-            viewModel.GroundwaterOverview.ByWell = new List<GroundwaterWellPointViewModel>
-            {
-                new() { WellId = "—", PH = 7m }
-            };
-        }
-        if (!viewModel.GroundwaterOverview.AvgPH.HasValue)
-            viewModel.GroundwaterOverview.AvgPH = 6.90m;
-        if (!viewModel.GroundwaterOverview.AvgConductivity.HasValue)
-            viewModel.GroundwaterOverview.AvgConductivity = 438m;
-
-        // Recent activities list (for Recent Activity card: "Operator log by X", "Irrigation completed on field X")
         var activities = new List<RecentActivityViewModel>();
         foreach (var log in recentLogs.Take(5))
+        {
             activities.Add(new RecentActivityViewModel { Type = "Operator Log", Description = $"Operator log by {log.CreatedBy}", Date = log.CreatedDate, User = log.CreatedBy });
+        }
         foreach (var irrigation in recentIrrigations.Take(5))
+        {
             activities.Add(new RecentActivityViewModel { Type = "Irrigation", Description = $"Irrigation completed on field {irrigation.Sprayfield?.FieldId ?? irrigation.SprayfieldId.ToString("N")}", Date = irrigation.CreatedDate, User = irrigation.CreatedBy });
+        }
         foreach (var report in recentReports.Take(5))
+        {
             activities.Add(new RecentActivityViewModel { Type = "Report", Description = $"Report for {report.Facility?.Name ?? "Facility"} - {report.Month} {report.Year}", Date = report.CreatedDate, User = report.CreatedBy });
+        }
         viewModel.RecentActivities = activities.OrderByDescending(a => a.Date).Take(5).ToList();
 
-        // System Status card: 4 systems with Normal/Operational (dark tag) or Attention Required (light tag)
         var needsComplianceAttention = viewModel.NonCompliantReports > 0 || viewModel.UnderReviewReports > 0;
         var needsMonitoringAttention = viewModel.RecentGWMonitRecords == 0 && viewModel.TotalMonitoringWells > 0;
         viewModel.SystemStatuses = new List<SystemStatusViewModel>
@@ -258,13 +237,13 @@ public class DashboardController : BaseController
             new() { SystemName = "Compliance Status", Status = needsComplianceAttention ? "Attention Required" : "Compliant", IsNormalOrOperational = !needsComplianceAttention }
         };
 
+        var facilityMap = facilities.ToDictionary(f => f.Id, f => f.Name);
         var complianceSummaries = new List<ComplianceSummaryViewModel>();
         foreach (var report in recentReports.OrderByDescending(r => r.CreatedDate).Take(10))
         {
-            var facility = await _facilityService.GetByIdAsync(report.FacilityId);
             complianceSummaries.Add(new ComplianceSummaryViewModel
             {
-                FacilityName = facility?.Name ?? "Unknown",
+                FacilityName = facilityMap.TryGetValue(report.FacilityId, out var facilityName) ? facilityName : "Unknown",
                 Period = $"{report.Month} {report.Year}",
                 ComplianceStatus = report.ComplianceStatus.ToString(),
                 ReportDate = report.CreatedDate
@@ -275,22 +254,17 @@ public class DashboardController : BaseController
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.SelectedCompanyId = selectedCompanyId;
 
-        // Page subtitle: company name + " - Environmental Monitoring Overview"
         var companyName = "All Companies";
         if (companyId.HasValue)
         {
             var company = await _companyService.GetByIdAsync(companyId.Value);
             companyName = company?.Name ?? "Company";
         }
-        else if (isGlobalAdmin && selectedCompanyId == null)
-        {
-            companyName = "All Companies";
-        }
 
+        viewModel.SelectedCompanyName = companyName;
         ViewData["TitleIcon"] = "speedometer2";
         ViewData["PageSubtitle"] = $"{companyName} - Environmental Monitoring Overview";
 
         return View(viewModel);
     }
 }
-

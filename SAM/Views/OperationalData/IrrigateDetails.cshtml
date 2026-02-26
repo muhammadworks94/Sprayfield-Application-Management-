@@ -26,92 +26,82 @@
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">Basic Information</h5>
-    </div>
     <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">Date:</dt>
-            <dd class="col-sm-9">@Model.IrrigationDate.ToString("MM/dd/yyyy")</dd>
+        <h4 class="mb-4"><i class="bi bi-droplet me-2"></i>@(Model.FacilityName ?? "Facility") – @(Model.SprayfieldName ?? "Sprayfield") – @Model.IrrigationDate.ToString("MM/dd/yyyy")</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-4">Record Context</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar3 me-1"></i>Date:</dt>
+                    <dd class="col-sm-7 mb-2">@Model.IrrigationDate.ToString("MM/dd/yyyy")</dd>
 
-            <dt class="col-sm-3">Facility:</dt>
-            <dd class="col-sm-9">@Model.FacilityName</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-building me-1"></i>Facility:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.FacilityName ?? "N/A")</dd>
 
-            <dt class="col-sm-3">Sprayfield:</dt>
-            <dd class="col-sm-9">@Model.SprayfieldName</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-geo-alt me-1"></i>Sprayfield:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.SprayfieldName ?? "N/A")</dd>
 
-            <dt class="col-sm-3">Company:</dt>
-            <dd class="col-sm-9">@Model.CompanyName</dd>
-        </dl>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-briefcase me-1"></i>Company:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.CompanyName ?? "N/A")</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-4">Time & Duration</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-clock me-1"></i>Start Time:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.StartTime ?? "N/A")</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-clock-history me-1"></i>End Time:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.EndTime ?? "N/A")</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-hourglass-split me-1"></i>Duration:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.DurationHours?.ToString("F2") ?? "N/A") hours</dd>
+                </dl>
+            </div>
+        </div>
+        <div class="border-top pt-3 mt-3">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-4">Flow & Volume</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-speedometer2 me-1"></i>Flow Rate:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.FlowRateGpm?.ToString("F2") ?? "N/A") gpm</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-half me-1"></i>Total Volume:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.TotalVolumeGallons?.ToString("N0") ?? "N/A") gallons</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Application Rate:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.ApplicationRateInches?.ToString("F2") ?? "N/A") inches</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-4">Weather Conditions</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-cloud-rain me-1"></i>Precipitation (in):</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.PrecipitationIn.HasValue ? Model.PrecipitationIn.Value.ToString("F2") + " in" : "N/A")</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-thermometer-half me-1"></i>Temperature (°F):</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.TemperatureF.HasValue ? Model.TemperatureF.Value.ToString("F1") + " °F" : "N/A")</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-cloud-sun me-1"></i>Weather Conditions:</dt>
+                    <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.WeatherConditions) ? "N/A" : Model.WeatherConditions)</dd>
+                </dl>
+            </div>
+        </div>
+        </div>
+        <div class="border-top pt-3 mt-3">
+        <div class="row">
+            <div class="col-12">
+                <h5 class="detail-section-label mb-4">Additional Information</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-person me-1"></i>Modified by:</dt>
+                    <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.ModifiedBy) ? "N/A" : Model.ModifiedBy)</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-chat-left-text me-1"></i>Comments:</dt>
+                    <dd class="col-sm-7 mb-2 text-break">@(string.IsNullOrEmpty(Model.Comments) ? "N/A" : Model.Comments)</dd>
+                </dl>
+            </div>
+        </div>
+        </div>
     </div>
 </div>
-
-<div class="card mt-3">
-    <div class="card-header">
-        <h5 class="mb-0">Time & Duration</h5>
-    </div>
-    <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">Start Time:</dt>
-            <dd class="col-sm-9">@Model.StartTime</dd>
-
-            <dt class="col-sm-3">End Time:</dt>
-            <dd class="col-sm-9">@Model.EndTime</dd>
-
-            <dt class="col-sm-3">Duration:</dt>
-            <dd class="col-sm-9">@(Model.DurationHours?.ToString("F2") ?? "N/A") hours</dd>
-        </dl>
-    </div>
-</div>
-
-<div class="card mt-3">
-    <div class="card-header">
-        <h5 class="mb-0">Flow & Volume</h5>
-    </div>
-    <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">Flow Rate:</dt>
-            <dd class="col-sm-9">@(Model.FlowRateGpm?.ToString("F2") ?? "N/A") gpm</dd>
-
-            <dt class="col-sm-3">Total Volume:</dt>
-            <dd class="col-sm-9">@(Model.TotalVolumeGallons?.ToString("N0") ?? "N/A") gallons</dd>
-
-            <dt class="col-sm-3">Application Rate:</dt>
-            <dd class="col-sm-9">@(Model.ApplicationRateInches?.ToString("F2") ?? "N/A") inches</dd>
-        </dl>
-    </div>
-</div>
-
-<div class="card mt-3">
-    <div class="card-header">
-        <h5 class="mb-0">Weather Conditions</h5>
-    </div>
-    <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">Wind Speed:</dt>
-            <dd class="col-sm-9">@(Model.WindSpeed.HasValue ? Model.WindSpeed.Value.ToString("F1") : "N/A") mph</dd>
-
-            <dt class="col-sm-3">Wind Direction:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.WindDirection) ? "N/A" : Model.WindDirection)</dd>
-
-            <dt class="col-sm-3">Weather Conditions:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.WeatherConditions) ? "N/A" : Model.WeatherConditions)</dd>
-        </dl>
-    </div>
-</div>
-
-<div class="card mt-3">
-    <div class="card-header">
-        <h5 class="mb-0">Additional Information</h5>
-    </div>
-    <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">Operator:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.Operator) ? "N/A" : Model.Operator)</dd>
-
-            <dt class="col-sm-3">Comments:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.Comments) ? "N/A" : Model.Comments)</dd>
-        </dl>
-    </div>
-</div>
-

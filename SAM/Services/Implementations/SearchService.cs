@@ -28,7 +28,9 @@ public class SearchService : ISearchService
             return Enumerable.Empty<Company>();
         }
 
-        var query = _context.Companies.AsQueryable();
+        var query = _context.Companies
+            .AsNoTracking()
+            .AsQueryable();
 
         // Filter by company ID if provided
         if (companyId.HasValue)

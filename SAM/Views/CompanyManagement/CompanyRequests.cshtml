@@ -1,0 +1,424 @@
+@{
+    ViewData["Title"] = "Company Requests";
+    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
+    var companyRequests = ViewBag.CompanyRequests as IEnumerable<SAM.ViewModels.UserManagement.CompanyRequestViewModel> ?? Enumerable.Empty<SAM.ViewModels.UserManagement.CompanyRequestViewModel>();
+    var validCompanyIds = ViewBag.ValidCompanyIds as Dictionary<Guid, bool> ?? new Dictionary<Guid, bool>();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">Review and manage company registration requests from user signup</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-5">
+            <h4 class="mb-0"> Company Requests</h4>
+            <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm active"
+                        id="companyRequestsTableViewBtn">
+                    <i class="bi bi-table"></i> Table
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        id="companyRequestsCardViewBtn">
+                    <i class="bi bi-grid-3x3-gap"></i> Cards
+                </button>
+            </div>
+        </div>
+        @if (companyRequests.Any())
+        {
+            <div id="companyRequestsTableView" class="table-responsive">
+                <table class="table irrigates-table">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-building"></i> Company Name</th>
+                            <th><i class="bi bi-person"></i> Requester</th>
+                            <th><i class="bi bi-envelope"></i> Requester Email</th>
+                            <th><i class="bi bi-phone"></i> Contact</th>
+                            <th><i class="bi bi-info-circle"></i> Status</th>
+                            <th><i class="bi bi-calendar"></i> Created Date</th>
+                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var request in companyRequests)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@request.CompanyName</strong>
+                                    @if (!string.IsNullOrEmpty(request.Description))
+                                    {
+                                        <br />
+                                        <small class="text-muted">@request.Description</small>
+                                    }
+                                </td>
+                                <td>@request.RequesterFullName</td>
+                                <td>@request.RequesterEmail</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(request.PhoneNumber))
+                                    {
+                                        <div>@request.PhoneNumber</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(request.Website))
+                                    {
+                                        <div><a href="@request.Website" target="_blank">@request.Website</a></div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                    {
+                                        <span class="badge bg-warning">Pending</span>
+                                    }
+                                    else if (request.CreatedCompanyId.HasValue)
+                                    {
+                                        <span class="badge bg-success">Approved</span>
+                                        <br />
+                                        <small class="text-muted">Company Created</small>
+                                        @if (validCompanyIds.ContainsKey(request.CreatedCompanyId.Value) && !validCompanyIds[request.CreatedCompanyId.Value])
+                                        {
+                                            <br />
+                                            <span class="badge bg-secondary mt-1" title="The company associated with this request has been deleted.">
+                                                <i class="bi bi-exclamation-triangle"></i> Company Deleted
+                                            </span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Rejected</span>
+                                        @if (!string.IsNullOrEmpty(request.RejectionReason))
+                                        {
+                                            <br />
+                                            <small class="text-muted">@request.RejectionReason</small>
+                                        }
+                                    }
+                                </td>
+                                <td>@request.CreatedDate.ToString("MM/dd/yyyy")</td>
+                                <td class="table-actions">
+                                    @if (request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                    {
+                                        <a asp-action="CompanyRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                            <i class="bi bi-check-circle"></i> Approve
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#rejectCompanyRequestModal"
+                                                data-request-id="@request.Id"
+                                                data-request-name="@request.CompanyName">
+                                            <i class="bi bi-x-circle"></i> Reject
+                                        </button>
+                                    }
+                                    else if (request.CreatedCompanyId.HasValue)
+                                    {
+                                        @if (validCompanyIds.ContainsKey(request.CreatedCompanyId.Value) && validCompanyIds[request.CreatedCompanyId.Value])
+                                        {
+                                            <a asp-controller="SystemAdmin" asp-action="CompanyDetails" asp-route-id="@request.CreatedCompanyId" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> View Company
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex gap-2">
+                                            <a asp-action="CompanyRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="companyRequestsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+                @foreach (var request in companyRequests)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <h6 class="mb-0 card-header-light">@request.CompanyName</h6>
+                            <div class="card-body d-flex flex-column">
+                                @if (!string.IsNullOrEmpty(request.Description))
+                                {
+                                    <small class="text-muted d-block mb-2">@request.Description</small>
+                                }
+
+                                <dl class="row small mb-3">
+                                    <dt class="col-5"><i class="bi bi-person me-1"></i>Requester</dt>
+                                    <dd class="col-7 mb-1">@request.RequesterFullName</dd>
+
+                                    <dt class="col-5"><i class="bi bi-envelope me-1"></i>Email</dt>
+                                    <dd class="col-7 mb-1">@request.RequesterEmail</dd>
+
+                                    <dt class="col-5"><i class="bi bi-phone me-1"></i>Contact</dt>
+                                    <dd class="col-7 mb-1">@request.PhoneNumber</dd>
+
+                                    @if (!string.IsNullOrEmpty(request.Website))
+                                    {
+                                        <dt class="col-5"><i class="bi bi-globe me-1"></i>Website</dt>
+                                        <dd class="col-7 mb-1"><a href="@request.Website" target="_blank">@request.Website</a></dd>
+                                    }
+
+                                    <dt class="col-5"><i class="bi bi-info-circle me-1"></i>Status</dt>
+                                    <dd class="col-7 mb-1">
+                                        @if (request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                        {
+                                            <span class="badge bg-warning">Pending</span>
+                                        }
+                                        else if (request.CreatedCompanyId.HasValue)
+                                        {
+                                            <span class="badge bg-success">Approved</span>
+                                            <br />
+                                            <small class="text-muted">Company Created</small>
+                                            @if (validCompanyIds.ContainsKey(request.CreatedCompanyId.Value) && !validCompanyIds[request.CreatedCompanyId.Value])
+                                            {
+                                                <br />
+                                                <span class="badge bg-secondary mt-1" title="The company associated with this request has been deleted.">
+                                                    <i class="bi bi-exclamation-triangle"></i> Company Deleted
+                                                </span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Rejected</span>
+                                            @if (!string.IsNullOrEmpty(request.RejectionReason))
+                                            {
+                                                <br />
+                                                <small class="text-muted">@request.RejectionReason</small>
+                                            }
+                                        }
+                                    </dd>
+
+                                    <dt class="col-5"><i class="bi bi-calendar me-1"></i>Created</dt>
+                                    <dd class="col-7 mb-1">@request.CreatedDate.ToString("MM/dd/yyyy")</dd>
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-end">
+                                    @if (request.Status == SAM.Domain.Enums.RequestStatusEnum.Pending)
+                                    {
+                                        <div class="btn-group">
+                                            <a asp-action="CompanyRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#rejectCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-x-circle"></i> Reject
+                                            </button>
+                                        </div>
+                                    }
+                                    else if (request.CreatedCompanyId.HasValue)
+                                    {
+                                        @if (validCompanyIds.ContainsKey(request.CreatedCompanyId.Value) && validCompanyIds[request.CreatedCompanyId.Value])
+                                        {
+                                            <a asp-controller="SystemAdmin" asp-action="CompanyDetails" asp-route-id="@request.CreatedCompanyId" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> View Company
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex gap-2">
+                                            <a asp-action="CompanyRequestApprove" asp-route-id="@request.Id" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteCompanyRequestModal"
+                                                    data-request-id="@request.Id"
+                                                    data-request-name="@request.CompanyName">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-inbox ui-empty-icon"></i>
+                <p class="text-muted mt-3">No company requests found.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Reject Company Request Modal -->
+<div class="modal fade" id="rejectCompanyRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Company Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="rejectCompanyRequestForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p>Are you sure you want to reject the company request for <strong id="rejectCompanyName"></strong>?</p>
+                    <div class="mb-3">
+                        <label for="rejectCompanyReason" class="form-label">Reason (optional):</label>
+                        <textarea name="reason" id="rejectCompanyReason" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Company Request Modal -->
+<div class="modal fade" id="deleteCompanyRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Company Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteCompanyRequestForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the company request for <strong id="deleteCompanyName"></strong>?</p>
+                    <p class="text-muted small mb-0">This action will remove the request from the list.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            // Company Requests view mode toggle
+            const requestsTableBtn = document.getElementById('companyRequestsTableViewBtn');
+            const requestsCardBtn = document.getElementById('companyRequestsCardViewBtn');
+            const requestsTableView = document.getElementById('companyRequestsTableView');
+            const requestsCardView = document.getElementById('companyRequestsCardView');
+            const requestsStorageKey = 'companyRequestsViewMode';
+
+            function setRequestsViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    requestsTableView?.classList.remove('d-none');
+                    requestsCardView?.classList.add('d-none');
+                    requestsTableBtn?.classList.add('active');
+                    requestsCardBtn?.classList.remove('active');
+                } else {
+                    requestsTableView?.classList.add('d-none');
+                    requestsCardView?.classList.remove('d-none');
+                    requestsTableBtn?.classList.remove('active');
+                    requestsCardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(requestsStorageKey, mode);
+                }
+            }
+
+            const savedRequestsMode = window.localStorage ? localStorage.getItem(requestsStorageKey) : null;
+            setRequestsViewMode(savedRequestsMode === 'card' ? 'card' : 'table');
+
+            requestsTableBtn?.addEventListener('click', function () {
+                setRequestsViewMode('table');
+            });
+
+            requestsCardBtn?.addEventListener('click', function () {
+                setRequestsViewMode('card');
+            });
+
+            // Reject modal handling
+            const rejectModal = document.getElementById('rejectCompanyRequestModal');
+            if (rejectModal) {
+                rejectModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const requestId = button.getAttribute('data-request-id');
+                    const requestName = button.getAttribute('data-request-name');
+                    
+                    const nameElement = rejectModal.querySelector('#rejectCompanyName');
+                    if (nameElement) {
+                        nameElement.textContent = requestName;
+                    }
+                    
+                    const form = rejectModal.querySelector('#rejectCompanyRequestForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("CompanyRequestReject", "CompanyManagement")';
+                        form.action = baseUrl + '/' + requestId;
+                    }
+                    
+                    const reasonTextarea = rejectModal.querySelector('#rejectCompanyReason');
+                    if (reasonTextarea) {
+                        reasonTextarea.value = '';
+                    }
+                });
+            }
+
+            // Delete modal handling
+            const deleteModal = document.getElementById('deleteCompanyRequestModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const requestId = button.getAttribute('data-request-id');
+                    const requestName = button.getAttribute('data-request-name');
+
+                    const nameElement = deleteModal.querySelector('#deleteCompanyName');
+                    if (nameElement) {
+                        nameElement.textContent = requestName;
+                    }
+
+                    const form = deleteModal.querySelector('#deleteCompanyRequestForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("CompanyRequestDelete", "CompanyManagement")';
+                        form.action = baseUrl + '/' + requestId;
+                    }
+                });
+            }
+        })();
+    </script>
+}
+
+
+

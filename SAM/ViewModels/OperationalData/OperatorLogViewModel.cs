@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using SAM.Domain.Enums;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -21,17 +20,17 @@ public class OperatorLogViewModel
     [Display(Name = "Operator Name")]
     public string OperatorName { get; set; } = string.Empty;
     
-    [Required]
-    [Display(Name = "Shift")]
-    public ShiftEnum Shift { get; set; }
-    
-    [StringLength(500)]
     [Display(Name = "Weather Conditions")]
+    [StringLength(500)]
     public string WeatherConditions { get; set; } = string.Empty;
-    
-    [Required]
-    [Display(Name = "System Status")]
-    public SystemStatusEnum SystemStatus { get; set; }
+
+    [Display(Name = "Arrival Time")]
+    [DataType(DataType.Time)]
+    public string ArrivalTime { get; set; } = string.Empty;
+
+    [Display(Name = "Time on Site (hours)")]
+    [Range(0, double.MaxValue)]
+    public decimal? TimeOnSiteHours { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Maintenance Performed")]
@@ -69,22 +68,22 @@ public class OperatorLogCreateViewModel
     [DataType(DataType.Date)]
     public DateTime LogDate { get; set; } = DateTime.Today;
     
-    [Required]
     [StringLength(200)]
     [Display(Name = "Operator Name")]
     public string OperatorName { get; set; } = string.Empty;
     
-    [Required]
-    [Display(Name = "Shift")]
-    public ShiftEnum Shift { get; set; }
-    
     [StringLength(500)]
     [Display(Name = "Weather Conditions")]
     public string WeatherConditions { get; set; } = string.Empty;
-    
+
     [Required]
-    [Display(Name = "System Status")]
-    public SystemStatusEnum SystemStatus { get; set; } = SystemStatusEnum.Normal;
+    [Display(Name = "Arrival Time")]
+    [DataType(DataType.Time)]
+    public string ArrivalTime { get; set; } = string.Empty;
+
+    [Display(Name = "Time on Site (hours)")]
+    [Range(0, double.MaxValue)]
+    public decimal? TimeOnSiteHours { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Maintenance Performed")]
@@ -124,22 +123,22 @@ public class OperatorLogEditViewModel
     [DataType(DataType.Date)]
     public DateTime LogDate { get; set; }
     
-    [Required]
     [StringLength(200)]
     [Display(Name = "Operator Name")]
     public string OperatorName { get; set; } = string.Empty;
     
-    [Required]
-    [Display(Name = "Shift")]
-    public ShiftEnum Shift { get; set; }
-    
     [StringLength(500)]
     [Display(Name = "Weather Conditions")]
     public string WeatherConditions { get; set; } = string.Empty;
-    
+
     [Required]
-    [Display(Name = "System Status")]
-    public SystemStatusEnum SystemStatus { get; set; }
+    [Display(Name = "Arrival Time")]
+    [DataType(DataType.Time)]
+    public string ArrivalTime { get; set; } = string.Empty;
+
+    [Display(Name = "Time on Site (hours)")]
+    [Range(0, double.MaxValue)]
+    public decimal? TimeOnSiteHours { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Maintenance Performed")]

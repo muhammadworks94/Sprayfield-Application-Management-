@@ -69,9 +69,8 @@ public class UserEditViewModel
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
     
-    [Required]
     [Display(Name = "Role")]
-    public AppRoleEnum AppRole { get; set; }
+    public AppRoleEnum? AppRole { get; set; }
     
     [Display(Name = "Active")]
     public bool IsActive { get; set; }

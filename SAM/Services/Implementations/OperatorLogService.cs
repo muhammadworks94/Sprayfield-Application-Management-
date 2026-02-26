@@ -26,6 +26,7 @@ public class OperatorLogService : IOperatorLogService
         var query = _context.OperatorLogs
             .Include(o => o.Company)
             .Include(o => o.Facility)
+            .AsNoTracking()
             .AsQueryable();
 
         if (companyId.HasValue)
@@ -49,6 +50,7 @@ public class OperatorLogService : IOperatorLogService
         return await _context.OperatorLogs
             .Include(o => o.Company)
             .Include(o => o.Facility)
+            .AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
@@ -82,7 +84,8 @@ public class OperatorLogService : IOperatorLogService
         if (operatorLog == null)
             throw new ArgumentNullException(nameof(operatorLog));
 
-        var existing = await GetByIdAsync(operatorLog.Id);
+        var existing = await _context.OperatorLogs
+            .FirstOrDefaultAsync(o => o.Id == operatorLog.Id);
         if (existing == null)
             throw new EntityNotFoundException(nameof(OperatorLog), operatorLog.Id);
 
@@ -100,9 +103,9 @@ public class OperatorLogService : IOperatorLogService
 
         existing.LogDate = operatorLog.LogDate;
         existing.OperatorName = operatorLog.OperatorName;
-        existing.Shift = operatorLog.Shift;
         existing.WeatherConditions = operatorLog.WeatherConditions;
-        existing.SystemStatus = operatorLog.SystemStatus;
+        existing.ArrivalTime = operatorLog.ArrivalTime;
+        existing.TimeOnSiteHours = operatorLog.TimeOnSiteHours;
         existing.MaintenancePerformed = operatorLog.MaintenancePerformed;
         existing.EquipmentInspected = operatorLog.EquipmentInspected;
         existing.IssuesNoted = operatorLog.IssuesNoted;
@@ -117,7 +120,8 @@ public class OperatorLogService : IOperatorLogService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var operatorLog = await GetByIdAsync(id);
+        var operatorLog = await _context.OperatorLogs
+            .FirstOrDefaultAsync(o => o.Id == id);
         if (operatorLog == null)
             throw new EntityNotFoundException(nameof(OperatorLog), id);
 
@@ -137,6 +141,7 @@ public class OperatorLogService : IOperatorLogService
     public async Task<IEnumerable<OperatorLog>> GetByFacilityIdAsync(Guid facilityId)
     {
         return await _context.OperatorLogs
+            .AsNoTracking()
             .Where(o => o.FacilityId == facilityId)
             .OrderByDescending(o => o.LogDate)
             .ToListAsync();
@@ -144,7 +149,9 @@ public class OperatorLogService : IOperatorLogService
 
     public async Task<IEnumerable<OperatorLog>> GetByDateRangeAsync(Guid? companyId, DateTime startDate, DateTime endDate)
     {
-        var query = _context.OperatorLogs.AsQueryable();
+        var query = _context.OperatorLogs
+            .AsNoTracking()
+            .AsQueryable();
 
         if (companyId.HasValue)
         {

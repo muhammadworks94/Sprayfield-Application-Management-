@@ -6,15 +6,13 @@
     ViewData["Title"] = "Create User";
     var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var roles = ViewBag.Roles as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var user = await UserManager.GetUserAsync(User);
-    var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <p class="text-muted mb-0">Create a new user account</p>
     </div>
-    <a asp-action="Users" class="btn btn-secondary">
+    <a asp-action="Index" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Back to List
     </a>
 </div>
@@ -65,7 +63,7 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-                <a asp-action="Users" class="btn btn-secondary">Cancel</a>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> Create User
                 </button>

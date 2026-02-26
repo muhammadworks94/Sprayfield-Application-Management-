@@ -6,6 +6,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 
 namespace SAM.Services.Implementations;
 
@@ -16,15 +17,21 @@ public class CompanyRequestService : ICompanyRequestService
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
     private readonly ILogger<CompanyRequestService> _logger;
 
     public CompanyRequestService(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
+        IEmailService emailService,
+        IEmailTemplateService emailTemplateService,
         ILogger<CompanyRequestService> logger)
     {
         _context = context;
         _userManager = userManager;
+        _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
         _logger = logger;
     }
 
@@ -88,8 +95,9 @@ public class CompanyRequestService : ICompanyRequestService
         if (request == null)
             throw new EntityNotFoundException(nameof(CompanyRequest), requestId);
 
-        if (request.Status != RequestStatusEnum.Pending)
-            throw new BusinessRuleException("Only pending requests can be approved.");
+        // Allow re-approval for previously rejected requests, but block already-approved requests.
+        if (request.CreatedCompanyId.HasValue || request.CreatedUserId.HasValue)
+            throw new BusinessRuleException("This request has already been approved.");
 
         // Check if user already exists
         var existingUser = await _userManager.FindByEmailAsync(request.RequesterEmail);
@@ -161,12 +169,25 @@ public class CompanyRequestService : ICompanyRequestService
         request.CreatedCompanyId = company.Id;
         Guid.TryParse(user.Id, out var GuidUserId);
         request.CreatedUserId = GuidUserId;
+        request.RejectionReason = null;
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Company request approved: '{CompanyName}' (Request ID: {RequestId}, Company ID: {CompanyId}, User ID: {UserId})",
             request.CompanyName, requestId, company.Id, user.Id);
 
-        // TODO: Send email notification with temporary password
+        var approvedTokens = new Dictionary<string, string>
+        {
+            ["AppName"] = EmailTemplateCatalog.AppName,
+            ["RecipientEmail"] = request.RequesterEmail,
+            ["CompanyName"] = request.CompanyName,
+            ["TemporaryPassword"] = tempPassword,
+            ["RoleName"] = "Company Admin"
+        };
+
+        await TrySendNotificationWithRetryAsync(
+            request.RequesterEmail,
+            EmailTemplateCatalog.CompanyRequestApproved,
+            approvedTokens);
 
         return request;
     }
@@ -187,9 +208,43 @@ public class CompanyRequestService : ICompanyRequestService
         _logger.LogInformation("Company request rejected: '{CompanyName}' (Request ID: {RequestId}) by {RejectedBy}",
             request.CompanyName, requestId, rejectedByEmail);
 
-        // TODO: Send email notification about rejection
+        var rejectedTokens = new Dictionary<string, string>
+        {
+            ["AppName"] = EmailTemplateCatalog.AppName,
+            ["RecipientEmail"] = request.RequesterEmail,
+            ["CompanyName"] = request.CompanyName,
+            ["RejectionReason"] = string.IsNullOrWhiteSpace(reason) ? "No reason provided." : reason
+        };
+
+        await TrySendNotificationWithRetryAsync(
+            request.RequesterEmail,
+            EmailTemplateCatalog.CompanyRequestRejected,
+            rejectedTokens);
 
         return request;
+    }
+
+    public async Task DeleteRequestAsync(Guid id)
+    {
+        var request = await _context.CompanyRequests
+            .FirstOrDefaultAsync(r => r.Id == id);
+        if (request == null)
+            throw new EntityNotFoundException(nameof(CompanyRequest), id);
+
+        if (request.CreatedCompanyId.HasValue)
+        {
+            var linkedCompany = await _context.Companies
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Id == request.CreatedCompanyId.Value);
+
+            if (linkedCompany != null && !linkedCompany.IsDeleted)
+            {
+                throw new BusinessRuleException("Approved company requests cannot be deleted while the linked company still exists.");
+            }
+        }
+
+        request.IsDeleted = true;
+        await _context.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<CompanyRequest>> GetPendingRequestsAsync()
@@ -212,6 +267,45 @@ public class CompanyRequestService : ICompanyRequestService
         var random = new Random();
         return new string(Enumerable.Repeat(chars, 12)
             .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+
+    private async Task TrySendNotificationWithRetryAsync(
+        string to,
+        string templateKey,
+        IReadOnlyDictionary<string, string> tokens)
+    {
+        var rendered = await _emailTemplateService.RenderAsync(templateKey, tokens);
+        var delays = new[]
+        {
+            TimeSpan.FromMilliseconds(500),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(2)
+        };
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
+            {
+                await _emailService.SendEmailAsync(to, rendered.Subject, rendered.HtmlBody);
+                return;
+            }
+            catch (Exception ex)
+            {
+                if (attempt == 3)
+                {
+                    _logger.LogError(ex,
+                        "Failed to send notification email. Template: {TemplateKey}, Recipient: {Recipient}, Attempts: {Attempts}",
+                        templateKey, to, attempt);
+                    return;
+                }
+
+                _logger.LogWarning(ex,
+                    "Notification email send attempt {Attempt} failed. Retrying. Template: {TemplateKey}, Recipient: {Recipient}",
+                    attempt, templateKey, to);
+
+                await Task.Delay(delays[attempt - 1]);
+            }
+        }
     }
 }
 

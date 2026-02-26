@@ -5,8 +5,10 @@ using SAM.Data;
 using SAM.Data.Seeders;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
+using SAM.Infrastructure.HostedServices;
 using SAM.Infrastructure.Middleware;
 using SAM.Services.Implementations;
+using SAM.Services.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -98,16 +100,23 @@ builder.Services.AddScoped<SAM.Services.Interfaces.IIrrigateService, IrrigateSer
 builder.Services.AddScoped<SAM.Services.Interfaces.IWWCharService, WWCharService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IGWMonitService, GWMonitService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IIrrRprtService, IrrRprtService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IPANCalculationService, PANCalculationService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDAR1Service, NDAR1Service>();
+builder.Services.AddScoped<SAM.Services.Interfaces.INDMRService, NDMRService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.INDMLRService, NDMLRService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserService, UserService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserRequestService, UserRequestService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IAdminRequestService, AdminRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISearchService, SearchService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService, SAM.Services.Implementations.CompanyRequestService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService,CompanyRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailService, EmailService>();
-
-// Configure Email options
-builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email:Smtp"));
+builder.Services.AddScoped<SAM.Services.Interfaces.IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ISmtpSettingsService, SmtpSettingsService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IUserActivityLogService, UserActivityLogService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IErrorLogService, ErrorLogService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ILookupQueryService, LookupQueryService>();
+builder.Services.AddDataProtection();
+builder.Services.Configure<ActivityLogOptions>(builder.Configuration.GetSection(ActivityLogOptions.SectionName));
+builder.Services.AddHostedService<UserActivityLogRetentionService>();
 
 // Configure Authorization Policies
 builder.Services.AddAuthorization(options =>
@@ -123,6 +132,9 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(Policies.RequireTechnician, policy => 
         policy.RequireRole("admin", "company_admin", "technician"));
+
+    options.AddPolicy(Policies.RequireTechnicianOrOperator, policy =>
+         policy.RequireRole("admin", "company_admin", "technician","operator"));
 
     // RequireCompanyAccess policy uses custom handler for company-scoped access
     options.AddPolicy(Policies.RequireCompanyAccess, policy => 

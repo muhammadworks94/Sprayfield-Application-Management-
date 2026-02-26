@@ -25,18 +25,18 @@
             ? companies.FirstOrDefault(c => c.Id == selectedCompanyId.Value) 
             : null;
         
-        <div class="dropdown">
-            <button class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center" type="button" id="companySelectorButton" data-bs-toggle="dropdown" aria-expanded="false">
+        <div class="dropdown header-dropdown company-selector-dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle header-dropdown-trigger d-flex align-items-center" type="button" id="companySelectorButton" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="bi bi-building me-2"></i> 
                 <span>@(selectedCompany?.Name ?? "All Companies")</span>
             </button>
-            <ul class="dropdown-menu shadow-lg" aria-labelledby="companySelectorButton" style="min-width: 200px;">
+            <ul class="dropdown-menu shadow-lg header-dropdown-panel" aria-labelledby="companySelectorButton">
                 <li>
                     <form method="post" asp-controller="CompanyContext" asp-action="SetCompanyContext" class="m-0">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="companyId" value="" />
                         <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                        <button type="submit" class="dropdown-item @(!selectedCompanyId.HasValue ? "active" : "")" style="border: none; background: none; width: 100%; text-align: left;">
+                        <button type="submit" class="dropdown-item header-dropdown-item border-0 bg-transparent w-100 text-start @(!selectedCompanyId.HasValue ? "active" : "")">
                             <i class="bi bi-building me-2"></i>All Companies
                         </button>
                     </form>
@@ -48,7 +48,7 @@
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="companyId" value="@company.Id" />
                             <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                            <button type="submit" class="dropdown-item @(selectedCompanyId == company.Id ? "active" : "")" style="border: none; background: none; width: 100%; text-align: left;">
+                            <button type="submit" class="dropdown-item header-dropdown-item border-0 bg-transparent w-100 text-start @(selectedCompanyId == company.Id ? "active" : "")">
                                 <i class="bi bi-building me-2"></i>@company.Name
                             </button>
                         </form>

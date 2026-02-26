@@ -5,8 +5,6 @@
 @{
     ViewData["Title"] = "Edit Operator Log";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var shifts = ViewBag.Shifts as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var systemStatuses = ViewBag.SystemStatuses as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
     var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
@@ -50,16 +48,9 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="OperatorName" class="form-label required"></label>
-                                    <input asp-for="OperatorName" class="form-control" />
-                                    <span asp-validation-for="OperatorName" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label asp-for="Shift" class="form-label required"></label>
-                                    <select asp-for="Shift" asp-items="shifts" class="form-select"></select>
-                                    <span asp-validation-for="Shift" class="text-danger"></span>
+                                    <label asp-for="ArrivalTime" class="form-label required"></label>
+                                    <input asp-for="ArrivalTime" type="time" class="form-control" />
+                                    <span asp-validation-for="ArrivalTime" class="text-danger"></span>
                                 </div>
                             </div>
                         </div>
@@ -67,16 +58,36 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="SystemStatus" class="form-label required"></label>
-                                    <select asp-for="SystemStatus" asp-items="systemStatuses" class="form-select"></select>
-                                    <span asp-validation-for="SystemStatus" class="text-danger"></span>
+                                    <label asp-for="OperatorName" class="form-label"></label>
+                                    <div class="form-control-plaintext">
+                                        @Model.OperatorName
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="WeatherConditions" class="form-label"></label>
+                                    <select asp-for="WeatherConditions" class="form-select">
+                                        <option value="">-- Select Weather --</option>
+                                        <option value="C">Clear (C)</option>
+                                        <option value="CL">Cloudy (CL)</option>
+                                        <option value="PC">Partly Cloudy (PC)</option>
+                                        <option value="R">Rain (R)</option>
+                                        <option value="SL">Sleet (SL)</option>
+                                        <option value="SN">Snow (SN)</option>
+                                    </select>
+                                    <span asp-validation-for="WeatherConditions" class="text-danger"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="WeatherConditions" class="form-label"></label>
-                                    <input asp-for="WeatherConditions" class="form-control" />
-                                    <span asp-validation-for="WeatherConditions" class="text-danger"></span>
+                                    <label asp-for="TimeOnSiteHours" class="form-label"></label>
+                                    <input asp-for="TimeOnSiteHours" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TimeOnSiteHours" class="text-danger"></span>
+                                    <small class="form-text text-muted">Enter total time on site as hours in decimal format (e.g., 1.5 for 1½ hours).</small>
                                 </div>
                             </div>
                         </div>
@@ -132,11 +143,11 @@
                     <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Editing Operator Logs</h6>
                     <ul class="small mb-0 ps-3">
                         <li class="mb-1"><strong>Facility</strong>: Confirm the facility is correct before saving; changing facilities will move this log to a different site’s history.</li>
-                        <li class="mb-1"><strong>Log Date</strong>: Adjust only if the log was entered on the wrong calendar date. Use the date that matches the shift being documented.</li>
-                        <li class="mb-1"><strong>Operator Name</strong>: Ensure the primary responsible operator is listed. If multiple operators shared the shift, note others in <em>Next Shift Notes</em>.</li>
-                        <li class="mb-1"><strong>Shift</strong>: Keep shift assignments consistent with your facility schedule so reports by shift remain accurate.</li>
-                        <li class="mb-1"><strong>System Status</strong>: Update status if new information shows the system was in a worse state than originally logged (e.g., from “Normal” to “Alarm”).</li>
-                        <li class="mb-1"><strong>Weather Conditions</strong>: Update if conditions were mischaracterized or materially affected operations (e.g., heavy rain, freezing temps, high winds).</li>
+                        <li class="mb-1"><strong>Log Date</strong>: Adjust only if the log was entered on the wrong calendar date for the visit.</li>
+                        <li class="mb-1"><strong>Operator Name</strong>: This is recorded from the operator account that created or last took responsibility for the log and is not edited directly.</li>
+                        <li class="mb-1"><strong>Arrival Time</strong>: Keep the recorded arrival time accurate to support timelines and investigations.</li>
+                        <li class="mb-1"><strong>Time on Site</strong>: Update hours on site if the duration was misestimated or work was extended.</li>
+                        <li class="mb-1"><strong>Weather Conditions</strong>: Update the selected weather code if conditions were mischaracterized or materially affected operations.</li>
                         <li class="mb-1"><strong>Maintenance Performed</strong>: Add missing details such as work order numbers, equipment IDs, and parts replaced so maintenance history is clear.</li>
                         <li class="mb-1"><strong>Equipment Inspected</strong>: Clarify what was checked and what you observed (e.g., “P-1 running smooth, no leaks; blower B-2 vibration normal”).</li>
                         <li class="mb-1"><strong>Issues Noted</strong>: Ensure all significant alarms, excursions, or safety concerns are documented—even if resolved after the shift.</li>
@@ -152,5 +163,26 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            document.addEventListener('DOMContentLoaded', function () {
+                var arrivalInput = document.querySelector('input[name="ArrivalTime"]');
+
+                if (!arrivalInput) {
+                    return;
+                }
+
+                if (typeof flatpickr === 'function') {
+                    flatpickr(arrivalInput, {
+                        enableTime: true,
+                        noCalendar: true,
+                        dateFormat: "H:i",
+                        time_24hr: true,
+                        allowInput: true
+                    });
+                }
+            });
+        })();
+    </script>
 }
 

@@ -42,26 +42,25 @@ public class IrrigateViewModel
     [Display(Name = "Application Rate (inches)")]
     [Range(0, double.MaxValue)]
     public decimal? ApplicationRateInches { get; set; }
-    
-    [Display(Name = "Wind Speed")]
+
+    [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
-    public decimal? WindSpeed { get; set; }
-    
-    [StringLength(100)]
-    [Display(Name = "Wind Direction")]
-    public string WindDirection { get; set; } = string.Empty;
+    public decimal? TemperatureF { get; set; }
+
+    [Display(Name = "Precipitation (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? PrecipitationIn { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Weather Conditions")]
     public string WeatherConditions { get; set; } = string.Empty;
-    
-    [StringLength(200)]
-    [Display(Name = "Operator")]
-    public string Operator { get; set; } = string.Empty;
-    
+
     [StringLength(2000)]
     [Display(Name = "Comments")]
     public string Comments { get; set; } = string.Empty;
+
+    [Display(Name = "Modified by")]
+    public string? ModifiedBy { get; set; }
 }
 
 public class IrrigateCreateViewModel
@@ -108,23 +107,19 @@ public class IrrigateCreateViewModel
     [Display(Name = "Application Rate (inches)")]
     [Range(0, double.MaxValue)]
     public decimal? ApplicationRateInches { get; set; }
-    
-    [Display(Name = "Wind Speed")]
+
+    [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
-    public decimal? WindSpeed { get; set; }
-    
-    [StringLength(100)]
-    [Display(Name = "Wind Direction")]
-    public string WindDirection { get; set; } = string.Empty;
-    
+    public decimal? TemperatureF { get; set; }
+
+    [Display(Name = "Precipitation (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? PrecipitationIn { get; set; }
+
     [StringLength(500)]
     [Display(Name = "Weather Conditions")]
     public string WeatherConditions { get; set; } = string.Empty;
-    
-    [StringLength(200)]
-    [Display(Name = "Operator")]
-    public string Operator { get; set; } = string.Empty;
-    
+
     [StringLength(2000)]
     [Display(Name = "Comments")]
     public string Comments { get; set; } = string.Empty;
@@ -176,23 +171,19 @@ public class IrrigateEditViewModel
     [Display(Name = "Application Rate (inches)")]
     [Range(0, double.MaxValue)]
     public decimal? ApplicationRateInches { get; set; }
-    
-    [Display(Name = "Wind Speed")]
+
+    [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
-    public decimal? WindSpeed { get; set; }
-    
-    [StringLength(100)]
-    [Display(Name = "Wind Direction")]
-    public string WindDirection { get; set; } = string.Empty;
-    
+    public decimal? TemperatureF { get; set; }
+
+    [Display(Name = "Precipitation (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? PrecipitationIn { get; set; }
+
     [StringLength(500)]
     [Display(Name = "Weather Conditions")]
     public string WeatherConditions { get; set; } = string.Empty;
-    
-    [StringLength(200)]
-    [Display(Name = "Operator")]
-    public string Operator { get; set; } = string.Empty;
-    
+
     [StringLength(2000)]
     [Display(Name = "Comments")]
     public string Comments { get; set; } = string.Empty;

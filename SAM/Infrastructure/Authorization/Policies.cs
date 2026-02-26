@@ -26,6 +26,11 @@ public static class Policies
     public const string RequireTechnician = "RequireTechnician";
 
     /// <summary>
+    /// Requires the user to have the 'technician' role.
+    /// </summary>
+    public const string RequireTechnicianOrOperator = "RequireTechnicianOrOperator";
+
+    /// <summary>
     /// Requires the user to have access to the specified company.
     /// </summary>
     public const string RequireCompanyAccess = "RequireCompanyAccess";

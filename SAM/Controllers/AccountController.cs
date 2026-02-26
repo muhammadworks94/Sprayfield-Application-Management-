@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations;
 using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 using SAM.ViewModels.Account;
 
 namespace SAM.Controllers;
@@ -24,6 +25,8 @@ public class AccountController : Controller
     private readonly IUserRequestService _userRequestService;
     private readonly ICompanyRequestService _companyRequestService;
     private readonly IEmailService _emailService;
+    private readonly IEmailTemplateService _emailTemplateService;
+    private readonly IUserActivityLogService _userActivityLogService;
 
     public AccountController(
         SignInManager<ApplicationUser> signInManager,
@@ -32,7 +35,9 @@ public class AccountController : Controller
         ICompanyService companyService,
         IUserRequestService userRequestService,
         ICompanyRequestService companyRequestService,
-        IEmailService emailService)
+        IEmailService emailService,
+        IEmailTemplateService emailTemplateService,
+        IUserActivityLogService userActivityLogService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -41,6 +46,8 @@ public class AccountController : Controller
         _userRequestService = userRequestService;
         _companyRequestService = companyRequestService;
         _emailService = emailService;
+        _emailTemplateService = emailTemplateService;
+        _userActivityLogService = userActivityLogService;
     }
 
     [HttpGet]
@@ -83,6 +90,7 @@ public class AccountController : Controller
 
         if (result.Succeeded)
         {
+            await _userActivityLogService.LogAuthenticationEventAsync(UserActivityType.Login, user, HttpContext);
             _logger.LogInformation("User {Email} logged in.", model.Email);
             return RedirectToLocal(returnUrl);
         }
@@ -132,15 +140,18 @@ public class AccountController : Controller
                 new { userId = user.Id, token },
                 protocol: Request.Scheme) ?? string.Empty;
 
-            var htmlBody =
-                $"<p>You requested to reset your password for your SAM account.</p>" +
-                $"<p>Please click the link below to reset your password:</p>" +
-                $"<p><a href=\"{callbackUrl}\">Reset your password</a></p>" +
-                "<p>If you did not request this, you can safely ignore this email.</p>";
-
             try
             {
-                await _emailService.SendEmailAsync(model.Email, "Reset your SAM password", htmlBody);
+                var renderedEmail = await _emailTemplateService.RenderAsync(
+                    EmailTemplateCatalog.PasswordReset,
+                    new Dictionary<string, string>
+                    {
+                        ["AppName"] = EmailTemplateCatalog.AppName,
+                        ["ResetLink"] = callbackUrl,
+                        ["RecipientEmail"] = model.Email
+                    });
+
+                await _emailService.SendEmailAsync(model.Email, renderedEmail.Subject, renderedEmail.HtmlBody);
             }
             catch (Exception ex)
             {
@@ -211,7 +222,9 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        var user = await _userManager.GetUserAsync(User);
         var userEmail = User.Identity?.Name ?? "Unknown";
+        await _userActivityLogService.LogAuthenticationEventAsync(UserActivityType.Logout, user, HttpContext);
         await _signInManager.SignOutAsync();
         _logger.LogInformation("User {Email} logged out.", userEmail);
         return RedirectToAction("Login", "Account");
@@ -313,7 +326,8 @@ public class AccountController : Controller
                     return View(model);
                 }
 
-                // Create CompanyRequest
+                // Create CompanyRequest for signup flow (requires admin approval)
+                // Note: Admins create companies directly via CompanyManagementController.CompanyCreate (no request flow)
                 var companyRequest = new CompanyRequest
                 {
                     CompanyName = model.CompanyName,

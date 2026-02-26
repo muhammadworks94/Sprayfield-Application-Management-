@@ -27,6 +27,10 @@ public class NozzleViewModel
     [Display(Name = "Spray Arc (degrees)")]
     [Range(0, 360, ErrorMessage = "Spray arc must be between 0 and 360 degrees.")]
     public int SprayArc { get; set; }
+
+    [StringLength(500)]
+    [Display(Name = "Comment")]
+    public string? Comment { get; set; }
 }
 
 public class NozzleCreateViewModel
@@ -54,6 +58,10 @@ public class NozzleCreateViewModel
     [Display(Name = "Spray Arc (degrees)")]
     [Range(0, 360, ErrorMessage = "Spray arc must be between 0 and 360 degrees.")]
     public int SprayArc { get; set; }
+
+    [StringLength(500)]
+    [Display(Name = "Comment")]
+    public string? Comment { get; set; }
 }
 
 public class NozzleEditViewModel
@@ -83,6 +91,10 @@ public class NozzleEditViewModel
     [Display(Name = "Spray Arc (degrees)")]
     [Range(0, 360, ErrorMessage = "Spray arc must be between 0 and 360 degrees.")]
     public int SprayArc { get; set; }
+
+    [StringLength(500)]
+    [Display(Name = "Comment")]
+    public string? Comment { get; set; }
 }
 
 

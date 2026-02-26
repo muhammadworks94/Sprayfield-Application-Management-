@@ -1,32 +1,11 @@
 @model SAM.ViewModels.SystemAdmin.MonitoringWellsPartialViewModel
 @{
     var isGlobalAdmin = Model.IsGlobalAdmin;
+    var canManageRecords = Model.CanManageRecords;
     var companies = Model.Companies;
     var selectedCompanyId = Model.SelectedCompanyId;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <p class="text-muted mb-0">Manage monitoring well locations and details</p>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-        <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-            <button type="button"
-                    class="btn btn-outline-secondary active"
-                    id="monitoringWellsTableViewBtn">
-                <i class="bi bi-table"></i> Table
-            </button>
-            <button type="button"
-                    class="btn btn-outline-secondary"
-                    id="monitoringWellsCardViewBtn">
-                <i class="bi bi-grid-3x3-gap"></i> Cards
-            </button>
-        </div>
-        <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create New Monitoring Well
-        </a>
-    </div>
-</div>
 
 @* @if (Model.Filter != null)
 {
@@ -34,25 +13,48 @@
 } *@
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Monitoring Well List</h5>
-    </div>
     <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <h4 class="mb-0">Monitoring Well</h4>
+            <div class="d-flex align-items-center gap-2">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm active"
+                            id="monitoringWellsTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="monitoringWellsCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+                @if (canManageRecords)
+                {
+                    <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-circle"></i> Add Monitoring Well
+                    </a>
+                }
+            </div>
+        </div>
         @if (Model.MonitoringWells.Any())
         {
             <div id="monitoringWellsTableView" class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover irrigates-table">
                     <thead>
                         <tr>
-                            <th><i class="bi bi-hash"></i> Well ID</th>
-                            <th><i class="bi bi-geo-alt"></i> Location Description</th>
-                            <th><i class="bi bi-geo-alt-fill"></i> Latitude</th>
-                            <th><i class="bi bi-geo-alt-fill"></i> Longitude</th>
+                            <th><i class="bi bi-hash"></i> Well Identifier #</th>
+                            <th><i class="bi bi-file-text"></i> Well Permit #</th>
+                            <th><i class="bi bi-geo-alt"></i> Well Location</th>
+                            <th><i class="bi bi-rulers"></i> Well Depth (ft)</th>
                             @if (isGlobalAdmin)
                             {
                                 <th><i class="bi bi-briefcase"></i> Company</th>
                             }
-                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                            @if (canManageRecords)
+                            {
+                                <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -62,25 +64,28 @@
                                 <td>
                                     <a asp-action="MonitoringWellDetails" asp-route-id="@well.Id">@well.WellId</a>
                                 </td>
+                                <td>@(string.IsNullOrEmpty(well.WellPermitNumber) ? "-" : well.WellPermitNumber)</td>
                                 <td>@(string.IsNullOrEmpty(well.LocationDescription) ? "-" : well.LocationDescription)</td>
-                                <td>@well.Latitude.ToString("F6")</td>
-                                <td>@well.Longitude.ToString("F6")</td>
+                                <td>@(well.WellDepthFeet.HasValue ? well.WellDepthFeet.Value.ToString("F2") : "-")</td>
                                 @if (isGlobalAdmin)
                                 {
                                     <td>@well.CompanyName</td>
                                 }
-                                <td class="table-actions">
-                                    <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteMonitoringWellModal"
-                                            data-well-id="@well.Id"
-                                            data-well-name="@well.WellId">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
-                                </td>
+                                @if (canManageRecords)
+                                {
+                                    <td class="table-actions">
+                                        <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteMonitoringWellModal"
+                                                data-well-id="@well.Id"
+                                                data-well-name="@well.WellId">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                }
                             </tr>
                         }
                     </tbody>
@@ -100,11 +105,11 @@
                                 </small>
 
                                 <dl class="row small mb-3">
-                                    <dt class="col-6"><i class="bi bi-geo-alt-fill me-1"></i>Latitude</dt>
-                                    <dd class="col-6 mb-1">@well.Latitude.ToString("F6")</dd>
+                                    <dt class="col-6"><i class="bi bi-file-text me-1"></i>Well Permit #</dt>
+                                    <dd class="col-6 mb-1">@(string.IsNullOrEmpty(well.WellPermitNumber) ? "-" : well.WellPermitNumber)</dd>
 
-                                    <dt class="col-6"><i class="bi bi-geo-alt-fill me-1"></i>Longitude</dt>
-                                    <dd class="col-6 mb-1">@well.Longitude.ToString("F6")</dd>
+                                    <dt class="col-6"><i class="bi bi-rulers me-1"></i>Well Depth (ft)</dt>
+                                    <dd class="col-6 mb-1">@(well.WellDepthFeet.HasValue ? well.WellDepthFeet.Value.ToString("F2") : "-")</dd>
 
                                     @if (isGlobalAdmin)
                                     {
@@ -114,16 +119,19 @@
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">
-                                    <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary me-2">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteMonitoringWellModal"
-                                            data-well-id="@well.Id"
-                                            data-well-name="@well.WellId">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
+                                    @if (canManageRecords)
+                                    {
+                                        <a asp-action="MonitoringWellEdit" asp-route-id="@well.Id" class="btn btn-sm btn-outline-primary me-2">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteMonitoringWellModal"
+                                                data-well-id="@well.Id"
+                                                data-well-name="@well.WellId">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -134,11 +142,14 @@
         else
         {
             <div class="text-center py-5">
-                <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                <i class="bi bi-inbox ui-empty-icon"></i>
                 <p class="text-muted mt-3">No monitoring wells found.</p>
-                <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-circle"></i> Create First Monitoring Well
-                </a>
+                @if (canManageRecords)
+                {
+                    <a asp-action="MonitoringWellCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle"></i> Create First Monitoring Well
+                    </a>
+                }
             </div>
         }
     </div>
@@ -226,4 +237,5 @@
         });
     });
 </script>
+
 

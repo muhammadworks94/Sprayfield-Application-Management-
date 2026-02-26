@@ -27,20 +27,20 @@ public class IrrigateConfiguration : IEntityTypeConfiguration<Irrigate>
         builder.Property(i => i.ApplicationRateInches)
             .HasColumnType("decimal(18,2)");
 
-        builder.Property(i => i.WindSpeed)
+        builder.Property(i => i.TemperatureF)
             .HasColumnType("decimal(18,2)");
 
-        builder.Property(i => i.WindDirection)
-            .HasMaxLength(50);
+        builder.Property(i => i.PrecipitationIn)
+            .HasColumnType("decimal(18,2)");
 
         builder.Property(i => i.WeatherConditions)
             .HasMaxLength(200);
 
-        builder.Property(i => i.Operator)
-            .HasMaxLength(200);
-
         builder.Property(i => i.Comments)
             .HasMaxLength(2000);
+
+        builder.Property(i => i.ModifiedBy)
+            .HasMaxLength(200);
 
         builder.HasIndex(i => i.CompanyId);
         builder.HasIndex(i => i.FacilityId);

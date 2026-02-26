@@ -98,6 +98,18 @@ public class CompanyCreateViewModel
     
     [Display(Name = "Verified Company")]
     public bool IsVerified { get; set; } = true;
+
+    [Display(Name = "Also create initial company admin user")]
+    public bool CreateInitialAdmin { get; set; }
+
+    [Display(Name = "Admin Full Name")]
+    [StringLength(200, ErrorMessage = "Full name cannot exceed 200 characters.")]
+    public string? AdminFullName { get; set; }
+
+    [EmailAddress(ErrorMessage = "Invalid admin email address.")]
+    [StringLength(256, ErrorMessage = "Email cannot exceed 256 characters.")]
+    [Display(Name = "Admin Email")]
+    public string? AdminEmail { get; set; }
 }
 
 public class CompanyEditViewModel

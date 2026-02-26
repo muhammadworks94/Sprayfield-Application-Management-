@@ -155,60 +155,6 @@ namespace SAM.Migrations
                     b.ToTable("UserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("SAM.Domain.Entities.AdminRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Justification")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<int>("RequestType")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RequestedByEmail")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TargetEmail")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("TargetFullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime?>("UpdatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("TargetEmail");
-
-                    b.ToTable("AdminRequests", (string)null);
-                });
-
             modelBuilder.Entity("SAM.Domain.Entities.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -477,9 +423,6 @@ namespace SAM.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<decimal>("PanFactor")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
@@ -488,6 +431,157 @@ namespace SAM.Migrations
                     b.HasIndex("CompanyId");
 
                     b.ToTable("Crops", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.EmailTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BodyTemplate")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystemTemplate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("SubjectTemplate")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("TemplateKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateKey")
+                        .IsUnique();
+
+                    b.ToTable("EmailTemplates", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.ErrorLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActorDisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ActorEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ActorUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("ExceptionType")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("InnerExceptionMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("InnerExceptionType")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Path")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("QueryString")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc");
+
+                    b.HasIndex("ActorUserId", "OccurredAtUtc");
+
+                    b.HasIndex("CompanyId", "OccurredAtUtc");
+
+                    b.HasIndex("ExceptionType", "OccurredAtUtc");
+
+                    b.HasIndex("StatusCode", "OccurredAtUtc");
+
+                    b.ToTable("ErrorLogs", (string)null);
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.Facility", b =>
@@ -500,6 +594,17 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("CertifiedLaboratory1Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CertifiedLaboratory2Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool?>("ChangeInOrc")
+                        .HasColumnType("bit");
 
                     b.Property<string>("City")
                         .IsRequired()
@@ -526,21 +631,63 @@ namespace SAM.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("FacilityPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("LabCertificationNumber1")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("LabCertificationNumber2")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal?>("MineralizationRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("OperatorGrade")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("OperatorNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("OrcName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("PermitExpirationDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PermitNumber")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("PermitPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("PermittedMinimumFreeboardFeet")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Permittee")
                         .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("PersonsCollectingSamples")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -549,8 +696,15 @@ namespace SAM.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int?>("TotalNumberOfSprayfields")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("VolatilizationRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<string>("ZipCode")
                         .IsRequired()
@@ -577,10 +731,12 @@ namespace SAM.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<decimal?>("BOD5")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<string>("Appearance")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
-                    b.Property<decimal?>("COD")
+                    b.Property<decimal?>("Calcium")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("Chloride")
@@ -615,6 +771,9 @@ namespace SAM.Migrations
                     b.Property<decimal?>("FecalColiform")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal?>("GallonsPumped")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -622,6 +781,15 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("Magnesium")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool?>("MetalSamplesFieldAcidified")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("MetalsSamplesCollectedUnfiltered")
+                        .HasColumnType("bit");
 
                     b.Property<Guid>("MonitoringWellId")
                         .HasColumnType("uniqueidentifier");
@@ -631,6 +799,11 @@ namespace SAM.Migrations
 
                     b.Property<decimal?>("NO3N")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Odor")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<decimal?>("PH")
                         .HasColumnType("decimal(18,2)");
@@ -647,6 +820,9 @@ namespace SAM.Migrations
                     b.Property<decimal?>("TKN")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal?>("TOC")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal?>("TSS")
                         .HasColumnType("decimal(18,2)");
 
@@ -656,14 +832,19 @@ namespace SAM.Migrations
                     b.Property<decimal?>("TotalColiform")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("TotalPhosphorus")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal?>("Turbidity")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("VOCMethodNumber")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool?>("VOCReportAttached")
+                        .HasColumnType("bit");
 
                     b.Property<decimal?>("WaterLevel")
                         .HasColumnType("decimal(18,2)");
@@ -797,16 +978,21 @@ namespace SAM.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Operator")
-                        .IsRequired()
+                    b.Property<string>("ModifiedBy")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("PrecipitationIn")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("SprayfieldId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("time");
+
+                    b.Property<decimal?>("TemperatureF")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("TotalVolumeGallons")
                         .HasColumnType("decimal(18,2)");
@@ -818,14 +1004,6 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("WindDirection")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<decimal?>("WindSpeed")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -856,10 +1034,19 @@ namespace SAM.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal?>("DepthToScreenFeet")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("DiameterInches")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("HighScreenDepthFeet")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<decimal>("Latitude")
+                    b.Property<decimal?>("Latitude")
                         .HasColumnType("decimal(18,6)");
 
                     b.Property<string>("LocationDescription")
@@ -867,14 +1054,33 @@ namespace SAM.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<decimal>("Longitude")
+                    b.Property<decimal?>("Longitude")
                         .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal?>("LowScreenDepthFeet")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("NumberOfWellsToBeSampled")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TopOfCasingElevationMsl")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("TreatmentSystemLocation")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal?>("WellDepthFeet")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("WellId")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("WellPermitNumber")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -1080,6 +1286,10 @@ namespace SAM.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1124,6 +1334,9 @@ namespace SAM.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<TimeSpan>("ArrivalTime")
+                        .HasColumnType("time");
 
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
@@ -1174,11 +1387,8 @@ namespace SAM.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int>("Shift")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SystemStatus")
-                        .HasColumnType("int");
+                    b.Property<decimal>("TimeOnSiteHours")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
@@ -1197,6 +1407,67 @@ namespace SAM.Migrations
                     b.HasIndex("LogDate");
 
                     b.ToTable("OperatorLogs", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.SmtpSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("EnableSsl")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("FromEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PasswordEncrypted")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("Port")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ScopeKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("SMTP_GLOBAL");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Username")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScopeKey")
+                        .IsUnique();
+
+                    b.ToTable("SmtpSettings", (string)null);
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.Soil", b =>
@@ -1247,9 +1518,6 @@ namespace SAM.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<decimal?>("AnnualRateInches")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1292,6 +1560,9 @@ namespace SAM.Migrations
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal?>("WeeklyRateInches")
+                        .HasColumnType("decimal(18,2)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
@@ -1308,6 +1579,85 @@ namespace SAM.Migrations
                         .IsUnique();
 
                     b.ToTable("Sprayfields", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.UserActivityLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ActivityType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ActorDisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ActorEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ActorUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ChangedFields")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Path")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc");
+
+                    b.HasIndex("ActivityType", "OccurredAtUtc");
+
+                    b.HasIndex("ActorUserId", "OccurredAtUtc");
+
+                    b.HasIndex("CompanyId", "OccurredAtUtc");
+
+                    b.ToTable("UserActivityLogs", (string)null);
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.UserRequest", b =>
@@ -1391,6 +1741,10 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("CaDaily")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ChlorideDaily")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1437,10 +1791,26 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("MgDaily")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Month")
                         .HasColumnType("int");
 
                     b.Property<string>("NH3NDaily")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("NO2N")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("NO3N")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("NaDaily")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -1452,15 +1822,19 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("TDSDaily")
+                    b.Property<string>("SARDaily")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("TKNN")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("TNDaily")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TSSDaily")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TotalColiformDaily")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

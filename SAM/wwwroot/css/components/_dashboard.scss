@@ -96,6 +96,19 @@
   background-color: #eaf7eb;
 }
 
+.dashboard-empty-state {
+  min-height: 180px;
+  border: 1px dashed #d1d5db;
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+}
+
 .dashboard-status-tag {
   font-size: 0.8125rem;
   font-weight: 500;

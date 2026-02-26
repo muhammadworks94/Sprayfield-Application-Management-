@@ -18,51 +18,73 @@
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">Log Entry - @Model.LogDate.ToString("MM/dd/yyyy")</h5>
-    </div>
     <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">Company:</dt>
-            <dd class="col-sm-9">@Model.CompanyName</dd>
+        <h4 class="mb-4"><i class="bi bi-journal-text me-2"></i>@(Model.FacilityName ?? "Facility") – @Model.LogDate.ToString("MM/dd/yyyy")</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-4">Record Context</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-briefcase me-1"></i>Company:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.CompanyName ?? "N/A")</dd>
 
-            <dt class="col-sm-3">Facility:</dt>
-            <dd class="col-sm-9">@Model.FacilityName</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-building me-1"></i>Facility:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.FacilityName ?? "N/A")</dd>
 
-            <dt class="col-sm-3">Log Date:</dt>
-            <dd class="col-sm-9">@Model.LogDate.ToString("MM/dd/yyyy")</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar3 me-1"></i>Log Date:</dt>
+                    <dd class="col-sm-7 mb-2">@Model.LogDate.ToString("MM/dd/yyyy")</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-4">Operator & Time</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-person me-1"></i>Operator Name:</dt>
+                    <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.OperatorName) ? "N/A" : Model.OperatorName)</dd>
 
-            <dt class="col-sm-3">Operator Name:</dt>
-            <dd class="col-sm-9">@Model.OperatorName</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-clock me-1"></i>Arrival Time:</dt>
+                    <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.ArrivalTime) ? "N/A" : Model.ArrivalTime)</dd>
 
-            <dt class="col-sm-3">Shift:</dt>
-            <dd class="col-sm-9">@Model.Shift</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-hourglass-split me-1"></i>Time on Site (hours):</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.TimeOnSiteHours.HasValue ? Model.TimeOnSiteHours.Value.ToString("F2") : "N/A")</dd>
+                </dl>
+            </div>
+        </div>
+        <div class="border-top pt-3 mt-3">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="detail-section-label mb-4">Conditions & Maintenance</h5>
+                    <dl class="row">
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-cloud-sun me-1"></i>Weather Conditions:</dt>
+                        <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.WeatherConditions) ? "N/A" : Model.WeatherConditions)</dd>
 
-            <dt class="col-sm-3">System Status:</dt>
-            <dd class="col-sm-9">
-                <span class="badge bg-@(Model.SystemStatus == SAM.Domain.Enums.SystemStatusEnum.Normal ? "success" : Model.SystemStatus == SAM.Domain.Enums.SystemStatusEnum.Alert ? "warning" : Model.SystemStatus == SAM.Domain.Enums.SystemStatusEnum.Emergency ? "danger" : "secondary")">
-                    @Model.SystemStatus
-                </span>
-            </dd>
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-tools me-1"></i>Maintenance Performed:</dt>
+                        <dd class="col-sm-7 mb-2 text-break">@(string.IsNullOrEmpty(Model.MaintenancePerformed) ? "N/A" : Model.MaintenancePerformed)</dd>
 
-            <dt class="col-sm-3">Weather Conditions:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.WeatherConditions) ? "-" : Model.WeatherConditions)</dd>
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-clipboard-check me-1"></i>Equipment Inspected:</dt>
+                        <dd class="col-sm-7 mb-2 text-break">@(string.IsNullOrEmpty(Model.EquipmentInspected) ? "N/A" : Model.EquipmentInspected)</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="detail-section-label mb-4">Issues & Actions</h5>
+                    <dl class="row">
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-exclamation-triangle me-1"></i>Issues Noted:</dt>
+                        <dd class="col-sm-7 mb-2 text-break">@(string.IsNullOrEmpty(Model.IssuesNoted) ? "N/A" : Model.IssuesNoted)</dd>
 
-            <dt class="col-sm-3">Maintenance Performed:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.MaintenancePerformed) ? "-" : Model.MaintenancePerformed)</dd>
-
-            <dt class="col-sm-3">Equipment Inspected:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.EquipmentInspected) ? "-" : Model.EquipmentInspected)</dd>
-
-            <dt class="col-sm-3">Issues Noted:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.IssuesNoted) ? "-" : Model.IssuesNoted)</dd>
-
-            <dt class="col-sm-3">Corrective Actions:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.CorrectiveActions) ? "-" : Model.CorrectiveActions)</dd>
-
-            <dt class="col-sm-3">Next Shift Notes:</dt>
-            <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.NextShiftNotes) ? "-" : Model.NextShiftNotes)</dd>
-        </dl>
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-wrench-adjustable-circle me-1"></i>Corrective Actions:</dt>
+                        <dd class="col-sm-7 mb-2 text-break">@(string.IsNullOrEmpty(Model.CorrectiveActions) ? "N/A" : Model.CorrectiveActions)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="border-top pt-3 mt-3">
+            <div class="row">
+                <div class="col-12">
+                    <h5 class="detail-section-label mb-4">Next Shift Notes</h5>
+                    <dl class="row">
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-journal-arrow-down me-1"></i>Notes for Next Shift:</dt>
+                        <dd class="col-sm-7 mb-2 text-break">@(string.IsNullOrEmpty(Model.NextShiftNotes) ? "N/A" : Model.NextShiftNotes)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-

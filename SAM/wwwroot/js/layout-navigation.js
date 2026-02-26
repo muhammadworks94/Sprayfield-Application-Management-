@@ -1,0 +1,394 @@
+﻿(function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarCollapseToggle = document.getElementById('sidebarCollapseToggle');
+            const overlay = document.getElementById('sidebarOverlay');
+            const mainContent = document.getElementById('mainContent');
+            const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+            
+            // Check if desktop collapsed state should be restored
+            const isDesktop = window.innerWidth >= 768;
+            const savedState = localStorage.getItem('sidebarCollapsed');
+            const shouldBeCollapsed = savedState === 'true' && isDesktop;
+            
+            if (shouldBeCollapsed && sidebar && mainContent) {
+                sidebar.classList.add('sidebar-collapsed-desktop');
+                mainContent.classList.add('sidebar-collapsed-desktop');
+                sidebarCollapseToggle?.setAttribute('aria-expanded', 'false');
+            }
+            
+            // Mobile sidebar toggle
+            sidebarToggle?.addEventListener('click', function() {
+                const isCollapsed = sidebar?.classList.contains('collapsed');
+                
+                if (isCollapsed) {
+                    sidebar?.classList.remove('collapsed');
+                    overlay?.classList.add('show');
+                    mainContent?.classList.remove('sidebar-collapsed');
+                } else {
+                    sidebar?.classList.add('collapsed');
+                    overlay?.classList.remove('show');
+                    mainContent?.classList.add('sidebar-collapsed');
+                }
+            });
+            
+            // Desktop sidebar collapse/expand toggle
+            sidebarCollapseToggle?.addEventListener('click', function() {
+                const isCollapsed = sidebar?.classList.contains('sidebar-collapsed-desktop');
+                
+                if (isCollapsed) {
+                    sidebar?.classList.remove('sidebar-collapsed-desktop');
+                    mainContent?.classList.remove('sidebar-collapsed-desktop');
+                    sidebarCollapseToggle.setAttribute('aria-expanded', 'true');
+                    localStorage.setItem('sidebarCollapsed', 'false');
+                } else {
+                    sidebar?.classList.add('sidebar-collapsed-desktop');
+                    mainContent?.classList.add('sidebar-collapsed-desktop');
+                    sidebarCollapseToggle.setAttribute('aria-expanded', 'false');
+                    localStorage.setItem('sidebarCollapsed', 'true');
+                }
+            });
+            
+            // Close sidebar when overlay is clicked (mobile)
+            overlay?.addEventListener('click', function() {
+                sidebar?.classList.add('collapsed');
+                overlay?.classList.remove('show');
+                mainContent?.classList.add('sidebar-collapsed');
+            });
+            
+            // Dropdown functionality
+            const dropdownItems = document.querySelectorAll('.nav-dropdown-item');
+            const dropdownToggles = document.querySelectorAll('.nav-dropdown-toggle');
+            
+            // Toggle dropdown
+            function toggleDropdown(item, forceState) {
+                const toggle = item.querySelector('.nav-dropdown-toggle');
+                const isExpanded = item.classList.contains('expanded');
+                const newState = forceState !== undefined ? forceState : !isExpanded;
+
+                if (newState) {
+                    dropdownItems.forEach(otherItem => {
+                        if (otherItem !== item) {
+                            otherItem.classList.remove('expanded');
+                            const otherToggle = otherItem.querySelector('.nav-dropdown-toggle');
+                            otherToggle?.setAttribute('aria-expanded', 'false');
+
+                            if (!otherItem.querySelector('.nav-link.active')) {
+                                otherItem.classList.remove('has-active');
+                            }
+                        }
+                    });
+                }
+                
+                if (newState) {
+                    item.classList.add('expanded');
+                    toggle?.setAttribute('aria-expanded', 'true');
+                } else {
+                    item.classList.remove('expanded');
+                    toggle?.setAttribute('aria-expanded', 'false');
+                }
+            }
+            
+            // Initialize dropdown toggles
+            dropdownToggles.forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const item = this.closest('.nav-dropdown-item');
+                    if (item) {
+                        toggleDropdown(item);
+                    }
+                });
+                
+                // Keyboard support
+                toggle.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const item = this.closest('.nav-dropdown-item');
+                        if (item) {
+                            toggleDropdown(item);
+                        }
+                    }
+                });
+            });
+            
+            // Enhanced active link detection with dropdown support
+            function setActiveNavLink() {
+                const currentPath = window.location.pathname.toLowerCase();
+                const currentUrl = new URL(window.location.href);
+                let activeDropdown = null;
+                
+                navLinks.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (!href) return;
+                    
+                    try {
+                        const linkUrl = new URL(href, window.location.origin);
+                        const linkPath = linkUrl.pathname.toLowerCase();
+                        
+                        // Extract controller and action from paths for more precise matching
+                        const currentParts = currentPath.split('/').filter(p => p);
+                        const linkParts = linkPath.split('/').filter(p => p);
+                        
+                        let isActive = false;
+                        
+                        // Exact path match
+                        if (linkPath === currentPath) {
+                            isActive = true;
+                        }
+                        // For SystemAdmin, check if controller and action match (ignore query params)
+                        else if (currentPath.includes('/systemadmin/systemadmin') && 
+                                linkPath.includes('/systemadmin/systemadmin')) {
+                            isActive = true;
+                        }
+                        // For paths with same controller, check if action matches exactly
+                        else if (currentParts.length > 0 && linkParts.length > 0) {
+                            const currentController = currentParts[0];
+                            const currentAction = currentParts.length > 1 ? currentParts[1] : 'index';
+                            const linkController = linkParts[0];
+                            const linkAction = linkParts.length > 1 ? linkParts[1] : 'index';
+                            
+                            // If controllers match, actions must match exactly
+                            if (currentController === linkController) {
+                                // Both paths have the same controller, so actions must match exactly
+                                if (currentAction === linkAction) {
+                                    isActive = true;
+                                }
+                            }
+                        }
+                        // Fallback: check if current path starts with link path (for parent paths)
+                        else if (currentPath.startsWith(linkPath) && linkPath !== '/' && 
+                                (!currentPath[linkPath.length] || currentPath[linkPath.length] === '/')) {
+                            // Only allow this for paths that are truly parent paths
+                            // Exclude cases where both share the same controller but different actions
+                            if (currentParts.length > 0 && linkParts.length > 0) {
+                                const currentController = currentParts[0];
+                                const linkController = linkParts[0];
+                                // Only allow startsWith if controllers are different
+                                if (currentController !== linkController) {
+                                    isActive = true;
+                                }
+                            } else {
+                                isActive = true;
+                            }
+                        }
+                        
+                        if (isActive) {
+                            link.classList.add('active');
+                            link.setAttribute('aria-current', 'page');
+                            
+                            // Find parent dropdown and expand it
+                            const dropdownItem = link.closest('.nav-dropdown-item');
+                            if (dropdownItem) {
+                                activeDropdown = dropdownItem;
+                                dropdownItem.classList.add('has-active');
+                                toggleDropdown(dropdownItem, true);
+                            }
+                        } else {
+                            link.classList.remove('active');
+                            link.removeAttribute('aria-current');
+                        }
+                    } catch (e) {
+                        // Fallback to simple path comparison if URL parsing fails
+                        const linkPath = href.toLowerCase().split('?')[0];
+                        const currentParts = currentPath.split('/').filter(p => p);
+                        const linkParts = linkPath.split('/').filter(p => p);
+                        
+                        let isActive = false;
+                        
+                        if (linkPath === currentPath) {
+                            isActive = true;
+                        } else if (currentParts.length > 0 && linkParts.length > 0) {
+                            const currentController = currentParts[0];
+                            const currentAction = currentParts.length > 1 ? currentParts[1] : 'index';
+                            const linkController = linkParts[0];
+                            const linkAction = linkParts.length > 1 ? linkParts[1] : 'index';
+                            
+                            if (currentController === linkController) {
+                                // Both paths have the same controller, so actions must match exactly
+                                if (currentAction === linkAction) {
+                                    isActive = true;
+                                }
+                            }
+                        }
+                        
+                        if (isActive) {
+                            link.classList.add('active');
+                            link.setAttribute('aria-current', 'page');
+                            
+                            const dropdownItem = link.closest('.nav-dropdown-item');
+                            if (dropdownItem) {
+                                activeDropdown = dropdownItem;
+                                dropdownItem.classList.add('has-active');
+                                toggleDropdown(dropdownItem, true);
+                            }
+                        } else {
+                            link.classList.remove('active');
+                            link.removeAttribute('aria-current');
+                        }
+                    }
+                });
+                
+                // Remove has-active from other dropdowns
+                dropdownItems.forEach(item => {
+                    if (item !== activeDropdown) {
+                        item.classList.remove('has-active');
+                        toggleDropdown(item, false);
+                    }
+                });
+            }
+            
+            // Set active nav link on page load
+            setActiveNavLink();
+            
+            // Enhanced keyboard navigation (includes dropdowns)
+            let currentFocusIndex = -1;
+            
+            function getFocusableElements() {
+                const elements = [];
+                
+                // Add regular nav links
+                navLinks.forEach(link => {
+                    const style = window.getComputedStyle(link);
+                    if (style.display !== 'none' && style.visibility !== 'hidden') {
+                        elements.push(link);
+                    }
+                });
+                
+                // Add dropdown toggles
+                dropdownToggles.forEach(toggle => {
+                    const style = window.getComputedStyle(toggle);
+                    if (style.display !== 'none' && style.visibility !== 'hidden') {
+                        elements.push(toggle);
+                    }
+                });
+                
+                return elements;
+            }
+            
+            function focusElement(index) {
+                const focusableElements = getFocusableElements();
+                if (focusableElements.length === 0) return;
+                
+                currentFocusIndex = Math.max(0, Math.min(index, focusableElements.length - 1));
+                focusableElements[currentFocusIndex].focus();
+            }
+            
+            sidebar?.addEventListener('keydown', function(e) {
+                const focusableElements = getFocusableElements();
+                if (focusableElements.length === 0) return;
+                
+                // Find current focused element index
+                const currentFocused = focusableElements.indexOf(document.activeElement);
+                if (currentFocused === -1) {
+                    currentFocusIndex = 0;
+                } else {
+                    currentFocusIndex = currentFocused;
+                }
+                
+                const activeElement = document.activeElement;
+                const isDropdownToggle = activeElement?.classList.contains('nav-dropdown-toggle');
+                
+                switch(e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        if (isDropdownToggle && !activeElement.closest('.nav-dropdown-item')?.classList.contains('expanded')) {
+                            // Expand dropdown if collapsed
+                            const item = activeElement.closest('.nav-dropdown-item');
+                            if (item) {
+                                toggleDropdown(item, true);
+                            }
+                        } else {
+                            focusElement(currentFocusIndex + 1);
+                        }
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        focusElement(currentFocusIndex - 1);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        if (isDropdownToggle) {
+                            const item = activeElement.closest('.nav-dropdown-item');
+                            if (item && !item.classList.contains('expanded')) {
+                                toggleDropdown(item, true);
+                            }
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        if (isDropdownToggle) {
+                            const item = activeElement.closest('.nav-dropdown-item');
+                            if (item && item.classList.contains('expanded')) {
+                                toggleDropdown(item, false);
+                            }
+                        }
+                        break;
+                    case 'Home':
+                        e.preventDefault();
+                        focusElement(0);
+                        break;
+                    case 'End':
+                        e.preventDefault();
+                        focusElement(focusableElements.length - 1);
+                        break;
+                    case 'Escape':
+                        // Close mobile sidebar on Escape
+                        if (window.innerWidth < 768) {
+                            sidebar?.classList.add('collapsed');
+                            overlay?.classList.remove('show');
+                            mainContent?.classList.add('sidebar-collapsed');
+                        } else {
+                            // Close all dropdowns on Escape
+                            dropdownItems.forEach(item => {
+                                if (item.classList.contains('expanded')) {
+                                    toggleDropdown(item, false);
+                                }
+                            });
+                        }
+                        break;
+                }
+            });
+            
+            // Close dropdowns when clicking outside (for collapsed sidebar)
+            document.addEventListener('click', function(e) {
+                if (sidebar?.classList.contains('sidebar-collapsed-desktop')) {
+                    const isClickInsideDropdown = e.target.closest('.nav-dropdown-item');
+                    if (!isClickInsideDropdown) {
+                        dropdownItems.forEach(item => {
+                            if (item.classList.contains('expanded')) {
+                                toggleDropdown(item, false);
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // Handle window resize
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    const isDesktop = window.innerWidth >= 768;
+                    
+                    if (isDesktop) {
+                        // On desktop, remove mobile collapsed state
+                        sidebar?.classList.remove('collapsed');
+                        overlay?.classList.remove('show');
+                        mainContent?.classList.remove('sidebar-collapsed');
+                        
+                        // Restore desktop collapsed state if saved
+                        const savedState = localStorage.getItem('sidebarCollapsed');
+                        if (savedState === 'true') {
+                            sidebar?.classList.add('sidebar-collapsed-desktop');
+                            mainContent?.classList.add('sidebar-collapsed-desktop');
+                        }
+                    } else {
+                        // On mobile, remove desktop collapsed state
+                        sidebar?.classList.remove('sidebar-collapsed-desktop');
+                        mainContent?.classList.remove('sidebar-collapsed-desktop');
+                        sidebar?.classList.add('collapsed');
+                    }
+                }, 150);
+            });
+        })();

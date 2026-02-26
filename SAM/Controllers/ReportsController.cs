@@ -20,12 +20,16 @@ public class ReportsController : BaseController
     private readonly IFacilityService _facilityService;
     private readonly INDAR1Service _ndar1Service;
     private readonly ISprayfieldService _sprayfieldService;
+    private readonly INDMRService _ndmrService;
+    private readonly INDMLRService _ndmlrService;
 
     public ReportsController(
         IIrrRprtService irrRprtService,
         IFacilityService facilityService,
         INDAR1Service ndar1Service,
         ISprayfieldService sprayfieldService,
+        INDMRService ndmrService,
+        INDMLRService ndmlrService,
         UserManager<ApplicationUser> userManager,
         ILogger<ReportsController> logger)
         : base(userManager, logger)
@@ -34,6 +38,8 @@ public class ReportsController : BaseController
         _facilityService = facilityService;
         _ndar1Service = ndar1Service;
         _sprayfieldService = sprayfieldService;
+        _ndmrService = ndmrService;
+        _ndmlrService = ndmlrService;
     }
 
     #region Irrigation Reports
@@ -81,7 +87,6 @@ public class ReportsController : BaseController
 
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.SelectedCompanyId = companyId;
         ViewBag.SelectedFacilityId = facilityId;
 
         return View(viewModels);
@@ -270,13 +275,44 @@ public class ReportsController : BaseController
         }
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> IrrigationReportDelete(Guid id)
+    {
+        IrrRprt? report = null;
+        try
+        {
+            report = await _irrRprtService.GetByIdAsync(id);
+            if (report == null)
+                return NotFound();
+
+            await EnsureCompanyAccessAsync(report.CompanyId);
+
+            await _irrRprtService.DeleteAsync(id);
+            TempData["SuccessMessage"] = "Irrigation report deleted successfully.";
+            return RedirectToAction(nameof(IrrigationReports), new {  facilityId = report.FacilityId });
+        }
+        catch (Infrastructure.Exceptions.EntityNotFoundException)
+        {
+            TempData["ErrorMessage"] = "Irrigation report not found.";
+        }
+        catch (Infrastructure.Exceptions.BusinessRuleException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(IrrigationReports), new { facilityId = report?.FacilityId });
+    }
+
     #endregion
 
     #region NDAR-1 Reports
 
     [HttpGet]
-    public async Task<IActionResult> NDAR1Reports(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> NDAR1Reports( Guid? facilityId = null)
     {
+        Guid? companyId = null;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
@@ -566,7 +602,7 @@ public class ReportsController : BaseController
 
             await _ndar1Service.DeleteAsync(id);
             TempData["SuccessMessage"] = "NDAR-1 report deleted successfully.";
-            return RedirectToAction(nameof(NDAR1Reports), new { companyId = report.CompanyId, facilityId = report.FacilityId });
+            return RedirectToAction(nameof(NDAR1Reports), new { facilityId = report.FacilityId });
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
@@ -577,7 +613,7 @@ public class ReportsController : BaseController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(NDAR1Reports), new { companyId = report?.CompanyId, facilityId = report?.FacilityId });
+        return RedirectToAction(nameof(NDAR1Reports), new { facilityId = report?.FacilityId });
     }
 
     [HttpGet]
@@ -598,6 +634,50 @@ public class ReportsController : BaseController
         catch (Exception ex)
         {
             TempData["ErrorMessage"] = $"Error exporting report: {ex.Message}";
+            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportNDMRReport(Guid id)
+    {
+        var report = await _ndar1Service.GetByIdAsync(id);
+        if (report == null)
+            return NotFound();
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        try
+        {
+            var excelBytes = await _ndmrService.ExportToExcelAsync(id);
+            var fileName = $"NDMR_{report.Facility?.Name}_{report.Month}_{report.Year}.xlsx";
+            return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"Error exporting NDMR report: {ex.Message}";
+            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportNDMLRReport(Guid id)
+    {
+        var report = await _ndar1Service.GetByIdAsync(id);
+        if (report == null)
+            return NotFound();
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        try
+        {
+            var excelBytes = await _ndmlrService.ExportToExcelAsync(id);
+            var fileName = $"NDMLR_{report.Facility?.Name}_{report.Month}_{report.Year}.xlsx";
+            return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"Error exporting NDMLR report: {ex.Message}";
             return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
         }
     }

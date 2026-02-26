@@ -5,8 +5,6 @@
 @{
     ViewData["Title"] = "Create Operator Log";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var shifts = ViewBag.Shifts as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var systemStatuses = ViewBag.SystemStatuses as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
     var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
@@ -49,16 +47,9 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="OperatorName" class="form-label required"></label>
-                                    <input asp-for="OperatorName" class="form-control" />
-                                    <span asp-validation-for="OperatorName" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label asp-for="Shift" class="form-label required"></label>
-                                    <select asp-for="Shift" asp-items="shifts" class="form-select"></select>
-                                    <span asp-validation-for="Shift" class="text-danger"></span>
+                                    <label asp-for="ArrivalTime" class="form-label required"></label>
+                                    <input asp-for="ArrivalTime" type="time" class="form-control" />
+                                    <span asp-validation-for="ArrivalTime" class="text-danger"></span>
                                 </div>
                             </div>
                         </div>
@@ -66,16 +57,36 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="SystemStatus" class="form-label required"></label>
-                                    <select asp-for="SystemStatus" asp-items="systemStatuses" class="form-select"></select>
-                                    <span asp-validation-for="SystemStatus" class="text-danger"></span>
+                                    <label class="form-label">Operator Name</label>
+                                    <div class="form-control-plaintext">
+                                        @(string.IsNullOrWhiteSpace(user?.FullName) ? user?.UserName : user!.FullName)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="WeatherConditions" class="form-label"></label>
+                                    <select asp-for="WeatherConditions" class="form-select">
+                                        <option value="">-- Select Weather --</option>
+                                        <option value="C">Clear (C)</option>
+                                        <option value="CL">Cloudy (CL)</option>
+                                        <option value="PC">Partly Cloudy (PC)</option>
+                                        <option value="R">Rain (R)</option>
+                                        <option value="SL">Sleet (SL)</option>
+                                        <option value="SN">Snow (SN)</option>
+                                    </select>
+                                    <span asp-validation-for="WeatherConditions" class="text-danger"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="WeatherConditions" class="form-label"></label>
-                                    <input asp-for="WeatherConditions" class="form-control" />
-                                    <span asp-validation-for="WeatherConditions" class="text-danger"></span>
+                                    <label asp-for="TimeOnSiteHours" class="form-label"></label>
+                                    <input asp-for="TimeOnSiteHours" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TimeOnSiteHours" class="text-danger"></span>
+                                    <small class="form-text text-muted">Enter total time on site as hours in decimal format (e.g., 1.5 for 1½ hours).</small>
                                 </div>
                             </div>
                         </div>
@@ -131,15 +142,11 @@
                     <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Operator Log Guidelines</h6>
                     <ul class="small mb-0 ps-3">
                         <li class="mb-1"><strong>Facility</strong>: Select the facility where this shift was worked. This controls which logs appear in reports for that site.</li>
-                        <li class="mb-1"><strong>Log Date</strong>: Use the local calendar date for the shift, even if the shift crosses midnight.</li>
-                        <li class="mb-1"><strong>Operator Name</strong>: Enter the full name of the on-duty operator responsible for this log.</li>
-                        <li class="mb-1"><strong>Shift</strong>: Choose the shift that best matches your work period (e.g., Day, Evening, Night). This is used for internal audit trails.</li>
-                        <li class="mb-1"><strong>System Status</strong>: 
-                            <ul class="mb-1">
-                                <li class="mb-0">Select the status that reflects the <em>worst condition</em> during the shift (e.g., Alarm/Bypass if any alarms or bypasses occurred).</li>
-                            </ul>
-                        </li>
-                        <li class="mb-1"><strong>Weather Conditions</strong>: Briefly describe conditions that may affect operations (e.g., “Heavy rain”, “High winds”, “Normal conditions”).</li>
+                        <li class="mb-1"><strong>Log Date</strong>: Use the local calendar date for the work being logged.</li>
+                        <li class="mb-1"><strong>Operator Name</strong>: This is automatically populated from your account and stored with the log.</li>
+                        <li class="mb-1"><strong>Arrival Time</strong>: Record the actual 24-hour arrival time on site (e.g., 07:30, 18:15).</li>
+                        <li class="mb-1"><strong>Time on Site</strong>: Enter the total hours spent on site for this visit (e.g., 1.5 for 1½ hours).</li>
+                        <li class="mb-1"><strong>Weather Conditions</strong>: Select the code that best represents conditions that may affect operations. The letter code is used for reporting.</li>
                         <li class="mb-1"><strong>Maintenance Performed</strong>: List any preventive or corrective maintenance completed during the shift, including equipment, tasks, and parts used.</li>
                         <li class="mb-1"><strong>Equipment Inspected</strong>: Note key equipment you visually checked (pumps, blowers, valves, meters, alarms) and any observations.</li>
                         <li class="mb-1"><strong>Issues Noted</strong>: Record abnormal conditions, alarms, out-of-range readings, or safety concerns, even if they were resolved.</li>
@@ -155,5 +162,26 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            document.addEventListener('DOMContentLoaded', function () {
+                var arrivalInput = document.querySelector('input[name="ArrivalTime"]');
+
+                if (!arrivalInput) {
+                    return;
+                }
+
+                if (typeof flatpickr === 'function') {
+                    flatpickr(arrivalInput, {
+                        enableTime: true,
+                        noCalendar: true,
+                        dateFormat: "H:i",
+                        time_24hr: true,
+                        allowInput: true
+                    });
+                }
+            });
+        })();
+    </script>
 }
 

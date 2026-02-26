@@ -2,6 +2,15 @@ namespace SAM.ViewModels.Dashboard;
 
 public class DashboardViewModel
 {
+    public bool IsGlobalAdmin { get; set; }
+    public bool IsAdmin { get; set; }
+    public bool IsCompanyAdmin { get; set; }
+    public bool IsTechnician { get; set; }
+    public bool IsOperator { get; set; }
+    public bool CanManageUsers { get; set; }
+    public string? RoleViewLabel { get; set; }
+    public string? SelectedCompanyName { get; set; }
+
     public int TotalFacilities { get; set; }
     public int TotalSprayfields { get; set; }
     public decimal TotalSprayfieldAcres { get; set; }
@@ -12,7 +21,6 @@ public class DashboardViewModel
     public int RecentActivityCount { get; set; }
 
     public int PendingUserRequests { get; set; }
-    public int PendingAdminRequests { get; set; }
 
     public int RecentOperatorLogs { get; set; }
     public int RecentIrrigations { get; set; }

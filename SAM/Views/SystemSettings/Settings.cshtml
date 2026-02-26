@@ -1,0 +1,282 @@
+@model SAM.ViewModels.SystemSettings.SystemSettingsPageViewModel
+@{
+    ViewData["Title"] = "System Settings";
+    ViewData["PageSubtitle"] = "Manage global SMTP configuration and email templates";
+}
+
+@section PageTitleExtra {
+    <a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+}
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-gear-wide-connected me-2"></i>SMTP Settings</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="Settings" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="templateKey" value="@Model.TemplateEditor.TemplateKey" />
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="form-section">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label asp-for="Smtp.Host" class="form-label required"></label>
+                                <input asp-for="Smtp.Host" class="form-control" placeholder="smtp.example.com" />
+                                <span asp-validation-for="Smtp.Host" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="Smtp.Port" class="form-label required"></label>
+                                <input asp-for="Smtp.Port" class="form-control" />
+                                <span asp-validation-for="Smtp.Port" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="Smtp.Username" class="form-label"></label>
+                                <input asp-for="Smtp.Username" class="form-control" />
+                                <span asp-validation-for="Smtp.Username" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Smtp.FromEmail" class="form-label required"></label>
+                                <input asp-for="Smtp.FromEmail" class="form-control" />
+                                <span asp-validation-for="Smtp.FromEmail" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label asp-for="Smtp.Password" class="form-label"></label>
+                                <input asp-for="Smtp.Password" class="form-control" autocomplete="new-password" />
+                                @if (Model.Smtp.HasPasswordConfigured)
+                                {
+                                    <div class="form-text">Leave blank to keep the existing SMTP password.</div>
+                                }
+                                else
+                                {
+                                    <div class="form-text">Password is required for first-time SMTP setup.</div>
+                                }
+                                <span asp-validation-for="Smtp.Password" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="Smtp.EnableSsl" class="form-check-input" />
+                                    <label asp-for="Smtp.EnableSsl" class="form-check-label"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-send-check me-2"></i>SMTP Test Email</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="SendTestEmail" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="templateKey" value="@Model.TemplateEditor.TemplateKey" />
+                    <div class="form-section">
+                        <label class="form-label required" for="testEmail">Test Recipient Email</label>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-12">
+                                <input type="email" id="testEmail" name="testEmail" class="form-control" placeholder="name@example.com" required />
+                            </div>
+                            <div class="col-md-7 d-grid">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="bi bi-send me-1"></i>Send Test Email
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-text mt-2">A test message will be sent using the currently saved SMTP settings.</div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-body-text me-2"></i>Email Templates</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="list-group email-template-tabs">
+                    @foreach (var template in Model.Templates)
+                    {
+                        var activeClass = template.TemplateKey == Model.TemplateEditor.TemplateKey ? "active" : string.Empty;
+                        <a asp-action="Settings"
+                           asp-route-templateKey="@template.TemplateKey"
+                           class="list-group-item list-group-item-action @activeClass">
+                            <div class="fw-semibold">@template.DisplayName</div>
+                            <small class="d-block @(activeClass == "active" ? "text-white-50" : "text-muted")">@template.Description</small>
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <form asp-action="UpdateEmailTemplate" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="TemplateEditor.TemplateKey" type="hidden" />
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="form-section">
+                        <div class="form-section-title text-primary">
+                            <i class="bi bi-pencil-square me-2"></i>@Model.TemplateEditor.DisplayName
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-text mt-0">@Model.TemplateEditor.Description</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="TemplateEditor.SubjectTemplate" class="form-label required"></label>
+                            <input asp-for="TemplateEditor.SubjectTemplate" class="form-control" />
+                            <span asp-validation-for="TemplateEditor.SubjectTemplate" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="TemplateEditor.BodyTemplate" class="form-label required"></label>
+                            <textarea asp-for="TemplateEditor.BodyTemplate" class="form-control" rows="12"></textarea>
+                            <span asp-validation-for="TemplateEditor.BodyTemplate" class="text-danger"></span>
+                        </div>
+
+                        @if (Model.TemplateEditor.AllowedTokens.Any())
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Allowed Tokens</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var token in Model.TemplateEditor.AllowedTokens)
+                                    {
+                                        <span class="badge bg-light text-dark border">@token</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary" id="previewTemplateBtn">
+                            <i class="bi bi-eye me-1"></i>Preview
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Save Template
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="emailTemplatePreviewModal" tabindex="-1" aria-labelledby="emailTemplatePreviewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailTemplatePreviewLabel"><i class="bi bi-envelope-paper me-2"></i>Email Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Subject</label>
+                    <div id="emailPreviewSubject" class="form-control bg-light"></div>
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">Body</label>
+                    <iframe id="emailPreviewFrame" class="w-100 border rounded ui-min-h-460"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        (function () {
+            const previewBtn = document.getElementById('previewTemplateBtn');
+            const modalElement = document.getElementById('emailTemplatePreviewModal');
+            const subjectInput = document.getElementById('TemplateEditor_SubjectTemplate');
+            const bodyInput = document.getElementById('TemplateEditor_BodyTemplate');
+            const keyInput = document.getElementById('TemplateEditor_TemplateKey');
+            const previewSubject = document.getElementById('emailPreviewSubject');
+            const previewFrame = document.getElementById('emailPreviewFrame');
+
+            if (!previewBtn || !modalElement || !subjectInput || !bodyInput || !keyInput || !previewSubject || !previewFrame) {
+                return;
+            }
+
+            function getSampleTokens(templateKey) {
+                switch (templateKey) {
+                    case 'password_reset':
+                        return {
+                            AppName: 'SAM',
+                            ResetLink: 'https://sam.local/Account/ResetPassword?token=sample-token',
+                            RecipientEmail: 'user@example.com'
+                        };
+                    case 'user_credentials':
+                        return {
+                            AppName: 'SAM',
+                            RecipientEmail: 'new.user@example.com',
+                            TemporaryPassword: 'TempPass!123',
+                            CompanyName: 'Acme Environmental',
+                            RoleName: 'Operator'
+                        };
+                    case 'smtp_test':
+                        return {
+                            AppName: 'SAM',
+                            RecipientEmail: 'admin@example.com',
+                            SentAtUtc: new Date().toISOString()
+                        };
+                    default:
+                        return {
+                            AppName: 'SAM'
+                        };
+                }
+            }
+
+            function applyTokens(content, tokenMap) {
+                return (content || '').replace(/\{\{([A-Za-z0-9_]+)\}\}/g, function (match, tokenName) {
+                    return Object.prototype.hasOwnProperty.call(tokenMap, tokenName)
+                        ? tokenMap[tokenName]
+                        : match;
+                });
+            }
+
+            previewBtn.addEventListener('click', function () {
+                const tokens = getSampleTokens(keyInput.value);
+                const renderedSubject = applyTokens(subjectInput.value, tokens);
+                const renderedBody = applyTokens(bodyInput.value, tokens);
+
+                previewSubject.textContent = renderedSubject || '(No subject)';
+            previewFrame.srcdoc = renderedBody || '<p>No body content.</p>';
+
+                const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                modal.show();
+            });
+        })();
+    </script>
+}
+

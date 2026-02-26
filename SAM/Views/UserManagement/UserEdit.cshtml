@@ -20,19 +20,16 @@
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-person-gear"></i> Edit User Information</h5>
-    </div>
     <div class="card-body">
         <form asp-action="UserEdit" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
-            
+
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
             <div class="form-section">
                 <div class="form-section-title"><i class="bi bi-sliders me-2"></i>User Details</div>
-                
+
                 <div class="mb-3">
                     <label asp-for="CompanyId" class="form-label"></label>
                     @if (isGlobalAdmin)
@@ -51,25 +48,26 @@
                     }
                     <span asp-validation-for="CompanyId" class="text-danger"></span>
                 </div>
+                <div class="row mb-3">
+                    <div class="col-md-4 col-lg-4 col-sm-12">
+                        <label asp-for="FullName" class="form-label required"></label>
+                        <input asp-for="FullName" class="form-control" />
+                        <span asp-validation-for="FullName" class="text-danger"></span>
+                    </div>
 
-                <div class="mb-3">
-                    <label asp-for="FullName" class="form-label required"></label>
-                    <input asp-for="FullName" class="form-control" />
-                    <span asp-validation-for="FullName" class="text-danger"></span>
+                    <div class="col-md-4 col-lg-4 col-sm-12">
+                        <label asp-for="Email" class="form-label required"></label>
+                        <input asp-for="Email" type="email" class="form-control" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-4 col-lg-4 col-sm-12">
+                        <label asp-for="AppRole" class="form-label required"></label>
+                        <select asp-for="AppRole" asp-items="roles" class="form-select">
+                        </select>
+                        <span asp-validation-for="AppRole" class="text-danger"></span>
+                    </div>
                 </div>
-
-                <div class="mb-3">
-                    <label asp-for="Email" class="form-label required"></label>
-                    <input asp-for="Email" type="email" class="form-control" />
-                    <span asp-validation-for="Email" class="text-danger"></span>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="AppRole" class="form-label required"></label>
-                    <select asp-for="AppRole" asp-items="roles" class="form-select"></select>
-                    <span asp-validation-for="AppRole" class="text-danger"></span>
-                </div>
-
                 <div class="mb-3">
                     <label asp-for="IsActive" class="form-label"></label>
                     <div class="form-check form-switch">
@@ -93,6 +91,8 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }
 
