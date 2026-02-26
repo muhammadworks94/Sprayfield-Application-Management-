@@ -370,3 +370,4 @@ FodyWeavers.xsd
 /.vs/SAM/config
 /.vs
 /SAM/SAM.csproj.user
+config.bat
