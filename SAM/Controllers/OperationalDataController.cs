@@ -2,12 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using SAM.Controllers.Base;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
-using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
@@ -29,8 +27,7 @@ namespace SAM.Controllers;
         private readonly IFacilityService _facilityService;
         private readonly ISprayfieldService _sprayfieldService;
         private readonly IMonitoringWellService _monitoringWellService;
-        private readonly ICompanyService _companyService;
-        private readonly ApplicationDbContext _context;
+        private readonly ILookupQueryService _lookupQueryService;
         private readonly IWebHostEnvironment _environment;
 
         public OperationalDataController(
@@ -41,8 +38,7 @@ namespace SAM.Controllers;
             IFacilityService facilityService,
             ISprayfieldService sprayfieldService,
             IMonitoringWellService monitoringWellService,
-            ICompanyService companyService,
-            ApplicationDbContext context,
+            ILookupQueryService lookupQueryService,
             IWebHostEnvironment environment,
             UserManager<ApplicationUser> userManager,
             ILogger<OperationalDataController> logger)
@@ -55,8 +51,7 @@ namespace SAM.Controllers;
             _facilityService = facilityService;
             _sprayfieldService = sprayfieldService;
             _monitoringWellService = monitoringWellService;
-            _companyService = companyService;
-            _context = context;
+            _lookupQueryService = lookupQueryService;
             _environment = environment;
         }
 
@@ -1696,7 +1691,6 @@ namespace SAM.Controllers;
 
     private async Task<SelectList> GetFacilitySelectListAsync(Guid? companyId = null)
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Use effective company ID if no companyId specified (respects session selection for admins)
@@ -1705,13 +1699,12 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
-        var facilities = await _facilityService.GetAllAsync(companyId);
+        var facilities = await _lookupQueryService.GetFacilitiesAsync(companyId);
         return new SelectList(facilities, "Id", "Name");
     }
 
     private async Task<SelectList> GetSprayfieldSelectListAsync(Guid? companyId = null, Guid? facilityId = null)
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Use effective company ID if no companyId specified (respects session selection for admins)
@@ -1720,12 +1713,7 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
-        var sprayfields = await _sprayfieldService.GetAllAsync(companyId);
-        
-        if (facilityId.HasValue)
-        {
-            sprayfields = sprayfields.Where(s => s.FacilityId == facilityId.Value);
-        }
+        var sprayfields = await _lookupQueryService.GetSprayfieldsAsync(companyId, facilityId);
 
         var items = sprayfields.Select(s => new SelectListItem
         {
@@ -1738,22 +1726,14 @@ namespace SAM.Controllers;
 
     private async Task<SelectList> GetCompanySelectListAsync()
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-        var companies = await _companyService.GetAllAsync();
-
-        // Filter by effective company ID if session has a selection (for admins) or user has a company
-        if (effectiveCompanyId.HasValue)
-        {
-            companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
-        }
+        var companies = await _lookupQueryService.GetCompaniesAsync(effectiveCompanyId);
 
         return new SelectList(companies, "Id", "Name");
     }
 
     private async Task<SelectList> GetMonitoringWellSelectListAsync(Guid? companyId = null, Guid? facilityId = null)
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Use effective company ID if no companyId specified (respects session selection for admins)
@@ -1762,7 +1742,7 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
-        var monitoringWells = await _monitoringWellService.GetAllAsync(companyId);
+        var monitoringWells = await _lookupQueryService.GetMonitoringWellsAsync(companyId, facilityId);
         return new SelectList(monitoringWells, "Id", "WellId");
     }
 
@@ -1885,4 +1865,3 @@ namespace SAM.Controllers;
 
     #endregion
 }
-

@@ -162,10 +162,10 @@
                 {
                     <div class="d-flex flex-column flex-md-row align-items-center justify-content-between">
                         <div class="dashboard-chart-wrap d-flex align-items-center justify-content-center flex-shrink-0">
-                            <div class="position-relative" style="width: 180px; height: 180px;">
+                            <div class="position-relative ui-chart-ring-180">
                                 <canvas id="chartIrrigationCompliance" width="180" height="180"></canvas>
                                 <div id="complianceCenterLabel" class="position-absolute top-50 start-50 translate-middle text-center compliance-center-label">
-                                    <span class="fw-bold fs-6" style="color: #14b8a6;">Compliant @Model.IrrigationCompliance.CompliantPercent.ToString("F0")%</span>
+                                    <span class="fw-bold fs-6 ui-accent-teal">Compliant @Model.IrrigationCompliance.CompliantPercent.ToString("F0")%</span>
                                 </div>
                             </div>
                         </div>
@@ -176,7 +176,7 @@
                         </div>
                     </div>
                     <div class="mt-3 d-flex align-items-center gap-2">
-                        <span class="d-inline-block rounded-1 dashboard-legend-normal" style="width: 12px; height: 12px;"></span>
+                        <span class="d-inline-block rounded-1 dashboard-legend-normal ui-square-12"></span>
                         <span class="small">Compliant</span>
                     </div>
                 }
@@ -197,7 +197,7 @@
                 </h5>
                 <div class="dashboard-uptime-strip p-3 mb-3">
                     <div class="text-muted small">System Uptime</div>
-                    <div class="fw-bold fs-4" style="color: #14b8a6;">@Model.SystemUptimePercent.ToString("F1")%</div>
+                    <div class="fw-bold fs-4 ui-accent-teal">@Model.SystemUptimePercent.ToString("F1")%</div>
                     <div class="text-muted small">Based on normal operational status</div>
                 </div>
                 @if (hasOperationalData)
@@ -207,13 +207,13 @@
                     </div>
                     <div class="mt-2 d-flex flex-wrap gap-3 small">
                         <span class="d-inline-flex align-items-center gap-1">
-                            <span class="rounded-1 dashboard-legend-normal" style="width: 10px; height: 10px;"></span> Normal
+                            <span class="rounded-1 dashboard-legend-normal ui-square-10"></span> Normal
                         </span>
                         <span class="d-inline-flex align-items-center gap-1">
-                            <span class="rounded-1 bg-warning" style="width: 10px; height: 10px;"></span> Alert
+                            <span class="rounded-1 bg-warning ui-square-10"></span> Alert
                         </span>
                         <span class="d-inline-flex align-items-center gap-1">
-                            <span class="rounded-1 bg-info" style="width: 10px; height: 10px;"></span> Maintenance
+                            <span class="rounded-1 bg-info ui-square-10"></span> Maintenance
                         </span>
                     </div>
                 }
@@ -473,3 +473,5 @@
         })();
     </script>
 }
+
+

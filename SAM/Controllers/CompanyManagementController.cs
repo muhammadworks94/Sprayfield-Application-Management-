@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using SAM.Controllers.Base;
-using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
@@ -26,25 +24,25 @@ public class CompanyManagementController : BaseController
 {
     private readonly ICompanyService _companyService;
     private readonly ICompanyRequestService _companyRequestService;
+    private readonly IUserRequestService _userRequestService;
     private readonly IFacilityService _facilityService;
     private readonly ISoilService _soilService;
     private readonly INozzleService _nozzleService;
     private readonly ICropService _cropService;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IMonitoringWellService _monitoringWellService;
-    private readonly ApplicationDbContext _context;
     private readonly IUserService _userService;
 
     public CompanyManagementController(
         ICompanyService companyService,
         ICompanyRequestService companyRequestService,
+        IUserRequestService userRequestService,
         IFacilityService facilityService,
         ISoilService soilService,
         INozzleService nozzleService,
         ICropService cropService,
         ISprayfieldService sprayfieldService,
         IMonitoringWellService monitoringWellService,
-        ApplicationDbContext context,
         IUserService userService,
         UserManager<ApplicationUser> userManager,
         ILogger<CompanyManagementController> logger)
@@ -52,13 +50,13 @@ public class CompanyManagementController : BaseController
     {
         _companyService = companyService;
         _companyRequestService = companyRequestService;
+        _userRequestService = userRequestService;
         _facilityService = facilityService;
         _soilService = soilService;
         _nozzleService = nozzleService;
         _cropService = cropService;
         _sprayfieldService = sprayfieldService;
         _monitoringWellService = monitoringWellService;
-        _context = context;
         _userService = userService;
     }
 
@@ -244,29 +242,19 @@ public class CompanyManagementController : BaseController
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompanyRequestDelete(Guid id)
     {
-        var request = await _context.CompanyRequests.FirstOrDefaultAsync(r => r.Id == id);
-        if (request == null)
+        try
+        {
+            await _companyRequestService.DeleteRequestAsync(id);
+            TempData["SuccessMessage"] = "Company request deleted.";
+        }
+        catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
             TempData["ErrorMessage"] = "Company request not found.";
-            return RedirectToAction(nameof(CompanyRequests));
         }
-
-        if (request.CreatedCompanyId.HasValue)
+        catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
-            var linkedCompany = await _context.Companies
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(c => c.Id == request.CreatedCompanyId.Value);
-
-            if (linkedCompany != null && !linkedCompany.IsDeleted)
-            {
-                TempData["ErrorMessage"] = "Approved company requests cannot be deleted while the linked company still exists.";
-                return RedirectToAction(nameof(CompanyRequests));
-            }
+            TempData["ErrorMessage"] = ex.Message;
         }
-
-        request.IsDeleted = true;
-        await _context.SaveChangesAsync();
-        TempData["SuccessMessage"] = "Company request deleted.";
 
         return RedirectToAction(nameof(CompanyRequests));
     }
@@ -286,9 +274,7 @@ public class CompanyManagementController : BaseController
         var isGlobalAdmin = await IsGlobalAdminAsync();
 
         // Load Users with roles
-        var users = await _context.Users
-            .Where(u => u.CompanyId == id)
-            .ToListAsync();
+        var users = await _userService.GetUsersByCompanyAsync(id);
 
         var userViewModels = new List<UserListItemViewModel>();
         foreach (var user in users)
@@ -565,65 +551,63 @@ public class CompanyManagementController : BaseController
     [HttpGet]
     public async Task<IActionResult> CompanyDelete(Guid id)
     {
-        var company = await _context.Companies
-            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+        var company = await _companyService.GetByIdAsync(id);
 
-        if (company == null)
+        if (company == null || company.IsDeleted)
             return NotFound();
 
-        // Count related entities
-        var usersCount = await _context.Users
-            .CountAsync(u => u.CompanyId == id);
-        
-        var facilitiesCount = await _context.Facilities
-            .CountAsync(f => f.CompanyId == id && !f.IsDeleted);
-        
-        var soilsCount = await _context.Soils
-            .CountAsync(s => s.CompanyId == id && !s.IsDeleted);
-        
-        var cropsCount = await _context.Crops
-            .CountAsync(c => c.CompanyId == id && !c.IsDeleted);
-        
-        var nozzlesCount = await _context.Nozzles
-            .CountAsync(n => n.CompanyId == id && !n.IsDeleted);
-        
-        var sprayfieldsCount = await _context.Sprayfields
-            .CountAsync(s => s.CompanyId == id && !s.IsDeleted);
-        
-        var monitoringWellsCount = await _context.MonitoringWells
-            .CountAsync(m => m.CompanyId == id && !m.IsDeleted);
-        
-        var userRequestsCount = await _context.UserRequests
-            .CountAsync(u => u.CompanyId == id && !u.IsDeleted);
+        // Load related data via services.
+        var users = (await _userService.GetUsersByCompanyAsync(id)).ToList();
+        var facilities = (await _facilityService.GetByCompanyIdAsync(id))
+            .Where(f => !f.IsDeleted)
+            .ToList();
+        var soils = (await _soilService.GetByCompanyIdAsync(id))
+            .Where(s => !s.IsDeleted)
+            .ToList();
+        var crops = (await _cropService.GetByCompanyIdAsync(id))
+            .Where(c => !c.IsDeleted)
+            .ToList();
+        var nozzles = (await _nozzleService.GetByCompanyIdAsync(id))
+            .Where(n => !n.IsDeleted)
+            .ToList();
+        var sprayfields = (await _sprayfieldService.GetByCompanyIdAsync(id))
+            .Where(s => !s.IsDeleted)
+            .ToList();
+        var monitoringWells = (await _monitoringWellService.GetByCompanyIdAsync(id))
+            .Where(m => !m.IsDeleted)
+            .ToList();
+        var userRequests = (await _userRequestService.GetAllAsync(id))
+            .Where(u => !u.IsDeleted)
+            .ToList();
 
-        // Get detailed lists for critical entities
-        var users = await _context.Users
-            .Where(u => u.CompanyId == id)
-            .Select(u => new ViewModels.SystemAdmin.UserInfo
-            {
-                Email = u.Email ?? string.Empty,
-                FullName = u.FullName
-            })
-            .ToListAsync();
+        var usersCount = users.Count;
+        var facilitiesCount = facilities.Count;
+        var soilsCount = soils.Count;
+        var cropsCount = crops.Count;
+        var nozzlesCount = nozzles.Count;
+        var sprayfieldsCount = sprayfields.Count;
+        var monitoringWellsCount = monitoringWells.Count;
+        var userRequestsCount = userRequests.Count;
 
-        var facilities = await _context.Facilities
-            .Where(f => f.CompanyId == id && !f.IsDeleted)
-            .Select(f => new ViewModels.SystemAdmin.FacilityInfo
-            {
-                Name = f.Name,
-                PermitNumber = f.PermitNumber
-            })
-            .ToListAsync();
+        // Get detailed lists for critical entities.
+        var userInfos = users.Select(u => new UserInfo
+        {
+            Email = u.Email ?? string.Empty,
+            FullName = u.FullName
+        }).ToList();
 
-        var userRequests = await _context.UserRequests
-            .Where(u => u.CompanyId == id && !u.IsDeleted)
-            .Select(u => new ViewModels.SystemAdmin.UserRequestInfo
-            {
-                Email = u.Email,
-                FullName = u.FullName,
-                Status = u.Status.ToString()
-            })
-            .ToListAsync();
+        var facilityInfos = facilities.Select(f => new FacilityInfo
+        {
+            Name = f.Name,
+            PermitNumber = f.PermitNumber
+        }).ToList();
+
+        var userRequestInfos = userRequests.Select(u => new UserRequestInfo
+        {
+            Email = u.Email,
+            FullName = u.FullName,
+            Status = u.Status.ToString()
+        }).ToList();
 
         var viewModel = new CompanyDeleteViewModel
         {
@@ -642,9 +626,9 @@ public class CompanyManagementController : BaseController
             SprayfieldsCount = sprayfieldsCount,
             MonitoringWellsCount = monitoringWellsCount,
             UserRequestsCount = userRequestsCount,
-            Users = users,
-            Facilities = facilities,
-            UserRequests = userRequests
+            Users = userInfos,
+            Facilities = facilityInfos,
+            UserRequests = userRequestInfos
         };
 
         return View(viewModel);

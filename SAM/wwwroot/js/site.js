@@ -21,4 +21,13 @@ function applyTruncationTooltips(root = document) {
 
 document.addEventListener('DOMContentLoaded', function () {
     applyTruncationTooltips();
+
+    document.querySelectorAll('select[data-auto-submit=\"true\"]').forEach((element) => {
+        element.addEventListener('change', () => {
+            const form = element.closest('form');
+            if (form) {
+                form.submit();
+            }
+        });
+    });
 });
