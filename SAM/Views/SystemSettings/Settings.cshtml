@@ -203,7 +203,7 @@
                 </div>
                 <div>
                     <label class="form-label fw-semibold">Body</label>
-                    <iframe id="emailPreviewFrame" class="w-100 border rounded" style="min-height: 460px;"></iframe>
+                    <iframe id="emailPreviewFrame" class="w-100 border rounded ui-min-h-460"></iframe>
                 </div>
             </div>
         </div>
@@ -271,7 +271,7 @@
                 const renderedBody = applyTokens(bodyInput.value, tokens);
 
                 previewSubject.textContent = renderedSubject || '(No subject)';
-                previewFrame.srcdoc = renderedBody || '<p style="font-family:Arial,sans-serif;">No body content.</p>';
+            previewFrame.srcdoc = renderedBody || '<p>No body content.</p>';
 
                 const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
                 modal.show();
@@ -279,3 +279,4 @@
         })();
     </script>
 }
+

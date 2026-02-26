@@ -224,6 +224,29 @@ public class CompanyRequestService : ICompanyRequestService
         return request;
     }
 
+    public async Task DeleteRequestAsync(Guid id)
+    {
+        var request = await _context.CompanyRequests
+            .FirstOrDefaultAsync(r => r.Id == id);
+        if (request == null)
+            throw new EntityNotFoundException(nameof(CompanyRequest), id);
+
+        if (request.CreatedCompanyId.HasValue)
+        {
+            var linkedCompany = await _context.Companies
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Id == request.CreatedCompanyId.Value);
+
+            if (linkedCompany != null && !linkedCompany.IsDeleted)
+            {
+                throw new BusinessRuleException("Approved company requests cannot be deleted while the linked company still exists.");
+            }
+        }
+
+        request.IsDeleted = true;
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<IEnumerable<CompanyRequest>> GetPendingRequestsAsync()
     {
         return await _context.CompanyRequests

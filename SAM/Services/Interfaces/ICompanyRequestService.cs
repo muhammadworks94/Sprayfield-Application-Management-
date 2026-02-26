@@ -12,6 +12,7 @@ public interface ICompanyRequestService
     Task<CompanyRequest> CreateAsync(CompanyRequest companyRequest);
     Task<CompanyRequest> ApproveRequestAsync(Guid requestId, string approvedByEmail);
     Task<CompanyRequest> RejectRequestAsync(Guid requestId, string rejectedByEmail, string? reason = null);
+    Task DeleteRequestAsync(Guid id);
     Task<IEnumerable<CompanyRequest>> GetPendingRequestsAsync();
     Task<bool> ExistsAsync(Guid id);
 }

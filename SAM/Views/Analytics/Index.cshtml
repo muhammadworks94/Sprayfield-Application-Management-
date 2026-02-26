@@ -36,7 +36,7 @@
                             <i class="bi bi-graph-up me-2"></i>Select Monitoring Well
                         </h5>
                         <form method="get" asp-controller="Analytics" asp-action="Index" class="mb-0">
-                            <select name="wellId" class="form-select" onchange="this.form.submit()" aria-label="Select Monitoring Well">
+                            <select name="wellId" class="form-select" data-auto-submit="true" aria-label="Select Monitoring Well">
                                 @if (Model.MonitoringWells != null)
                                 {
                                     @foreach (var item in Model.MonitoringWells)
@@ -67,7 +67,7 @@
                                     <i class="bi bi-circle-fill text-primary"></i> pH
                                 </span>
                                 <span class="d-inline-flex align-items-center gap-1">
-                                    <i class="bi bi-diamond-fill" style="color: #14b8a6;"></i> Conductivity (µS/cm)
+                                    <i class="bi bi-diamond-fill ui-accent-teal"></i> Conductivity (µS/cm)
                                 </span>
                             </div>
                         }
@@ -97,7 +97,7 @@
                             <input type="hidden" name="activeTab" value="parameters" />
                             <div class="col-md-6">
                                 <label class="form-label">Parameter</label>
-                                <select name="parameterKey" class="form-select" onchange="this.form.submit()">
+                                <select name="parameterKey" class="form-select" data-auto-submit="true">
                                     @if (Model.ParameterOptions != null)
                                     {
                                         @foreach (var item in Model.ParameterOptions)
@@ -195,7 +195,7 @@
 
                             @if (Model.FacilityRiskLabels.Any())
                             {
-                                <div class="dashboard-chart-wrap" style="height: 260px;">
+                                <div class="dashboard-chart-wrap ui-chart-height-260">
                                     <canvas id="chartFacilityRisk"></canvas>
                                 </div>
                             }
@@ -371,3 +371,5 @@
         })();
     </script>
 }
+
+

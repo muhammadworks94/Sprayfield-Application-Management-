@@ -231,7 +231,7 @@
             else
             {
                 <div class="text-center py-5">
-                    <i class="bi bi-inbox" style="font-size: 3rem; color: var(--gray-400);"></i>
+                    <i class="bi bi-inbox ui-empty-icon"></i>
                     <p class="text-muted mt-3">No users found.</p>
                     <a asp-action="UserCreate" asp-route-companyId="@Model.SelectedCompanyId" class="btn btn-primary mt-2">
                         <i class="bi bi-plus-circle"></i> Create First User
@@ -671,4 +671,6 @@
         });
     </script>
 }
+
+
 
