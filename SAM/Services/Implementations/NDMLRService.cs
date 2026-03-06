@@ -82,6 +82,7 @@ public class NDMLRService : INDMLRService
         WriteFieldBlocks(worksheet, report);
         WriteDataRow(worksheet, report, avgConcMgL, 9);
         WriteFooter(worksheet, report);
+        WriteCertificationPage(workbook, facility);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -246,5 +247,36 @@ public class NDMLRService : INDMLRService
             if (fields[i] != null)
                 worksheet.Cell($"{valueCols[i]}21").Value = twelveMonthInches[i]; // inches; conversion to lbs/ac/yr can be added later
         }
+    }
+
+    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility)
+    {
+        var certificationWorksheet = workbook.Worksheets
+            .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
+
+        if (certificationWorksheet == null && workbook.Worksheets.Count >= 2)
+        {
+            certificationWorksheet = workbook.Worksheet(2);
+        }
+
+        if (certificationWorksheet == null)
+        {
+            return;
+        }
+
+        certificationWorksheet.Cell("C6").Value = facility.OrcName ?? string.Empty;
+        certificationWorksheet.Cell("E7").Value = facility.OperatorNumber ?? string.Empty;
+        certificationWorksheet.Cell("C8").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("I8").Value = facility.OperatorPhone ?? string.Empty;
+        certificationWorksheet.Cell("B9").Value = $"Has the ORC changed since the previous NDMLR? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
+        certificationWorksheet.Cell("K10").Value = DateTime.Today.ToString("MM/dd/yyyy");
+
+        // Permittee certification section
+        certificationWorksheet.Cell("O6").Value = facility.Permittee ?? string.Empty;
+        certificationWorksheet.Cell("P7").Value = facility.OrcName ?? string.Empty;
+        certificationWorksheet.Cell("P8").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("O9").Value = facility.PermitPhone ?? string.Empty;
+        certificationWorksheet.Cell("T9").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
+        certificationWorksheet.Cell("U10").Value = DateTime.Today.ToString("MM/dd/yyyy");
     }
 }

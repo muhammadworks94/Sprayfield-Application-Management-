@@ -293,6 +293,8 @@ public class NDMRService : INDMRService
                 return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
             });
 
+        WriteCertificationPage(workbook, facility);
+
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
 
@@ -306,5 +308,43 @@ public class NDMRService : INDMRService
 
         return stream.ToArray();
     }
-}
 
+    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility)
+    {
+        var certificationWorksheet = workbook.Worksheets
+            .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
+
+        if (certificationWorksheet == null && workbook.Worksheets.Count >= 2)
+        {
+            certificationWorksheet = workbook.Worksheet(2);
+        }
+
+        if (certificationWorksheet == null)
+        {
+            return;
+        }
+
+        certificationWorksheet.Cell("C9").Value = facility.OrcName ?? string.Empty;
+        certificationWorksheet.Cell("D10").Value = facility.OperatorNumber ?? string.Empty;
+        certificationWorksheet.Cell("C11").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("G11").Value = facility.OperatorPhone ?? string.Empty;
+        certificationWorksheet.Cell("A12").Value = $"Has the ORC changed since the previous NDMR? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
+        certificationWorksheet.Cell("I13").Value = DateTime.Today.ToString("MM/dd/yyyy");
+
+        // Permittee certification section
+        certificationWorksheet.Cell("M9").Value = facility.Permittee ?? string.Empty;
+        certificationWorksheet.Cell("M10").Value = facility.OrcName ?? string.Empty;
+        certificationWorksheet.Cell("N11").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("M12").Value = facility.PermitPhone ?? string.Empty;
+        certificationWorksheet.Cell("R12").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
+        certificationWorksheet.Cell("R13").Value = DateTime.Today.ToString("MM/dd/yyyy");
+
+        // Sampling Person(s) and Certified Laboratories
+        var samplerNames = (facility.PersonsCollectingSamples ?? string.Empty)
+            .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        certificationWorksheet.Cell("C2").Value = samplerNames.Length > 0 ? samplerNames[0] : string.Empty;
+        certificationWorksheet.Cell("C3").Value = samplerNames.Length > 1 ? samplerNames[1] : string.Empty;
+        certificationWorksheet.Cell("L2").Value = facility.CertifiedLaboratory1Name ?? string.Empty;
+        certificationWorksheet.Cell("L3").Value = facility.CertifiedLaboratory2Name ?? string.Empty;
+    }
+}

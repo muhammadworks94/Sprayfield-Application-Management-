@@ -644,10 +644,43 @@ public class NDAR1Service : INDAR1Service
             worksheet.Cell($"U{floatingRow}").Value = report.Field4TwelveMonthFloatingTotal;
         }
 
+        WriteCertificationPage(workbook, facility);
+
         // Convert to byte array
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
+    }
+
+    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility)
+    {
+        var certificationWorksheet = workbook.Worksheets
+            .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
+
+        if (certificationWorksheet == null && workbook.Worksheets.Count >= 2)
+        {
+            certificationWorksheet = workbook.Worksheet(2);
+        }
+
+        if (certificationWorksheet == null)
+        {
+            return;
+        }
+
+        certificationWorksheet.Cell("C10").Value = facility.OrcName ?? string.Empty;
+        certificationWorksheet.Cell("E11").Value = facility.OperatorNumber ?? string.Empty;
+        certificationWorksheet.Cell("C12").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("I12").Value = facility.OperatorPhone ?? string.Empty;
+        certificationWorksheet.Cell("A13").Value = $"Has the ORC changed since the previous NDAR-1? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
+        certificationWorksheet.Cell("K14").Value = DateTime.Today.ToString("MM/dd/yyyy");
+
+        // Permittee certification section
+        certificationWorksheet.Cell("O10").Value = facility.Permittee ?? string.Empty;
+        certificationWorksheet.Cell("O11").Value = facility.OrcName ?? string.Empty;
+        certificationWorksheet.Cell("P12").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("O13").Value = facility.PermitPhone ?? string.Empty;
+        certificationWorksheet.Cell("T13").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
+        certificationWorksheet.Cell("U14").Value = DateTime.Today.ToString("MM/dd/yyyy");
     }
 }
 

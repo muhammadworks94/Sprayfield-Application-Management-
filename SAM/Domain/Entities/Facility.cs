@@ -85,6 +85,11 @@ public class Facility : CompanyScopedEntity
     public string? OperatorNumber { get; set; } = string.Empty;
 
     /// <summary>
+    /// ORC operator phone number.
+    /// </summary>
+    public string? OperatorPhone { get; set; } = string.Empty;
+
+    /// <summary>
     /// Indicates whether there was a change in ORC.
     /// </summary>
     public bool? ChangeInOrc { get; set; } = false;

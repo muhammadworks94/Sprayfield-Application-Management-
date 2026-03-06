@@ -77,8 +77,11 @@
                     <dt class="col-sm-5"><i class="bi bi-hash me-1"></i>Operator Number:</dt>
                     <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.OperatorNumber) ? Model.OperatorNumber : "N/A")</dd>
 
+                    <dt class="col-sm-5"><i class="bi bi-telephone me-1"></i>Operator Phone:</dt>
+                    <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.OperatorPhone) ? Model.OperatorPhone : "N/A")</dd>
+
                     <dt class="col-sm-5"><i class="bi bi-arrow-repeat me-1"></i>Change in ORC?</dt>
-                    <dd class="col-sm-7">@((Model.ChangeInOrc ?? false) ? "Yes" : "No")</dd>
+                    <dd class="col-sm-7">@(Model.ChangeInOrc ? "Yes" : "No")</dd>
 
                 </dl>
             </div>

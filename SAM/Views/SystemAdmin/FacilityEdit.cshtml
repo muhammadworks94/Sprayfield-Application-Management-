@@ -146,31 +146,38 @@
                 <div class="form-section-title">Operator in Responsible Charge (ORC)</div>
 
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label asp-for="OrcName" class="form-label"></label>
                             <input asp-for="OrcName" class="form-control" />
                             <span asp-validation-for="OrcName" class="text-danger"></span>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label asp-for="OperatorGrade" class="form-label"></label>
                             <input asp-for="OperatorGrade" class="form-control" />
                             <span asp-validation-for="OperatorGrade" class="text-danger"></span>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label asp-for="OperatorNumber" class="form-label"></label>
                             <input asp-for="OperatorNumber" class="form-control" />
                             <span asp-validation-for="OperatorNumber" class="text-danger"></span>
                         </div>
                     </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="OperatorPhone" class="form-label"></label>
+                            <input asp-for="OperatorPhone" class="form-control" />
+                            <span asp-validation-for="OperatorPhone" class="text-danger"></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-3 form-check">
-                    <input asp-for="ChangeInOrc" class="form-check-input" />
+                    <input asp-for="ChangeInOrc" type="checkbox" class="form-check-input" />
                     <label asp-for="ChangeInOrc" class="form-check-label"></label>
                 </div>
             </div>
