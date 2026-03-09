@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+@inject SAM.Services.Interfaces.IBreadcrumbService BreadcrumbService
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -37,6 +38,14 @@
             }
             
             <main role="main" class="p-4 app-main-shell">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    var breadcrumbs = BreadcrumbService.Build(ViewContext);
+                    if (breadcrumbs.Count > 1)
+                    {
+                        @await Html.PartialAsync("Partials/_Breadcrumbs", breadcrumbs)
+                    }
+                }
                 @if (ViewData["Title"] != null)
                 {
                     <div class="page-title-header mb-4">
@@ -94,4 +103,5 @@
     <script src="~/js/layout-navigation.js" asp-append-version="true"></script>
 </body>
 </html>
+
 

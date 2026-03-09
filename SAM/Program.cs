@@ -118,6 +118,7 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ISmtpSettingsService, SmtpSet
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserActivityLogService, UserActivityLogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IErrorLogService, ErrorLogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ILookupQueryService, LookupQueryService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IBreadcrumbService, BreadcrumbService>();
 builder.Services.AddDataProtection();
 builder.Services.Configure<ActivityLogOptions>(builder.Configuration.GetSection(ActivityLogOptions.SectionName));
 builder.Services.AddHostedService<UserActivityLogRetentionService>();
