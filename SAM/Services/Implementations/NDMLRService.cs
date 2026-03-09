@@ -6,6 +6,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 
 namespace SAM.Services.Implementations;
 
@@ -22,15 +23,18 @@ public class NDMLRService : INDMLRService
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<NDMLRService> _logger;
+    private readonly IApplicationComplianceService _applicationComplianceService;
 
     public NDMLRService(
         ApplicationDbContext context,
         IWebHostEnvironment environment,
-        ILogger<NDMLRService> logger)
+        ILogger<NDMLRService> logger,
+        IApplicationComplianceService applicationComplianceService)
     {
         _context = context;
         _environment = environment;
         _logger = logger;
+        _applicationComplianceService = applicationComplianceService;
     }
 
     /// <inheritdoc />
@@ -81,7 +85,7 @@ public class NDMLRService : INDMLRService
         WriteHeader(worksheet, facility, report.Month, year);
         WriteFieldBlocks(worksheet, report);
         WriteDataRow(worksheet, report, avgConcMgL, 9);
-        WriteFooter(worksheet, report);
+        await WriteFooterAsync(worksheet, report, endDate);
         WriteCertificationPage(workbook, facility);
 
         using var stream = new MemoryStream();
@@ -229,23 +233,42 @@ public class NDMLRService : INDMLRService
         }
     }
 
-    private static void WriteFooter(IXLWorksheet worksheet, NDAR1 report)
+    private async Task WriteFooterAsync(IXLWorksheet worksheet, NDAR1 report, DateTime asOfDate)
     {
-        // Row 21: 12 Month Floating Load (lbs/ac/yr) - NDAR1 stores inches; template wants lbs/ac/yr. Write inch value for now.
-        // Row 22: Annual Load Limit - not in entities; leave empty (E22, I22, M22, Q22).
-        var fields = new[] { report.Field1, report.Field2, report.Field3, report.Field4 };
-        var twelveMonthInches = new[]
-        {
-            report.Field1TwelveMonthFloatingTotal,
-            report.Field2TwelveMonthFloatingTotal,
-            report.Field3TwelveMonthFloatingTotal,
-            report.Field4TwelveMonthFloatingTotal,
-        };
+        var fieldIds = new[] { report.Field1Id, report.Field2Id, report.Field3Id, report.Field4Id };
         var valueCols = new[] { "E", "I", "M", "Q" };
+
         for (int i = 0; i < 4; i++)
         {
-            if (fields[i] != null)
-                worksheet.Cell($"{valueCols[i]}21").Value = twelveMonthInches[i]; // inches; conversion to lbs/ac/yr can be added later
+            var fieldId = fieldIds[i];
+            if (!fieldId.HasValue)
+            {
+                continue;
+            }
+
+            FieldRollingMetricsResult metrics;
+            try
+            {
+                metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, fieldId.Value, asOfDate);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not compute rolling metrics for sprayfield {SprayfieldId} in NDMLR export {ReportId}.", fieldId.Value, report.Id);
+                continue;
+            }
+
+            // Row 21: 12-month floating PAN load (lbs/ac/yr).
+            worksheet.Cell($"{valueCols[i]}21").Value = metrics.RollingPanLbsPerAcre;
+
+            // Row 22: Annual PAN load limit (lbs/ac/yr).
+            if (metrics.PanLimitLbsPerAcre.HasValue)
+            {
+                worksheet.Cell($"{valueCols[i]}22").Value = metrics.PanLimitLbsPerAcre.Value;
+            }
+            else
+            {
+                worksheet.Cell($"{valueCols[i]}22").Clear(XLClearOptions.Contents);
+            }
         }
     }
 

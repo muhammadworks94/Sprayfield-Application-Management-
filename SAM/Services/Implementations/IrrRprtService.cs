@@ -16,20 +16,17 @@ public class IrrRprtService : IIrrRprtService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<IrrRprtService> _logger;
-    private readonly IIrrigateService _irrigateService;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IPANCalculationService _panCalculationService;
 
     public IrrRprtService(
         ApplicationDbContext context,
         ILogger<IrrRprtService> logger,
-        IIrrigateService irrigateService,
         ISprayfieldService sprayfieldService,
         IPANCalculationService panCalculationService)
     {
         _context = context;
         _logger = logger;
-        _irrigateService = irrigateService;
         _sprayfieldService = sprayfieldService;
         _panCalculationService = panCalculationService;
     }
@@ -190,15 +187,15 @@ public class IrrRprtService : IIrrRprtService
         var startDate = new DateTime(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
-        var irrigations = await _context.Irrigates
-            .Include(i => i.Sprayfield)
-            .ThenInclude(s => s.Crop)
-            .Where(i => i.FacilityId == facilityId &&
-                       i.IrrigationDate >= startDate &&
-                       i.IrrigationDate <= endDate)
+        var applications = await _context.MonthlyApplications
+            .Include(a => a.Zone)
+                .ThenInclude(z => z!.Sprayfield)
+            .Where(a => a.FacilityId == facilityId &&
+                       a.ApplicationDate >= startDate &&
+                       a.ApplicationDate <= endDate)
             .ToListAsync();
 
-        if (!irrigations.Any())
+        if (!applications.Any())
             throw new BusinessRuleException($"No irrigation records found for facility {facility.Name} for {((MonthEnum)month)} {year}.");
 
         // Get sprayfields for this facility
@@ -206,7 +203,7 @@ public class IrrRprtService : IIrrRprtService
         var sprayfieldList = sprayfields.ToList();
 
         // Calculate aggregations
-        var totalVolumeApplied = irrigations.Sum(i => i.TotalVolumeGallons);
+        var totalVolumeApplied = applications.Sum(i => i.VolumeGallons);
         var totalAcres = sprayfieldList.Sum(s => s.SizeAcres);
         var totalApplicationRate = totalAcres > 0 ? totalVolumeApplied / (totalAcres * 27152m) : 0; // Convert gallons to inches (1 acre-inch = 27,152 gallons)
 
@@ -245,9 +242,10 @@ public class IrrRprtService : IIrrRprtService
             var no2 = wwChar?.NO2N ?? 0m;
             var no3 = wwChar?.NO3N ?? 0m;
 
-            var volumeBySprayfield = irrigations
-                .GroupBy(i => i.SprayfieldId)
-                .ToDictionary(g => g.Key, g => g.Sum(i => i.TotalVolumeGallons));
+            var volumeBySprayfield = applications
+                .Where(a => a.Zone != null)
+                .GroupBy(i => i.Zone!.SprayfieldId)
+                .ToDictionary(g => g.Key, g => g.Sum(i => i.VolumeGallons));
 
             decimal totalPanLbs = 0m;
             foreach (var sprayfield in sprayfieldList)
@@ -279,11 +277,7 @@ public class IrrRprtService : IIrrRprtService
             applicationEfficiency);
 
         // Aggregate weather conditions
-        var weatherConditions = irrigations
-            .Where(i => !string.IsNullOrEmpty(i.WeatherConditions))
-            .Select(i => i.WeatherConditions)
-            .Distinct()
-            .ToList();
+        var weatherConditions = new List<string>();
 
         var weatherSummary = string.Join("; ", weatherConditions.Take(5)); // Limit to 5 most common
 
@@ -301,7 +295,7 @@ public class IrrRprtService : IIrrRprtService
             PanUptakeRate = panUptakeRate,
             ApplicationEfficiency = applicationEfficiency,
             WeatherSummary = weatherSummary,
-            OperationalNotes = $"Generated from {irrigations.Count} irrigation record(s).",
+            OperationalNotes = $"Generated from {applications.Count} monthly application record(s).",
             ComplianceStatus = complianceStatus
         };
 

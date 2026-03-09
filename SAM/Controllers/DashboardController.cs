@@ -22,7 +22,7 @@ public class DashboardController : BaseController
     private readonly ICompanyService _companyService;
     private readonly IUserRequestService _userRequestService;
     private readonly IOperatorLogService _operatorLogService;
-    private readonly IIrrigateService _irrigateService;
+    private readonly IMonthlyApplicationService _monthlyApplicationService;
     private readonly IWWCharService _wwCharService;
     private readonly IGWMonitService _gwMonitService;
     private readonly IIrrRprtService _irrRprtService;
@@ -34,7 +34,7 @@ public class DashboardController : BaseController
         ICompanyService companyService,
         IUserRequestService userRequestService,
         IOperatorLogService operatorLogService,
-        IIrrigateService irrigateService,
+        IMonthlyApplicationService monthlyApplicationService,
         IWWCharService wwCharService,
         IGWMonitService gwMonitService,
         IIrrRprtService irrRprtService,
@@ -48,7 +48,7 @@ public class DashboardController : BaseController
         _companyService = companyService;
         _userRequestService = userRequestService;
         _operatorLogService = operatorLogService;
-        _irrigateService = irrigateService;
+        _monthlyApplicationService = monthlyApplicationService;
         _wwCharService = wwCharService;
         _gwMonitService = gwMonitService;
         _irrRprtService = irrRprtService;
@@ -97,7 +97,7 @@ public class DashboardController : BaseController
         var sprayfields = (await _sprayfieldService.GetAllAsync(companyId)).ToList();
         var monitoringWells = (await _monitoringWellService.GetAllAsync(companyId)).ToList();
         var recentLogs = (await _operatorLogService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
-        var recentIrrigations = (await _irrigateService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
+        var recentIrrigations = (await _monthlyApplicationService.GetAllAsync(companyId)).Where(a => a.ApplicationDate >= thirtyDaysAgo).ToList();
         var allWWChars = (await _wwCharService.GetAllAsync(companyId)).ToList();
         var recentGWMonits = (await _gwMonitService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
         var reports = (await _irrRprtService.GetAllAsync(companyId)).ToList();
@@ -219,7 +219,7 @@ public class DashboardController : BaseController
         }
         foreach (var irrigation in recentIrrigations.Take(5))
         {
-            activities.Add(new RecentActivityViewModel { Type = "Irrigation", Description = $"Irrigation completed on field {irrigation.Sprayfield?.FieldId ?? irrigation.SprayfieldId.ToString("N")}", Date = irrigation.CreatedDate, User = irrigation.CreatedBy });
+            activities.Add(new RecentActivityViewModel { Type = "Application", Description = "Zone application logged", Date = irrigation.CreatedDate, User = irrigation.CreatedBy });
         }
         foreach (var report in recentReports.Take(5))
         {

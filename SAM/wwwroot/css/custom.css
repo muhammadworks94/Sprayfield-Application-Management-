@@ -472,6 +472,19 @@ small {
   cursor: not-allowed;
 }
 
+/* Zone manager dropdown alignment in sprayfield create/edit tables */
+.zone-manager-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 2.25rem !important;
+  line-height: 1.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.2 5.9a.75.75 0 0 1 1.06-.05L8 9.25l3.74-3.4a.75.75 0 1 1 1.01 1.1l-4.25 3.87a.75.75 0 0 1-1.01 0L3.25 6.95a.75.75 0 0 1-.05-1.06z' fill='%23475569'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem 1rem;
+}
+
 .form-check-input {
   width: 1em;
   height: 1em;

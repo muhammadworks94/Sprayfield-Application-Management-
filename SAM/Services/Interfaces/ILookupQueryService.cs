@@ -10,5 +10,6 @@ public interface ILookupQueryService
     Task<IEnumerable<Company>> GetCompaniesAsync(Guid? effectiveCompanyId = null);
     Task<IEnumerable<Facility>> GetFacilitiesAsync(Guid? companyId = null);
     Task<IEnumerable<Sprayfield>> GetSprayfieldsAsync(Guid? companyId = null, Guid? facilityId = null);
+    Task<IEnumerable<ApplicationZone>> GetApplicationZonesAsync(Guid? companyId = null, Guid? sprayfieldId = null);
     Task<IEnumerable<MonitoringWell>> GetMonitoringWellsAsync(Guid? companyId = null, Guid? facilityId = null);
 }

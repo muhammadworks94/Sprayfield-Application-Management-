@@ -178,7 +178,7 @@ public class SprayfieldService : ISprayfieldService
             throw new EntityNotFoundException(nameof(Sprayfield), id);
 
         // Check if sprayfield is referenced
-        var hasReferences = await _context.Irrigates.AnyAsync(i => i.SprayfieldId == id);
+        var hasReferences = await _context.ApplicationZones.AnyAsync(z => z.SprayfieldId == id);
 
         if (hasReferences)
             throw new BusinessRuleException("Cannot delete sprayfield because it has associated irrigation records.");

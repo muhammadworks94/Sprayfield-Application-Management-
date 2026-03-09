@@ -183,10 +183,10 @@ public class NDMRService : INDMRService
             "Flow Measuring Point");
 
         // Preload irrigation events and groundwater samples for the month
-        var irrigations = await _context.Irrigates
+        var applications = await _context.MonthlyApplications
             .Where(i => i.FacilityId == facility.Id &&
-                        i.IrrigationDate >= startDate &&
-                        i.IrrigationDate <= endDate)
+                        i.ApplicationDate >= startDate &&
+                        i.ApplicationDate <= endDate)
             .ToListAsync();
 
         var gwMonits = await _context.GWMonits
@@ -208,15 +208,15 @@ public class NDMRService : INDMRService
             flowWorksheet.Cell($"A{row}").Value = day;
 
             // Column D: Flow (GPD)
-            var dayIrrigations = irrigations
-                .Where(i => i.IrrigationDate.Date == currentDate.Date)
+            var dayApplications = applications
+                .Where(i => i.ApplicationDate.Date == currentDate.Date)
                 .ToList();
 
-            if (dayIrrigations.Any())
+            if (dayApplications.Any())
             {
                 // Sum of total volume applied in gallons during the day.
                 // Interpreted as daily total flow (GPD) for NDMR purposes.
-                var totalGallons = dayIrrigations.Sum(i => i.TotalVolumeGallons);
+                var totalGallons = dayApplications.Sum(i => i.VolumeGallons);
                 flowWorksheet.Cell($"D{row}").Value = totalGallons;
             }
             else

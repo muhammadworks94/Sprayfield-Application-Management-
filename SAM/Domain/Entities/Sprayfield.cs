@@ -14,9 +14,29 @@ public class Sprayfield : CompanyScopedEntity
     public string FieldId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Permit field name shown on NDMLR.
+    /// </summary>
+    public string? PermitFieldName { get; set; }
+
+    /// <summary>
+    /// Field-level permit reference.
+    /// </summary>
+    public string? PermitNumber { get; set; }
+
+    /// <summary>
     /// Size of the wetted area in acres.
     /// </summary>
     public decimal SizeAcres { get; set; }
+
+    /// <summary>
+    /// Total acres for the field.
+    /// </summary>
+    public decimal? AcresTotal { get; set; }
+
+    /// <summary>
+    /// Active flag for historical field handling.
+    /// </summary>
+    public bool Active { get; set; } = true;
 
     /// <summary>
     /// Reference to the Soil entity.
@@ -54,7 +74,7 @@ public class Sprayfield : CompanyScopedEntity
     public Nozzle? Nozzle { get; set; }
     public Facility? Facility { get; set; }
     public Guid? FacilityId { get; set; }
-    public ICollection<Irrigate> Irrigates { get; set; } = new List<Irrigate>();
+    public ICollection<ApplicationZone> ApplicationZones { get; set; } = new List<ApplicationZone>();
 }
 
 

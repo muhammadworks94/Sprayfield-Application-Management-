@@ -128,6 +128,106 @@
                         </div>
                     </div>
                 </div>
+
+                <hr class="my-4" />
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Application Zones</h6>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddZone">
+                        <i class="bi bi-plus-circle"></i> Add Zone
+                    </button>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Active zone percentages must total 100%.</small>
+                </div>
+                <div class="mb-2">
+                    <span class="badge bg-secondary" id="zoneTotalBadge">Total: 0.00%</span>
+                    <span class="text-danger ms-2" id="zonePercentMessage"></span>
+                    <div asp-validation-for="Zones" class="text-danger"></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Zone Name</th>
+                                <th>% of Field</th>
+                                <th>Soil</th>
+                                <th>Nozzle</th>
+                                <th>Crop</th>
+                                <th>Active</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="zonesTableBody">
+                            @for (var i = 0; i < Model.Zones.Count; i++)
+                            {
+                                <tr class="zone-row">
+                                    <td>
+                                        <input asp-for="Zones[i].Id" type="hidden" />
+                                        <input asp-for="Zones[i].ZoneName" class="form-control form-control-sm" />
+                                        <span asp-validation-for="Zones[i].ZoneName" class="text-danger"></span>
+                                    </td>
+                                    <td>
+                                        <input asp-for="Zones[i].PercentOfField" type="number" step="any" min="0.01" max="100" class="form-control form-control-sm zone-percent-input" />
+                                        <span asp-validation-for="Zones[i].PercentOfField" class="text-danger"></span>
+                                    </td>
+                                    <td>
+                                        <select asp-for="Zones[i].SoilId" asp-items="soils" class="form-select form-select-sm zone-manager-select">
+                                            <option value="">-- Select Soil --</option>
+                                        </select>
+                                        <span asp-validation-for="Zones[i].SoilId" class="text-danger"></span>
+                                    </td>
+                                    <td>
+                                        <select asp-for="Zones[i].NozzleId" asp-items="nozzles" class="form-select form-select-sm zone-manager-select">
+                                            <option value="">-- Select Nozzle --</option>
+                                        </select>
+                                        <span asp-validation-for="Zones[i].NozzleId" class="text-danger"></span>
+                                    </td>
+                                    <td>
+                                        <select asp-for="Zones[i].CropId" asp-items="crops" class="form-select form-select-sm zone-manager-select">
+                                            <option value="">-- Select Crop (Optional) --</option>
+                                        </select>
+                                    </td>
+                                    <td class="text-center">
+                                        <input asp-for="Zones[i].Active" class="form-check-input zone-active-input" />
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-zone">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 p-3 border rounded bg-light-subtle">
+                    <h6 class="mb-2">If removed zones have monthly applications</h6>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" asp-for="RemovedZoneAction" value="reassign" id="removedZoneActionReassign" />
+                        <label class="form-check-label" for="removedZoneActionReassign">
+                            Reassign applications to another existing zone
+                        </label>
+                    </div>
+                    <div class="mb-2">
+                        <select asp-for="ReassignToZoneId" class="form-select">
+                            <option value="">-- Select target zone --</option>
+                            @foreach (var zone in Model.Zones.Where(z => z.Id.HasValue))
+                            {
+                                <option value="@zone.Id">@zone.ZoneName</option>
+                            }
+                        </select>
+                        <span asp-validation-for="ReassignToZoneId" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="RemovedZoneAction" value="delete" id="removedZoneActionDelete" />
+                        <label class="form-check-label" for="removedZoneActionDelete">
+                            Delete associated monthly applications for removed zones
+                        </label>
+                    </div>
+                    <span asp-validation-for="RemovedZoneAction" class="text-danger"></span>
+                </div>
             </div>
 
             <div class="d-flex justify-content-end gap-2">
@@ -143,18 +243,126 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     
-    @if (isGlobalAdmin)
-    {
-        <script>
-            // Reload dropdowns when company changes
-            document.getElementById('companySelect')?.addEventListener('change', function() {
-                var companyId = this.value;
-                if (companyId) {
-                    // Reload page with companyId to refresh dropdowns
-                    window.location.href = '@Url.Action("SprayfieldEdit", new { id = Model.Id })' + '&companyId=' + companyId;
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const isGlobalAdmin = @(isGlobalAdmin.ToString().ToLower());
+            if (isGlobalAdmin) {
+                document.getElementById('companySelect')?.addEventListener('change', function () {
+                    const companyId = this.value;
+                    if (companyId) {
+                        window.location.href = '@Url.Action("SprayfieldEdit", new { id = Model.Id })' + '?companyId=' + companyId;
+                    }
+                });
+            }
+
+            const zonesTableBody = document.getElementById('zonesTableBody');
+            const addZoneBtn = document.getElementById('btnAddZone');
+            const zoneTotalBadge = document.getElementById('zoneTotalBadge');
+            const zonePercentMessage = document.getElementById('zonePercentMessage');
+            const form = document.querySelector('form');
+            const reassignRadio = document.getElementById('removedZoneActionReassign');
+            const deleteRadio = document.getElementById('removedZoneActionDelete');
+            const reassignSelect = document.getElementById('ReassignToZoneId');
+
+            function toggleReassignSelect() {
+                if (!reassignSelect) return;
+                reassignSelect.disabled = !(reassignRadio && reassignRadio.checked);
+            }
+
+            function reindexZoneRows() {
+                const rows = zonesTableBody.querySelectorAll('.zone-row');
+                rows.forEach((row, index) => {
+                    row.querySelectorAll('[name]').forEach(input => {
+                        input.name = input.name.replace(/Zones\[\d+\]/g, `Zones[${index}]`);
+                    });
+                    row.querySelectorAll('[id]').forEach(input => {
+                        input.id = input.id.replace(/Zones_\d+_/g, `Zones_${index}_`);
+                    });
+                });
+            }
+
+            function calculateZoneTotal() {
+                const rows = zonesTableBody.querySelectorAll('.zone-row');
+                let total = 0;
+                rows.forEach(row => {
+                    const isActive = row.querySelector('.zone-active-input')?.checked;
+                    const percentVal = parseFloat(row.querySelector('.zone-percent-input')?.value || '0');
+                    if (isActive) {
+                        total += percentVal;
+                    }
+                });
+
+                zoneTotalBadge.textContent = `Total: ${total.toFixed(2)}%`;
+                if (Math.abs(total - 100) > 0.01) {
+                    zoneTotalBadge.classList.remove('bg-success');
+                    zoneTotalBadge.classList.add('bg-secondary');
+                    zonePercentMessage.textContent = 'Total must be exactly 100% for active zones.';
+                } else {
+                    zoneTotalBadge.classList.remove('bg-secondary');
+                    zoneTotalBadge.classList.add('bg-success');
+                    zonePercentMessage.textContent = '';
+                }
+            }
+
+            addZoneBtn?.addEventListener('click', function () {
+                const firstRow = zonesTableBody.querySelector('.zone-row');
+                if (!firstRow) return;
+
+                const newRow = firstRow.cloneNode(true);
+                newRow.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'hidden') {
+                        el.value = '';
+                    } else if (el.type === 'checkbox') {
+                        el.checked = true;
+                    } else if (el.classList.contains('zone-percent-input')) {
+                        el.value = '0';
+                    } else {
+                        el.value = '';
+                    }
+                });
+                newRow.querySelectorAll('.text-danger').forEach(span => span.textContent = '');
+                zonesTableBody.appendChild(newRow);
+                reindexZoneRows();
+                calculateZoneTotal();
+            });
+
+            zonesTableBody?.addEventListener('click', function (e) {
+                const button = e.target.closest('.btn-remove-zone');
+                if (!button) return;
+
+                const rows = zonesTableBody.querySelectorAll('.zone-row');
+                if (rows.length <= 1) {
+                    const row = rows[0];
+                    row.querySelectorAll('input[type="text"], input[type="number"], select').forEach(el => el.value = '');
+                    row.querySelector('.zone-active-input').checked = true;
+                    row.querySelector('input[type="hidden"]').value = '';
+                } else {
+                    button.closest('.zone-row')?.remove();
+                }
+
+                reindexZoneRows();
+                calculateZoneTotal();
+            });
+
+            zonesTableBody?.addEventListener('input', calculateZoneTotal);
+            zonesTableBody?.addEventListener('change', calculateZoneTotal);
+
+            form?.addEventListener('submit', function (e) {
+                calculateZoneTotal();
+                const totalText = zoneTotalBadge.textContent || '';
+                const total = parseFloat(totalText.replace(/[^\d.]/g, '') || '0');
+                if (Math.abs(total - 100) > 0.01) {
+                    e.preventDefault();
+                    zonePercentMessage.textContent = 'Please adjust active zones so total is exactly 100%.';
                 }
             });
-        </script>
-    }
+
+            reindexZoneRows();
+            calculateZoneTotal();
+            reassignRadio?.addEventListener('change', toggleReassignSelect);
+            deleteRadio?.addEventListener('change', toggleReassignSelect);
+            toggleReassignSelect();
+        });
+    </script>
 }
 

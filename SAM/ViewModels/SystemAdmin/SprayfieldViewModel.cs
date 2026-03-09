@@ -2,6 +2,34 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SAM.ViewModels.SystemAdmin;
 
+public class ApplicationZoneInputViewModel
+{
+    public Guid? Id { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    [Display(Name = "Zone Name")]
+    public string ZoneName { get; set; } = string.Empty;
+
+    [Display(Name = "Percent Of Field")]
+    [Range(0.01, 100, ErrorMessage = "Percent must be between 0.01 and 100.")]
+    public decimal PercentOfField { get; set; }
+
+    [Required]
+    [Display(Name = "Soil")]
+    public Guid SoilId { get; set; }
+
+    [Required]
+    [Display(Name = "Nozzle")]
+    public Guid NozzleId { get; set; }
+
+    [Display(Name = "Crop")]
+    public Guid? CropId { get; set; }
+
+    [Display(Name = "Active")]
+    public bool Active { get; set; } = true;
+}
+
 public class SprayfieldViewModel
 {
     public Guid Id { get; set; }
@@ -94,6 +122,8 @@ public class SprayfieldCreateViewModel
     [Display(Name = "Weekly Rate (inches/week)")]
     [Range(0, double.MaxValue, ErrorMessage = "Weekly rate must be a positive number.")]
     public decimal? WeeklyRateInches { get; set; }
+
+    public List<ApplicationZoneInputViewModel> Zones { get; set; } = new();
 }
 
 public class SprayfieldEditViewModel
@@ -141,6 +171,14 @@ public class SprayfieldEditViewModel
     [Display(Name = "Weekly Rate (inches/week)")]
     [Range(0, double.MaxValue, ErrorMessage = "Weekly rate must be a positive number.")]
     public decimal? WeeklyRateInches { get; set; }
+
+    public List<ApplicationZoneInputViewModel> Zones { get; set; } = new();
+
+    [Display(Name = "Removed Zone Action")]
+    public string? RemovedZoneAction { get; set; } = "delete";
+
+    [Display(Name = "Reassign To Zone")]
+    public Guid? ReassignToZoneId { get; set; }
 }
 
 

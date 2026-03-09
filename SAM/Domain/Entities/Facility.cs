@@ -142,7 +142,7 @@ public class Facility : CompanyScopedEntity
     // Navigation properties
     public ICollection<WWChar> WWChars { get; set; } = new List<WWChar>();
     public ICollection<GWMonit> GWMonits { get; set; } = new List<GWMonit>();
-    public ICollection<Irrigate> Irrigates { get; set; } = new List<Irrigate>();
+    public ICollection<MonthlyApplication> MonthlyApplications { get; set; } = new List<MonthlyApplication>();
     public ICollection<IrrRprt> IrrRprts { get; set; } = new List<IrrRprt>();
     public ICollection<OperatorLog> OperatorLogs { get; set; } = new List<OperatorLog>();
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();

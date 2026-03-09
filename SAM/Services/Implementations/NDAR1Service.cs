@@ -20,24 +20,24 @@ public class NDAR1Service : INDAR1Service
 
     private readonly ApplicationDbContext _context;
     private readonly ILogger<NDAR1Service> _logger;
-    private readonly IIrrigateService _irrigateService;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IFacilityService _facilityService;
+    private readonly IApplicationComplianceService _applicationComplianceService;
     private readonly IWebHostEnvironment _environment;
 
     public NDAR1Service(
         ApplicationDbContext context,
         ILogger<NDAR1Service> logger,
-        IIrrigateService irrigateService,
         ISprayfieldService sprayfieldService,
         IFacilityService facilityService,
+        IApplicationComplianceService applicationComplianceService,
         IWebHostEnvironment environment)
     {
         _context = context;
         _logger = logger;
-        _irrigateService = irrigateService;
         _sprayfieldService = sprayfieldService;
         _facilityService = facilityService;
+        _applicationComplianceService = applicationComplianceService;
         _environment = environment;
     }
 
@@ -246,17 +246,17 @@ public class NDAR1Service : INDAR1Service
         if (facility == null)
             throw new EntityNotFoundException(nameof(Facility), facilityId);
 
-        // Get all irrigation records for this facility in the specified month/year
+        // Get all monthly applications for this facility in the specified month/year
         var startDate = new DateTime(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
         var daysInMonth = DateTime.DaysInMonth(year, month);
 
-        var irrigations = await _context.Irrigates
-            .Include(i => i.Sprayfield)
-                .ThenInclude(s => s.Crop)
-            .Where(i => i.FacilityId == facilityId &&
-                       i.IrrigationDate >= startDate &&
-                       i.IrrigationDate <= endDate)
+        var applications = await _context.MonthlyApplications
+            .Include(a => a.Zone)
+                .ThenInclude(z => z!.Sprayfield)
+            .Where(a => a.FacilityId == facilityId &&
+                       a.ApplicationDate >= startDate &&
+                       a.ApplicationDate <= endDate)
             .ToListAsync();
 
         // Get sprayfields for this facility
@@ -277,7 +277,7 @@ public class NDAR1Service : INDAR1Service
             FacilityId = facilityId,
             Month = (MonthEnum)month,
             Year = year,
-            DidIrrigationOccur = irrigations.Any()
+            DidIrrigationOccur = applications.Any()
         };
 
         // Initialize daily arrays
@@ -302,28 +302,35 @@ public class NDAR1Service : INDAR1Service
             }
         }
 
-        // Aggregate daily irrigation data by field
-        var fieldIrrigations = new Dictionary<Guid, List<Irrigate>>();
-        foreach (var irrigation in irrigations)
+        // Aggregate daily application data by field
+        var fieldApplications = new Dictionary<Guid, List<MonthlyApplication>>();
+        foreach (var application in applications)
         {
-            if (!fieldIrrigations.ContainsKey(irrigation.SprayfieldId))
+            var sprayfieldId = application.Zone?.SprayfieldId;
+            if (!sprayfieldId.HasValue)
             {
-                fieldIrrigations[irrigation.SprayfieldId] = new List<Irrigate>();
+                continue;
             }
-            fieldIrrigations[irrigation.SprayfieldId].Add(irrigation);
+
+            if (!fieldApplications.ContainsKey(sprayfieldId.Value))
+            {
+                fieldApplications[sprayfieldId.Value] = new List<MonthlyApplication>();
+            }
+
+            fieldApplications[sprayfieldId.Value].Add(application);
         }
 
         // Process each field
-        ProcessFieldData(report.Field1Id, fieldIrrigations, report.Field1VolumeAppliedDaily, 
+        ProcessFieldData(report.Field1Id, fieldApplications, report.Field1VolumeAppliedDaily, 
             report.Field1TimeIrrigatedDaily, report.Field1DailyLoadingDaily, 
             report.Field1MaxHourlyLoadingDaily, startDate, daysInMonth);
-        ProcessFieldData(report.Field2Id, fieldIrrigations, report.Field2VolumeAppliedDaily, 
+        ProcessFieldData(report.Field2Id, fieldApplications, report.Field2VolumeAppliedDaily, 
             report.Field2TimeIrrigatedDaily, report.Field2DailyLoadingDaily, 
             report.Field2MaxHourlyLoadingDaily, startDate, daysInMonth);
-        ProcessFieldData(report.Field3Id, fieldIrrigations, report.Field3VolumeAppliedDaily, 
+        ProcessFieldData(report.Field3Id, fieldApplications, report.Field3VolumeAppliedDaily, 
             report.Field3TimeIrrigatedDaily, report.Field3DailyLoadingDaily, 
             report.Field3MaxHourlyLoadingDaily, startDate, daysInMonth);
-        ProcessFieldData(report.Field4Id, fieldIrrigations, report.Field4VolumeAppliedDaily, 
+        ProcessFieldData(report.Field4Id, fieldApplications, report.Field4VolumeAppliedDaily, 
             report.Field4TimeIrrigatedDaily, report.Field4DailyLoadingDaily, 
             report.Field4MaxHourlyLoadingDaily, startDate, daysInMonth);
 
@@ -349,39 +356,40 @@ public class NDAR1Service : INDAR1Service
             .DefaultIfEmpty(0m)
             .Max();
 
-        // Calculate 12-month floating totals (from previous 12 months)
-        await CalculateTwelveMonthFloatingTotals(report);
+        // Calculate rolling 365-day hydraulic totals from zone-model applications.
+        await CalculateRollingFloatingTotals(report, endDate);
 
         return report;
     }
 
-    private void ProcessFieldData(Guid? fieldId, Dictionary<Guid, List<Irrigate>> fieldIrrigations,
+    private void ProcessFieldData(Guid? fieldId, Dictionary<Guid, List<MonthlyApplication>> fieldApplications,
         List<decimal?> volumeDaily, List<decimal?> timeDaily, List<decimal?> loadingDaily,
         List<decimal?> maxHourlyLoadingDaily, DateTime startDate, int daysInMonth)
     {
-        if (!fieldId.HasValue || !fieldIrrigations.ContainsKey(fieldId.Value))
+        if (!fieldId.HasValue || !fieldApplications.ContainsKey(fieldId.Value))
             return;
 
-        var irrigations = fieldIrrigations[fieldId.Value];
-        var sprayfield = irrigations.First().Sprayfield;
+        var applications = fieldApplications[fieldId.Value];
+        var sprayfield = applications.First().Zone?.Sprayfield;
+        if (sprayfield == null)
+            return;
 
         for (int day = 1; day <= daysInMonth; day++)
         {
             var currentDate = new DateTime(startDate.Year, startDate.Month, day);
             var dayIndex = day - 1;
 
-            var dayIrrigations = irrigations.Where(i => i.IrrigationDate.Date == currentDate.Date).ToList();
-            if (dayIrrigations.Any())
+            var dayApplications = applications.Where(i => i.ApplicationDate.Date == currentDate.Date).ToList();
+            if (dayApplications.Any())
             {
                 // Get sprayfield area
-                var areaAcres = sprayfield.SizeAcres;
+                var areaAcres = sprayfield.AcresTotal ?? sprayfield.SizeAcres;
 
-                // Calculate volume and time
-                var volumeApplied = dayIrrigations.Sum(i => i.TotalVolumeGallons);
-                var timeIrrigatedMinutes = dayIrrigations.Sum(i => (decimal)(i.EndTime - i.StartTime).TotalMinutes);
+                // Calculate volume; time is not tracked on monthly applications.
+                var volumeApplied = dayApplications.Sum(i => i.VolumeGallons);
 
                 volumeDaily[dayIndex] = volumeApplied;
-                timeDaily[dayIndex] = timeIrrigatedMinutes;
+                timeDaily[dayIndex] = null;
 
                 // Calculate daily loading: Volume Applied / (Area × 27,152)
                 if (areaAcres > 0 && volumeApplied > 0)
@@ -395,58 +403,28 @@ public class NDAR1Service : INDAR1Service
 
                 // Calculate maximum hourly loading based on time irrigated
                 var dailyLoading = loadingDaily[dayIndex];
-                if (timeIrrigatedMinutes > 0 && dailyLoading.HasValue)
-                {
-                    if (timeIrrigatedMinutes < 60)
-                    {
-                        // If Time Irrigated < 60 minutes: Maximum Hourly Loading = Daily Loading
-                        maxHourlyLoadingDaily[dayIndex] = dailyLoading.Value;
-                    }
-                    else
-                    {
-                        // If Time Irrigated ≥ 60 minutes: Maximum Hourly Loading = (Daily Loading / Time Irrigated) × 60
-                        maxHourlyLoadingDaily[dayIndex] = (dailyLoading.Value / timeIrrigatedMinutes) * 60m;
-                    }
-                }
-                else
-                {
-                    maxHourlyLoadingDaily[dayIndex] = null;
-                }
+                maxHourlyLoadingDaily[dayIndex] = dailyLoading;
             }
         }
     }
 
-    private async Task CalculateTwelveMonthFloatingTotals(NDAR1 report)
+    private async Task CalculateRollingFloatingTotals(NDAR1 report, DateTime asOfDate)
     {
-        var reportDate = new DateTime(report.Year, (int)report.Month, 1);
-        var startDate = reportDate.AddMonths(-11); // 12 months including current
-
-        var previousReports = await _context.NDAR1s
-            .Where(n => n.FacilityId == report.FacilityId &&
-                       n.Month >= (MonthEnum)startDate.Month && n.Year >= startDate.Year &&
-                       n.Month <= report.Month && n.Year <= report.Year &&
-                       n.Id != report.Id)
-            .OrderBy(n => n.Year)
-            .ThenBy(n => n.Month)
-            .ToListAsync();
-
-        // Calculate floating totals for each field
-        report.Field1TwelveMonthFloatingTotal = CalculateFieldFloatingTotal(
-            report.Field1MonthlyLoading, previousReports, f => f.Field1MonthlyLoading);
-        report.Field2TwelveMonthFloatingTotal = CalculateFieldFloatingTotal(
-            report.Field2MonthlyLoading, previousReports, f => f.Field2MonthlyLoading);
-        report.Field3TwelveMonthFloatingTotal = CalculateFieldFloatingTotal(
-            report.Field3MonthlyLoading, previousReports, f => f.Field3MonthlyLoading);
-        report.Field4TwelveMonthFloatingTotal = CalculateFieldFloatingTotal(
-            report.Field4MonthlyLoading, previousReports, f => f.Field4MonthlyLoading);
+        report.Field1TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, report.Field1Id, asOfDate);
+        report.Field2TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, report.Field2Id, asOfDate);
+        report.Field3TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, report.Field3Id, asOfDate);
+        report.Field4TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, report.Field4Id, asOfDate);
     }
 
-    private decimal CalculateFieldFloatingTotal(decimal currentMonthly, 
-        List<NDAR1> previousReports, Func<NDAR1, decimal> fieldSelector)
+    private async Task<decimal> GetRollingHydraulicInchesAsync(Guid facilityId, Guid? sprayfieldId, DateTime asOfDate)
     {
-        var total = currentMonthly;
-        var months = previousReports.Take(11).Sum(fieldSelector);
-        return total + months;
+        if (!sprayfieldId.HasValue)
+        {
+            return 0m;
+        }
+
+        var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(facilityId, sprayfieldId.Value, asOfDate);
+        return metrics.RollingHydraulicInches;
     }
 
     private void InitializeDailyArrays(NDAR1 ndar1)
@@ -683,4 +661,5 @@ public class NDAR1Service : INDAR1Service
         certificationWorksheet.Cell("U14").Value = DateTime.Today.ToString("MM/dd/yyyy");
     }
 }
+
 

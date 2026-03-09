@@ -1,0 +1,209 @@
+@model SAM.ViewModels.OperationalData.MonthlyApplicationEditViewModel
+@{
+    ViewData["Title"] = "Edit Monthly Application";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var zones = ViewBag.Zones as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Update the zone-level application entry.</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="mb-3">Edit Monthly Application</h5>
+        <form asp-action="MonthlyApplicationEdit" method="post" novalidate id="monthlyApplicationForm">
+            @Html.AntiForgeryToken()
+            <input asp-for="Id" type="hidden" />
+            <input asp-for="CompanyId" type="hidden" id="companyIdInput" />
+            <input type="hidden" asp-for="ConfirmComplianceWarnings" id="confirmComplianceWarningsInput" />
+            <input type="hidden" asp-for="ComplianceWarningSummary" id="complianceWarningSummaryInput" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="FacilityId" class="form-label required"></label>
+                    <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
+                        <option value="">-- Select Facility --</option>
+                    </select>
+                    <span asp-validation-for="FacilityId" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="SprayfieldId" class="form-label required"></label>
+                    <select asp-for="SprayfieldId" asp-items="sprayfields" class="form-select" id="sprayfieldSelect">
+                        <option value="">-- Select Sprayfield --</option>
+                    </select>
+                    <span asp-validation-for="SprayfieldId" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="ZoneId" class="form-label required"></label>
+                    <select asp-for="ZoneId" asp-items="zones" class="form-select" id="zoneSelect">
+                        <option value="">-- Select Zone --</option>
+                    </select>
+                    <span asp-validation-for="ZoneId" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="ApplicationDate" class="form-label required"></label>
+                    <input asp-for="ApplicationDate" type="date" class="form-control" />
+                    <span asp-validation-for="ApplicationDate" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="VolumeGallons" class="form-label required"></label>
+                    <input asp-for="VolumeGallons" type="number" step="any" min="0.01" class="form-control" />
+                    <span asp-validation-for="VolumeGallons" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="NitrogenMgL" class="form-label required"></label>
+                    <input asp-for="NitrogenMgL" type="number" step="any" min="0" class="form-control" />
+                    <span asp-validation-for="NitrogenMgL" class="text-danger"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Comments" class="form-label"></label>
+                    <textarea asp-for="Comments" class="form-control" rows="3"></textarea>
+                    <span asp-validation-for="Comments" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a asp-action="MonthlyApplications" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Update Application</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            const facilitySelect = document.getElementById('facilitySelect');
+            const sprayfieldSelect = document.getElementById('sprayfieldSelect');
+            const zoneSelect = document.getElementById('zoneSelect');
+            const companyIdInput = document.getElementById('companyIdInput');
+            const currentZoneId = '@Model.ZoneId';
+            const form = document.getElementById('monthlyApplicationForm');
+            const confirmComplianceWarningsInput = document.getElementById('confirmComplianceWarningsInput');
+            const complianceWarningSummaryInput = document.getElementById('complianceWarningSummaryInput');
+            const antiForgeryToken = form?.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            let isConfirmedSubmit = false;
+
+            function resetSelect(select, placeholder) {
+                select.innerHTML = '';
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = placeholder;
+                select.appendChild(option);
+            }
+
+            async function loadSprayfields(facilityId) {
+                resetSelect(sprayfieldSelect, '-- Select Sprayfield --');
+                resetSelect(zoneSelect, '-- Select Zone --');
+                if (!facilityId) return;
+
+                const res = await fetch('@Url.Action("GetSprayfieldsForFacility", "OperationalData")?facilityId=' + encodeURIComponent(facilityId));
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.companyId && companyIdInput) companyIdInput.value = data.companyId;
+                (data.sprayfields || []).forEach(sf => {
+                    const option = document.createElement('option');
+                    option.value = sf.id;
+                    option.textContent = sf.name;
+                    if (sf.id === '@Model.SprayfieldId') option.selected = true;
+                    sprayfieldSelect.appendChild(option);
+                });
+
+                if (sprayfieldSelect.value) {
+                    await loadZones(sprayfieldSelect.value, currentZoneId);
+                }
+            }
+
+            async function loadZones(sprayfieldId, selectedZoneId) {
+                resetSelect(zoneSelect, '-- Select Zone --');
+                if (!sprayfieldId) return;
+
+                const res = await fetch('@Url.Action("GetZonesForSprayfield", "OperationalData")?sprayfieldId=' + encodeURIComponent(sprayfieldId));
+                if (!res.ok) return;
+                const data = await res.json();
+                (data || []).forEach(z => {
+                    const option = document.createElement('option');
+                    option.value = z.id;
+                    option.textContent = z.name;
+                    if (z.id === selectedZoneId) option.selected = true;
+                    zoneSelect.appendChild(option);
+                });
+            }
+
+            facilitySelect?.addEventListener('change', () => loadSprayfields(facilitySelect.value));
+            sprayfieldSelect?.addEventListener('change', () => loadZones(sprayfieldSelect.value, null));
+
+            async function validateComplianceBeforeSubmit() {
+                const payload = {
+                    facilityId: facilitySelect?.value || null,
+                    zoneId: zoneSelect?.value || null,
+                    applicationDate: document.getElementById('ApplicationDate')?.value || null,
+                    volumeGallons: document.getElementById('VolumeGallons')?.value || 0,
+                    nitrogenMgL: document.getElementById('NitrogenMgL')?.value || 0,
+                    existingApplicationId: document.getElementById('Id')?.value || null
+                };
+
+                const response = await fetch('@Url.Action("ValidateMonthlyApplication", "OperationalData")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': antiForgeryToken
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    return null;
+                }
+
+                return await response.json();
+            }
+
+            form?.addEventListener('submit', async function (event) {
+                if (isConfirmedSubmit) {
+                    return;
+                }
+
+                event.preventDefault();
+                if (!form.checkValidity()) {
+                    return;
+                }
+
+                confirmComplianceWarningsInput.value = 'false';
+                complianceWarningSummaryInput.value = '';
+
+                const result = await validateComplianceBeforeSubmit();
+                if (!result) {
+                    isConfirmedSubmit = true;
+                    form.submit();
+                    return;
+                }
+
+                const warnings = result.warnings || [];
+                if (result.requiresConfirmation && warnings.length > 0) {
+                    const approved = window.confirm(warnings.join('\n') + '\n\nDo you want to continue and update this application?');
+                    if (!approved) {
+                        return;
+                    }
+
+                    confirmComplianceWarningsInput.value = 'true';
+                    complianceWarningSummaryInput.value = warnings.join(' | ');
+                }
+
+                isConfirmedSubmit = true;
+                form.submit();
+            });
+        })();
+    </script>
+}

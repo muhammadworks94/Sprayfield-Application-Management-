@@ -1,0 +1,48 @@
+@model SAM.ViewModels.OperationalData.MonthlyApplicationViewModel
+@{
+    ViewData["Title"] = "Monthly Application Details";
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Review monthly application entry details.</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="mb-0">Application Details</h5>
+            <div class="d-flex gap-2">
+                <a asp-action="MonthlyApplicationEdit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <a asp-action="MonthlyApplications" asp-route-facilityId="@Model.FacilityId" class="btn btn-sm btn-secondary">Back</a>
+            </div>
+        </div>
+
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">@Model.ApplicationDate.ToString("MM/dd/yyyy")</dd>
+
+            <dt class="col-sm-3">Facility</dt>
+            <dd class="col-sm-9">@Model.FacilityName</dd>
+
+            <dt class="col-sm-3">Sprayfield</dt>
+            <dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.SprayfieldName) ? "-" : Model.SprayfieldName)</dd>
+
+            <dt class="col-sm-3">Zone</dt>
+            <dd class="col-sm-9">@Model.ZoneName</dd>
+
+            <dt class="col-sm-3">Volume (gal)</dt>
+            <dd class="col-sm-9">@Model.VolumeGallons.ToString("F2")</dd>
+
+            <dt class="col-sm-3">Nitrogen (mg/L)</dt>
+            <dd class="col-sm-9">@Model.NitrogenMgL.ToString("F2")</dd>
+
+            <dt class="col-sm-3">Operator</dt>
+            <dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.OperatorSnapshotName) ? "-" : Model.OperatorSnapshotName)</dd>
+
+            <dt class="col-sm-3">Comments</dt>
+            <dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Comments) ? "-" : Model.Comments)</dd>
+        </dl>
+    </div>
+</div>

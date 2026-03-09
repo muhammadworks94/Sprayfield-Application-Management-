@@ -29,10 +29,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Nozzle> Nozzles => Set<Nozzle>();
     public DbSet<Crop> Crops => Set<Crop>();
     public DbSet<Sprayfield> Sprayfields => Set<Sprayfield>();
+    public DbSet<ApplicationZone> ApplicationZones => Set<ApplicationZone>();
+    public DbSet<MonthlyApplication> MonthlyApplications => Set<MonthlyApplication>();
+    public DbSet<LoadCalculation> LoadCalculations => Set<LoadCalculation>();
     public DbSet<MonitoringWell> MonitoringWells => Set<MonitoringWell>();
     public DbSet<WWChar> WWChars => Set<WWChar>();
     public DbSet<GWMonit> GWMonits => Set<GWMonit>();
-    public DbSet<Irrigate> Irrigates => Set<Irrigate>();
     public DbSet<IrrRprt> IrrRprts => Set<IrrRprt>();
     public DbSet<NDAR1> NDAR1s => Set<NDAR1>();
     public DbSet<OperatorLog> OperatorLogs => Set<OperatorLog>();
@@ -81,10 +83,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new NozzleConfiguration());
         builder.ApplyConfiguration(new CropConfiguration());
         builder.ApplyConfiguration(new SprayfieldConfiguration());
+        builder.ApplyConfiguration(new ApplicationZoneConfiguration());
+        builder.ApplyConfiguration(new MonthlyApplicationConfiguration());
+        builder.ApplyConfiguration(new LoadCalculationConfiguration());
         builder.ApplyConfiguration(new MonitoringWellConfiguration());
         builder.ApplyConfiguration(new WWCharConfiguration());
         builder.ApplyConfiguration(new GWMonitConfiguration());
-        builder.ApplyConfiguration(new IrrigateConfiguration());
         builder.ApplyConfiguration(new IrrRprtConfiguration());
         builder.ApplyConfiguration(new NDAR1Configuration());
         builder.ApplyConfiguration(new OperatorLogConfiguration());

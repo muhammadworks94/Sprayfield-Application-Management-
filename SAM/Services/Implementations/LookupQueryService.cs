@@ -11,17 +11,20 @@ public class LookupQueryService : ILookupQueryService
     private readonly ICompanyService _companyService;
     private readonly IFacilityService _facilityService;
     private readonly ISprayfieldService _sprayfieldService;
+    private readonly IApplicationZoneService _applicationZoneService;
     private readonly IMonitoringWellService _monitoringWellService;
 
     public LookupQueryService(
         ICompanyService companyService,
         IFacilityService facilityService,
         ISprayfieldService sprayfieldService,
+        IApplicationZoneService applicationZoneService,
         IMonitoringWellService monitoringWellService)
     {
         _companyService = companyService;
         _facilityService = facilityService;
         _sprayfieldService = sprayfieldService;
+        _applicationZoneService = applicationZoneService;
         _monitoringWellService = monitoringWellService;
     }
 
@@ -50,6 +53,22 @@ public class LookupQueryService : ILookupQueryService
         }
 
         return sprayfields;
+    }
+
+    public async Task<IEnumerable<ApplicationZone>> GetApplicationZonesAsync(Guid? companyId = null, Guid? sprayfieldId = null)
+    {
+        if (!sprayfieldId.HasValue)
+        {
+            return Enumerable.Empty<ApplicationZone>();
+        }
+
+        var zones = await _applicationZoneService.GetBySprayfieldIdAsync(sprayfieldId.Value);
+        if (companyId.HasValue)
+        {
+            zones = zones.Where(z => z.CompanyId == companyId.Value);
+        }
+
+        return zones;
     }
 
     public async Task<IEnumerable<MonitoringWell>> GetMonitoringWellsAsync(Guid? companyId = null, Guid? facilityId = null)

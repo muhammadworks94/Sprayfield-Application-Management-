@@ -121,7 +121,7 @@ public class FacilityService : IFacilityService
         // Check if facility is referenced
         var hasReferences = await _context.WWChars.AnyAsync(w => w.FacilityId == id) ||
                            await _context.GWMonits.AnyAsync(g => g.FacilityId == id) ||
-                           await _context.Irrigates.AnyAsync(i => i.FacilityId == id) ||
+                           await _context.MonthlyApplications.AnyAsync(i => i.FacilityId == id) ||
                            await _context.IrrRprts.AnyAsync(r => r.FacilityId == id) ||
                            await _context.OperatorLogs.AnyAsync(o => o.FacilityId == id) ||
                            await _context.Sprayfields.AnyAsync(s => s.FacilityId == id);

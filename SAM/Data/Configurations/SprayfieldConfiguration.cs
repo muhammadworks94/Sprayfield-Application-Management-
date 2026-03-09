@@ -16,7 +16,16 @@ public class SprayfieldConfiguration : IEntityTypeConfiguration<Sprayfield>
             .IsRequired()
             .HasMaxLength(100);
 
+        builder.Property(s => s.PermitFieldName)
+            .HasMaxLength(150);
+
+        builder.Property(s => s.PermitNumber)
+            .HasMaxLength(100);
+
         builder.Property(s => s.SizeAcres)
+            .HasColumnType("decimal(18,3)");
+
+        builder.Property(s => s.AcresTotal)
             .HasColumnType("decimal(18,3)");
 
         builder.Property(s => s.HydraulicLoadingLimitInPerYr)
@@ -27,6 +36,9 @@ public class SprayfieldConfiguration : IEntityTypeConfiguration<Sprayfield>
 
         builder.Property(s => s.WeeklyRateInches)
             .HasColumnType("decimal(18,2)");
+
+        builder.Property(s => s.Active)
+            .HasDefaultValue(true);
 
         builder.HasIndex(s => s.CompanyId);
         builder.HasIndex(s => new { s.CompanyId, s.FieldId }).IsUnique();

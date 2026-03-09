@@ -10,6 +10,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 using SAM.ViewModels.OperationalData;
 
 namespace SAM.Controllers;
@@ -21,22 +22,26 @@ namespace SAM.Controllers;
     public class OperationalDataController : BaseController
     {
         private readonly IOperatorLogService _operatorLogService;
-        private readonly IIrrigateService _irrigateService;
+        private readonly IMonthlyApplicationService _monthlyApplicationService;
         private readonly IWWCharService _wwCharService;
         private readonly IGWMonitService _gwMonitService;
         private readonly IFacilityService _facilityService;
         private readonly ISprayfieldService _sprayfieldService;
+        private readonly IApplicationZoneService _applicationZoneService;
+        private readonly IApplicationComplianceService _applicationComplianceService;
         private readonly IMonitoringWellService _monitoringWellService;
         private readonly ILookupQueryService _lookupQueryService;
         private readonly IWebHostEnvironment _environment;
 
         public OperationalDataController(
             IOperatorLogService operatorLogService,
-            IIrrigateService irrigateService,
+            IMonthlyApplicationService monthlyApplicationService,
             IWWCharService wwCharService,
             IGWMonitService gwMonitService,
             IFacilityService facilityService,
             ISprayfieldService sprayfieldService,
+            IApplicationZoneService applicationZoneService,
+            IApplicationComplianceService applicationComplianceService,
             IMonitoringWellService monitoringWellService,
             ILookupQueryService lookupQueryService,
             IWebHostEnvironment environment,
@@ -45,11 +50,13 @@ namespace SAM.Controllers;
             : base(userManager, logger)
         {
             _operatorLogService = operatorLogService;
-            _irrigateService = irrigateService;
+            _monthlyApplicationService = monthlyApplicationService;
             _wwCharService = wwCharService;
             _gwMonitService = gwMonitService;
             _facilityService = facilityService;
             _sprayfieldService = sprayfieldService;
+            _applicationZoneService = applicationZoneService;
+            _applicationComplianceService = applicationComplianceService;
             _monitoringWellService = monitoringWellService;
             _lookupQueryService = lookupQueryService;
             _environment = environment;
@@ -342,137 +349,283 @@ namespace SAM.Controllers;
 
     #endregion
 
-    #region Irrigation Logs
+    #region Monthly Applications
 
     [HttpGet]
-    public async Task<IActionResult> Irrigates(Guid? companyId = null, Guid? facilityId = null, Guid? sprayfieldId = null)
+    public async Task<IActionResult> MonthlyApplications(Guid? facilityId = null, Guid? sprayfieldId = null, Guid? zoneId = null)
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        // Use effective company ID if no companyId specified (respects session selection for admins)
-        if (!companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
+        var companyId = await GetEffectiveCompanyIdAsync();
         if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var irrigates = await _irrigateService.GetAllAsync(companyId, facilityId, sprayfieldId);
-
-        var viewModels = irrigates.Select(i => new IrrigateViewModel
+        var applications = await _monthlyApplicationService.GetAllAsync(companyId, facilityId, zoneId);
+        var items = applications.Select(a => new MonthlyApplicationViewModel
         {
-            Id = i.Id,
-            CompanyId = i.CompanyId,
-            CompanyName = i.Company?.Name,
-            FacilityId = i.FacilityId,
-            FacilityName = i.Facility?.Name,
-            SprayfieldId = i.SprayfieldId,
-            SprayfieldName = i.Sprayfield?.FieldId,
-            IrrigationDate = i.IrrigationDate,
-            StartTime = i.StartTime.ToString(@"hh\:mm"),
-            EndTime = i.EndTime.ToString(@"hh\:mm"),
-            DurationHours = i.DurationHours,
-            FlowRateGpm = i.FlowRateGpm,
-            TotalVolumeGallons = i.TotalVolumeGallons,
-            ApplicationRateInches = i.ApplicationRateInches,
-            TemperatureF = i.TemperatureF,
-            PrecipitationIn = i.PrecipitationIn,
-            WeatherConditions = i.WeatherConditions,
-            Comments = i.Comments,
-            ModifiedBy = i.ModifiedBy
+            Id = a.Id,
+            CompanyId = a.CompanyId,
+            FacilityId = a.FacilityId,
+            FacilityName = a.Facility?.Name,
+            ZoneId = a.ZoneId,
+            ZoneName = a.Zone?.ZoneName,
+            SprayfieldName = a.Zone?.Sprayfield?.PermitFieldName ?? a.Zone?.Sprayfield?.FieldId,
+            ApplicationDate = a.ApplicationDate,
+            VolumeGallons = a.VolumeGallons,
+            NitrogenMgL = a.NitrogenMgL,
+            OperatorSnapshotName = a.OperatorSnapshotName,
+            Comments = a.Comments
         });
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyId, facilityId);
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.SelectedFacilityId = facilityId;
-        ViewBag.SelectedSprayfieldId = sprayfieldId;
-
-        return View(viewModels);
+        ViewBag.Zones = await GetZoneSelectListAsync(companyId, sprayfieldId);
+        return View(items);
     }
 
     [HttpGet]
-    public async Task<IActionResult> IrrigateDetails(Guid id)
+    public async Task<IActionResult> MonthlyApplicationCreate(Guid? facilityId = null, Guid? sprayfieldId = null)
     {
-        var irrigate = await _irrigateService.GetByIdAsync(id);
-        if (irrigate == null)
-            return NotFound();
-
-        await EnsureCompanyAccessAsync(irrigate.CompanyId);
-
-        var viewModel = new IrrigateViewModel
-        {
-            Id = irrigate.Id,
-            CompanyId = irrigate.CompanyId,
-            CompanyName = irrigate.Company?.Name,
-            FacilityId = irrigate.FacilityId,
-            FacilityName = irrigate.Facility?.Name,
-            SprayfieldId = irrigate.SprayfieldId,
-            SprayfieldName = irrigate.Sprayfield?.FieldId,
-            IrrigationDate = irrigate.IrrigationDate,
-            StartTime = irrigate.StartTime.ToString(@"hh\:mm"),
-            EndTime = irrigate.EndTime.ToString(@"hh\:mm"),
-            DurationHours = irrigate.DurationHours,
-            FlowRateGpm = irrigate.FlowRateGpm,
-            TotalVolumeGallons = irrigate.TotalVolumeGallons,
-            ApplicationRateInches = irrigate.ApplicationRateInches,
-            TemperatureF = irrigate.TemperatureF,
-            PrecipitationIn = irrigate.PrecipitationIn,
-            WeatherConditions = irrigate.WeatherConditions,
-            Comments = irrigate.Comments,
-            ModifiedBy = irrigate.ModifiedBy
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> IrrigateCreate(Guid? companyId = null, Guid? facilityId = null)
-    {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-
-        // For non-global users, default company from their context when not provided
-        // Set company ID if not provided (respects session selection for admins)
-        if (!companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
-        // For global admins (no company assigned) but with a facility selected,
-        // derive the company from the chosen facility so downstream filters work
-        if ((companyId == null || companyId == Guid.Empty) && facilityId.HasValue)
-        {
-            var facility = await _facilityService.GetByIdAsync(facilityId.Value);
-            if (facility != null)
-            {
-                companyId = facility.CompanyId;
-            }
-        }
-
-        // Only enforce company access when we have a real company id
-        if (companyId.HasValue && companyId != Guid.Empty)
+        var companyId = await GetEffectiveCompanyIdAsync();
+        if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var viewModel = new IrrigateCreateViewModel
-        {
-            CompanyId = companyId ?? Guid.Empty,
-            FacilityId = facilityId ?? Guid.Empty
-        };
-
-        // Populate dropdowns
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyId, facilityId);
-        ViewBag.Companies = await GetCompanySelectListAsync();
+        ViewBag.Zones = await GetZoneSelectListAsync(companyId, sprayfieldId);
+
+        return View(new MonthlyApplicationCreateViewModel
+        {
+            CompanyId = companyId ?? Guid.Empty,
+            FacilityId = facilityId ?? Guid.Empty,
+            SprayfieldId = sprayfieldId ?? Guid.Empty
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MonthlyApplicationCreate(MonthlyApplicationCreateViewModel viewModel)
+    {
+        if (viewModel.ZoneId == Guid.Empty)
+        {
+            ModelState.AddModelError("ZoneId", "Application zone is required.");
+        }
+
+        var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
+        if (facility == null)
+        {
+            ModelState.AddModelError("FacilityId", "Selected facility was not found.");
+        }
+        else
+        {
+            viewModel.CompanyId = facility.CompanyId;
+            await EnsureCompanyAccessAsync(facility.CompanyId);
+        }
+
+        ComplianceProjectionResult? complianceProjection = null;
+        if (ModelState.IsValid && facility != null)
+        {
+            complianceProjection = await _applicationComplianceService.GetProjectedComplianceAsync(new ComplianceProjectionRequest
+            {
+                FacilityId = viewModel.FacilityId,
+                ZoneId = viewModel.ZoneId,
+                ApplicationDate = viewModel.ApplicationDate,
+                VolumeGallons = viewModel.VolumeGallons,
+                NitrogenMgL = viewModel.NitrogenMgL
+            });
+
+            if (complianceProjection.RequiresConfirmation && !viewModel.ConfirmComplianceWarnings)
+            {
+                ModelState.AddModelError(string.Empty, string.Join(" ", complianceProjection.Warnings));
+                viewModel.ComplianceWarningSummary = string.Join(" | ", complianceProjection.Warnings);
+            }
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
+            ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
+            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
+            ViewBag.Zones = await GetZoneSelectListAsync(companyIdForLists, viewModel.SprayfieldId);
+            return View(viewModel);
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        var snapshotName = currentUser?.FullName ?? currentUser?.UserName ?? string.Empty;
+
+        var application = new MonthlyApplication
+        {
+            CompanyId = facility!.CompanyId,
+            FacilityId = viewModel.FacilityId,
+            ZoneId = viewModel.ZoneId,
+            ApplicationDate = viewModel.ApplicationDate,
+            VolumeGallons = viewModel.VolumeGallons,
+            NitrogenMgL = viewModel.NitrogenMgL,
+            OperatorUserId = currentUser?.Id,
+            OperatorSnapshotName = snapshotName,
+            Comments = viewModel.Comments ?? string.Empty
+        };
+
+        await _monthlyApplicationService.CreateAsync(application);
+        TempData["SuccessMessage"] = "Monthly application created successfully.";
+        return RedirectToAction(nameof(MonthlyApplications), new { facilityId = viewModel.FacilityId });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> MonthlyApplicationEdit(Guid id)
+    {
+        var application = await _monthlyApplicationService.GetByIdAsync(id);
+        if (application == null)
+            return NotFound();
+
+        await EnsureCompanyAccessAsync(application.CompanyId);
+
+        var zone = await _applicationZoneService.GetByIdAsync(application.ZoneId);
+        var sprayfieldId = zone?.SprayfieldId ?? Guid.Empty;
+
+        ViewBag.Facilities = await GetFacilitySelectListAsync(application.CompanyId);
+        ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(application.CompanyId, application.FacilityId);
+        ViewBag.Zones = await GetZoneSelectListAsync(application.CompanyId, sprayfieldId);
+
+        return View(new MonthlyApplicationEditViewModel
+        {
+            Id = application.Id,
+            CompanyId = application.CompanyId,
+            FacilityId = application.FacilityId,
+            SprayfieldId = sprayfieldId,
+            ZoneId = application.ZoneId,
+            ApplicationDate = application.ApplicationDate,
+            VolumeGallons = application.VolumeGallons,
+            NitrogenMgL = application.NitrogenMgL,
+            Comments = application.Comments
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MonthlyApplicationEdit(MonthlyApplicationEditViewModel viewModel)
+    {
+        if (viewModel.ZoneId == Guid.Empty)
+        {
+            ModelState.AddModelError("ZoneId", "Application zone is required.");
+        }
+
+        var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
+        if (facility == null)
+        {
+            ModelState.AddModelError("FacilityId", "Selected facility was not found.");
+        }
+        else
+        {
+            viewModel.CompanyId = facility.CompanyId;
+            await EnsureCompanyAccessAsync(facility.CompanyId);
+        }
+
+        ComplianceProjectionResult? complianceProjection = null;
+        if (ModelState.IsValid && facility != null)
+        {
+            complianceProjection = await _applicationComplianceService.GetProjectedComplianceAsync(new ComplianceProjectionRequest
+            {
+                FacilityId = viewModel.FacilityId,
+                ZoneId = viewModel.ZoneId,
+                ApplicationDate = viewModel.ApplicationDate,
+                VolumeGallons = viewModel.VolumeGallons,
+                NitrogenMgL = viewModel.NitrogenMgL,
+                ExistingApplicationId = viewModel.Id
+            });
+
+            if (complianceProjection.RequiresConfirmation && !viewModel.ConfirmComplianceWarnings)
+            {
+                ModelState.AddModelError(string.Empty, string.Join(" ", complianceProjection.Warnings));
+                viewModel.ComplianceWarningSummary = string.Join(" | ", complianceProjection.Warnings);
+            }
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
+            ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
+            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
+            ViewBag.Zones = await GetZoneSelectListAsync(companyIdForLists, viewModel.SprayfieldId);
+            return View(viewModel);
+        }
+
+        var application = await _monthlyApplicationService.GetByIdAsync(viewModel.Id);
+        if (application == null)
+            return NotFound();
+
+        application.CompanyId = facility!.CompanyId;
+        application.FacilityId = viewModel.FacilityId;
+        application.ZoneId = viewModel.ZoneId;
+        application.ApplicationDate = viewModel.ApplicationDate;
+        application.VolumeGallons = viewModel.VolumeGallons;
+        application.NitrogenMgL = viewModel.NitrogenMgL;
+        application.Comments = viewModel.Comments ?? string.Empty;
+
+        await _monthlyApplicationService.UpdateAsync(application);
+        TempData["SuccessMessage"] = "Monthly application updated successfully.";
+        return RedirectToAction(nameof(MonthlyApplications), new { facilityId = viewModel.FacilityId });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> MonthlyApplicationDetails(Guid id)
+    {
+        var application = await _monthlyApplicationService.GetByIdAsync(id);
+        if (application == null)
+            return NotFound();
+
+        await EnsureCompanyAccessAsync(application.CompanyId);
+
+        var zone = application.Zone ?? await _applicationZoneService.GetByIdAsync(application.ZoneId);
+        var sprayfieldName = zone?.Sprayfield?.PermitFieldName ?? zone?.Sprayfield?.FieldId;
+
+        var viewModel = new MonthlyApplicationViewModel
+        {
+            Id = application.Id,
+            CompanyId = application.CompanyId,
+            CompanyName = application.Company?.Name,
+            FacilityId = application.FacilityId,
+            FacilityName = application.Facility?.Name,
+            ZoneId = application.ZoneId,
+            ZoneName = zone?.ZoneName,
+            SprayfieldName = sprayfieldName,
+            ApplicationDate = application.ApplicationDate,
+            VolumeGallons = application.VolumeGallons,
+            NitrogenMgL = application.NitrogenMgL,
+            OperatorSnapshotName = application.OperatorSnapshotName,
+            Comments = application.Comments
+        };
 
         return View(viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MonthlyApplicationDelete(Guid id)
+    {
+        try
+        {
+            var application = await _monthlyApplicationService.GetByIdAsync(id);
+            if (application == null)
+            {
+                TempData["ErrorMessage"] = "Monthly application not found.";
+                return RedirectToAction(nameof(MonthlyApplications));
+            }
+
+            await EnsureCompanyAccessAsync(application.CompanyId);
+            var facilityId = application.FacilityId;
+
+            await _monthlyApplicationService.DeleteAsync(id);
+            TempData["SuccessMessage"] = "Monthly application deleted successfully.";
+            return RedirectToAction(nameof(MonthlyApplications), new { facilityId });
+        }
+        catch (Infrastructure.Exceptions.EntityNotFoundException)
+        {
+            TempData["ErrorMessage"] = "Monthly application not found.";
+            return RedirectToAction(nameof(MonthlyApplications));
+        }
     }
 
     [HttpGet]
@@ -485,207 +638,81 @@ namespace SAM.Controllers;
         if (facility == null)
             return NotFound("Facility not found.");
 
-        // Enforce access using the facility's company
         await EnsureCompanyAccessAsync(facility.CompanyId);
 
-        // Get sprayfields for this facility only
         var sprayfields = await _sprayfieldService.GetAllAsync(facility.CompanyId);
         var filtered = sprayfields
             .Where(s => s.FacilityId == facilityId)
-            .Select(s => new
-            {
-                id = s.Id,
-                name = s.FieldId
-            })
+            .Select(s => new { id = s.Id, name = s.PermitFieldName ?? s.FieldId })
             .ToList();
 
-        return Json(new
-        {
-            companyId = facility.CompanyId,
-            sprayfields = filtered
-        });
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> IrrigateCreate(IrrigateCreateViewModel viewModel)
-    {
-        // For global admins or cases where CompanyId was not bound,
-        // derive the company from the selected facility so access checks succeed.
-        if ((viewModel.CompanyId == Guid.Empty || viewModel.CompanyId == default) &&
-            viewModel.FacilityId != Guid.Empty)
-        {
-            var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
-            if (facility != null)
-            {
-                viewModel.CompanyId = facility.CompanyId;
-            }
-        }
-
-        await EnsureCompanyAccessAsync(viewModel.CompanyId);
-
-        if (!ModelState.IsValid)
-        {
-            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
-            ViewBag.Companies = await GetCompanySelectListAsync();
-            return View(viewModel);
-        }
-
-        try
-        {
-            var currentUser = await GetCurrentUserAsync();
-            var modifiedBy = currentUser == null
-                ? null
-                : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
-
-            var irrigate = new Irrigate
-            {
-                CompanyId = viewModel.CompanyId,
-                FacilityId = viewModel.FacilityId,
-                SprayfieldId = viewModel.SprayfieldId,
-                IrrigationDate = viewModel.IrrigationDate,
-                StartTime = TimeSpan.Parse(viewModel.StartTime),
-                EndTime = TimeSpan.Parse(viewModel.EndTime),
-                DurationHours = viewModel.DurationHours ?? 0,
-                FlowRateGpm = viewModel.FlowRateGpm ?? 0,
-                TotalVolumeGallons = viewModel.TotalVolumeGallons ?? 0,
-                ApplicationRateInches = viewModel.ApplicationRateInches ?? 0,
-                TemperatureF = viewModel.TemperatureF,
-                PrecipitationIn = viewModel.PrecipitationIn,
-                WeatherConditions = viewModel.WeatherConditions,
-                Comments = viewModel.Comments,
-                ModifiedBy = modifiedBy
-            };
-
-            await _irrigateService.CreateAsync(irrigate);
-            TempData["SuccessMessage"] = "Irrigation log created successfully.";
-            var isGlobalAdmin = await IsGlobalAdminAsync();
-            if (isGlobalAdmin)
-            {
-                return RedirectToAction(nameof(Irrigates));
-
-            }
-            else
-            {
-                return RedirectToAction(nameof(Irrigates), new { facilityId = irrigate.FacilityId });
-               
-            }
-        }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
-        {
-            ModelState.AddModelError("", ex.Message);
-            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
-            return View(viewModel);
-        }
+        return Json(new { companyId = facility.CompanyId, sprayfields = filtered });
     }
 
     [HttpGet]
-    public async Task<IActionResult> IrrigateEdit(Guid id)
+    public async Task<IActionResult> GetZonesForSprayfield(Guid sprayfieldId)
     {
-        var irrigate = await _irrigateService.GetByIdAsync(id);
-        if (irrigate == null)
-            return NotFound();
+        if (sprayfieldId == Guid.Empty)
+            return BadRequest("Sprayfield is required.");
 
-        await EnsureCompanyAccessAsync(irrigate.CompanyId);
+        var sprayfield = await _sprayfieldService.GetByIdAsync(sprayfieldId);
+        if (sprayfield == null)
+            return NotFound("Sprayfield not found.");
 
-        var viewModel = new IrrigateEditViewModel
-        {
-            Id = irrigate.Id,
-            CompanyId = irrigate.CompanyId,
-            FacilityId = irrigate.FacilityId,
-            SprayfieldId = irrigate.SprayfieldId,
-            IrrigationDate = irrigate.IrrigationDate,
-            StartTime = irrigate.StartTime.ToString(@"hh\:mm"),
-            EndTime = irrigate.EndTime.ToString(@"hh\:mm"),
-            DurationHours = irrigate.DurationHours,
-            FlowRateGpm = irrigate.FlowRateGpm,
-            TotalVolumeGallons = irrigate.TotalVolumeGallons,
-            ApplicationRateInches = irrigate.ApplicationRateInches,
-            TemperatureF = irrigate.TemperatureF,
-            PrecipitationIn = irrigate.PrecipitationIn,
-            WeatherConditions = irrigate.WeatherConditions,
-            Comments = irrigate.Comments
-        };
+        await EnsureCompanyAccessAsync(sprayfield.CompanyId);
 
-        ViewBag.Facilities = await GetFacilitySelectListAsync(irrigate.CompanyId);
-        ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(irrigate.CompanyId, irrigate.FacilityId);
-
-        return View(viewModel);
+        var zones = await _applicationZoneService.GetBySprayfieldIdAsync(sprayfieldId);
+        return Json(zones.Where(z => z.Active).Select(z => new { id = z.Id, name = z.ZoneName }));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> IrrigateEdit(IrrigateEditViewModel viewModel)
+    public async Task<IActionResult> ValidateMonthlyApplication([FromBody] ComplianceProjectionRequest request)
     {
-        await EnsureCompanyAccessAsync(viewModel.CompanyId);
-
-        if (!ModelState.IsValid)
+        if (request.FacilityId == Guid.Empty)
         {
-            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
-            return View(viewModel);
+            return BadRequest(new { message = "Facility is required." });
         }
 
+        if (request.ZoneId == Guid.Empty)
+        {
+            return BadRequest(new { message = "Zone is required." });
+        }
+
+        var facility = await _facilityService.GetByIdAsync(request.FacilityId);
+        if (facility == null)
+        {
+            return NotFound(new { message = "Facility not found." });
+        }
+
+        await EnsureCompanyAccessAsync(facility.CompanyId);
+
+        ComplianceProjectionResult projection;
         try
         {
-            var irrigate = await _irrigateService.GetByIdAsync(viewModel.Id);
-            if (irrigate == null)
-                return NotFound();
-
-            var currentUser = await GetCurrentUserAsync();
-            var modifiedBy = currentUser == null
-                ? null
-                : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
-
-            irrigate.IrrigationDate = viewModel.IrrigationDate;
-            irrigate.StartTime = TimeSpan.Parse(viewModel.StartTime);
-            irrigate.EndTime = TimeSpan.Parse(viewModel.EndTime);
-            irrigate.DurationHours = viewModel.DurationHours ?? 0;
-            irrigate.FlowRateGpm = viewModel.FlowRateGpm ?? 0;
-            irrigate.TotalVolumeGallons = viewModel.TotalVolumeGallons ?? 0;
-            irrigate.ApplicationRateInches = viewModel.ApplicationRateInches ?? 0;
-            irrigate.TemperatureF = viewModel.TemperatureF;
-            irrigate.PrecipitationIn = viewModel.PrecipitationIn;
-            irrigate.WeatherConditions = viewModel.WeatherConditions;
-            irrigate.Comments = viewModel.Comments;
-            irrigate.ModifiedBy = modifiedBy;
-
-            await _irrigateService.UpdateAsync(irrigate);
-            TempData["SuccessMessage"] = "Irrigation log updated successfully.";
-            return RedirectToAction(nameof(Irrigates), new { facilityId = irrigate.FacilityId });
+            projection = await _applicationComplianceService.GetProjectedComplianceAsync(request);
         }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
+        catch (InvalidOperationException ex)
         {
-            ModelState.AddModelError("", ex.Message);
-            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
-            return View(viewModel);
+            return BadRequest(new { message = ex.Message });
         }
-    }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> IrrigateDelete(Guid id)
-    {
-        try
+        return Json(new
         {
-            var irrigate = await _irrigateService.GetByIdAsync(id);
-            if (irrigate != null)
-            {
-                await EnsureCompanyAccessAsync(irrigate.CompanyId);
-            }
-
-            await _irrigateService.DeleteAsync(id);
-            TempData["SuccessMessage"] = "Irrigation log deleted successfully.";
-        }
-        catch (Infrastructure.Exceptions.EntityNotFoundException)
-        {
-            TempData["ErrorMessage"] = "Irrigation log not found.";
-        }
-
-        return RedirectToAction(nameof(Irrigates));
+            projection.WindowStartDate,
+            projection.WindowEndDate,
+            projection.SprayfieldId,
+            projection.SprayfieldName,
+            projection.FieldAcres,
+            projection.ProjectedPanLbsPerAcre,
+            projection.PanLimitLbsPerAcre,
+            projection.PanUtilizationPercent,
+            projection.ProjectedHydraulicInches,
+            projection.HydraulicLimitInchesPerYear,
+            projection.HydraulicUtilizationPercent,
+            projection.RequiresConfirmation,
+            projection.Warnings
+        });
     }
 
     #endregion
@@ -1746,6 +1773,18 @@ namespace SAM.Controllers;
         return new SelectList(monitoringWells, "Id", "WellId");
     }
 
+    private async Task<SelectList> GetZoneSelectListAsync(Guid? companyId = null, Guid? sprayfieldId = null)
+    {
+        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
+        {
+            companyId = effectiveCompanyId.Value;
+        }
+
+        var zones = await _lookupQueryService.GetApplicationZonesAsync(companyId, sprayfieldId);
+        return new SelectList(zones, "Id", "ZoneName");
+    }
+
     private SelectList GetMonthSelectList()
     {
         return new SelectList(Enum.GetValues(typeof(MonthEnum)).Cast<MonthEnum>()
@@ -1865,3 +1904,4 @@ namespace SAM.Controllers;
 
     #endregion
 }
+

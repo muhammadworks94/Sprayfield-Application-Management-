@@ -22,6 +22,8 @@ public partial class SystemAdminController : BaseController
     private readonly INozzleService _nozzleService;
     private readonly ICropService _cropService;
     private readonly ISprayfieldService _sprayfieldService;
+    private readonly IApplicationZoneService _applicationZoneService;
+    private readonly IMonthlyApplicationService _monthlyApplicationService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly ILookupQueryService _lookupQueryService;
 
@@ -31,6 +33,8 @@ public partial class SystemAdminController : BaseController
         INozzleService nozzleService,
         ICropService cropService,
         ISprayfieldService sprayfieldService,
+        IApplicationZoneService applicationZoneService,
+        IMonthlyApplicationService monthlyApplicationService,
         IMonitoringWellService monitoringWellService,
         ILookupQueryService lookupQueryService,
         UserManager<ApplicationUser> userManager,
@@ -42,6 +46,8 @@ public partial class SystemAdminController : BaseController
         _nozzleService = nozzleService;
         _cropService = cropService;
         _sprayfieldService = sprayfieldService;
+        _applicationZoneService = applicationZoneService;
+        _monthlyApplicationService = monthlyApplicationService;
         _monitoringWellService = monitoringWellService;
         _lookupQueryService = lookupQueryService;
     }
