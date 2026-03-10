@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
@@ -1740,7 +1741,10 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
-        var sprayfields = await _lookupQueryService.GetSprayfieldsAsync(companyId, facilityId);
+        var sprayfields = (await _lookupQueryService.GetSprayfieldsAsync(companyId, facilityId))
+            .OrderBy(s => BuildNaturalSortKey(s.FieldId))
+            .ThenBy(s => s.FieldId)
+            .ToList();
 
         var items = sprayfields.Select(s => new SelectListItem
         {
@@ -1749,6 +1753,11 @@ namespace SAM.Controllers;
         }).ToList();
 
         return new SelectList(items, "Value", "Text");
+    }
+
+    private static string BuildNaturalSortKey(string? input)
+    {
+        return Regex.Replace(input ?? string.Empty, @"\d+", match => match.Value.PadLeft(10, '0'));
     }
 
     private async Task<SelectList> GetCompanySelectListAsync()

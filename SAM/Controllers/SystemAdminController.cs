@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
@@ -155,7 +156,8 @@ public partial class SystemAdminController : BaseController
             case "sprayfields":
                 var sprayfields = await _sprayfieldService.GetAllAsync(companyId);
                 viewModel.Sprayfields = sprayfields
-                    .OrderBy(s => s.FieldId)
+                    .OrderBy(s => BuildNaturalSortKey(s.FieldId))
+                    .ThenBy(s => s.FieldId)
                     .Select(s => new SprayfieldViewModel
                 {
                     Id = s.Id,
@@ -175,6 +177,32 @@ public partial class SystemAdminController : BaseController
                     HourlyRateInches = s.HourlyRateInches,
                     WeeklyRateInches = s.WeeklyRateInches
                 });
+
+                var soilsForBulkEdit = (await _soilService.GetAllAsync(companyId))
+                    .OrderBy(s => s.TypeName)
+                    .ToList();
+                var cropsForBulkEdit = (await _cropService.GetAllAsync(companyId))
+                    .OrderBy(c => c.Name)
+                    .ToList();
+                var nozzlesForBulkEdit = (await _nozzleService.GetAllAsync(companyId))
+                    .OrderBy(n => n.Manufacturer)
+                    .ThenBy(n => n.Model)
+                    .ToList();
+                var facilitiesForBulkEdit = (await _facilityService.GetAllAsync(companyId))
+                    .OrderBy(f => f.Name)
+                    .ToList();
+
+                viewModel.SprayfieldSoils = new SelectList(soilsForBulkEdit, "Id", "TypeName");
+                viewModel.SprayfieldCrops = new SelectList(cropsForBulkEdit, "Id", "Name");
+                viewModel.SprayfieldNozzles = new SelectList(
+                    nozzlesForBulkEdit.Select(n => new
+                    {
+                        n.Id,
+                        Name = $"{n.Manufacturer} {n.Model}"
+                    }),
+                    "Id",
+                    "Name");
+                viewModel.SprayfieldFacilities = new SelectList(facilitiesForBulkEdit, "Id", "Name");
                 viewModel.SprayfieldsFilter = await CreateSprayfieldsFilterViewModelAsync(isGlobalAdmin, companyId);
                 break;
             case "monitoringwells":
@@ -420,6 +448,11 @@ public partial class SystemAdminController : BaseController
         
         ViewBag.Facilities = new SelectList(facilities, "Id", "Name");
         ViewBag.Companies = await GetCompanySelectListAsync();
+    }
+
+    private static string BuildNaturalSortKey(string? input)
+    {
+        return Regex.Replace(input ?? string.Empty, @"\d+", match => match.Value.PadLeft(10, '0'));
     }
 
     #endregion

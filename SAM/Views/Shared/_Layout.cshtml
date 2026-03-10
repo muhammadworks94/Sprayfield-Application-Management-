@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
     <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/SAM.styles.css" asp-append-version="true" />
@@ -24,13 +25,13 @@
             {
                 <header class="app-header">
                     <div class="header-content">
-                        <div class="d-flex align-items-center">
+                        <div class="header-left">
                             <button class="btn btn-link d-md-none me-3" type="button" id="sidebarToggle" aria-label="Toggle sidebar">
                                 <i class="bi bi-list"></i>
                             </button>
+                            @await Html.PartialAsync("Partials/_CompanySelector")
                         </div>
                         <div class="user-menu">
-                            @await Html.PartialAsync("Partials/_CompanySelector")
                             @await Html.PartialAsync("Partials/_UserMenu")
                         </div>
                     </div>
@@ -61,28 +62,6 @@
                         </div>
                     </div>
                 }
-                @if (TempData["SuccessMessage"] != null)
-                {
-                    <div class="alert alert-success alert-dismissible fade show app-alert app-alert-success" role="alert">
-                        <div class="d-flex align-items-start gap-2">
-                            <i class="bi bi-check-circle-fill mt-1" aria-hidden="true"></i>
-                            <span>@TempData["SuccessMessage"]</span>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
-                @if (TempData["ErrorMessage"] != null)
-                {
-                    <div class="alert alert-danger alert-dismissible fade show app-alert app-alert-danger" role="alert">
-                        <div class="d-flex align-items-start gap-2">
-                            <i class="bi bi-exclamation-octagon-fill mt-1" aria-hidden="true"></i>
-                            <span>@TempData["ErrorMessage"]</span>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
                 @RenderBody()
             </main>
             
@@ -97,10 +76,46 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
     
     <script src="~/js/layout-navigation.js" asp-append-version="true"></script>
+    @{
+        var successMessage = TempData["SuccessMessage"]?.ToString();
+        var errorMessage = TempData["ErrorMessage"]?.ToString();
+        var warningMessage = TempData["WarningMessage"]?.ToString();
+        var infoMessage = TempData["InfoMessage"]?.ToString();
+    }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof toastr === 'undefined') return;
+
+            toastr.options = {
+                closeButton: true,
+                progressBar: true,
+                newestOnTop: true,
+                preventDuplicates: true,
+                positionClass: 'toast-top-right',
+                timeOut: 4500,
+                extendedTimeOut: 1500,
+                showDuration: 220,
+                hideDuration: 180,
+                showMethod: 'fadeIn',
+                hideMethod: 'fadeOut'
+            };
+
+            const successMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(successMessage));
+            const errorMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(errorMessage));
+            const warningMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(warningMessage));
+            const infoMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(infoMessage));
+
+            if (successMessage) toastr.success(successMessage);
+            if (errorMessage) toastr.error(errorMessage);
+            if (warningMessage) toastr.warning(warningMessage);
+            if (infoMessage) toastr.info(infoMessage);
+        });
+    </script>
 </body>
 </html>
 

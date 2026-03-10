@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
@@ -723,8 +724,16 @@ public class ReportsController : BaseController
 
     private async Task<SelectList> GetSprayfieldSelectListAsync(Guid facilityId)
     {
-        var sprayfields = await _sprayfieldService.GetByFacilityIdAsync(facilityId);
+        var sprayfields = (await _sprayfieldService.GetByFacilityIdAsync(facilityId))
+            .OrderBy(s => BuildNaturalSortKey(s.FieldId))
+            .ThenBy(s => s.FieldId)
+            .ToList();
         return new SelectList(sprayfields, "Id", "FieldId");
+    }
+
+    private static string BuildNaturalSortKey(string? input)
+    {
+        return Regex.Replace(input ?? string.Empty, @"\d+", match => match.Value.PadLeft(10, '0'));
     }
 
     #endregion

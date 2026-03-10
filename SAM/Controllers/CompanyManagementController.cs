@@ -64,7 +64,6 @@ public class CompanyManagementController : BaseController
     public async Task<IActionResult> Index(string? searchTerm = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Load companies data
         IEnumerable<Company> companies;
@@ -76,12 +75,6 @@ public class CompanyManagementController : BaseController
         else
         {
             companies = await _companyService.GetAllAsync();
-        }
-
-        // Filter by company if session has a selection (for admins) or user has a company
-        if (effectiveCompanyId.HasValue)
-        {
-            companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
         }
 
         var companyViewModels = companies.Select(c => new CompanyViewModel

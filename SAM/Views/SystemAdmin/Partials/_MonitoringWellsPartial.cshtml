@@ -47,10 +47,6 @@
                             <th><i class="bi bi-file-text"></i> Well Permit #</th>
                             <th><i class="bi bi-geo-alt"></i> Well Location</th>
                             <th><i class="bi bi-rulers"></i> Well Depth (ft)</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             @if (canManageRecords)
                             {
                                 <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
@@ -67,10 +63,6 @@
                                 <td>@(string.IsNullOrEmpty(well.WellPermitNumber) ? "-" : well.WellPermitNumber)</td>
                                 <td>@(string.IsNullOrEmpty(well.LocationDescription) ? "-" : well.LocationDescription)</td>
                                 <td>@(well.WellDepthFeet.HasValue ? well.WellDepthFeet.Value.ToString("F2") : "-")</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@well.CompanyName</td>
-                                }
                                 @if (canManageRecords)
                                 {
                                     <td class="table-actions">
@@ -111,11 +103,6 @@
                                     <dt class="col-6"><i class="bi bi-rulers me-1"></i>Well Depth (ft)</dt>
                                     <dd class="col-6 mb-1">@(well.WellDepthFeet.HasValue ? well.WellDepthFeet.Value.ToString("F2") : "-")</dd>
 
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@well.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">

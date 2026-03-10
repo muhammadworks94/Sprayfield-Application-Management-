@@ -265,6 +265,95 @@ public partial class SystemAdminController
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> SprayfieldBulkEdit(SprayfieldBulkEditViewModel viewModel)
+    {
+        var selectedIds = (viewModel.SelectedSprayfieldIds ?? new List<Guid>())
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (selectedIds.Count == 0)
+        {
+            TempData["ErrorMessage"] = "Please select at least one sprayfield for multi-edit.";
+            return RedirectToAction("SystemAdmin", new { tab = "sprayfields" });
+        }
+
+        var hasAnyUpdate =
+            viewModel.SizeAcres.HasValue ||
+            viewModel.HourlyRateInches.HasValue ||
+            viewModel.WeeklyRateInches.HasValue ||
+            (viewModel.SoilId.HasValue && viewModel.SoilId.Value != Guid.Empty) ||
+            (viewModel.CropId.HasValue && viewModel.CropId.Value != Guid.Empty) ||
+            (viewModel.NozzleId.HasValue && viewModel.NozzleId.Value != Guid.Empty) ||
+            (viewModel.FacilityId.HasValue && viewModel.FacilityId.Value != Guid.Empty);
+
+        if (!hasAnyUpdate)
+        {
+            TempData["ErrorMessage"] = "Please choose at least one field to update.";
+            return RedirectToAction("SystemAdmin", new { tab = "sprayfields" });
+        }
+
+        var updatedCount = 0;
+        foreach (var id in selectedIds)
+        {
+            var sprayfield = await _sprayfieldService.GetByIdAsync(id);
+            if (sprayfield == null)
+            {
+                continue;
+            }
+
+            await EnsureCompanyAccessAsync(sprayfield.CompanyId);
+
+            if (viewModel.SizeAcres.HasValue)
+            {
+                sprayfield.SizeAcres = viewModel.SizeAcres!.Value;
+            }
+
+            if (viewModel.HourlyRateInches.HasValue)
+            {
+                sprayfield.HourlyRateInches = viewModel.HourlyRateInches;
+            }
+
+            if (viewModel.WeeklyRateInches.HasValue)
+            {
+                sprayfield.WeeklyRateInches = viewModel.WeeklyRateInches;
+            }
+
+            if (viewModel.SoilId.HasValue && viewModel.SoilId.Value != Guid.Empty)
+            {
+                sprayfield.SoilId = viewModel.SoilId!.Value;
+            }
+
+            if (viewModel.CropId.HasValue && viewModel.CropId.Value != Guid.Empty)
+            {
+                sprayfield.CropId = viewModel.CropId!.Value;
+            }
+
+            if (viewModel.NozzleId.HasValue && viewModel.NozzleId.Value != Guid.Empty)
+            {
+                sprayfield.NozzleId = viewModel.NozzleId!.Value;
+            }
+
+            // Facility is only updated when a specific facility value is provided.
+            if (viewModel.FacilityId.HasValue && viewModel.FacilityId.Value != Guid.Empty)
+            {
+                sprayfield.FacilityId = viewModel.FacilityId.Value;
+            }
+
+            await _sprayfieldService.UpdateAsync(sprayfield);
+            updatedCount++;
+        }
+
+        TempData["SuccessMessage"] = updatedCount > 0
+            ? $"Updated {updatedCount} sprayfield(s) successfully."
+            : "No sprayfields were updated.";
+
+        return RedirectToAction("SystemAdmin", new { tab = "sprayfields" });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> SprayfieldDelete(Guid id)
     {
         try

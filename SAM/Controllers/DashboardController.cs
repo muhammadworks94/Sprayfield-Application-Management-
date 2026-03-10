@@ -263,7 +263,7 @@ public class DashboardController : BaseController
 
         viewModel.SelectedCompanyName = companyName;
         ViewData["TitleIcon"] = "speedometer2";
-        ViewData["PageSubtitle"] = $"{companyName} - Environmental Monitoring Overview";
+        ViewData["PageSubtitle"] = "Environmental Monitoring Overview";
 
         return View(viewModel);
     }

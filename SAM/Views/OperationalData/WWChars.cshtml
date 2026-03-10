@@ -4,7 +4,6 @@
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Wastewater Characteristics";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
     var user = await UserManager.GetUserAsync(User);
@@ -78,10 +77,6 @@
                             @* <th><i class="bi bi-award"></i> Lab Certification</th> *@
                             @* <th><i class="bi bi-person"></i> Collected By</th> *@
                             @* <th><i class="bi bi-person-check"></i> Analyzed By</th> *@
-                            @if (isGlobalAdmin)
-                            {
-                                <th> Company</th>
-                            }
                             <th class="table-actions"> Actions</th>
                         </tr>
                     </thead>
@@ -95,10 +90,6 @@
                                 @* <td>@(string.IsNullOrEmpty(wwChar.LabCertification) ? "-" : wwChar.LabCertification)</td> *@
                                 @* <td>@(string.IsNullOrEmpty(wwChar.CollectedBy) ? "-" : wwChar.CollectedBy)</td> *@
                                 @* <td>@(string.IsNullOrEmpty(wwChar.AnalyzedBy) ? "-" : wwChar.AnalyzedBy)</td> *@
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@wwChar.CompanyName</td>
-                                }
                                 <td class="table-actions">
                                     <a asp-action="WWCharDetails" asp-route-id="@wwChar.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
@@ -167,12 +158,6 @@
 
                                     <dt class="col-5"><i class="bi bi-person-check me-1"></i>Analyzed By</dt>
                                     <dd class="col-7 mb-1">@((string.IsNullOrEmpty(wwChar.AnalyzedBy) ? "-" : wwChar.AnalyzedBy))</dd>
-
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-7 mb-1">@wwChar.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-between">

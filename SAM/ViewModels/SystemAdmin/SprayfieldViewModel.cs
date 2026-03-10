@@ -181,4 +181,26 @@ public class SprayfieldEditViewModel
     public Guid? ReassignToZoneId { get; set; }
 }
 
+public class SprayfieldBulkEditViewModel
+{
+    public List<Guid> SelectedSprayfieldIds { get; set; } = new();
+
+    [Range(0, double.MaxValue, ErrorMessage = "Size must be a positive number.")]
+    public decimal? SizeAcres { get; set; }
+
+    [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
+    public decimal? HourlyRateInches { get; set; }
+
+    [Range(0, double.MaxValue, ErrorMessage = "Weekly rate must be a positive number.")]
+    public decimal? WeeklyRateInches { get; set; }
+
+    public Guid? SoilId { get; set; }
+
+    public Guid? CropId { get; set; }
+
+    public Guid? NozzleId { get; set; }
+
+    public Guid? FacilityId { get; set; }
+}
+
 

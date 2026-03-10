@@ -19,6 +19,39 @@ function applyTruncationTooltips(root = document) {
     });
 }
 
+function autoSelectSingleOptionDropdowns(root = document) {
+    const selects = root.querySelectorAll('select:not([multiple]):not([data-no-auto-single-select])');
+
+    selects.forEach((select) => {
+        if (select.disabled) {
+            return;
+        }
+
+        const options = Array.from(select.options);
+        const selectableOptions = options.filter((option) => option.value !== '' && !option.disabled);
+        if (selectableOptions.length !== 1) {
+            return;
+        }
+
+        const onlyOption = selectableOptions[0];
+        if (!onlyOption) {
+            return;
+        }
+
+        // Apply the default only when the dropdown is currently empty/unselected.
+        if (select.value !== '' && select.value !== onlyOption.value) {
+            return;
+        }
+
+        if (select.value === onlyOption.value) {
+            return;
+        }
+
+        select.value = onlyOption.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     applyTruncationTooltips();
 
@@ -30,4 +63,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    autoSelectSingleOptionDropdowns();
 });

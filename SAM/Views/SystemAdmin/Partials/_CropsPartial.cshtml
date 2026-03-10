@@ -45,10 +45,6 @@
                         <tr>
                             <th><i class="bi bi-flower1"></i> Crop Name</th>
                             <th><i class="bi bi-graph-up"></i> N Uptake (lbs/acre/year)</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             @if (canManageRecords)
                             {
                                 <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
@@ -61,10 +57,6 @@
                             <tr>
                                 <td>@crop.Name</td>
                                 <td>@crop.NUptake.ToString("F2")</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@crop.CompanyName</td>
-                                }
                                 @if (canManageRecords)
                                 {
                                     <td class="table-actions">
@@ -100,11 +92,6 @@
                                     <dt class="col-6"><i class="bi bi-graph-up me-1"></i>N Uptake</dt>
                                     <dd class="col-6 mb-1">@crop.NUptake.ToString("F2") lbs/acre/year</dd>
 
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@crop.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">

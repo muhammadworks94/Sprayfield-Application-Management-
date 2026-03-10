@@ -4,7 +4,6 @@
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Groundwater Monitoring";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var monitoringWells = ViewBag.MonitoringWells as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
@@ -95,10 +94,6 @@
                             <th> pH</th>
                             @* <th><i class="bi bi-thermometer-half"></i> Temperature</th> *@
                             <th> Conductivity</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th> Company</th>
-                            }
                             <th class="table-actions"> Actions</th>
                         </tr>
                     </thead>
@@ -118,10 +113,6 @@
                                 <td>@(gwMonit.PH?.ToString("F2") ?? "N/A")</td>
                                 @* <td>@(gwMonit.Temperature?.ToString("F1") ?? "N/A")</td> *@
                                 <td>@(gwMonit.Conductivity?.ToString("F2") ?? "N/A")</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@gwMonit.CompanyName</td>
-                                }
                                 <td class="table-actions">
                                     <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
@@ -205,12 +196,6 @@
 
                                     <dt class="col-6"><i class="bi bi-lightning me-1"></i>Conductivity</dt>
                                     <dd class="col-6 mb-1">@((gwMonit.Conductivity?.ToString("F2") ?? "N/A"))</dd>
-
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@gwMonit.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-between">

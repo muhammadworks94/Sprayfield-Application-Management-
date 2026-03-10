@@ -47,10 +47,6 @@
                             <th><i class="bi bi-building"></i> Facility Name</th>
                             <th><i class="bi bi-file-text"></i> Permit #</th>
                             <th><i class="bi bi-person"></i> Permittee</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             <th><i class="bi bi-geo-alt"></i> City, State</th>
                             <th><i class="bi bi-map"></i> County</th>
                             @if (canManageRecords)
@@ -70,10 +66,6 @@
                                 </td>
                                 <td>@facility.PermitNumber</td>
                                 <td>@facility.Permittee</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@facility.CompanyName</td>
-                                }
                                 <td>@facility.City, @facility.State</td>
                                 <td>@facility.County</td>
                                 @if (canManageRecords)
@@ -122,11 +114,6 @@
                                     <dt class="col-5"><i class="bi bi-geo-alt me-1"></i>Location</dt>
                                     <dd class="col-7 mb-1">@facility.City, @facility.State</dd>
 
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-7 mb-1">@facility.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">

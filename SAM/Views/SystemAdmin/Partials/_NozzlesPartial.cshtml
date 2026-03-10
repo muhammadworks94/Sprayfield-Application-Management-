@@ -49,10 +49,6 @@
                             <th><i class="bi bi-speedometer2"></i> Flow Rate (GPM)</th>
                             <th><i class="bi bi-droplet"></i> Spray Arc (°)</th>
                             <th class="nozzles-comment-col"><i class="bi bi-chat-left-text"></i> Comment</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             @if (canManageRecords)
                             {
                                 <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
@@ -79,10 +75,6 @@
                                         <span>N/A</span>
                                     }
                                 </td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@nozzle.CompanyName</td>
-                                }
                                 @if (canManageRecords)
                                 {
                                     <td class="table-actions">
@@ -133,11 +125,6 @@
                                         }
                                     </dd>
 
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@nozzle.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">
