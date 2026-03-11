@@ -4,6 +4,7 @@ using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 
 namespace SAM.Services.Implementations;
 
@@ -25,10 +26,13 @@ public class SprayfieldService : ISprayfieldService
     {
         var query = _context.Sprayfields
             .Include(s => s.Company)
-            .Include(s => s.Soil)
-            .Include(s => s.Crop)
-            .Include(s => s.Nozzle)
             .Include(s => s.Facility)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Soil)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Crop)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Nozzle)
             .AsQueryable();
 
         if (companyId.HasValue)
@@ -36,19 +40,21 @@ public class SprayfieldService : ISprayfieldService
             query = query.Where(s => s.CompanyId == companyId.Value);
         }
 
-        return await query
-            .OrderBy(s => s.FieldId)
-            .ToListAsync();
+        var sprayfields = await query.ToListAsync();
+        return SprayfieldReportHelper.OrderByFieldIdNatural(sprayfields).ToList();
     }
 
     public async Task<Sprayfield?> GetByIdAsync(Guid id)
     {
         return await _context.Sprayfields
             .Include(s => s.Company)
-            .Include(s => s.Soil)
-            .Include(s => s.Crop)
-            .Include(s => s.Nozzle)
             .Include(s => s.Facility)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Soil)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Crop)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Nozzle)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
@@ -71,27 +77,6 @@ public class SprayfieldService : ISprayfieldService
             if (facility.CompanyId != sprayfield.CompanyId)
                 throw new BusinessRuleException("Facility must belong to the same company as the sprayfield.");
         }
-
-        // Validate soil exists and belongs to same company
-        var soil = await _context.Soils.FirstOrDefaultAsync(s => s.Id == sprayfield.SoilId);
-        if (soil == null)
-            throw new EntityNotFoundException(nameof(Soil), sprayfield.SoilId);
-        if (soil.CompanyId != sprayfield.CompanyId)
-            throw new BusinessRuleException("Soil must belong to the same company as the sprayfield.");
-
-        // Validate crop exists and belongs to same company
-        var crop = await _context.Crops.FirstOrDefaultAsync(c => c.Id == sprayfield.CropId);
-        if (crop == null)
-            throw new EntityNotFoundException(nameof(Crop), sprayfield.CropId);
-        if (crop.CompanyId != sprayfield.CompanyId)
-            throw new BusinessRuleException("Crop must belong to the same company as the sprayfield.");
-
-        // Validate nozzle exists and belongs to same company
-        var nozzle = await _context.Nozzles.FirstOrDefaultAsync(n => n.Id == sprayfield.NozzleId);
-        if (nozzle == null)
-            throw new EntityNotFoundException(nameof(Nozzle), sprayfield.NozzleId);
-        if (nozzle.CompanyId != sprayfield.CompanyId)
-            throw new BusinessRuleException("Nozzle must belong to the same company as the sprayfield.");
 
         // Check if FieldId is unique for this company
         var fieldIdExists = await _context.Sprayfields
@@ -130,27 +115,6 @@ public class SprayfieldService : ISprayfieldService
                 throw new BusinessRuleException("Facility must belong to the same company as the sprayfield.");
         }
 
-        // Validate soil exists and belongs to same company
-        var soil = await _context.Soils.FirstOrDefaultAsync(s => s.Id == sprayfield.SoilId);
-        if (soil == null)
-            throw new EntityNotFoundException(nameof(Soil), sprayfield.SoilId);
-        if (soil.CompanyId != sprayfield.CompanyId)
-            throw new BusinessRuleException("Soil must belong to the same company as the sprayfield.");
-
-        // Validate crop exists and belongs to same company
-        var crop = await _context.Crops.FirstOrDefaultAsync(c => c.Id == sprayfield.CropId);
-        if (crop == null)
-            throw new EntityNotFoundException(nameof(Crop), sprayfield.CropId);
-        if (crop.CompanyId != sprayfield.CompanyId)
-            throw new BusinessRuleException("Crop must belong to the same company as the sprayfield.");
-
-        // Validate nozzle exists and belongs to same company
-        var nozzle = await _context.Nozzles.FirstOrDefaultAsync(n => n.Id == sprayfield.NozzleId);
-        if (nozzle == null)
-            throw new EntityNotFoundException(nameof(Nozzle), sprayfield.NozzleId);
-        if (nozzle.CompanyId != sprayfield.CompanyId)
-            throw new BusinessRuleException("Nozzle must belong to the same company as the sprayfield.");
-
         // Check if FieldId is unique for this company (excluding current record)
         var fieldIdExists = await _context.Sprayfields
             .AnyAsync(s => s.Id != sprayfield.Id && s.CompanyId == sprayfield.CompanyId && s.FieldId == sprayfield.FieldId);
@@ -159,11 +123,10 @@ public class SprayfieldService : ISprayfieldService
 
         existing.FieldId = sprayfield.FieldId;
         existing.SizeAcres = sprayfield.SizeAcres;
-        existing.SoilId = sprayfield.SoilId;
-        existing.CropId = sprayfield.CropId;
-        existing.NozzleId = sprayfield.NozzleId;
         existing.FacilityId = sprayfield.FacilityId;
         existing.HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr;
+        existing.HourlyRateInches = sprayfield.HourlyRateInches;
+        existing.WeeklyRateInches = sprayfield.WeeklyRateInches;
 
         await _context.SaveChangesAsync();
 
@@ -198,18 +161,30 @@ public class SprayfieldService : ISprayfieldService
 
     public async Task<IEnumerable<Sprayfield>> GetByCompanyIdAsync(Guid companyId)
     {
-        return await _context.Sprayfields
+        var sprayfields = await _context.Sprayfields
             .Where(s => s.CompanyId == companyId)
-            .OrderBy(s => s.FieldId)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Soil)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Crop)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Nozzle)
             .ToListAsync();
+        return SprayfieldReportHelper.OrderByFieldIdNatural(sprayfields).ToList();
     }
 
     public async Task<IEnumerable<Sprayfield>> GetByFacilityIdAsync(Guid facilityId)
     {
-        return await _context.Sprayfields
+        var sprayfields = await _context.Sprayfields
             .Where(s => s.FacilityId == facilityId)
-            .OrderBy(s => s.FieldId)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Soil)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Crop)
+            .Include(s => s.ApplicationZones)
+                .ThenInclude(z => z.Nozzle)
             .ToListAsync();
+        return SprayfieldReportHelper.OrderByFieldIdNatural(sprayfields).ToList();
     }
 }
 

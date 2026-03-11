@@ -12,6 +12,7 @@ using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
+using SAM.Utilities;
 using SAM.ViewModels.OperationalData;
 
 namespace SAM.Controllers;
@@ -362,6 +363,7 @@ namespace SAM.Controllers;
         }
 
         var applications = await _monthlyApplicationService.GetAllAsync(companyId, facilityId, zoneId);
+        var zoneDisplayMaps = await BuildOperationalZoneDisplayMapsAsync(applications.Select(a => a.FacilityId).Distinct());
         var items = applications.Select(a => new MonthlyApplicationViewModel
         {
             Id = a.Id,
@@ -369,8 +371,9 @@ namespace SAM.Controllers;
             FacilityId = a.FacilityId,
             FacilityName = a.Facility?.Name,
             ZoneId = a.ZoneId,
-            ZoneName = a.Zone?.ZoneName,
-            SprayfieldName = a.Zone?.Sprayfield?.PermitFieldName ?? a.Zone?.Sprayfield?.FieldId,
+            ZoneName = zoneDisplayMaps.GetValueOrDefault(a.FacilityId)?.GetValueOrDefault(a.ZoneId)?.ZoneDisplayLabel ?? a.Zone?.ZoneName,
+            SprayfieldName = zoneDisplayMaps.GetValueOrDefault(a.FacilityId)?.GetValueOrDefault(a.ZoneId)?.SprayfieldOrdinalLabel ?? a.Zone?.Sprayfield?.PermitFieldName ?? a.Zone?.Sprayfield?.FieldId,
+            ZoneAcres = zoneDisplayMaps.GetValueOrDefault(a.FacilityId)?.GetValueOrDefault(a.ZoneId)?.ZoneAcres,
             ApplicationDate = a.ApplicationDate,
             VolumeGallons = a.VolumeGallons,
             NitrogenMgL = a.NitrogenMgL,
@@ -580,7 +583,10 @@ namespace SAM.Controllers;
         await EnsureCompanyAccessAsync(application.CompanyId);
 
         var zone = application.Zone ?? await _applicationZoneService.GetByIdAsync(application.ZoneId);
-        var sprayfieldName = zone?.Sprayfield?.PermitFieldName ?? zone?.Sprayfield?.FieldId;
+        var zoneDisplayMap = zone?.Sprayfield?.FacilityId is Guid applicationFacilityId
+            ? await BuildOperationalZoneDisplayMapAsync(applicationFacilityId)
+            : new Dictionary<Guid, OperationalZoneDisplayInfo>();
+        var zoneDisplay = zoneDisplayMap.GetValueOrDefault(application.ZoneId);
 
         var viewModel = new MonthlyApplicationViewModel
         {
@@ -590,8 +596,9 @@ namespace SAM.Controllers;
             FacilityId = application.FacilityId,
             FacilityName = application.Facility?.Name,
             ZoneId = application.ZoneId,
-            ZoneName = zone?.ZoneName,
-            SprayfieldName = sprayfieldName,
+            ZoneName = zoneDisplay?.ZoneDisplayLabel ?? zone?.ZoneName,
+            SprayfieldName = zoneDisplay?.SprayfieldOrdinalLabel ?? zone?.Sprayfield?.PermitFieldName ?? zone?.Sprayfield?.FieldId,
+            ZoneAcres = zoneDisplay?.ZoneAcres,
             ApplicationDate = application.ApplicationDate,
             VolumeGallons = application.VolumeGallons,
             NitrogenMgL = application.NitrogenMgL,
@@ -663,7 +670,21 @@ namespace SAM.Controllers;
         await EnsureCompanyAccessAsync(sprayfield.CompanyId);
 
         var zones = await _applicationZoneService.GetBySprayfieldIdAsync(sprayfieldId);
-        return Json(zones.Where(z => z.Active).Select(z => new { id = z.Id, name = z.ZoneName }));
+        var zoneDisplayMap = sprayfield.FacilityId.HasValue
+            ? await BuildOperationalZoneDisplayMapAsync(sprayfield.FacilityId.Value)
+            : new Dictionary<Guid, OperationalZoneDisplayInfo>();
+
+        return Json(zones
+            .Where(z => z.Active)
+            .Select(z =>
+            {
+                var display = zoneDisplayMap.GetValueOrDefault(z.Id);
+                var displayName = display == null
+                    ? z.ZoneName
+                    : $"{display.ZoneDisplayLabel} ({display.ZoneAcres:F2} acres)";
+
+                return new { id = z.Id, name = displayName };
+            }));
     }
 
     [HttpPost]
@@ -1790,8 +1811,57 @@ namespace SAM.Controllers;
             companyId = effectiveCompanyId.Value;
         }
 
+        if (!sprayfieldId.HasValue || sprayfieldId == Guid.Empty)
+        {
+            return new SelectList(Enumerable.Empty<SelectListItem>(), "Value", "Text");
+        }
+
         var zones = await _lookupQueryService.GetApplicationZonesAsync(companyId, sprayfieldId);
-        return new SelectList(zones, "Id", "ZoneName");
+        var sprayfield = await _sprayfieldService.GetByIdAsync(sprayfieldId.Value);
+        var zoneDisplayMap = sprayfield?.FacilityId is Guid facilityId
+            ? await BuildOperationalZoneDisplayMapAsync(facilityId)
+            : new Dictionary<Guid, OperationalZoneDisplayInfo>();
+
+        var items = zones
+            .Select(z =>
+            {
+                var display = zoneDisplayMap.GetValueOrDefault(z.Id);
+                var text = display == null
+                    ? z.ZoneName
+                    : $"{display.ZoneDisplayLabel} ({display.ZoneAcres:F2} acres)";
+
+                return new SelectListItem
+                {
+                    Value = z.Id.ToString(),
+                    Text = text
+                };
+            })
+            .ToList();
+
+        return new SelectList(items, "Value", "Text");
+    }
+
+    private async Task<Dictionary<Guid, IReadOnlyDictionary<Guid, OperationalZoneDisplayInfo>>> BuildOperationalZoneDisplayMapsAsync(IEnumerable<Guid> facilityIds)
+    {
+        var result = new Dictionary<Guid, IReadOnlyDictionary<Guid, OperationalZoneDisplayInfo>>();
+
+        foreach (var facilityId in facilityIds.Where(id => id != Guid.Empty).Distinct())
+        {
+            result[facilityId] = await BuildOperationalZoneDisplayMapAsync(facilityId);
+        }
+
+        return result;
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, OperationalZoneDisplayInfo>> BuildOperationalZoneDisplayMapAsync(Guid facilityId)
+    {
+        if (facilityId == Guid.Empty)
+        {
+            return new Dictionary<Guid, OperationalZoneDisplayInfo>();
+        }
+
+        var sprayfields = (await _sprayfieldService.GetByFacilityIdAsync(facilityId)).ToList();
+        return OperationalZoneDisplayHelper.BuildZoneDisplayMap(sprayfields);
     }
 
     private SelectList GetMonthSelectList()

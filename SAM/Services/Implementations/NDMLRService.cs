@@ -7,6 +7,7 @@ using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
+using SAM.Utilities;
 
 namespace SAM.Services.Implementations;
 
@@ -42,10 +43,10 @@ public class NDMLRService : INDMLRService
     {
         var report = await _context.NDAR1s
             .Include(r => r.Facility)
-            .Include(r => r.Field1).ThenInclude(f => f!.Crop)
-            .Include(r => r.Field2).ThenInclude(f => f!.Crop)
-            .Include(r => r.Field3).ThenInclude(f => f!.Crop)
-            .Include(r => r.Field4).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field1).ThenInclude(f => f!.ApplicationZones).ThenInclude(z => z.Crop)
+            .Include(r => r.Field2).ThenInclude(f => f!.ApplicationZones).ThenInclude(z => z.Crop)
+            .Include(r => r.Field3).ThenInclude(f => f!.ApplicationZones).ThenInclude(z => z.Crop)
+            .Include(r => r.Field4).ThenInclude(f => f!.ApplicationZones).ThenInclude(z => z.Crop)
             .FirstOrDefaultAsync(r => r.Id == ndar1Id);
 
         if (report == null)
@@ -103,7 +104,7 @@ public class NDMLRService : INDMLRService
     }
 
     /// <summary>
-    /// Loads Sprayfield (with Crop) for any FieldNId that is set but FieldN is null,
+    /// Loads Sprayfield (with zone crops) for any FieldNId that is set but FieldN is null,
     /// so field blocks and area can be populated even when the initial Include didn't load them.
     /// </summary>
     private async Task ResolveFieldsIfNeededAsync(NDAR1 report)
@@ -115,7 +116,8 @@ public class NDMLRService : INDMLRService
             if (ids[i].HasValue && fields[i] == null)
             {
                 var sprayfield = await _context.Sprayfields
-                    .Include(s => s.Crop)
+                    .Include(s => s.ApplicationZones)
+                        .ThenInclude(z => z.Crop)
                     .FirstOrDefaultAsync(s => s.Id == ids[i]!.Value);
                 switch (i)
                 {
@@ -174,8 +176,8 @@ public class NDMLRService : INDMLRService
             if (fields[i] != null)
             {
                 worksheet.Cell($"{col}2").Value = fields[i]!.FieldId;
-                worksheet.Cell($"{col}3").Value = fields[i]!.SizeAcres;
-                worksheet.Cell($"{col}4").Value = fields[i]!.Crop?.Name ?? "";
+                worksheet.Cell($"{col}3").Value = SprayfieldReportHelper.GetReportAcres(fields[i]!);
+                worksheet.Cell($"{col}4").Value = SprayfieldZoneSummaryHelper.GetCropSummary(fields[i]!) ?? "";
                 worksheet.Cell($"{col}5").Value = "Wastewater"; // Load Type constant per plan
                 var fieldLoaded = fieldIds[i].HasValue && fieldVolumeSums[i] > 0 ? "Yes" : "No";
                 if (i == 0)
@@ -207,7 +209,7 @@ public class NDMLRService : INDMLRService
         {
             var (volCol, concCol, monthlyCol, cumulCol) = colSets[i];
             var vol = volumeSums[i];
-            var area = fields[i]?.SizeAcres ?? 0;
+            var area = SprayfieldReportHelper.GetReportAcres(fields[i]);
 
             if (vol > 0)
                 worksheet.Cell($"{volCol}{row}").Value = vol;

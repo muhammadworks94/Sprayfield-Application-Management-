@@ -32,6 +32,9 @@
             <dt class="col-sm-3">Zone</dt>
             <dd class="col-sm-9">@Model.ZoneName</dd>
 
+            <dt class="col-sm-3">Zone Acres</dt>
+            <dd class="col-sm-9">@(Model.ZoneAcres.HasValue ? $"{Model.ZoneAcres.Value:F2} acres" : "-")</dd>
+
             <dt class="col-sm-3">Volume (gal)</dt>
             <dd class="col-sm-9">@Model.VolumeGallons.ToString("F2")</dd>
 

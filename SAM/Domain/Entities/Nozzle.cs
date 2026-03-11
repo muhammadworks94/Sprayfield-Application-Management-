@@ -38,7 +38,6 @@ public class Nozzle : CompanyScopedEntity
     public string? Comment { get; set; }
 
     // Navigation properties
-    public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
     public ICollection<ApplicationZone> ApplicationZones { get; set; } = new List<ApplicationZone>();
 }
 

@@ -1,55 +1,246 @@
 @model SAM.ViewModels.SystemAdmin.SprayfieldViewModel
 @{
     ViewData["Title"] = "Sprayfield Details";
+    var activeZones = Model.Zones.Where(z => z.Active).ToList();
+    var inactiveZones = Model.Zones.Where(z => !z.Active).ToList();
+    var canDuplicate = ViewBag.CanDuplicate is bool allowed && allowed;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <p class="text-muted mb-0">View detailed information for sprayfield</p>
+        <p class="text-muted mb-1">System Administration / Sprayfields</p>
+        <h2 class="mb-0">@Model.FieldId</h2>
     </div>
-    <div>
+    <div class="d-flex gap-2">
         <a asp-action="SprayfieldEdit" asp-route-id="@Model.Id" class="btn btn-primary">
-            <i class="bi bi-pencil"></i> Edit
+            <i class="bi bi-pencil-square"></i> Edit Sprayfield
         </a>
-        <a asp-action="SystemAdmin" asp-route-tab="sprayfields" class="btn btn-secondary">
+        @if (canDuplicate)
+        {
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#duplicateSprayfieldDetailsModal">
+                <i class="bi bi-copy"></i> Duplicate
+            </button>
+        }
+        <a asp-action="SystemAdmin" asp-route-tab="sprayfields" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Back to List
         </a>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">@Model.FieldId</h5>
-    </div>
-    <div class="card-body">
-        <dl class="row">
-            <dt class="col-sm-3">Company:</dt>
-            <dd class="col-sm-9">@Model.CompanyName</dd>
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-7">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                        <i class="bi bi-grid-3x3-gap fs-4"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted mb-1">Sprayfield Overview</p>
+                        <h4 class="mb-0">@Model.FieldId</h4>
+                    </div>
+                </div>
 
-            <dt class="col-sm-3">Field ID:</dt>
-            <dd class="col-sm-9">@Model.FieldId</dd>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <div class="text-muted small mb-1">Company</div>
+                            <div class="fw-semibold">@(Model.CompanyName ?? "-")</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <div class="text-muted small mb-1">Facility</div>
+                            <div class="fw-semibold">@(Model.FacilityName ?? "-")</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <div class="text-muted small mb-1">Soil Summary</div>
+                            <div class="fw-semibold">@(Model.SoilName ?? "-")</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <div class="text-muted small mb-1">Crop Summary</div>
+                            <div class="fw-semibold">@(Model.CropName ?? "-")</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <div class="text-muted small mb-1">Nozzle Summary</div>
+                            <div class="fw-semibold">@(Model.NozzleName ?? "-")</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="border rounded-3 p-3 h-100 bg-light-subtle">
+                            <div class="text-muted small mb-1">Application Zones</div>
+                            <div class="fw-semibold">@Model.Zones.Count total</div>
+                            <div class="small text-muted">@activeZones.Count active, @inactiveZones.Count inactive</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <dt class="col-sm-3">Size (Wetted Acres):</dt>
-            <dd class="col-sm-9">@Model.SizeAcres.ToString("F2") acres</dd>
-
-            <dt class="col-sm-3">Soil:</dt>
-            <dd class="col-sm-9">@Model.SoilName</dd>
-
-            <dt class="col-sm-3">Crop:</dt>
-            <dd class="col-sm-9">@Model.CropName</dd>
-
-            <dt class="col-sm-3">Nozzle:</dt>
-            <dd class="col-sm-9">@Model.NozzleName</dd>
-
-            <dt class="col-sm-3">Facility:</dt>
-            <dd class="col-sm-9">@(Model.FacilityName ?? "-")</dd>
-
-            <dt class="col-sm-3">Hydraulic Loading Limit:</dt>
-            <dd class="col-sm-9">@Model.HydraulicLoadingLimitInPerYr.ToString("F2") inches/year</dd>
-
-            <dt class="col-sm-3">Weekly Rate:</dt>
-            <dd class="col-sm-9">@((Model.WeeklyRateInches?.ToString("F2") ?? "-")) in/week</dd>
-        </dl>
+            <div class="col-lg-5">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="border rounded-3 p-3 text-center h-100">
+                            <div class="text-muted small text-uppercase">Wetted Acres</div>
+                            <div class="fs-4 fw-semibold">@Model.SizeAcres.ToString("F2")</div>
+                            <div class="small text-muted">acres</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded-3 p-3 text-center h-100">
+                            <div class="text-muted small text-uppercase">Hydraulic Limit</div>
+                            <div class="fs-4 fw-semibold">@Model.HydraulicLoadingLimitInPerYr.ToString("F2")</div>
+                            <div class="small text-muted">inches / year</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded-3 p-3 text-center h-100">
+                            <div class="text-muted small text-uppercase">Hourly Rate</div>
+                            <div class="fs-4 fw-semibold">@(Model.HourlyRateInches?.ToString("F2") ?? "-")</div>
+                            <div class="small text-muted">inches / hour</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded-3 p-3 text-center h-100">
+                            <div class="text-muted small text-uppercase">Weekly Rate</div>
+                            <div class="fs-4 fw-semibold">@(Model.WeeklyRateInches?.ToString("F2") ?? "-")</div>
+                            <div class="small text-muted">inches / week</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
+@if (canDuplicate)
+{
+    <div class="modal fade" id="duplicateSprayfieldDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Duplicate Sprayfield</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form asp-action="SprayfieldDuplicate" asp-route-id="@Model.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-body">
+                        <p class="mb-2">Create a copy of <strong>@Model.FieldId</strong>.</p>
+                        <p class="text-muted small">All application zones and sprayfield settings will be copied. Monthly applications will not be copied.</p>
+                        <div class="mb-0">
+                            <label class="form-label" for="detailsDuplicateNewFieldId">New Field ID</label>
+                            <input type="text" class="form-control" id="detailsDuplicateNewFieldId" name="newFieldId" autocomplete="off" required />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Duplicate Sprayfield</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h5 class="mb-3">Field Details</h5>
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted">Field ID</dt>
+                    <dd class="col-sm-7 fw-semibold">@Model.FieldId</dd>
+
+                    <dt class="col-sm-5 text-muted">Company</dt>
+                    <dd class="col-sm-7">@(Model.CompanyName ?? "-")</dd>
+
+                    <dt class="col-sm-5 text-muted">Facility</dt>
+                    <dd class="col-sm-7">@(Model.FacilityName ?? "-")</dd>
+
+                    <dt class="col-sm-5 text-muted">Wetted Acres</dt>
+                    <dd class="col-sm-7">@Model.SizeAcres.ToString("F2") acres</dd>
+
+                    <dt class="col-sm-5 text-muted">Hydraulic Limit</dt>
+                    <dd class="col-sm-7">@Model.HydraulicLoadingLimitInPerYr.ToString("F2") inches/year</dd>
+
+                    <dt class="col-sm-5 text-muted">Hourly Rate</dt>
+                    <dd class="col-sm-7">@((Model.HourlyRateInches?.ToString("F2") ?? "-")) in/hr</dd>
+
+                    <dt class="col-sm-5 text-muted">Weekly Rate</dt>
+                    <dd class="col-sm-7">@((Model.WeeklyRateInches?.ToString("F2") ?? "-")) in/week</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div>
+                        <h5 class="mb-0">Application Zones</h5>
+                        <div class="text-muted small">Zone-level soil, crop, and nozzle values used for calculations.</div>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="badge bg-success">@activeZones.Count active</span>
+                        <span class="badge bg-warning">@inactiveZones.Count inactive</span>
+                    </div>
+                </div>
+
+                @if (Model.Zones.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Zone</th>
+                                    <th>Status</th>
+                                    <th>% of Field</th>
+                                    <th>Acres</th>
+                                    <th>Soil</th>
+                                    <th>Nozzle</th>
+                                    <th>Crop</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var zone in Model.Zones)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@zone.ZoneName</td>
+                                        <td>
+                                            @if (zone.Active)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning">Inactive</span>
+                                            }
+                                        </td>
+                                        <td>@zone.PercentOfField.ToString("F2")%</td>
+                                        <td>@zone.Acres.ToString("F3") acres</td>
+                                        <td>@(zone.SoilName ?? "-")</td>
+                                        <td>@(zone.NozzleName ?? "-")</td>
+                                        <td>@(zone.CropName ?? "-")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-grid text-muted fs-1"></i>
+                        <p class="text-muted mt-3 mb-0">No application zones are configured for this sprayfield.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

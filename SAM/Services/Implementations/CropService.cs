@@ -91,7 +91,7 @@ public class CropService : ICropService
             throw new EntityNotFoundException(nameof(Crop), id);
 
         // Check if crop is referenced by sprayfields
-        var hasReferences = await _context.Sprayfields.AnyAsync(s => s.CropId == id);
+        var hasReferences = await _context.ApplicationZones.AnyAsync(z => z.CropId == id);
 
         if (hasReferences)
             throw new BusinessRuleException("Cannot delete crop because it is used by one or more sprayfields.");

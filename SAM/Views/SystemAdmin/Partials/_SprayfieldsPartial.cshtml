@@ -4,10 +4,9 @@
     var canManageRecords = Model.CanManageRecords;
     var companies = Model.Companies;
     var selectedCompanyId = Model.SelectedCompanyId;
-    var soils = Model.Soils;
-    var crops = Model.Crops;
-    var nozzles = Model.Nozzles;
     var facilities = Model.Facilities;
+    var duplicateSprayfieldId = TempData["DuplicateSprayfieldId"] as string;
+    var duplicateSprayfieldFieldId = TempData["DuplicateSprayfieldFieldId"] as string;
 }
 
 
@@ -18,6 +17,7 @@
 
 <div class="card">
     <div class="card-body">
+        <div id="sprayfieldBulkEditFlash" class="d-none alert mb-4" role="alert"></div>
         <div class="d-flex justify-content-between align-items-center mb-5">
             <h4 class="mb-0">Sprayfield</h4>
             <div class="d-flex align-items-center gap-2">
@@ -33,7 +33,7 @@
                         <i class="bi bi-grid-3x3-gap"></i> Cards
                     </button>
                 </div>
-                @if (canManageRecords)
+                @if (isGlobalAdmin)
                 {
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="sprayfieldsBulkEditBtn" data-bs-toggle="modal" data-bs-target="#bulkEditSprayfieldsModal" disabled>
                         <i class="bi bi-check2-square"></i> Multi Edit
@@ -53,7 +53,7 @@
                 <table class="table table-hover irrigates-table">
                     <thead>
                         <tr>
-                            @if (canManageRecords)
+                            @if (isGlobalAdmin)
                             {
                                 <th class="table-actions">
                                     <input class="form-check-input" type="checkbox" id="selectAllSprayfields" aria-label="Select all sprayfields" />
@@ -74,10 +74,10 @@
                         @foreach (var sprayfield in Model.Sprayfields)
                         {
                             <tr>
-                                @if (canManageRecords)
+                                @if (isGlobalAdmin)
                                 {
                                     <td class="table-actions">
-                                        <input class="form-check-input sprayfield-select" type="checkbox" value="@sprayfield.Id" aria-label="Select sprayfield @sprayfield.FieldId" />
+                                        <input class="form-check-input sprayfield-select" type="checkbox" value="@sprayfield.Id" data-field-id="@sprayfield.FieldId" aria-label="Select sprayfield @sprayfield.FieldId" />
                                     </td>
                                 }
                                 <td>
@@ -86,9 +86,9 @@
                                 <td>@sprayfield.SizeAcres.ToString("F2") Acres</td>
                                 <td>@(sprayfield.HourlyRateInches.HasValue ? $"{sprayfield.HourlyRateInches.Value:F2} in/hr" : "-")</td>
                                 <td>@(sprayfield.WeeklyRateInches.HasValue ? $"{sprayfield.WeeklyRateInches.Value:F2} in/week" : "-")</td>
-                                <td>@sprayfield.SoilName</td>
-                                <td>@sprayfield.CropName</td>
-                                <td>@sprayfield.NozzleName</td>
+                                <td>@(sprayfield.SoilName ?? "-")</td>
+                                <td>@(sprayfield.CropName ?? "-")</td>
+                                <td>@(sprayfield.NozzleName ?? "-")</td>
                                 <td>@(sprayfield.FacilityName ?? "-")</td>
                                 <td class="table-actions">
                                     <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-secondary">
@@ -99,6 +99,13 @@
                                         <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#duplicateSprayfieldModal"
+                                                data-sprayfield-id="@sprayfield.Id"
+                                                data-sprayfield-name="@sprayfield.FieldId">
+                                            <i class="bi bi-copy"></i> Duplicate
+                                        </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#deleteSprayfieldModal"
@@ -137,13 +144,13 @@
                                     <dd class="col-6 mb-1">@((sprayfield.WeeklyRateInches?.ToString("F2") ?? "-")) in/week</dd>
 
                                     <dt class="col-6"><i class="bi bi-moisture me-1"></i>Soil</dt>
-                                    <dd class="col-6 mb-1">@sprayfield.SoilName</dd>
+                                    <dd class="col-6 mb-1">@(sprayfield.SoilName ?? "-")</dd>
 
                                     <dt class="col-6"><i class="bi bi-flower1 me-1"></i>Crop</dt>
-                                    <dd class="col-6 mb-1">@sprayfield.CropName</dd>
+                                    <dd class="col-6 mb-1">@(sprayfield.CropName ?? "-")</dd>
 
                                     <dt class="col-6"><i class="bi bi-droplet me-1"></i>Nozzle</dt>
-                                    <dd class="col-6 mb-1">@sprayfield.NozzleName</dd>
+                                    <dd class="col-6 mb-1">@(sprayfield.NozzleName ?? "-")</dd>
 
                                     <dt class="col-6"><i class="bi bi-building me-1"></i>Facility</dt>
                                     <dd class="col-6 mb-1">@((sprayfield.FacilityName ?? "-"))</dd>
@@ -159,6 +166,13 @@
                                         <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary me-2">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#duplicateSprayfieldModal"
+                                                data-sprayfield-id="@sprayfield.Id"
+                                                data-sprayfield-name="@sprayfield.FieldId">
+                                            <i class="bi bi-copy"></i> Duplicate
+                                        </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#deleteSprayfieldModal"
@@ -190,6 +204,33 @@
     </div>
 </div>
 
+<!-- Duplicate Modal -->
+<div class="modal fade" id="duplicateSprayfieldModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Duplicate Sprayfield</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="duplicateSprayfieldForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p class="mb-2">Create a copy of <strong id="duplicateSprayfieldName"></strong>.</p>
+                    <p class="text-muted small">All application zones and sprayfield settings will be copied. Monthly applications will not be copied.</p>
+                    <div class="mb-0">
+                        <label class="form-label" for="duplicateNewFieldId">New Field ID</label>
+                        <input type="text" class="form-control" id="duplicateNewFieldId" name="newFieldId" autocomplete="off" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Duplicate Sprayfield</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Bulk Edit Modal -->
 <div class="modal fade" id="bulkEditSprayfieldsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -201,6 +242,7 @@
             <form asp-action="SprayfieldBulkEdit" method="post" id="bulkEditSprayfieldsForm">
                 @Html.AntiForgeryToken()
                 <div class="modal-body">
+                    <div id="bulkEditModalAlert" class="alert d-none" role="alert"></div>
                     <p class="text-muted small mb-3">
                         <span id="bulkEditSelectionCount">0</span> sprayfield(s) selected. Field ID is not editable in bulk mode.
                     </p>
@@ -211,40 +253,37 @@
                         <div class="col-md-6">
                             <label class="form-label" for="bulkSizeAcres">Size (Wetted)</label>
                             <input type="number" step="0.01" min="0" class="form-control" id="bulkSizeAcres" name="SizeAcres" placeholder="Leave blank for no change" />
+                            <span class="text-danger small" data-validation-for="SizeAcres"></span>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="bulkHourlyRate">Hourly Rate</label>
                             <input type="number" step="0.01" min="0" class="form-control" id="bulkHourlyRate" name="HourlyRateInches" placeholder="Leave blank for no change" />
+                            <span class="text-danger small" data-validation-for="HourlyRateInches"></span>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="bulkWeeklyRate">Weekly Rate</label>
                             <input type="number" step="0.01" min="0" class="form-control" id="bulkWeeklyRate" name="WeeklyRateInches" placeholder="Leave blank for no change" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="bulkSoilId">Soil</label>
-                            <select class="form-select" id="bulkSoilId" name="SoilId" asp-items="soils">
-                                <option value="">-- No Change --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="bulkCropId">Crop</label>
-                            <select class="form-select" id="bulkCropId" name="CropId" asp-items="crops">
-                                <option value="">-- No Change --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="bulkNozzleId">Nozzle</label>
-                            <select class="form-select" id="bulkNozzleId" name="NozzleId" asp-items="nozzles">
-                                <option value="">-- No Change --</option>
-                            </select>
+                            <span class="text-danger small" data-validation-for="WeeklyRateInches"></span>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="bulkFacilityId">Facility</label>
                             <select class="form-select" id="bulkFacilityId" name="FacilityId" asp-items="facilities">
                                 <option value="">-- No Change --</option>
                             </select>
+                            <span class="text-danger small" data-validation-for="FacilityId"></span>
                         </div>
                     </div>
+
+                    <hr class="my-4" />
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Zone Updates</h6>
+                        <span class="text-muted small">Check a sprayfield below to edit its zones.</span>
+                    </div>
+                    <div id="bulkZoneLoading" class="text-muted small mb-3 d-none">
+                        Loading selected sprayfield zones...
+                    </div>
+                    <div id="bulkZoneEditors"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -280,6 +319,10 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const deleteModal = document.getElementById('deleteSprayfieldModal');
+        const duplicateModal = document.getElementById('duplicateSprayfieldModal');
+        const duplicateForm = document.getElementById('duplicateSprayfieldForm');
+        const duplicateNameElement = document.getElementById('duplicateSprayfieldName');
+        const duplicateFieldIdInput = document.getElementById('duplicateNewFieldId');
         if (deleteModal) {
             deleteModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
@@ -310,6 +353,41 @@
         const bulkEditModal = document.getElementById('bulkEditSprayfieldsModal');
         const selectedIdsContainer = document.getElementById('bulkEditSelectedIds');
         const selectionCount = document.getElementById('bulkEditSelectionCount');
+        const bulkEditForm = document.getElementById('bulkEditSprayfieldsForm');
+        const bulkEditAlert = document.getElementById('bulkEditModalAlert');
+        const bulkEditFlash = document.getElementById('sprayfieldBulkEditFlash');
+        const bulkZoneEditors = document.getElementById('bulkZoneEditors');
+        const bulkZoneLoading = document.getElementById('bulkZoneLoading');
+        const bulkZoneEndpoint = '@Url.Action("GetSprayfieldBulkEditZoneData", "SystemAdmin")';
+        const bulkEditSubmitButton = bulkEditForm?.querySelector('button[type="submit"]');
+        const bulkEditState = {
+            options: {
+                soils: [],
+                crops: [],
+                nozzles: []
+            },
+            sprayfields: []
+        };
+
+        function showStoredFlash() {
+            if (!bulkEditFlash || !window.sessionStorage) return;
+
+            const raw = sessionStorage.getItem('sprayfieldBulkEditFlash');
+            if (!raw) return;
+
+            sessionStorage.removeItem('sprayfieldBulkEditFlash');
+
+            try {
+                const flash = JSON.parse(raw);
+                if (!flash?.message || !flash?.type) return;
+
+                bulkEditFlash.textContent = flash.message;
+                bulkEditFlash.className = `alert alert-${flash.type} mb-4`;
+                bulkEditFlash.classList.remove('d-none');
+            } catch {
+                sessionStorage.removeItem('sprayfieldBulkEditFlash');
+            }
+        }
 
         function setViewMode(mode) {
             const isTable = mode === 'table';
@@ -348,6 +426,427 @@
                 .map(cb => cb.value);
         }
 
+        function getSelectedSprayfieldRows() {
+            return Array.from(rowCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => ({
+                    id: cb.value,
+                    fieldId: cb.getAttribute('data-field-id') || cb.value
+                }));
+        }
+
+        function setModalAlert(message, type = 'danger') {
+            if (!bulkEditAlert) return;
+
+            if (!message) {
+                bulkEditAlert.textContent = '';
+                bulkEditAlert.className = 'alert d-none';
+                return;
+            }
+
+            bulkEditAlert.textContent = message;
+            bulkEditAlert.className = `alert alert-${type}`;
+        }
+
+        function clearValidation() {
+            if (!bulkEditForm) return;
+
+            bulkEditForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            bulkEditForm.querySelectorAll('[data-validation-for]').forEach(el => {
+                el.textContent = '';
+            });
+            setModalAlert('');
+        }
+
+        function renderOptions(options, selectedValue, placeholder) {
+            const normalizedSelected = selectedValue ? selectedValue.toString().toLowerCase() : '';
+            const items = [`<option value="">${placeholder}</option>`];
+
+            options.forEach(option => {
+                const value = option.value.toString();
+                const selected = normalizedSelected === value.toLowerCase() ? ' selected' : '';
+                items.push(`<option value="${value}"${selected}>${option.text}</option>`);
+            });
+
+            return items.join('');
+        }
+
+        function escapeHtml(value) {
+            return (value ?? '')
+                .toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeSelector(value) {
+            if (window.CSS && typeof window.CSS.escape === 'function') {
+                return window.CSS.escape(value);
+            }
+
+            return value.replace(/([ #;?%&,.+*~':"!^$[\]()=>|\/@@])/g, '\\$1');
+        }
+
+        function buildZoneRow(panelIndex, zoneIndex, zone) {
+            const zoneId = zone?.id ?? '';
+            const zoneName = zone?.zoneName ?? '';
+            const percentOfField = zone?.percentOfField ?? 0;
+            const soilId = zone?.soilId ?? '';
+            const nozzleId = zone?.nozzleId ?? '';
+            const cropId = zone?.cropId ?? '';
+            const isActive = zone?.active ?? true;
+            const zoneKey = `ZoneEdits[${panelIndex}].Zones[${zoneIndex}]`;
+
+            return `
+                <tr class="zone-row">
+                    <td>
+                        <input type="hidden" name="${zoneKey}.Id" value="${escapeHtml(zoneId)}" data-field-suffix="Id" />
+                        <input class="form-control form-control-sm" name="${zoneKey}.ZoneName" value="${escapeHtml(zoneName)}" data-field-suffix="ZoneName" />
+                        <span class="text-danger small" data-validation-for="${zoneKey}.ZoneName"></span>
+                    </td>
+                    <td>
+                        <input type="number" step="any" min="0.01" max="100" class="form-control form-control-sm zone-percent-input" name="${zoneKey}.PercentOfField" value="${escapeHtml(percentOfField)}" data-field-suffix="PercentOfField" />
+                        <span class="text-danger small" data-validation-for="${zoneKey}.PercentOfField"></span>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm zone-manager-select" name="${zoneKey}.SoilId" data-field-suffix="SoilId">
+                            ${renderOptions(bulkEditState.options.soils, soilId, '-- Select Soil --')}
+                        </select>
+                        <span class="text-danger small" data-validation-for="${zoneKey}.SoilId"></span>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm zone-manager-select" name="${zoneKey}.NozzleId" data-field-suffix="NozzleId">
+                            ${renderOptions(bulkEditState.options.nozzles, nozzleId, '-- Select Nozzle --')}
+                        </select>
+                        <span class="text-danger small" data-validation-for="${zoneKey}.NozzleId"></span>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm zone-manager-select" name="${zoneKey}.CropId" data-field-suffix="CropId">
+                            ${renderOptions(bulkEditState.options.crops, cropId, '-- Select Crop (Optional) --')}
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <input type="hidden" class="zone-active-hidden" name="${zoneKey}.Active" value="${isActive ? 'true' : 'false'}" data-field-suffix="Active" />
+                        <input type="checkbox" class="form-check-input zone-active-input"${isActive ? ' checked' : ''} />
+                    </td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-zone">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        }
+
+        function createPanelMarkup(panelIndex, sprayfield) {
+            const zones = sprayfield.zones?.length ? sprayfield.zones : [{
+                id: '',
+                zoneName: 'A',
+                percentOfField: 100,
+                soilId: '',
+                nozzleId: '',
+                cropId: '',
+                active: true
+            }];
+            const zoneRows = zones.map((zone, zoneIndex) => buildZoneRow(panelIndex, zoneIndex, zone)).join('');
+            const applyZoneChangesName = `ZoneEdits[${panelIndex}].ApplyZoneChanges`;
+
+            return `
+                <div class="border rounded p-3 mb-3 bulk-zone-panel" data-panel-index="${panelIndex}" data-sprayfield-id="${sprayfield.sprayfieldId}">
+                    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                        <div class="form-check">
+                            <input type="hidden" class="zone-apply-flag" name="${applyZoneChangesName}" value="false" />
+                            <input class="form-check-input bulk-zone-toggle" type="checkbox" value="true" id="bulkZoneToggle_${panelIndex}" />
+                            <label class="form-check-label fw-semibold" for="bulkZoneToggle_${panelIndex}">
+                                ${escapeHtml(sprayfield.fieldId)}
+                            </label>
+                        </div>
+                        <span class="text-muted small">Check to edit application zones for this sprayfield.</span>
+                    </div>
+
+                    <input type="hidden" name="ZoneEdits[${panelIndex}].SprayfieldId" value="${escapeHtml(sprayfield.sprayfieldId)}" />
+                    <input type="hidden" name="ZoneEdits[${panelIndex}].FieldId" value="${escapeHtml(sprayfield.fieldId)}" />
+
+                    <div class="bulk-zone-panel-body d-none mt-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Application Zones</h6>
+                            <button type="button" class="btn btn-outline-primary btn-sm btn-add-zone">
+                                <i class="bi bi-plus-circle"></i> Add Zone
+                            </button>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">Active zone percentages must total 100%.</small>
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-secondary zone-total-badge">Total: 0.00%</span>
+                            <span class="text-danger ms-2 zone-percent-message"></span>
+                            <div class="text-danger small" data-validation-for="ZoneEdits[${panelIndex}].Zones"></div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Zone Name</th>
+                                        <th>% of Field</th>
+                                        <th>Soil</th>
+                                        <th>Nozzle</th>
+                                        <th>Crop</th>
+                                        <th>Active</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bulk-zones-table-body">
+                                    ${zoneRows}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-3 p-3 border rounded bg-light-subtle">
+                            <h6 class="mb-2">If removed zones have monthly applications</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input zone-removed-action" type="radio" name="ZoneEdits[${panelIndex}].RemovedZoneAction" value="reassign" id="ZoneEdits_${panelIndex}_RemovedZoneAction_Reassign" />
+                                <label class="form-check-label" for="ZoneEdits_${panelIndex}_RemovedZoneAction_Reassign">
+                                    Reassign applications to another existing zone
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <select class="form-select zone-reassign-select" name="ZoneEdits[${panelIndex}].ReassignToZoneId">
+                                    <option value="">-- Select target zone --</option>
+                                </select>
+                                <span class="text-danger small" data-validation-for="ZoneEdits[${panelIndex}].ReassignToZoneId"></span>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input zone-removed-action" type="radio" name="ZoneEdits[${panelIndex}].RemovedZoneAction" value="delete" id="ZoneEdits_${panelIndex}_RemovedZoneAction_Delete" checked />
+                                <label class="form-check-label" for="ZoneEdits_${panelIndex}_RemovedZoneAction_Delete">
+                                    Delete associated monthly applications for removed zones
+                                </label>
+                            </div>
+                            <span class="text-danger small" data-validation-for="ZoneEdits[${panelIndex}].RemovedZoneAction"></span>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function reindexPanelRows(panel) {
+            const panelIndex = Number(panel.getAttribute('data-panel-index'));
+            const rows = panel.querySelectorAll('.zone-row');
+
+            rows.forEach((row, zoneIndex) => {
+                row.querySelectorAll('[data-field-suffix]').forEach(input => {
+                    const fieldSuffix = input.getAttribute('data-field-suffix');
+                    input.name = `ZoneEdits[${panelIndex}].Zones[${zoneIndex}].${fieldSuffix}`;
+                });
+
+                row.querySelectorAll('[data-validation-for]').forEach(span => {
+                    const current = span.getAttribute('data-validation-for') || '';
+                    const suffix = current.split('.').pop();
+                    if (suffix) {
+                        span.setAttribute('data-validation-for', `ZoneEdits[${panelIndex}].Zones[${zoneIndex}].${suffix}`);
+                    }
+                });
+            });
+        }
+
+        function syncZoneActiveFlag(row) {
+            const checkbox = row.querySelector('.zone-active-input');
+            const hidden = row.querySelector('.zone-active-hidden');
+            if (!checkbox || !hidden) return;
+
+            hidden.value = checkbox.checked ? 'true' : 'false';
+        }
+
+        function updateReassignOptions(panel) {
+            const select = panel.querySelector('.zone-reassign-select');
+            if (!select) return;
+
+            const currentValue = select.value;
+            const rows = Array.from(panel.querySelectorAll('.zone-row'));
+            const options = ['<option value="">-- Select target zone --</option>'];
+
+            rows.forEach(row => {
+                const zoneId = row.querySelector('input[data-field-suffix="Id"]')?.value;
+                const zoneName = row.querySelector('input[data-field-suffix="ZoneName"]')?.value || 'Unnamed Zone';
+                if (zoneId) {
+                    const selected = currentValue && currentValue.toLowerCase() === zoneId.toLowerCase() ? ' selected' : '';
+                    options.push(`<option value="${escapeHtml(zoneId)}"${selected}>${escapeHtml(zoneName)}</option>`);
+                }
+            });
+
+            select.innerHTML = options.join('');
+            toggleReassignSelect(panel);
+        }
+
+        function calculatePanelZoneTotal(panel) {
+            const badge = panel.querySelector('.zone-total-badge');
+            const message = panel.querySelector('.zone-percent-message');
+            if (!badge || !message) return;
+
+            let total = 0;
+            panel.querySelectorAll('.zone-row').forEach(row => {
+                const isActive = row.querySelector('.zone-active-input')?.checked;
+                const percentValue = parseFloat(row.querySelector('.zone-percent-input')?.value || '0');
+                if (isActive) {
+                    total += percentValue;
+                }
+            });
+
+            badge.textContent = `Total: ${total.toFixed(2)}%`;
+            if (Math.abs(total - 100) > 0.01) {
+                badge.classList.remove('bg-success');
+                badge.classList.add('bg-secondary');
+                message.textContent = 'Total must be exactly 100% for active zones.';
+            } else {
+                badge.classList.remove('bg-secondary');
+                badge.classList.add('bg-success');
+                message.textContent = '';
+            }
+        }
+
+        function toggleReassignSelect(panel) {
+            const selectedAction = panel.querySelector('.zone-removed-action:checked')?.value;
+            const select = panel.querySelector('.zone-reassign-select');
+            if (!select) return;
+
+            select.disabled = selectedAction !== 'reassign';
+        }
+
+        function initializePanel(panel) {
+            syncPanelApplyFlag(panel);
+            reindexPanelRows(panel);
+            panel.querySelectorAll('.zone-row').forEach(row => syncZoneActiveFlag(row));
+            updateReassignOptions(panel);
+            calculatePanelZoneTotal(panel);
+            toggleReassignSelect(panel);
+        }
+
+        function syncPanelApplyFlag(panel) {
+            const toggle = panel.querySelector('.bulk-zone-toggle');
+            const hidden = panel.querySelector('.zone-apply-flag');
+            const body = panel.querySelector('.bulk-zone-panel-body');
+            if (!toggle || !hidden || !body) return;
+
+            hidden.value = toggle.checked ? 'true' : 'false';
+            body.classList.toggle('d-none', !toggle.checked);
+        }
+
+        function renderZoneEditors() {
+            if (!bulkZoneEditors) return;
+            bulkZoneEditors.innerHTML = bulkEditState.sprayfields
+                .map((sprayfield, index) => createPanelMarkup(index, sprayfield))
+                .join('');
+
+            bulkZoneEditors.querySelectorAll('.bulk-zone-panel').forEach(panel => {
+                initializePanel(panel);
+            });
+        }
+
+        async function loadBulkZoneData(selectedRows) {
+            if (!bulkZoneEditors || !bulkZoneLoading) return;
+
+            bulkZoneEditors.innerHTML = '';
+            bulkZoneLoading.classList.remove('d-none');
+            setModalAlert('');
+
+            const params = new URLSearchParams();
+            selectedRows.forEach(row => params.append('sprayfieldIds', row.id));
+
+            try {
+                const response = await fetch(`${bulkZoneEndpoint}?${params.toString()}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(payload?.message || 'Unable to load sprayfield zones for bulk edit.');
+                }
+
+                bulkEditState.options.soils = payload.soils || [];
+                bulkEditState.options.crops = payload.crops || [];
+                bulkEditState.options.nozzles = payload.nozzles || [];
+                bulkEditState.sprayfields = payload.sprayfields || [];
+                renderZoneEditors();
+            } catch (error) {
+                setModalAlert(error.message || 'Unable to load sprayfield zones for bulk edit.');
+            } finally {
+                bulkZoneLoading.classList.add('d-none');
+            }
+        }
+
+        function resetBulkEditModal() {
+            if (!bulkEditForm) return;
+
+            bulkEditForm.reset();
+            if (selectedIdsContainer) {
+                selectedIdsContainer.innerHTML = '';
+            }
+            if (bulkZoneEditors) {
+                bulkZoneEditors.innerHTML = '';
+            }
+            clearValidation();
+        }
+
+        function markValidationErrors(errors) {
+            Object.entries(errors || {}).forEach(([key, messages]) => {
+                if (!key) {
+                    return;
+                }
+
+                const field = bulkEditForm?.querySelector(`[name="${escapeSelector(key)}"]`);
+                if (field) {
+                    field.classList.add('is-invalid');
+                }
+
+                const messageTarget = bulkEditForm?.querySelector(`[data-validation-for="${escapeSelector(key)}"]`);
+                if (messageTarget) {
+                    messageTarget.textContent = Array.isArray(messages) ? messages.join(' ') : messages;
+                }
+            });
+        }
+
+        if (duplicateModal) {
+            duplicateModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const sprayfieldId = button?.getAttribute('data-sprayfield-id') || '@duplicateSprayfieldId';
+                const sprayfieldName = button?.getAttribute('data-sprayfield-name') || '@duplicateSprayfieldFieldId';
+
+                if (duplicateNameElement) {
+                    duplicateNameElement.textContent = sprayfieldName || '';
+                }
+
+                if (duplicateForm && sprayfieldId) {
+                    const baseUrl = '@Url.Action("SprayfieldDuplicate", "SystemAdmin")';
+                    duplicateForm.action = baseUrl + '/' + sprayfieldId;
+                }
+
+                if (duplicateFieldIdInput) {
+                    duplicateFieldIdInput.value = '';
+                    duplicateFieldIdInput.focus();
+                }
+            });
+        }
+
+        function validateCheckedPanelTotals() {
+            let isValid = true;
+
+            bulkZoneEditors?.querySelectorAll('.bulk-zone-panel').forEach(panel => {
+                const isChecked = panel.querySelector('.bulk-zone-toggle')?.checked;
+                if (!isChecked) {
+                    return;
+                }
+
+                calculatePanelZoneTotal(panel);
+                const badgeText = panel.querySelector('.zone-total-badge')?.textContent || '';
+                const total = parseFloat(badgeText.replace(/[^\d.]/g, '') || '0');
+                if (Math.abs(total - 100) > 0.01) {
+                    isValid = false;
+                }
+            });
+
+            return isValid;
+        }
+
         function updateBulkEditButtonState() {
             if (!bulkEditButton) return;
             bulkEditButton.disabled = getSelectedSprayfieldIds().length === 0;
@@ -371,8 +870,11 @@
         });
 
         if (bulkEditModal) {
-            bulkEditModal.addEventListener('show.bs.modal', function () {
-                const selectedIds = getSelectedSprayfieldIds();
+            bulkEditModal.addEventListener('show.bs.modal', async function () {
+                resetBulkEditModal();
+
+                const selectedRows = getSelectedSprayfieldRows();
+                const selectedIds = selectedRows.map(row => row.id);
                 if (selectedIdsContainer) {
                     selectedIdsContainer.innerHTML = '';
                     selectedIds.forEach(id => {
@@ -386,9 +888,167 @@
                 if (selectionCount) {
                     selectionCount.textContent = selectedIds.length.toString();
                 }
+
+                await loadBulkZoneData(selectedRows);
+            });
+
+            bulkEditModal.addEventListener('hidden.bs.modal', function () {
+                resetBulkEditModal();
             });
         }
 
+        bulkZoneEditors?.addEventListener('change', function (event) {
+            const panel = event.target.closest('.bulk-zone-panel');
+            if (!panel) return;
+
+            if (event.target.classList.contains('bulk-zone-toggle')) {
+                syncPanelApplyFlag(panel);
+            }
+
+            if (event.target.classList.contains('zone-active-input') ||
+                event.target.classList.contains('zone-percent-input')) {
+                if (event.target.classList.contains('zone-active-input')) {
+                    const row = event.target.closest('.zone-row');
+                    if (row) {
+                        syncZoneActiveFlag(row);
+                    }
+                }
+                calculatePanelZoneTotal(panel);
+            }
+
+            if (event.target.classList.contains('zone-removed-action')) {
+                toggleReassignSelect(panel);
+            }
+
+            if (event.target.getAttribute('data-field-suffix') === 'ZoneName') {
+                updateReassignOptions(panel);
+            }
+        });
+
+        bulkZoneEditors?.addEventListener('input', function (event) {
+            const panel = event.target.closest('.bulk-zone-panel');
+            if (!panel) return;
+
+            if (event.target.classList.contains('zone-percent-input')) {
+                calculatePanelZoneTotal(panel);
+            }
+
+            if (event.target.getAttribute('data-field-suffix') === 'ZoneName') {
+                updateReassignOptions(panel);
+            }
+        });
+
+        bulkZoneEditors?.addEventListener('click', function (event) {
+            const addButton = event.target.closest('.btn-add-zone');
+            if (addButton) {
+                const panel = addButton.closest('.bulk-zone-panel');
+                const tbody = panel?.querySelector('.bulk-zones-table-body');
+                if (!panel || !tbody) return;
+
+                const panelIndex = Number(panel.getAttribute('data-panel-index'));
+                tbody.insertAdjacentHTML('beforeend', buildZoneRow(panelIndex, tbody.querySelectorAll('.zone-row').length, {
+                    id: '',
+                    zoneName: '',
+                    percentOfField: 0,
+                    soilId: '',
+                    nozzleId: '',
+                    cropId: '',
+                    active: true
+                }));
+                reindexPanelRows(panel);
+                const lastRow = tbody.querySelector('.zone-row:last-child');
+                if (lastRow) {
+                    syncZoneActiveFlag(lastRow);
+                }
+                updateReassignOptions(panel);
+                calculatePanelZoneTotal(panel);
+                return;
+            }
+
+            const removeButton = event.target.closest('.btn-remove-zone');
+            if (!removeButton) return;
+
+            const panel = removeButton.closest('.bulk-zone-panel');
+            const row = removeButton.closest('.zone-row');
+            const tbody = panel?.querySelector('.bulk-zones-table-body');
+            if (!panel || !row || !tbody) return;
+
+            const rows = tbody.querySelectorAll('.zone-row');
+            if (rows.length <= 1) {
+                const replacement = buildZoneRow(Number(panel.getAttribute('data-panel-index')), 0, {
+                    id: '',
+                    zoneName: 'A',
+                    percentOfField: 100,
+                    soilId: '',
+                    nozzleId: '',
+                    cropId: '',
+                    active: true
+                });
+                tbody.innerHTML = replacement;
+            } else {
+                row.remove();
+            }
+
+            reindexPanelRows(panel);
+            panel.querySelectorAll('.zone-row').forEach(zoneRow => syncZoneActiveFlag(zoneRow));
+            updateReassignOptions(panel);
+            calculatePanelZoneTotal(panel);
+        });
+
+        bulkEditForm?.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            clearValidation();
+
+            if (!validateCheckedPanelTotals()) {
+                setModalAlert('Please adjust active zones so totals are exactly 100% for each checked sprayfield.');
+                return;
+            }
+
+            const formData = new FormData(bulkEditForm);
+            bulkEditSubmitButton?.setAttribute('disabled', 'disabled');
+
+            try {
+                const response = await fetch(bulkEditForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const payload = await response.json();
+                if (!response.ok) {
+                    markValidationErrors(payload.errors || {});
+                    setModalAlert(payload.message || 'Bulk edit could not be saved.');
+                    return;
+                }
+
+                if (window.sessionStorage) {
+                    sessionStorage.setItem('sprayfieldBulkEditFlash', JSON.stringify({
+                        type: 'success',
+                        message: payload.message || 'Sprayfield bulk edit saved successfully.'
+                    }));
+                }
+
+                window.location.reload();
+            } catch {
+                setModalAlert('Bulk edit could not be saved. Please try again.');
+            } finally {
+                bulkEditSubmitButton?.removeAttribute('disabled');
+            }
+        });
+
+        showStoredFlash();
+
+        @if (!string.IsNullOrWhiteSpace(duplicateSprayfieldId))
+        {
+            <text>
+            if (duplicateModal && window.bootstrap) {
+                const modal = bootstrap.Modal.getOrCreateInstance(duplicateModal);
+                modal.show();
+            }
+            </text>
+        }
         updateBulkEditButtonState();
     });
 </script>

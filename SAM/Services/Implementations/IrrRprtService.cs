@@ -5,6 +5,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 using SAM.Domain.Entities.Base;
 
 namespace SAM.Services.Implementations;
@@ -204,7 +205,7 @@ public class IrrRprtService : IIrrRprtService
 
         // Calculate aggregations
         var totalVolumeApplied = applications.Sum(i => i.VolumeGallons);
-        var totalAcres = sprayfieldList.Sum(s => s.SizeAcres);
+        var totalAcres = sprayfieldList.Sum(SprayfieldReportHelper.GetReportAcres);
         var totalApplicationRate = totalAcres > 0 ? totalVolumeApplied / (totalAcres * 27152m) : 0; // Convert gallons to inches (1 acre-inch = 27,152 gallons)
 
         // Calculate hydraulic loading rate (inches per year, annualized from monthly)
@@ -251,8 +252,9 @@ public class IrrRprtService : IIrrRprtService
             foreach (var sprayfield in sprayfieldList)
             {
                 var volume = volumeBySprayfield.GetValueOrDefault(sprayfield.Id, 0m);
-                if (volume <= 0 || sprayfield.SizeAcres <= 0) continue;
-                var result = _panCalculationService.Calculate(tkn, nh3, no2, no3, mr, vr, volume, sprayfield.SizeAcres);
+                var sprayfieldAcres = SprayfieldReportHelper.GetReportAcres(sprayfield);
+                if (volume <= 0 || sprayfieldAcres <= 0) continue;
+                var result = _panCalculationService.Calculate(tkn, nh3, no2, no3, mr, vr, volume, sprayfieldAcres);
                 totalPanLbs += result.PanLbs;
             }
 

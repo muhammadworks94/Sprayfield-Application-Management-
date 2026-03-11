@@ -5,6 +5,7 @@ using SAM.Controllers.Base;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 using SAM.ViewModels.Common;
 using SAM.ViewModels.SystemAdmin;
 using SAM.ViewModels.UserManagement;
@@ -346,12 +347,9 @@ public class CompanyManagementController : BaseController
             CompanyName = s.Company?.Name,
             FieldId = s.FieldId,
             SizeAcres = s.SizeAcres,
-            SoilId = s.SoilId,
-            SoilName = s.Soil?.TypeName,
-            CropId = s.CropId,
-            CropName = s.Crop?.Name,
-            NozzleId = s.NozzleId,
-            NozzleName = $"{s.Nozzle?.Manufacturer} {s.Nozzle?.Model}",
+            SoilName = SprayfieldZoneSummaryHelper.GetSoilSummary(s),
+            CropName = SprayfieldZoneSummaryHelper.GetCropSummary(s),
+            NozzleName = SprayfieldZoneSummaryHelper.GetNozzleSummary(s),
             FacilityId = s.FacilityId,
             FacilityName = s.Facility?.Name,
             HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr

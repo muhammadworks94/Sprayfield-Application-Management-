@@ -21,7 +21,6 @@ public class ApplicationComplianceService : IApplicationComplianceService
     {
         var zone = await _context.ApplicationZones
             .Include(z => z.Sprayfield)
-                .ThenInclude(f => f!.Crop)
             .FirstOrDefaultAsync(z => z.Id == request.ZoneId);
 
         if (zone?.Sprayfield == null)
@@ -112,7 +111,6 @@ public class ApplicationComplianceService : IApplicationComplianceService
         Guid? excludeApplicationId = null)
     {
         var field = await _context.Sprayfields
-            .Include(s => s.Crop)
             .FirstOrDefaultAsync(s => s.Id == sprayfieldId);
 
         if (field == null)
@@ -236,12 +234,6 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
     private async Task<decimal?> GetWeightedPanLimitAsync(Guid sprayfieldId)
     {
-        var fieldDefaultPanLimit = await _context.Sprayfields
-            .AsNoTracking()
-            .Where(s => s.Id == sprayfieldId)
-            .Select(s => s.Crop != null ? s.Crop.PANLimit : null)
-            .FirstOrDefaultAsync();
-
         var zones = await _context.ApplicationZones
             .AsNoTracking()
             .Include(z => z.Crop)
@@ -250,7 +242,7 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
         if (zones.Count == 0)
         {
-            return fieldDefaultPanLimit;
+            return null;
         }
 
         decimal weightedLimit = 0m;
@@ -258,7 +250,7 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
         foreach (var zone in zones)
         {
-            var zonePanLimit = zone.Crop?.PANLimit ?? fieldDefaultPanLimit;
+            var zonePanLimit = zone.Crop?.PANLimit;
             if (!zonePanLimit.HasValue || zonePanLimit.Value <= 0)
             {
                 continue;

@@ -7,6 +7,7 @@ using SAM.Controllers.Base;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 using SAM.ViewModels.Common;
 using SAM.ViewModels.SystemAdmin;
 
@@ -165,43 +166,19 @@ public partial class SystemAdminController : BaseController
                     CompanyName = s.Company?.Name,
                     FieldId = s.FieldId,
                     SizeAcres = s.SizeAcres,
-                    SoilId = s.SoilId,
-                    SoilName = s.Soil?.TypeName,
-                    CropId = s.CropId,
-                    CropName = s.Crop?.Name,
-                    NozzleId = s.NozzleId,
-                    NozzleName = $"{s.Nozzle?.Manufacturer} {s.Nozzle?.Model}",
+                    SoilName = SprayfieldZoneSummaryHelper.GetSoilSummary(s),
+                    CropName = SprayfieldZoneSummaryHelper.GetCropSummary(s),
+                    NozzleName = SprayfieldZoneSummaryHelper.GetNozzleSummary(s),
                     FacilityId = s.FacilityId,
                     FacilityName = s.Facility?.Name,
                     HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr,
                     HourlyRateInches = s.HourlyRateInches,
                     WeeklyRateInches = s.WeeklyRateInches
                 });
-
-                var soilsForBulkEdit = (await _soilService.GetAllAsync(companyId))
-                    .OrderBy(s => s.TypeName)
-                    .ToList();
-                var cropsForBulkEdit = (await _cropService.GetAllAsync(companyId))
-                    .OrderBy(c => c.Name)
-                    .ToList();
-                var nozzlesForBulkEdit = (await _nozzleService.GetAllAsync(companyId))
-                    .OrderBy(n => n.Manufacturer)
-                    .ThenBy(n => n.Model)
-                    .ToList();
                 var facilitiesForBulkEdit = (await _facilityService.GetAllAsync(companyId))
                     .OrderBy(f => f.Name)
                     .ToList();
 
-                viewModel.SprayfieldSoils = new SelectList(soilsForBulkEdit, "Id", "TypeName");
-                viewModel.SprayfieldCrops = new SelectList(cropsForBulkEdit, "Id", "Name");
-                viewModel.SprayfieldNozzles = new SelectList(
-                    nozzlesForBulkEdit.Select(n => new
-                    {
-                        n.Id,
-                        Name = $"{n.Manufacturer} {n.Model}"
-                    }),
-                    "Id",
-                    "Name");
                 viewModel.SprayfieldFacilities = new SelectList(facilitiesForBulkEdit, "Id", "Name");
                 viewModel.SprayfieldsFilter = await CreateSprayfieldsFilterViewModelAsync(isGlobalAdmin, companyId);
                 break;

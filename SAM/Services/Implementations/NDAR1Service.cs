@@ -7,6 +7,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 using System.Text.Json;
 
 namespace SAM.Services.Implementations;
@@ -74,13 +75,17 @@ public class NDAR1Service : INDAR1Service
             .Include(n => n.Company)
             .Include(n => n.Facility)
             .Include(n => n.Field1)
-                .ThenInclude(f => f.Crop)
+                .ThenInclude(f => f.ApplicationZones)
+                    .ThenInclude(z => z.Crop)
             .Include(n => n.Field2)
-                .ThenInclude(f => f.Crop)
+                .ThenInclude(f => f.ApplicationZones)
+                    .ThenInclude(z => z.Crop)
             .Include(n => n.Field3)
-                .ThenInclude(f => f.Crop)
+                .ThenInclude(f => f.ApplicationZones)
+                    .ThenInclude(z => z.Crop)
             .Include(n => n.Field4)
-                .ThenInclude(f => f.Crop)
+                .ThenInclude(f => f.ApplicationZones)
+                    .ThenInclude(z => z.Crop)
             .FirstOrDefaultAsync(n => n.Id == id);
     }
 
@@ -383,7 +388,7 @@ public class NDAR1Service : INDAR1Service
             if (dayApplications.Any())
             {
                 // Get sprayfield area
-                var areaAcres = sprayfield.AcresTotal ?? sprayfield.SizeAcres;
+                var areaAcres = SprayfieldReportHelper.GetReportAcres(sprayfield);
 
                 // Calculate volume; time is not tracked on monthly applications.
                 var volumeApplied = dayApplications.Sum(i => i.VolumeGallons);
@@ -504,8 +509,8 @@ public class NDAR1Service : INDAR1Service
             {
                 var col = fieldHeaderColumns[i];
                 worksheet.Cell($"{col}2").Value = fields[i].FieldId; // Field Name
-                worksheet.Cell($"{col}3").Value = fields[i].SizeAcres; // Area (wetted acres)
-                worksheet.Cell($"{col}4").Value = fields[i].Crop?.Name ?? ""; // Cover Crop
+                worksheet.Cell($"{col}3").Value = SprayfieldReportHelper.GetReportAcres(fields[i]); // Area (report acres)
+                worksheet.Cell($"{col}4").Value = SprayfieldZoneSummaryHelper.GetCropSummary(fields[i]) ?? ""; // Cover Crop
                 worksheet.Cell($"{col}5").Value = fields[i].HourlyRateInches; // Hourly Rate (in)
                 worksheet.Cell($"{col}6").Value = fields[i].WeeklyRateInches; // Weekly Rate (in/week)
             }

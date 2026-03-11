@@ -35,6 +35,7 @@
                             <th>Facility</th>
                             <th>Sprayfield</th>
                             <th>Zone</th>
+                            <th>Zone Acres</th>
                             <th>Volume (gal)</th>
                             <th>Nitrogen (mg/L)</th>
                             <th>Operator</th>
@@ -49,6 +50,7 @@
                             <td>@item.FacilityName</td>
                             <td>@item.SprayfieldName</td>
                             <td>@item.ZoneName</td>
+                            <td>@(item.ZoneAcres.HasValue ? $"{item.ZoneAcres.Value:F2}" : "-")</td>
                             <td>@item.VolumeGallons.ToString("F2")</td>
                             <td>@item.NitrogenMgL.ToString("F2")</td>
                             <td>@item.OperatorSnapshotName</td>
@@ -107,6 +109,9 @@
 
                                     <dt class="col-5">Zone</dt>
                                     <dd class="col-7 mb-1">@item.ZoneName</dd>
+
+                                    <dt class="col-5">Zone Acres</dt>
+                                    <dd class="col-7 mb-1">@(item.ZoneAcres.HasValue ? $"{item.ZoneAcres.Value:F2} acres" : "-")</dd>
 
                                     <dt class="col-5">Volume</dt>
                                     <dd class="col-7 mb-1">@item.VolumeGallons.ToString("F2") gal</dd>

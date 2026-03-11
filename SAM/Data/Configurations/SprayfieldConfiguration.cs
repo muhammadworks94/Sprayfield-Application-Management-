@@ -48,21 +48,6 @@ public class SprayfieldConfiguration : IEntityTypeConfiguration<Sprayfield>
             .HasForeignKey(s => s.CompanyId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(s => s.Soil)
-            .WithMany(so => so.Sprayfields)
-            .HasForeignKey(s => s.SoilId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(s => s.Crop)
-            .WithMany(cr => cr.Sprayfields)
-            .HasForeignKey(s => s.CropId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(s => s.Nozzle)
-            .WithMany(n => n.Sprayfields)
-            .HasForeignKey(s => s.NozzleId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.HasOne(s => s.Facility)
             .WithMany(f => f.Sprayfields)
             .HasForeignKey(s => s.FacilityId)

@@ -31,10 +31,6 @@ public class SystemAdminViewModel
     public FilterViewModel? SprayfieldsFilter { get; set; }
     public FilterViewModel? MonitoringWellsFilter { get; set; }
 
-    // Sprayfields bulk-edit lookup lists
-    public SelectList? SprayfieldSoils { get; set; }
-    public SelectList? SprayfieldCrops { get; set; }
-    public SelectList? SprayfieldNozzles { get; set; }
     public SelectList? SprayfieldFacilities { get; set; }
 }
 

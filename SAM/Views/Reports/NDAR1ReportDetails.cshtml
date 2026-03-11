@@ -1,6 +1,7 @@
 @model SAM.ViewModels.Reports.NDAR1ViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
+@using SAM.Utilities
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Non-Discharge Reports";
@@ -105,7 +106,7 @@
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
                                 <dd class="col-sm-7 mb-2">@report.Field1.SizeAcres acres</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(report.Field1.Crop?.Name ?? "N/A")</dd>
+                                <dd class="col-sm-7 mb-2">@(SprayfieldZoneSummaryHelper.GetCropSummary(report.Field1) ?? "N/A")</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
                                 <dd class="col-sm-7 mb-2">@report.Field1MonthlyLoading.ToString("F2") in</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
@@ -121,7 +122,7 @@
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
                                 <dd class="col-sm-7 mb-2">@report.Field2.SizeAcres acres</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(report.Field2.Crop?.Name ?? "N/A")</dd>
+                                <dd class="col-sm-7 mb-2">@(SprayfieldZoneSummaryHelper.GetCropSummary(report.Field2) ?? "N/A")</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
                                 <dd class="col-sm-7 mb-2">@report.Field2MonthlyLoading.ToString("F2") in</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
@@ -137,7 +138,7 @@
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
                                 <dd class="col-sm-7 mb-2">@report.Field3.SizeAcres acres</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(report.Field3.Crop?.Name ?? "N/A")</dd>
+                                <dd class="col-sm-7 mb-2">@(SprayfieldZoneSummaryHelper.GetCropSummary(report.Field3) ?? "N/A")</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
                                 <dd class="col-sm-7 mb-2">@report.Field3MonthlyLoading.ToString("F2") in</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
@@ -153,7 +154,7 @@
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
                                 <dd class="col-sm-7 mb-2">@report.Field4.SizeAcres acres</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(report.Field4.Crop?.Name ?? "N/A")</dd>
+                                <dd class="col-sm-7 mb-2">@(SprayfieldZoneSummaryHelper.GetCropSummary(report.Field4) ?? "N/A")</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
                                 <dd class="col-sm-7 mb-2">@report.Field4MonthlyLoading.ToString("F2") in</dd>
                                 <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>

@@ -39,21 +39,6 @@ public class Sprayfield : CompanyScopedEntity
     public bool Active { get; set; } = true;
 
     /// <summary>
-    /// Reference to the Soil entity.
-    /// </summary>
-    public Guid SoilId { get; set; }
-
-    /// <summary>
-    /// Reference to the Crop entity.
-    /// </summary>
-    public Guid CropId { get; set; }
-
-    /// <summary>
-    /// Reference to the Nozzle entity.
-    /// </summary>
-    public Guid NozzleId { get; set; }
-
-    /// <summary>
     /// Annual hydraulic loading limit in inches per year.
     /// </summary>
     public decimal HydraulicLoadingLimitInPerYr { get; set; }
@@ -69,9 +54,6 @@ public class Sprayfield : CompanyScopedEntity
     public decimal? WeeklyRateInches { get; set; }
 
     // Navigation properties
-    public Soil? Soil { get; set; }
-    public Crop? Crop { get; set; }
-    public Nozzle? Nozzle { get; set; }
     public Facility? Facility { get; set; }
     public Guid? FacilityId { get; set; }
     public ICollection<ApplicationZone> ApplicationZones { get; set; } = new List<ApplicationZone>();

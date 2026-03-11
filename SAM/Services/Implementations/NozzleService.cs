@@ -94,7 +94,7 @@ public class NozzleService : INozzleService
             throw new EntityNotFoundException(nameof(Nozzle), id);
 
         // Check if nozzle is referenced by sprayfields
-        var hasReferences = await _context.Sprayfields.AnyAsync(s => s.NozzleId == id);
+        var hasReferences = await _context.ApplicationZones.AnyAsync(z => z.NozzleId == id);
 
         if (hasReferences)
             throw new BusinessRuleException("Cannot delete nozzle because it is used by one or more sprayfields.");

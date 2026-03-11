@@ -12,6 +12,7 @@ public class MonthlyApplicationViewModel
     public Guid ZoneId { get; set; }
     public string? ZoneName { get; set; }
     public string? SprayfieldName { get; set; }
+    public decimal? ZoneAcres { get; set; }
     public DateTime ApplicationDate { get; set; }
     public decimal VolumeGallons { get; set; }
     public decimal NitrogenMgL { get; set; }

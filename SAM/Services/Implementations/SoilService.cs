@@ -92,7 +92,7 @@ public class SoilService : ISoilService
             throw new EntityNotFoundException(nameof(Soil), id);
 
         // Check if soil is referenced by sprayfields
-        var hasReferences = await _context.Sprayfields.AnyAsync(s => s.SoilId == id);
+        var hasReferences = await _context.ApplicationZones.AnyAsync(z => z.SoilId == id);
 
         if (hasReferences)
             throw new BusinessRuleException("Cannot delete soil because it is used by one or more sprayfields.");

@@ -45,22 +45,13 @@ public class SprayfieldViewModel
     [Display(Name = "Size (Wetted Acres)")]
     [Range(0, double.MaxValue, ErrorMessage = "Size must be a positive number.")]
     public decimal SizeAcres { get; set; }
-    
-    [Required]
-    [Display(Name = "Soil")]
-    public Guid SoilId { get; set; }
+
     public string? SoilName { get; set; }
-    
-    [Required]
-    [Display(Name = "Crop")]
-    public Guid CropId { get; set; }
+
     public string? CropName { get; set; }
-    
-    [Required]
-    [Display(Name = "Nozzle")]
-    public Guid NozzleId { get; set; }
+
     public string? NozzleName { get; set; }
-    
+
     [Display(Name = "Facility")]
     public Guid? FacilityId { get; set; }
     public string? FacilityName { get; set; }
@@ -77,6 +68,27 @@ public class SprayfieldViewModel
     [Display(Name = "Weekly Rate (inches/week)")]
     [Range(0, double.MaxValue, ErrorMessage = "Weekly rate must be a positive number.")]
     public decimal? WeeklyRateInches { get; set; }
+
+    public List<SprayfieldZoneDetailViewModel> Zones { get; set; } = new();
+}
+
+public class SprayfieldZoneDetailViewModel
+{
+    public Guid Id { get; set; }
+
+    public string ZoneName { get; set; } = string.Empty;
+
+    public decimal PercentOfField { get; set; }
+
+    public decimal Acres { get; set; }
+
+    public string? SoilName { get; set; }
+
+    public string? NozzleName { get; set; }
+
+    public string? CropName { get; set; }
+
+    public bool Active { get; set; }
 }
 
 public class SprayfieldCreateViewModel
@@ -94,19 +106,7 @@ public class SprayfieldCreateViewModel
     [Display(Name = "Size (Wetted Acres)")]
     [Range(0, double.MaxValue, ErrorMessage = "Size must be a positive number.")]
     public decimal SizeAcres { get; set; }
-    
-    [Required]
-    [Display(Name = "Soil")]
-    public Guid SoilId { get; set; }
-    
-    [Required]
-    [Display(Name = "Crop")]
-    public Guid CropId { get; set; }
-    
-    [Required]
-    [Display(Name = "Nozzle")]
-    public Guid NozzleId { get; set; }
-    
+
     [Display(Name = "Facility")]
     public Guid? FacilityId { get; set; }
     
@@ -143,19 +143,7 @@ public class SprayfieldEditViewModel
     [Display(Name = "Size (Wetted Acres)")]
     [Range(0, double.MaxValue, ErrorMessage = "Size must be a positive number.")]
     public decimal SizeAcres { get; set; }
-    
-    [Required]
-    [Display(Name = "Soil")]
-    public Guid SoilId { get; set; }
-    
-    [Required]
-    [Display(Name = "Crop")]
-    public Guid CropId { get; set; }
-    
-    [Required]
-    [Display(Name = "Nozzle")]
-    public Guid NozzleId { get; set; }
-    
+
     [Display(Name = "Facility")]
     public Guid? FacilityId { get; set; }
     
@@ -194,13 +182,26 @@ public class SprayfieldBulkEditViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Weekly rate must be a positive number.")]
     public decimal? WeeklyRateInches { get; set; }
 
-    public Guid? SoilId { get; set; }
-
-    public Guid? CropId { get; set; }
-
-    public Guid? NozzleId { get; set; }
-
     public Guid? FacilityId { get; set; }
+
+    public List<SprayfieldBulkZoneEditViewModel> ZoneEdits { get; set; } = new();
+}
+
+public class SprayfieldBulkZoneEditViewModel
+{
+    public Guid SprayfieldId { get; set; }
+
+    public string FieldId { get; set; } = string.Empty;
+
+    public bool ApplyZoneChanges { get; set; }
+
+    public List<ApplicationZoneInputViewModel> Zones { get; set; } = new();
+
+    [Display(Name = "Removed Zone Action")]
+    public string? RemovedZoneAction { get; set; } = "delete";
+
+    [Display(Name = "Reassign To Zone")]
+    public Guid? ReassignToZoneId { get; set; }
 }
 
 
