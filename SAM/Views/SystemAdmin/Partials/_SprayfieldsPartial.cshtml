@@ -49,8 +49,8 @@
         </div>
         @if (Model.Sprayfields.Any())
         {
-            <div id="sprayfieldsTableView" class="table-responsive">
-                <table class="table table-hover irrigates-table">
+            <div id="sprayfieldsTableView" class="table-responsive sprayfields-table-wrapper">
+                <table class="table table-hover irrigates-table sprayfields-table">
                     <thead>
                         <tr>
                             @if (isGlobalAdmin)
@@ -63,10 +63,10 @@
                             <th><i class="bi bi-rulers"></i> Size (Wetted)</th>
                             <th><i class="bi bi-droplet-half"></i> Hourly Rate</th>
                             <th><i class="bi bi-droplet"></i> Weekly Rate</th>
-                            <th><i class="bi bi-moisture"></i> Soil</th>
-                            <th><i class="bi bi-flower1"></i> Crop</th>
-                            <th><i class="bi bi-droplet"></i> Nozzle</th>
-                            <th><i class="bi bi-building"></i> Facility</th>
+                            <th class="sprayfield-wrap-col"><i class="bi bi-moisture"></i> Soil</th>
+                            <th class="sprayfield-wrap-col"><i class="bi bi-flower1"></i> Crop</th>
+                            <th class="sprayfield-wrap-col"><i class="bi bi-droplet"></i> Nozzle</th>
+                            <th class="sprayfield-wrap-col"><i class="bi bi-building"></i> Facility</th>
                             <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                         </tr>
                     </thead>
@@ -86,34 +86,42 @@
                                 <td>@sprayfield.SizeAcres.ToString("F2") Acres</td>
                                 <td>@(sprayfield.HourlyRateInches.HasValue ? $"{sprayfield.HourlyRateInches.Value:F2} in/hr" : "-")</td>
                                 <td>@(sprayfield.WeeklyRateInches.HasValue ? $"{sprayfield.WeeklyRateInches.Value:F2} in/week" : "-")</td>
-                                <td>@(sprayfield.SoilName ?? "-")</td>
-                                <td>@(sprayfield.CropName ?? "-")</td>
-                                <td>@(sprayfield.NozzleName ?? "-")</td>
-                                <td>@(sprayfield.FacilityName ?? "-")</td>
+                                <td class="sprayfield-wrap-col"><div class="sprayfield-wrap-text">@(sprayfield.SoilName ?? "-")</div></td>
+                                <td class="sprayfield-wrap-col"><div class="sprayfield-wrap-text">@(sprayfield.CropName ?? "-")</div></td>
+                                <td class="sprayfield-wrap-col"><div class="sprayfield-wrap-text">@(sprayfield.NozzleName ?? "-")</div></td>
+                                <td class="sprayfield-wrap-col"><div class="sprayfield-wrap-text">@(sprayfield.FacilityName ?? "-")</div></td>
                                 <td class="table-actions">
-                                    <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
-                                    @if (canManageRecords)
-                                    {
-                                        <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#duplicateSprayfieldModal"
-                                                data-sprayfield-id="@sprayfield.Id"
-                                                data-sprayfield-name="@sprayfield.FieldId">
-                                            <i class="bi bi-copy"></i> Duplicate
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteSprayfieldModal"
-                                                data-sprayfield-id="@sprayfield.Id"
-                                                data-sprayfield-name="@sprayfield.FieldId">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
-                                    }
+                                    <div class="sprayfield-actions">
+                                        
+                                        @if (canManageRecords)
+                                        {
+                                            <a asp-action="SprayfieldEdit"
+                                               asp-route-id="@sprayfield.Id"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Edit"
+                                               aria-label="Edit sprayfield @sprayfield.FieldId">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#duplicateSprayfieldModal"
+                                                    data-sprayfield-id="@sprayfield.Id"
+                                                    data-sprayfield-name="@sprayfield.FieldId"
+                                                    title="Duplicate"
+                                                    aria-label="Duplicate sprayfield @sprayfield.FieldId">
+                                                <i class="bi bi-copy"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteSprayfieldModal"
+                                                    data-sprayfield-id="@sprayfield.Id"
+                                                    data-sprayfield-name="@sprayfield.FieldId"
+                                                    title="Delete"
+                                                    aria-label="Delete sprayfield @sprayfield.FieldId">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -281,13 +289,17 @@
                         <span class="text-muted small">Check a sprayfield below to edit its zones.</span>
                     </div>
                     <div id="bulkZoneLoading" class="text-muted small mb-3 d-none">
-                        Loading selected sprayfield zones...
+                        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        <span>Loading selected sprayfield zones...</span>
                     </div>
                     <div id="bulkZoneEditors"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Apply Updates</button>
+                    <button type="submit" class="btn btn-primary" id="bulkEditSubmitButton">
+                        <span class="spinner-border spinner-border-sm me-2 d-none" aria-hidden="true" data-role="loading-spinner"></span>
+                        <span data-role="button-label">Apply Updates</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -359,7 +371,10 @@
         const bulkZoneEditors = document.getElementById('bulkZoneEditors');
         const bulkZoneLoading = document.getElementById('bulkZoneLoading');
         const bulkZoneEndpoint = '@Url.Action("GetSprayfieldBulkEditZoneData", "SystemAdmin")';
-        const bulkEditSubmitButton = bulkEditForm?.querySelector('button[type="submit"]');
+        const bulkEditSubmitButton = document.getElementById('bulkEditSubmitButton');
+        const bulkEditSubmitSpinner = bulkEditSubmitButton?.querySelector('[data-role="loading-spinner"]');
+        const bulkEditSubmitLabel = bulkEditSubmitButton?.querySelector('[data-role="button-label"]');
+        const antiForgeryToken = bulkEditForm?.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
         const bulkEditState = {
             options: {
                 soils: [],
@@ -458,6 +473,16 @@
             setModalAlert('');
         }
 
+        function setBulkEditSubmittingState(isSubmitting) {
+            if (!bulkEditSubmitButton) return;
+
+            bulkEditSubmitButton.disabled = isSubmitting;
+            bulkEditSubmitSpinner?.classList.toggle('d-none', !isSubmitting);
+            if (bulkEditSubmitLabel) {
+                bulkEditSubmitLabel.textContent = isSubmitting ? 'Applying...' : 'Apply Updates';
+            }
+        }
+
         function renderOptions(options, selectedValue, placeholder) {
             const normalizedSelected = selectedValue ? selectedValue.toString().toLowerCase() : '';
             const items = [`<option value="">${placeholder}</option>`];
@@ -487,6 +512,22 @@
             }
 
             return value.replace(/([ #;?%&,.+*~':"!^$[\]()=>|\/@@])/g, '\\$1');
+        }
+
+        async function parseResponsePayload(response, fallbackMessage) {
+            const responseText = await response.text();
+
+            if (!responseText) {
+                return { message: fallbackMessage };
+            }
+
+            try {
+                return JSON.parse(responseText);
+            } catch {
+                return {
+                    message: responseText.length > 300 ? fallbackMessage : responseText
+                };
+            }
         }
 
         function buildZoneRow(panelIndex, zoneIndex, zone) {
@@ -749,15 +790,20 @@
             bulkZoneLoading.classList.remove('d-none');
             setModalAlert('');
 
-            const params = new URLSearchParams();
-            selectedRows.forEach(row => params.append('sprayfieldIds', row.id));
+            const formData = new FormData();
+            if (antiForgeryToken) {
+                formData.append('__RequestVerificationToken', antiForgeryToken);
+            }
+            selectedRows.forEach(row => formData.append('sprayfieldIds', row.id));
 
             try {
-                const response = await fetch(`${bulkZoneEndpoint}?${params.toString()}`, {
+                const response = await fetch(bulkZoneEndpoint, {
+                    method: 'POST',
+                    body: formData,
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
 
-                const payload = await response.json();
+                const payload = await parseResponsePayload(response, 'Unable to load sprayfield zones for bulk edit.');
                 if (!response.ok) {
                     throw new Error(payload?.message || 'Unable to load sprayfield zones for bulk edit.');
                 }
@@ -784,6 +830,7 @@
             if (bulkZoneEditors) {
                 bulkZoneEditors.innerHTML = '';
             }
+            setBulkEditSubmittingState(false);
             clearValidation();
         }
 
@@ -1005,7 +1052,7 @@
             }
 
             const formData = new FormData(bulkEditForm);
-            bulkEditSubmitButton?.setAttribute('disabled', 'disabled');
+            setBulkEditSubmittingState(true);
 
             try {
                 const response = await fetch(bulkEditForm.action, {
@@ -1016,7 +1063,7 @@
                     }
                 });
 
-                const payload = await response.json();
+                const payload = await parseResponsePayload(response, 'Bulk edit could not be saved.');
                 if (!response.ok) {
                     markValidationErrors(payload.errors || {});
                     setModalAlert(payload.message || 'Bulk edit could not be saved.');
@@ -1034,7 +1081,7 @@
             } catch {
                 setModalAlert('Bulk edit could not be saved. Please try again.');
             } finally {
-                bulkEditSubmitButton?.removeAttribute('disabled');
+                setBulkEditSubmittingState(false);
             }
         });
 

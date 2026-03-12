@@ -285,6 +285,20 @@ public partial class SystemAdminController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> GetSprayfieldBulkEditZoneData([FromQuery] List<Guid> sprayfieldIds)
     {
+        return await BuildSprayfieldBulkEditZoneDataAsync(sprayfieldIds);
+    }
+
+    [HttpPost]
+    [ActionName("GetSprayfieldBulkEditZoneData")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> PostSprayfieldBulkEditZoneData([FromForm] List<Guid> sprayfieldIds)
+    {
+        return await BuildSprayfieldBulkEditZoneDataAsync(sprayfieldIds);
+    }
+
+    private async Task<IActionResult> BuildSprayfieldBulkEditZoneDataAsync(List<Guid> sprayfieldIds)
+    {
         if (!await IsGlobalAdminAsync())
         {
             return Forbid();
