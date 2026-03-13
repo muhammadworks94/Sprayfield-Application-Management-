@@ -18,9 +18,9 @@
 <div class="card">
     <div class="card-body">
         <div id="sprayfieldBulkEditFlash" class="d-none alert mb-4" role="alert"></div>
-        <div class="d-flex justify-content-between align-items-center mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-5 page-section-header">
             <h4 class="mb-0">Sprayfield</h4>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
                             class="btn btn-outline-secondary btn-sm active"
@@ -49,13 +49,13 @@
         </div>
         @if (Model.Sprayfields.Any())
         {
-            <div id="sprayfieldsTableView" class="table-responsive sprayfields-table-wrapper">
+            <div id="sprayfieldsTableView" class="table-responsive responsive-table wide-data-table sprayfields-table-wrapper">
                 <table class="table table-hover irrigates-table sprayfields-table">
                     <thead>
                         <tr>
                             @if (isGlobalAdmin)
                             {
-                                <th class="table-actions">
+                                <th class="sprayfield-select-col">
                                     <input class="form-check-input" type="checkbox" id="selectAllSprayfields" aria-label="Select all sprayfields" />
                                 </th>
                             }
@@ -76,7 +76,7 @@
                             <tr>
                                 @if (isGlobalAdmin)
                                 {
-                                    <td class="table-actions">
+                                    <td class="sprayfield-select-col">
                                         <input class="form-check-input sprayfield-select" type="checkbox" value="@sprayfield.Id" data-field-id="@sprayfield.FieldId" aria-label="Select sprayfield @sprayfield.FieldId" />
                                     </td>
                                 }
@@ -129,7 +129,7 @@
                 </table>
             </div>
 
-            <div id="sprayfieldsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+            <div id="sprayfieldsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
                 @foreach (var sprayfield in Model.Sprayfields)
                 {
                     <div class="col">
@@ -141,7 +141,7 @@
                             </h6>
                             <div class="card-body d-flex flex-column">
 
-                                <dl class="row small mb-3">
+                                <dl class="row small mb-3 responsive-detail-list">
                                     <dt class="col-6"><i class="bi bi-rulers me-1"></i>Size (Wetted)</dt>
                                     <dd class="col-6 mb-1">@sprayfield.SizeAcres.ToString("F2") acres</dd>
 

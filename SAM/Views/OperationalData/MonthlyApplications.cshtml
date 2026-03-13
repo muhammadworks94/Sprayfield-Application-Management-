@@ -3,7 +3,7 @@
     ViewData["Title"] = "Monthly Applications";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">Track and manage monthly spray application records.</p>
     </div>
@@ -11,7 +11,7 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-4 page-section-header">
             <div class="btn-group" role="group" aria-label="View mode toggle">
                 <button type="button" class="btn btn-outline-secondary btn-sm active" id="monthlyAppsTableViewBtn">
                     <i class="bi bi-table"></i> Table
@@ -27,7 +27,7 @@
 
         @if (Model.Any())
         {
-            <div id="monthlyAppsTableView" class="table-responsive">
+            <div id="monthlyAppsTableView" class="table-responsive responsive-table">
                 <table class="table table-hover">
                     <thead>
                         <tr>
@@ -93,7 +93,7 @@
                 </table>
             </div>
 
-            <div id="monthlyAppsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+            <div id="monthlyAppsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
                 @foreach (var item in Model)
                 {
                     <div class="col">

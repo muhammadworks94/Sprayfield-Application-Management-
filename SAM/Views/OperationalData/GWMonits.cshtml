@@ -12,7 +12,7 @@
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">Manage groundwater monitoring data and records</p>
     </div>
@@ -57,9 +57,9 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-5">
+        <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
             <h4 class="mb-0"> Groundwater Monitoring List</h4>
-            <div class="d-flex">
+            <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
                             class="btn btn-outline-secondary btn-sm active"
@@ -82,7 +82,7 @@
         </div>
         @if (Model.Any())
         {
-            <div id="gwmonitsTableView" class="table-responsive">
+            <div id="gwmonitsTableView" class="table-responsive responsive-table">
                 <table class="table table-hover gwmonits-table">
                     <thead>
                         <tr>
@@ -159,7 +159,7 @@
                 </table>
             </div>
 
-            <div id="gwmonitsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+            <div id="gwmonitsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
                 @foreach (var gwMonit in Model)
                 {
                     <div class="col">

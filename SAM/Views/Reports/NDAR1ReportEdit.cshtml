@@ -10,7 +10,7 @@
     var daysInMonth = DateTime.DaysInMonth(Model.Year, (int)Model.Month);
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">Edit NDAR-1 report data for @Model.Month @Model.Year</p>
     </div>
@@ -111,7 +111,7 @@
                 <div class="form-section-title">Daily Weather Data</div>
                 <p class="text-muted small">Enter daily weather values. Leave blank if no data available.</p>
                 
-                <div class="table-responsive">
+                <div class="table-responsive responsive-table wide-data-table">
                     <table class="table table-bordered table-sm">
                         <thead>
                             <tr>
@@ -157,7 +157,7 @@
                     <div class="form-section-title">Field 1 Daily Data</div>
                     <p class="text-muted small">Enter daily irrigation data for Field 1.</p>
                     
-                    <div class="table-responsive">
+                <div class="table-responsive responsive-table wide-data-table">
                         <table class="table table-bordered table-sm">
                             <thead>
                                 <tr>
@@ -221,7 +221,7 @@
                     <div class="form-section-title">Field 2 Daily Data</div>
                     <p class="text-muted small">Enter daily irrigation data for Field 2.</p>
                     
-                    <div class="table-responsive">
+                <div class="table-responsive responsive-table wide-data-table">
                         <table class="table table-bordered table-sm">
                             <thead>
                                 <tr>
@@ -285,7 +285,7 @@
                     <div class="form-section-title">Field 3 Daily Data</div>
                     <p class="text-muted small">Enter daily irrigation data for Field 3.</p>
                     
-                    <div class="table-responsive">
+                <div class="table-responsive responsive-table wide-data-table">
                         <table class="table table-bordered table-sm">
                             <thead>
                                 <tr>
@@ -349,7 +349,7 @@
                     <div class="form-section-title">Field 4 Daily Data</div>
                     <p class="text-muted small">Enter daily irrigation data for Field 4.</p>
                     
-                    <div class="table-responsive">
+                <div class="table-responsive responsive-table wide-data-table">
                         <table class="table table-bordered table-sm">
                             <thead>
                                 <tr>
@@ -407,7 +407,7 @@
                 </div>
             }
 
-            <div class="d-flex justify-content-end gap-2 mt-4">
+            <div class="d-flex justify-content-end gap-2 mt-4 responsive-form-actions">
                 <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> Save Changes

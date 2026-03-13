@@ -38,7 +38,7 @@
                 </header>
             }
             
-            <main role="main" class="p-4 app-main-shell">
+            <main role="main" class="p-4 app-main-shell responsive-page-shell">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     var breadcrumbs = BreadcrumbService.Build(ViewContext);
