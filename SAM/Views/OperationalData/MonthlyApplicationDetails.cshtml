@@ -3,6 +3,18 @@
     ViewData["Title"] = "Monthly Application Details";
 }
 
+@section PageTitleInline {
+    <span tabindex="0"
+          role="button"
+          class="text-info"
+          data-bs-toggle="tooltip"
+          data-bs-html="true"
+          data-bs-placement="left"
+          title="<strong>Monthly Application Backend Logic</strong><br/>Wastewater PAN formula used here:<br/>PAN (lbs) = {[MR x (TKN - NH3)] + (1 - VR) x NH3 + NO2 + NO3} x 8.34 x Volume (mgal).<br/>PAN Loading (lbs/acre) = PAN (lbs) / acres.<br/>MR/VR are from Facility defaults (40%/50% fallback), chemistry comes from WWChar monthly values.<br/>Annual PAN limit threshold comes from Crop PANLimit (derived at crop save).<br/>System computes 12-month rolling PAN/hydraulic utilization and warning thresholds.">
+        <i class="bi bi-info-circle fs-5"></i>
+    </span>
+}
+
 <div class="mb-4">
     <p class="text-muted mb-0">Review monthly application entry details.</p>
 </div>
@@ -49,3 +61,14 @@
         </dl>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+                bootstrap.Tooltip.getOrCreateInstance(element);
+            });
+        })();
+    </script>
+}
+

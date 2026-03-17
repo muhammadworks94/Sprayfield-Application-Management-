@@ -4,7 +4,7 @@ namespace SAM.Services.Implementations;
 
 /// <summary>
 /// Calculates PAN (Plant Available Nitrogen) and PAN Loading using the client formula.
-/// PAN (lbs) = { [MR×(TKN−NH₃)] + (1-VR)×NH₃ + NO₂ + NO₃ } × 8.34 × (volumeGallons/1_000_000).
+/// PAN (lbs) = { [MR x (TKN - NH3)] + (1 - VR) x NH3 + NO2 + NO3 } x 8.34 x (volumeGallons/1_000_000).
 /// PAN Loading (lbs/acre) = PAN (lbs) / acres.
 /// </summary>
 public class PANCalculationService : IPANCalculationService
@@ -28,7 +28,7 @@ public class PANCalculationService : IPANCalculationService
         var no2 = no2MgL ?? 0m;
         var no3 = no3MgL ?? 0m;
 
-        // PAN (lbs) = { [MR×(TKN−NH₃)] + (1-VR)×NH₃ + NO₂ + NO₃ } × 8.34 × (volumeGallons/1_000_000)
+        // PAN (lbs) = { [MR x (TKN - NH3)] + (1 - VR) x NH3 + NO2 + NO3 } x 8.34 x (volumeGallons/1_000_000)
         var organicN = (tkn - nh3) > 0 ? (tkn - nh3) : 0m;
         var mineralized = mineralizationRate * organicN;
         var nh3AfterVolatilization = (1m - volatilizationRate) * nh3;
@@ -41,3 +41,4 @@ public class PANCalculationService : IPANCalculationService
         return new PANCalculationResult(panLbs, panLoadingLbsPerAcre);
     }
 }
+

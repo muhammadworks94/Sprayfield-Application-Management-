@@ -52,7 +52,10 @@
                     <div class="page-title-header mb-4">
                         <div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
                             <div>
-                                <h1 class="h3 fw-bold mb-1">@ViewData["Title"]</h1>
+                                <h1 class="h3 fw-bold mb-1 d-inline-flex align-items-center gap-2">
+                                    @ViewData["Title"]
+                                    @await RenderSectionAsync("PageTitleInline", required: false)
+                                </h1>
                                 @if (ViewData["PageSubtitle"] != null)
                                 {
                                     <p class="text-muted mb-0 small">@ViewData["PageSubtitle"]</p>

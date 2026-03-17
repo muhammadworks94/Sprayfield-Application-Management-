@@ -3,6 +3,18 @@
     ViewData["Title"] = "Create Crop";
 }
 
+@section PageTitleInline {
+    <span tabindex="0"
+          role="button"
+          class="text-info"
+          data-bs-toggle="tooltip"
+          data-bs-html="true"
+          data-bs-placement="left"
+          title="<strong>Crop Backend Logic</strong><br/>At Crop Create/Edit, Annual PAN Limit is derived as PANLimit = NUptake.<br/>This value is used as the compliance threshold limit (lbs/acre/year).<br/><br/><strong>Wastewater PAN Formula (used in Monthly Application and reports):</strong><br/>PAN (lbs) = {[MR x (TKN - NH3)] + (1 - VR) x NH3 + NO2 + NO3} x 8.34 x Volume (mgal).<br/>PAN Loading (lbs/acre) = PAN (lbs) / acres.<br/>Defaults: MR=40%, VR=50%.">
+        <i class="bi bi-info-circle fs-5"></i>
+    </span>
+}
+
 <div class="mb-4">
     <p class="text-muted mb-0">Add a new crop type to the system</p>
 </div>
@@ -26,5 +38,13 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+                bootstrap.Tooltip.getOrCreateInstance(element);
+            });
+        })();
+    </script>
 }
+
 

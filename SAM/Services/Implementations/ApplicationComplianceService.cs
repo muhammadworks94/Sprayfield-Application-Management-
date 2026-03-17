@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SAM.Data;
+using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
 
@@ -7,14 +8,15 @@ namespace SAM.Services.Implementations;
 
 public class ApplicationComplianceService : IApplicationComplianceService
 {
-    private const decimal PoundsFactor = 8.34m / 1_000_000m;
     private const decimal GallonsPerAcreInch = 27152m;
 
     private readonly ApplicationDbContext _context;
+    private readonly IPANCalculationService _panCalculationService;
 
-    public ApplicationComplianceService(ApplicationDbContext context)
+    public ApplicationComplianceService(ApplicationDbContext context, IPANCalculationService panCalculationService)
     {
         _context = context;
+        _panCalculationService = panCalculationService;
     }
 
     public async Task<ComplianceProjectionResult> GetProjectedComplianceAsync(ComplianceProjectionRequest request)
@@ -36,15 +38,26 @@ public class ApplicationComplianceService : IApplicationComplianceService
         var field = zone.Sprayfield;
         var asOfDate = request.ApplicationDate.Date;
         var windowStart = asOfDate.AddDays(-364);
+        var facilityInputs = await GetFacilityPanInputsAsync(request.FacilityId);
+        var chemistryByMonth = await GetChemistryByMonthAsync(request.FacilityId, windowStart, asOfDate);
 
         var historicalData = await GetHistoricalDataAsync(
             request.FacilityId,
             field.Id,
             windowStart,
             asOfDate,
-            request.ExistingApplicationId);
+            request.ExistingApplicationId,
+            chemistryByMonth,
+            facilityInputs.MineralizationRate,
+            facilityInputs.VolatilizationRate);
 
-        var prospectivePanLbs = request.VolumeGallons * request.NitrogenMgL * PoundsFactor;
+        var prospectivePanLbs = CalculatePanLbs(
+            request.ApplicationDate,
+            request.VolumeGallons,
+            request.NitrogenMgL,
+            chemistryByMonth,
+            facilityInputs.MineralizationRate,
+            facilityInputs.VolatilizationRate);
         var projectedPanLbs = historicalData.HistoricalPanLbs + prospectivePanLbs;
         var projectedGallons = historicalData.HistoricalGallons + request.VolumeGallons;
 
@@ -120,7 +133,17 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
         var endDate = asOfDate.Date;
         var startDate = endDate.AddDays(-364);
-        var historicalData = await GetHistoricalDataAsync(facilityId, sprayfieldId, startDate, endDate, excludeApplicationId);
+        var facilityInputs = await GetFacilityPanInputsAsync(facilityId);
+        var chemistryByMonth = await GetChemistryByMonthAsync(facilityId, startDate, endDate);
+        var historicalData = await GetHistoricalDataAsync(
+            facilityId,
+            sprayfieldId,
+            startDate,
+            endDate,
+            excludeApplicationId,
+            chemistryByMonth,
+            facilityInputs.MineralizationRate,
+            facilityInputs.VolatilizationRate);
 
         return await BuildFieldMetricsAsync(
             facilityId,
@@ -139,7 +162,10 @@ public class ApplicationComplianceService : IApplicationComplianceService
         Guid sprayfieldId,
         DateTime startDate,
         DateTime endDate,
-        Guid? excludeApplicationId)
+        Guid? excludeApplicationId,
+        IReadOnlyDictionary<(int Year, int Month), PanChemistryInputs> chemistryByMonth,
+        decimal mineralizationRate,
+        decimal volatilizationRate)
     {
         var query = _context.MonthlyApplications
             .AsNoTracking()
@@ -157,8 +183,88 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
         var applications = await query.ToListAsync();
         var historicalGallons = applications.Sum(a => a.VolumeGallons);
-        var historicalPanLbs = applications.Sum(a => a.VolumeGallons * a.NitrogenMgL * PoundsFactor);
+        var historicalPanLbs = applications.Sum(a =>
+            CalculatePanLbs(
+                a.ApplicationDate,
+                a.VolumeGallons,
+                a.NitrogenMgL,
+                chemistryByMonth,
+                mineralizationRate,
+                volatilizationRate));
         return (historicalPanLbs, historicalGallons);
+    }
+
+    private async Task<PanRateInputs> GetFacilityPanInputsAsync(Guid facilityId)
+    {
+        var facility = await _context.Facilities
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == facilityId);
+
+        if (facility == null)
+        {
+            throw new InvalidOperationException("Facility not found.");
+        }
+
+        return new PanRateInputs(
+            (facility.MineralizationRatePercent ?? 40m) / 100m,
+            (facility.VolatilizationRatePercent ?? 50m) / 100m);
+    }
+
+    private async Task<IReadOnlyDictionary<(int Year, int Month), PanChemistryInputs>> GetChemistryByMonthAsync(
+        Guid facilityId,
+        DateTime startDate,
+        DateTime endDate)
+    {
+        var minYear = startDate.Year;
+        var maxYear = endDate.Year;
+
+        var wwChars = await _context.WWChars
+            .AsNoTracking()
+            .Where(w => w.FacilityId == facilityId && w.Year >= minYear && w.Year <= maxYear)
+            .ToListAsync();
+
+        return wwChars
+            .GroupBy(w => (w.Year, (int)w.Month))
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var latest = g
+                        .OrderByDescending(x => x.UpdatedDate ?? x.CreatedDate)
+                        .First();
+                    return new PanChemistryInputs(
+                        latest.TKNN,
+                        latest.NH3NDaily.Where(v => v.HasValue).Select(v => v!.Value).DefaultIfEmpty(0m).Average(),
+                        latest.NO2N,
+                        latest.NO3N);
+                });
+    }
+
+    private decimal CalculatePanLbs(
+        DateTime applicationDate,
+        decimal volumeGallons,
+        decimal fallbackNitrogenMgL,
+        IReadOnlyDictionary<(int Year, int Month), PanChemistryInputs> chemistryByMonth,
+        decimal mineralizationRate,
+        decimal volatilizationRate)
+    {
+        if (volumeGallons <= 0)
+        {
+            return 0m;
+        }
+
+        var key = (applicationDate.Year, applicationDate.Month);
+        if (chemistryByMonth.TryGetValue(key, out var chemistry))
+        {
+            var tkn = chemistry.TknMgL ?? fallbackNitrogenMgL;
+            return _panCalculationService
+                .Calculate(tkn, chemistry.Nh3MgL, chemistry.No2MgL, chemistry.No3MgL, mineralizationRate, volatilizationRate, volumeGallons, 1m)
+                .PanLbs;
+        }
+
+        return _panCalculationService
+            .Calculate(fallbackNitrogenMgL, 0m, 0m, 0m, mineralizationRate, volatilizationRate, volumeGallons, 1m)
+            .PanLbs;
     }
 
     private async Task<FieldRollingMetricsResult> BuildFieldMetricsAsync(
@@ -250,8 +356,18 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
         foreach (var zone in zones)
         {
-            var zonePanLimit = zone.Crop?.PANLimit;
+            if (zone.Crop == null)
+            {
+                continue;
+            }
+
+            var zonePanLimit = zone.Crop.PANLimit;
             if (!zonePanLimit.HasValue || zonePanLimit.Value <= 0)
+            {
+                zonePanLimit = PanLimitDerivation.DeriveFromNUptake(zone.Crop.NUptake);
+            }
+
+            if (zonePanLimit <= 0)
             {
                 continue;
             }
@@ -267,4 +383,7 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
         return weightedLimit;
     }
+
+    private sealed record PanRateInputs(decimal MineralizationRate, decimal VolatilizationRate);
+    private sealed record PanChemistryInputs(decimal? TknMgL, decimal? Nh3MgL, decimal? No2MgL, decimal? No3MgL);
 }

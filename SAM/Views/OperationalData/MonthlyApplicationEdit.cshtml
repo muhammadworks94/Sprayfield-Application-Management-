@@ -6,6 +6,18 @@
     var zones = ViewBag.Zones as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
 }
 
+@section PageTitleInline {
+    <span tabindex="0"
+          role="button"
+          class="text-info"
+          data-bs-toggle="tooltip"
+          data-bs-html="true"
+          data-bs-placement="left"
+          title="<strong>Monthly Application Backend Logic</strong><br/>Wastewater PAN formula used here:<br/>PAN (lbs) = {[MR x (TKN - NH3)] + (1 - VR) x NH3 + NO2 + NO3} x 8.34 x Volume (mgal).<br/>PAN Loading (lbs/acre) = PAN (lbs) / acres.<br/>MR/VR are from Facility defaults (40%/50% fallback), chemistry comes from WWChar monthly values.<br/>Annual PAN limit threshold comes from Crop PANLimit (derived at crop save).<br/>System computes 12-month rolling PAN/hydraulic utilization and asks confirmation on threshold warnings.">
+        <i class="bi bi-info-circle fs-5"></i>
+    </span>
+}
+
 <div class="mb-4">
     <p class="text-muted mb-0">Update the zone-level application entry.</p>
 </div>
@@ -79,6 +91,25 @@
     </div>
 </div>
 
+<div class="modal fade" id="complianceWarningModal" tabindex="-1" aria-labelledby="complianceWarningModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="complianceWarningModalLabel">Compliance Warning</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Please review these warnings before continuing:</p>
+                <ul class="mb-0 ps-3" id="complianceWarningList"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="complianceWarningContinueButton">Continue and Update Application</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
@@ -91,8 +122,12 @@
             const form = document.getElementById('monthlyApplicationForm');
             const confirmComplianceWarningsInput = document.getElementById('confirmComplianceWarningsInput');
             const complianceWarningSummaryInput = document.getElementById('complianceWarningSummaryInput');
+            const complianceWarningModalElement = document.getElementById('complianceWarningModal');
+            const complianceWarningList = document.getElementById('complianceWarningList');
+            const complianceWarningContinueButton = document.getElementById('complianceWarningContinueButton');
             const antiForgeryToken = form?.querySelector('input[name="__RequestVerificationToken"]')?.value;
             let isConfirmedSubmit = false;
+            let complianceWarningModalInstance = null;
 
             function resetSelect(select, placeholder) {
                 select.innerHTML = '';
@@ -100,6 +135,67 @@
                 option.value = '';
                 option.textContent = placeholder;
                 select.appendChild(option);
+            }
+
+            function ensureComplianceModal() {
+                if (!complianceWarningModalElement || typeof bootstrap === 'undefined') {
+                    return null;
+                }
+
+                if (!complianceWarningModalInstance) {
+                    complianceWarningModalInstance = new bootstrap.Modal(complianceWarningModalElement, {
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                }
+
+                return complianceWarningModalInstance;
+            }
+
+            function escapeHtml(text) {
+                return String(text ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function showComplianceWarningModal(warnings, continueLabel) {
+                const modal = ensureComplianceModal();
+                if (!modal || !complianceWarningList || !complianceWarningContinueButton) {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.warning((warnings || []).join(' '), 'Compliance warning');
+                    }
+
+                    return Promise.resolve(false);
+                }
+
+                complianceWarningList.innerHTML = (warnings || [])
+                    .map(warning => `<li>${escapeHtml(warning)}</li>`)
+                    .join('');
+                complianceWarningContinueButton.textContent = continueLabel;
+
+                if (typeof toastr !== 'undefined') {
+                    toastr.warning((warnings || []).join(' '), 'Compliance warning');
+                }
+
+                return new Promise(resolve => {
+                    let approved = false;
+
+                    const onContinue = () => {
+                        approved = true;
+                        modal.hide();
+                    };
+
+                    const onHidden = () => {
+                        resolve(approved);
+                    };
+
+                    complianceWarningContinueButton.addEventListener('click', onContinue, { once: true });
+                    complianceWarningModalElement.addEventListener('hidden.bs.modal', onHidden, { once: true });
+                    modal.show();
+                });
             }
 
             async function loadSprayfields(facilityId) {
@@ -192,7 +288,7 @@
 
                 const warnings = result.warnings || [];
                 if (result.requiresConfirmation && warnings.length > 0) {
-                    const approved = window.confirm(warnings.join('\n') + '\n\nDo you want to continue and update this application?');
+                    const approved = await showComplianceWarningModal(warnings, 'Continue and Update Application');
                     if (!approved) {
                         return;
                     }
@@ -204,6 +300,11 @@
                 isConfirmedSubmit = true;
                 form.submit();
             });
+
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+                bootstrap.Tooltip.getOrCreateInstance(element);
+            });
         })();
     </script>
 }
+
