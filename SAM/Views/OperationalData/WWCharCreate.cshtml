@@ -83,7 +83,12 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="NO2N" class="form-label"></label>
+                            <label asp-for="NO2N" class="form-label">
+                                NO2 as N
+                                <i class="bi bi-info-circle ms-1 text-muted"
+                                   title="Nitrite as Nitrogen (mg/L)"
+                                   aria-label="Nitrite as Nitrogen (mg/L)"></i>
+                            </label>
                             <input asp-for="NO2N" type="number" step="0.01" min="0" class="form-control" />
                             <span asp-validation-for="NO2N" class="text-danger"></span>
                             <small class="form-text text-muted">Nitrite as N (mg/L). Used for PAN calculation.</small>
@@ -91,7 +96,12 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="TKNN" class="form-label"></label>
+                            <label asp-for="TKNN" class="form-label">
+                                TKN as N
+                                <i class="bi bi-info-circle ms-1 text-muted"
+                                   title="Total Kjeldahl Nitrogen as Nitrogen (mg/L)"
+                                   aria-label="Total Kjeldahl Nitrogen as Nitrogen (mg/L)"></i>
+                            </label>
                             <input asp-for="TKNN" type="number" step="0.01" min="0" class="form-control" />
                             <span asp-validation-for="TKNN" class="text-danger"></span>
                             <small class="form-text text-muted">TKN as N (mg/L). Used for PAN calculation.</small>
@@ -99,7 +109,12 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="NO3N" class="form-label"></label>
+                            <label asp-for="NO3N" class="form-label">
+                                NO3 as N
+                                <i class="bi bi-info-circle ms-1 text-muted"
+                                   title="Nitrate as Nitrogen (mg/L)"
+                                   aria-label="Nitrate as Nitrogen (mg/L)"></i>
+                            </label>
                             <input asp-for="NO3N" type="number" step="0.01" min="0" class="form-control" />
                             <span asp-validation-for="NO3N" class="text-danger"></span>
                             <small class="form-text text-muted">NO3 as N (mg/L). Used for PAN calculation.</small>
