@@ -14,6 +14,21 @@
     var avgBOD5 = bod5Values.Any() ? bod5Values.Average() : (decimal?)null;
     var avgTSS = tssValues.Any() ? tssValues.Average() : (decimal?)null;
     var avgFlow = flowValues.Any() ? flowValues.Average() : (decimal?)null;
+    var flowMeasuringPointDisplay = Model.FlowMeasuringPoint switch
+    {
+        SAM.Domain.Enums.FlowMeasuringPointEnum.NoFlowGenerated => "No flow generated",
+        SAM.Domain.Enums.FlowMeasuringPointEnum.Influent => "Influent",
+        SAM.Domain.Enums.FlowMeasuringPointEnum.Effluent => "Effluent",
+        _ => "N/A"
+    };
+    var parameterMonitoringPointDisplay = Model.ParameterMonitoringPoint switch
+    {
+        SAM.Domain.Enums.ParameterMonitoringPointEnum.GroundwaterLowering => "Groundwater Lowering",
+        SAM.Domain.Enums.ParameterMonitoringPointEnum.SurfaceWater => "Surface Water",
+        SAM.Domain.Enums.ParameterMonitoringPointEnum.Influent => "Influent",
+        SAM.Domain.Enums.ParameterMonitoringPointEnum.Effluent => "Effluent",
+        _ => "N/A"
+    };
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
@@ -48,6 +63,12 @@
 
                     <dd class="col-sm-5"><i class="bi bi-calendar3 me-1"></i>Period:</dd>
                     <dd class="col-sm-7">@Model.Month @Model.Year</dd>
+
+                    <dd class="col-sm-5"><i class="bi bi-diagram-3 me-1"></i>Flow Measuring Point:</dd>
+                    <dd class="col-sm-7">@flowMeasuringPointDisplay</dd>
+
+                    <dd class="col-sm-5"><i class="bi bi-geo-alt me-1"></i>Parameter Monitoring Point:</dd>
+                    <dd class="col-sm-7">@parameterMonitoringPointDisplay</dd>
                 </dl>
             </div>
             <div class="col-md-6">
@@ -159,20 +180,20 @@
                 <thead>
                     <tr>
                         <th scope="col">Day</th>
-                        <th scope="col">BOD5<br />(mg/L)</th>
-                        <th scope="col">TSS<br />(mg/L)</th>
+                        <th scope="col">BOD5 <i class="bi bi-info-circle ms-1 text-muted" title="Biochemical Oxygen Demand, 5-day (mg/L)" aria-label="Biochemical Oxygen Demand, 5-day (mg/L)"></i><br />(mg/L)</th>
+                        <th scope="col">TSS <i class="bi bi-info-circle ms-1 text-muted" title="Total Suspended Solids (mg/L)" aria-label="Total Suspended Solids (mg/L)"></i><br />(mg/L)</th>
                         <th scope="col">Flow Rate<br />(GPM)</th>
                         <th scope="col">pH</th>
-                        <th scope="col">NH3-N<br />(mg/L)</th>
+                        <th scope="col">NH3-N <i class="bi bi-info-circle ms-1 text-muted" title="Ammonia as Nitrogen (mg/L)" aria-label="Ammonia as Nitrogen (mg/L)"></i><br />(mg/L)</th>
                         <th scope="col">Fecal Coliform<br />(CFU/100mL)</th>
                         <th scope="col">Residual Chloride<br />(mg/L)</th>
-                        <th scope="col">Ca<br />(mg/L)</th>
-                        <th scope="col">Mg<br />(mg/L)</th>
-                        <th scope="col">Na<br />(mg/L)</th>
-                        <th scope="col">SAR<br />(mg/L)</th>
-                        <th scope="col">TN<br />(mg/L)</th>
+                        <th scope="col">Ca <i class="bi bi-info-circle ms-1 text-muted" title="Calcium (mg/L)" aria-label="Calcium (mg/L)"></i><br />(mg/L)</th>
+                        <th scope="col">Mg <i class="bi bi-info-circle ms-1 text-muted" title="Magnesium (mg/L)" aria-label="Magnesium (mg/L)"></i><br />(mg/L)</th>
+                        <th scope="col">Na <i class="bi bi-info-circle ms-1 text-muted" title="Sodium (mg/L)" aria-label="Sodium (mg/L)"></i><br />(mg/L)</th>
+                        <th scope="col">SAR <i class="bi bi-info-circle ms-1 text-muted" title="Sodium Adsorption Ratio (mg/L)" aria-label="Sodium Adsorption Ratio (mg/L)"></i><br />(mg/L)</th>
+                        <th scope="col">TN <i class="bi bi-info-circle ms-1 text-muted" title="Total Nitrogen (mg/L)" aria-label="Total Nitrogen (mg/L)"></i><br />(mg/L)</th>
                         <th scope="col">Composite<br />Time</th>
-                        <th scope="col">ORC<br />On Site</th>
+                        <th scope="col">ORC <i class="bi bi-info-circle ms-1 text-muted" title="Operator in Responsible Charge On Site" aria-label="Operator in Responsible Charge On Site"></i><br />On Site</th>
                         <th scope="col">Lagoon<br />Freeboard<br />(inches)</th>
                     </tr>
                 </thead>

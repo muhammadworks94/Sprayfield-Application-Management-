@@ -109,9 +109,9 @@
                                     @* <a asp-action="NDAR1ReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
                                     </a> *@
-                                    <a asp-action="ExportNDAR1Report" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success">
+                                    @* <a asp-action="ExportNDAR1Report" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success">
                                         <i class="bi bi-download"></i> Export
-                                    </a>
+                                    </a> *@
                                     @if (canEdit)
                                     {
                                         <a asp-action="NDAR1ReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">

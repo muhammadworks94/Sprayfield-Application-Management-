@@ -5,6 +5,8 @@
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var orcOnSiteOptions = ViewBag.ORCOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var flowMeasuringPointOptions = ViewBag.FlowMeasuringPointOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var parameterMonitoringPointOptions = ViewBag.ParameterMonitoringPointOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
 }
 
 <div class="mb-4">
@@ -81,6 +83,27 @@
                 </div>
 
                 <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="FlowMeasuringPoint" class="form-label"></label>
+                            <select asp-for="FlowMeasuringPoint" asp-items="flowMeasuringPointOptions" class="form-select">
+                                <option value="">-- Select Flow Measuring Point --</option>
+                            </select>
+                            <span asp-validation-for="FlowMeasuringPoint" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="ParameterMonitoringPoint" class="form-label"></label>
+                            <select asp-for="ParameterMonitoringPoint" asp-items="parameterMonitoringPointOptions" class="form-select">
+                                <option value="">-- Select Parameter Monitoring Point --</option>
+                            </select>
+                            <span asp-validation-for="ParameterMonitoringPoint" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label asp-for="NO2N" class="form-label">
@@ -132,20 +155,20 @@
                         <thead>
                             <tr>
                                 <th>Day</th>
-                                <th>BOD5<br/>(mg/L)</th>
-                                <th>TSS<br/>(mg/L)</th>
+                                <th>BOD5 <i class="bi bi-info-circle ms-1 text-muted" title="Biochemical Oxygen Demand, 5-day (mg/L)" aria-label="Biochemical Oxygen Demand, 5-day (mg/L)"></i><br/>(mg/L)</th>
+                                <th>TSS <i class="bi bi-info-circle ms-1 text-muted" title="Total Suspended Solids (mg/L)" aria-label="Total Suspended Solids (mg/L)"></i><br/>(mg/L)</th>
                                 <th>Flow Rate<br/>(GPM)</th>
                                 <th>pH</th>
-                                <th>NH3-N<br/>(mg/L)</th>
+                                <th>NH3-N <i class="bi bi-info-circle ms-1 text-muted" title="Ammonia as Nitrogen (mg/L)" aria-label="Ammonia as Nitrogen (mg/L)"></i><br/>(mg/L)</th>
                                 <th>Fecal Coliform<br/>(CFU/100mL)</th>
                                 <th>Residual Chloride<br/>(mg/L)</th>
-                                <th>Ca<br/>(mg/L)</th>
-                                <th>Mg<br/>(mg/L)</th>
-                                <th>Na<br/>(mg/L)</th>
-                                <th>SAR<br/>(mg/L)</th>
-                                <th>TN<br/>(mg/L)</th>
+                                <th>Ca <i class="bi bi-info-circle ms-1 text-muted" title="Calcium (mg/L)" aria-label="Calcium (mg/L)"></i><br/>(mg/L)</th>
+                                <th>Mg <i class="bi bi-info-circle ms-1 text-muted" title="Magnesium (mg/L)" aria-label="Magnesium (mg/L)"></i><br/>(mg/L)</th>
+                                <th>Na <i class="bi bi-info-circle ms-1 text-muted" title="Sodium (mg/L)" aria-label="Sodium (mg/L)"></i><br/>(mg/L)</th>
+                                <th>SAR <i class="bi bi-info-circle ms-1 text-muted" title="Sodium Adsorption Ratio (mg/L)" aria-label="Sodium Adsorption Ratio (mg/L)"></i><br/>(mg/L)</th>
+                                <th>TN <i class="bi bi-info-circle ms-1 text-muted" title="Total Nitrogen (mg/L)" aria-label="Total Nitrogen (mg/L)"></i><br/>(mg/L)</th>
                                 <th>Composite<br/>Time</th>
-                                <th>ORC<br/>On Site</th>
+                                <th>ORC <i class="bi bi-info-circle ms-1 text-muted" title="Operator in Responsible Charge On Site" aria-label="Operator in Responsible Charge On Site"></i><br/>On Site</th>
                                 <th>Lagoon<br/>Freeboard<br/>(inches)</th>
                             </tr>
                         </thead>

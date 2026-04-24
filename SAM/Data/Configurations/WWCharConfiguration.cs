@@ -135,6 +135,12 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
         builder.Property(w => w.NO3N)
             .HasPrecision(18, 4);
 
+        builder.Property(w => w.FlowMeasuringPoint)
+            .HasConversion<int?>();
+
+        builder.Property(w => w.ParameterMonitoringPoint)
+            .HasConversion<int?>();
+
         builder.Property(w => w.CompositeTime)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),

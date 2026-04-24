@@ -76,6 +76,12 @@ public class WWCharViewModel
     [Display(Name = "NO3 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
     public decimal? NO3N { get; set; }
+
+    [Display(Name = "Flow Measuring Point")]
+    public FlowMeasuringPointEnum? FlowMeasuringPoint { get; set; }
+
+    [Display(Name = "Parameter Monitoring Point")]
+    public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -165,6 +171,12 @@ public class WWCharCreateViewModel
     [Display(Name = "NO3 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
     public decimal? NO3N { get; set; }
+
+    [Display(Name = "Flow Measuring Point")]
+    public FlowMeasuringPointEnum? FlowMeasuringPoint { get; set; }
+
+    [Display(Name = "Parameter Monitoring Point")]
+    public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -256,6 +268,12 @@ public class WWCharEditViewModel
     [Display(Name = "NO3 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
     public decimal? NO3N { get; set; }
+
+    [Display(Name = "Flow Measuring Point")]
+    public FlowMeasuringPointEnum? FlowMeasuringPoint { get; set; }
+
+    [Display(Name = "Parameter Monitoring Point")]
+    public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]

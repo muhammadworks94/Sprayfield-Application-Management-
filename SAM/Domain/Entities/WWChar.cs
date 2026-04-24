@@ -100,6 +100,16 @@ public class WWChar : CompanyScopedEntity
     public decimal? NO3N { get; set; }
 
     /// <summary>
+    /// Optional flow measuring point used when recording wastewater characteristics.
+    /// </summary>
+    public FlowMeasuringPointEnum? FlowMeasuringPoint { get; set; }
+
+    /// <summary>
+    /// Optional parameter monitoring point used when recording wastewater characteristics.
+    /// </summary>
+    public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
+
+    /// <summary>
     /// Array of daily composite sample times (max 31 items, stored as JSON).
     /// </summary>
     public List<string?> CompositeTime { get; set; } = new List<string?>();

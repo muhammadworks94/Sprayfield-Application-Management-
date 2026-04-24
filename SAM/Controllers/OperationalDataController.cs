@@ -783,7 +783,9 @@ namespace SAM.Controllers;
             LagoonFreeboard = w.LagoonFreeboard,
             LabCertification = w.LabCertification,
             CollectedBy = w.CollectedBy,
-            AnalyzedBy = w.AnalyzedBy
+            AnalyzedBy = w.AnalyzedBy,
+            FlowMeasuringPoint = w.FlowMeasuringPoint,
+            ParameterMonitoringPoint = w.ParameterMonitoringPoint
         });
 
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
@@ -832,7 +834,9 @@ namespace SAM.Controllers;
             AnalyzedBy = wwChar.AnalyzedBy,
             NO2N = wwChar.NO2N,
             TKNN = wwChar.TKNN,
-            NO3N = wwChar.NO3N
+            NO3N = wwChar.NO3N,
+            FlowMeasuringPoint = wwChar.FlowMeasuringPoint,
+            ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint
         };
 
         return View(viewModel);
@@ -879,6 +883,8 @@ namespace SAM.Controllers;
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Months = GetMonthSelectList();
         ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
+        ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
+        ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
 
         return View(viewModel);
     }
@@ -909,6 +915,8 @@ namespace SAM.Controllers;
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
+            ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
+            ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
             return View(viewModel);
         }
 
@@ -940,7 +948,9 @@ namespace SAM.Controllers;
                 AnalyzedBy = viewModel.AnalyzedBy,
                 NO2N = viewModel.NO2N,
                 TKNN = viewModel.TKNN,
-                NO3N = viewModel.NO3N
+                NO3N = viewModel.NO3N,
+                FlowMeasuringPoint = viewModel.FlowMeasuringPoint,
+                ParameterMonitoringPoint = viewModel.ParameterMonitoringPoint
             };
 
             await _wwCharService.CreateAsync(wwChar);
@@ -953,6 +963,8 @@ namespace SAM.Controllers;
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
+            ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
+            ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
             return View(viewModel);
         }
     }
@@ -994,7 +1006,9 @@ namespace SAM.Controllers;
             AnalyzedBy = wwChar.AnalyzedBy,
             NO2N = wwChar.NO2N.HasValue ? Math.Round(wwChar.NO2N.Value, 2) : (decimal?)null,
             TKNN = wwChar.TKNN.HasValue ? Math.Round(wwChar.TKNN.Value, 2) : (decimal?)null,
-            NO3N = wwChar.NO3N.HasValue ? Math.Round(wwChar.NO3N.Value, 2) : (decimal?)null
+            NO3N = wwChar.NO3N.HasValue ? Math.Round(wwChar.NO3N.Value, 2) : (decimal?)null,
+            FlowMeasuringPoint = wwChar.FlowMeasuringPoint,
+            ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint
         };
 
         // Ensure arrays are initialized with 31 entries
@@ -1003,6 +1017,8 @@ namespace SAM.Controllers;
         ViewBag.Facilities = await GetFacilitySelectListAsync(wwChar.CompanyId);
         ViewBag.Months = GetMonthSelectList();
         ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
+        ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
+        ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
 
         return View(viewModel);
     }
@@ -1022,6 +1038,8 @@ namespace SAM.Controllers;
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
+            ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
+            ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
             return View(viewModel);
         }
 
@@ -1054,6 +1072,8 @@ namespace SAM.Controllers;
             wwChar.NO2N = viewModel.NO2N;
             wwChar.TKNN = viewModel.TKNN;
             wwChar.NO3N = viewModel.NO3N;
+            wwChar.FlowMeasuringPoint = viewModel.FlowMeasuringPoint;
+            wwChar.ParameterMonitoringPoint = viewModel.ParameterMonitoringPoint;
 
             await _wwCharService.UpdateAsync(wwChar);
             TempData["SuccessMessage"] = $"Wastewater characteristics record updated for {wwChar.Month} {wwChar.Year}.";
@@ -1065,6 +1085,8 @@ namespace SAM.Controllers;
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
+            ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
+            ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
             return View(viewModel);
         }
     }
@@ -1881,6 +1903,35 @@ namespace SAM.Controllers;
             {
                 Value = e.ToString(),
                 Text = e.ToString()
+            }), "Value", "Text");
+    }
+
+    private SelectList GetFlowMeasuringPointSelectList()
+    {
+        return new SelectList(Enum.GetValues(typeof(FlowMeasuringPointEnum)).Cast<FlowMeasuringPointEnum>()
+            .Select(e => new SelectListItem
+            {
+                Value = e.ToString(),
+                Text = e switch
+                {
+                    FlowMeasuringPointEnum.NoFlowGenerated => "No flow generated",
+                    _ => e.ToString()
+                }
+            }), "Value", "Text");
+    }
+
+    private SelectList GetParameterMonitoringPointSelectList()
+    {
+        return new SelectList(Enum.GetValues(typeof(ParameterMonitoringPointEnum)).Cast<ParameterMonitoringPointEnum>()
+            .Select(e => new SelectListItem
+            {
+                Value = e.ToString(),
+                Text = e switch
+                {
+                    ParameterMonitoringPointEnum.GroundwaterLowering => "Groundwater Lowering",
+                    ParameterMonitoringPointEnum.SurfaceWater => "Surface Water",
+                    _ => e.ToString()
+                }
             }), "Value", "Text");
     }
 
