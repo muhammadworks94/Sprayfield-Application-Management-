@@ -425,6 +425,18 @@ public class ReportsController : BaseController
 
         try
         {
+            // Reuse an existing monthly report instead of recomputing/overwriting curated data.
+            var existing = await _ndar1Service.GetByFacilityMonthYearAsync(
+                viewModel.FacilityId,
+                (int)viewModel.Month,
+                viewModel.Year);
+
+            if (existing != null)
+            {
+                TempData["SuccessMessage"] = $"NDAR-1 report for {viewModel.Month} {viewModel.Year} already exists. Reusing the existing report.";
+                return RedirectToAction(nameof(NDAR1ReportDetails), new { id = existing.Id });
+            }
+
             // Generate the report
             var report = await _ndar1Service.GenerateMonthlyReportAsync(
                 viewModel.FacilityId,

@@ -218,16 +218,20 @@ public class IrrRprtService : IIrrRprtService
         decimal nitrogenLoadingRate = 0m;
         decimal panUptakeRate = 0m;
 
-        if (wwChar != null && wwChar.NH3NDaily != null && wwChar.NH3NDaily.Any())
+        var nh3Values = wwChar?.NH3NDaily?
+            .Where(v => v.HasValue)
+            .Select(v => v!.Value)
+            .ToList() ?? new List<decimal>();
+
+        var avgNH3N = nh3Values.Count > 0 ? nh3Values.Average() : (decimal?)null;
+
+        if (avgNH3N.HasValue)
         {
-            // Calculate average NH3N concentration (mg/L)
-            var avgNH3N = wwChar.NH3NDaily.Where(v => v.HasValue).Average(v => v.Value);
-            
             // Convert to lbs/acre/year: (mg/L * gallons * 8.34) / (acres * 1,000,000) * 12 months
             // Simplified: assuming average concentration applies to all applied volume
             if (totalAcres > 0)
             {
-                nitrogenLoadingRate = (avgNH3N * totalVolumeApplied * 8.34m) / (totalAcres * 1000000m) * 12m;
+                nitrogenLoadingRate = (avgNH3N.Value * totalVolumeApplied * 8.34m) / (totalAcres * 1000000m) * 12m;
             }
         }
 
@@ -237,9 +241,7 @@ public class IrrRprtService : IIrrRprtService
             var mr = (facility.MineralizationRatePercent ?? 40m) / 100m;
             var vr = (facility.VolatilizationRatePercent ?? 50m) / 100m;
             var tkn = wwChar?.TKNN ?? 0m;
-            var nh3 = wwChar?.NH3NDaily != null && wwChar.NH3NDaily.Any(v => v.HasValue)
-                ? wwChar.NH3NDaily.Where(v => v.HasValue).Average(v => v!.Value)
-                : 0m;
+            var nh3 = avgNH3N ?? 0m;
             var no2 = wwChar?.NO2N ?? 0m;
             var no3 = wwChar?.NO3N ?? 0m;
 
