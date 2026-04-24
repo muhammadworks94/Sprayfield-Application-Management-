@@ -759,6 +759,16 @@ small {
   white-space: nowrap !important; /* keep header and cell text on a single line */
 }
 
+/* Reports/IrrigationReports: keep natural spacing; scroll only when needed */
+#irrReportsTableView.irr-reports-table-wrapper {
+  overflow-x: auto;
+}
+
+#irrReportsTableView.irr-reports-table-wrapper .irrigates-table {
+  width: 100%;
+  min-width: 980px;
+}
+
 .sprayfields-table {
   min-width: 1200px;
   margin-bottom: 0;

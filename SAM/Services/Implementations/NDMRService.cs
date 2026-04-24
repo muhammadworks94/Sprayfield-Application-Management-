@@ -171,28 +171,60 @@ public class NDMRService : INDMRService
         // PPI 001 worksheet (daily flow monitoring)
         var flowWorksheet = workbook.Worksheet("PPI 001");
 
-        // Always write a consistent header for the flow sheet.
+        // Always write a consistent header for the master PPI sheet.
         WriteStandardHeader(
             flowWorksheet,
             facility,
             ndar1.Month,
             year,
-            "PPI 001",
-            "50050",
-            "Flow (GPD)",
+            "002",
+            "00310",
+            "BOD5 (mg/L)",
             "Flow Measuring Point");
 
-        // Preload irrigation events and groundwater samples for the month
-        var applications = await _context.MonthlyApplications
-            .Where(i => i.FacilityId == facility.Id &&
-                        i.ApplicationDate >= startDate &&
-                        i.ApplicationDate <= endDate)
-            .ToListAsync();
+        // Match client one-page NDMR code layout on the master sheet.
+        var masterParameterCodes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["D"] = "00310",
+            ["E"] = "00916",
+            ["F"] = "31616",
+            ["G"] = "00927",
+            ["H"] = "00620",
+            ["I"] = "00610",
+            ["J"] = "00625",
+            ["K"] = "00400",
+            ["L"] = "00665",
+            ["M"] = "00931",
+            ["N"] = "00929",
+            ["O"] = "00530",
+            ["P"] = "00940",
+            ["Q"] = "50060",
+            ["R"] = "00600",
+            ["S"] = "70300"
+        };
 
+        foreach (var mapping in masterParameterCodes)
+        {
+            flowWorksheet.Cell($"{mapping.Key}3").Value = mapping.Value;
+        }
+
+        // Preload irrigation events and groundwater samples for the month
         var gwMonits = await _context.GWMonits
             .Where(g => g.FacilityId == facility.Id &&
                         g.SampleDate >= startDate &&
                         g.SampleDate <= endDate)
+            .ToListAsync();
+
+        var wwChar = await _context.WWChars
+            .Where(w => w.FacilityId == facility.Id &&
+                        (int)w.Month == month &&
+                        w.Year == year)
+            .FirstOrDefaultAsync();
+
+        var operatorLogs = await _context.OperatorLogs
+            .Where(o => o.FacilityId == facility.Id &&
+                        o.LogDate >= startDate &&
+                        o.LogDate <= endDate)
             .ToListAsync();
 
         // Daily grid starts at row 6 (Day 1)
@@ -207,23 +239,98 @@ public class NDMRService : INDMRService
             // Column A: Day number
             flowWorksheet.Cell($"A{row}").Value = day;
 
-            // Column D: Flow (GPD)
-            var dayApplications = applications
-                .Where(i => i.ApplicationDate.Date == currentDate.Date)
+            // Column B/C: ORC arrival time and time-on-site (hours)
+            var dayOperatorLogs = operatorLogs
+                .Where(o => o.LogDate.Date == currentDate.Date)
                 .ToList();
 
-            if (dayApplications.Any())
+            if (dayOperatorLogs.Any())
             {
-                // Sum of total volume applied in gallons during the day.
-                // Interpreted as daily total flow (GPD) for NDMR purposes.
-                var totalGallons = dayApplications.Sum(i => i.VolumeGallons);
-                flowWorksheet.Cell($"D{row}").Value = totalGallons;
+                var firstLog = dayOperatorLogs
+                    .OrderBy(o => o.ArrivalTime)
+                    .First();
+
+                flowWorksheet.Cell($"B{row}").Value = firstLog.ArrivalTime;
+                flowWorksheet.Cell($"B{row}").Style.NumberFormat.Format = "hh:mm";
+
+                var avgHours = dayOperatorLogs.Average(o => o.TimeOnSiteHours);
+                flowWorksheet.Cell($"C{row}").Value = avgHours;
+                flowWorksheet.Cell($"C{row}").Style.NumberFormat.Format = "0.##";
             }
             else
             {
-                // Leave blank if no flow recorded, but preserve template formatting.
+                flowWorksheet.Cell($"B{row}").Clear(XLClearOptions.Contents);
+                flowWorksheet.Cell($"C{row}").Clear(XLClearOptions.Contents);
+            }
+
+            // Column D: BOD5 from WWChar daily array (00310)
+            var bod5Value = (wwChar != null &&
+                             wwChar.BOD5Daily != null &&
+                             wwChar.BOD5Daily.Count >= day &&
+                             wwChar.BOD5Daily[day - 1].HasValue)
+                ? wwChar.BOD5Daily[day - 1]
+                : null;
+            if (bod5Value.HasValue)
+            {
+                flowWorksheet.Cell($"D{row}").Value = bod5Value.Value;
+                flowWorksheet.Cell($"D{row}").Style.NumberFormat.Format = "0.00";
+            }
+            else
+            {
                 flowWorksheet.Cell($"D{row}").Clear(XLClearOptions.Contents);
             }
+
+            // Populate supported master-sheet parameter columns from GWMonits.
+            var daySamples = gwMonits
+                .Where(g => g.SampleDate.Date == currentDate.Date)
+                .ToList();
+
+            decimal? AverageOf(Func<GWMonit, decimal?> selector)
+            {
+                var values = daySamples
+                    .Select(selector)
+                    .Where(v => v.HasValue)
+                    .Select(v => v!.Value)
+                    .ToList();
+                return values.Any() ? values.Average() : null;
+            }
+
+            void SetDecimalCell(string col, decimal? value, string format)
+            {
+                var cell = flowWorksheet.Cell($"{col}{row}");
+                if (value.HasValue)
+                {
+                    cell.Value = value.Value;
+                    cell.Style.NumberFormat.Format = format;
+                }
+                else
+                {
+                    cell.Clear(XLClearOptions.Contents);
+                }
+            }
+
+            SetDecimalCell("F", AverageOf(g => g.FecalColiform), "#,##0.00");
+            SetDecimalCell("H", AverageOf(g => g.NO3N), "0.00");
+            SetDecimalCell("I", AverageOf(g => g.NH3N), "0.00");
+            SetDecimalCell("J", AverageOf(g => g.TKN), "0.00");
+            SetDecimalCell("K", AverageOf(g => g.PH), "0.00");
+
+            // Compatibility mapping: 00665 (Total Phosphorus) from TOC in current schema/data payload.
+            SetDecimalCell("L", AverageOf(g => g.TOC), "0.00");
+            SetDecimalCell("O", AverageOf(g => g.TSS), "0.00");
+
+            // Compatibility mapping: 50060 rendered from Chloride field in current schema/data payload.
+            SetDecimalCell("Q", AverageOf(g => g.Chloride), "0.00");
+
+            var totalN = AverageOf(g =>
+                (!g.TKN.HasValue && !g.NO3N.HasValue) ? null : (g.TKN ?? 0m) + (g.NO3N ?? 0m));
+            SetDecimalCell("R", totalN, "0.00");
+        }
+
+        // Prevent ###### for high-count fecal values in summary cells.
+        if (flowWorksheet.Column("F").Width < 11)
+        {
+            flowWorksheet.Column("F").Width = 11;
         }
 
         // Populate nitrogen PPIs (one parameter per sheet) using GWMonit data.
