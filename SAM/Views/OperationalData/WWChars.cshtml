@@ -84,16 +84,19 @@
                         @foreach (var wwChar in Model)
                         {
                             <tr>
-                                <td>@wwChar.FacilityName</td>
+                                <td>
+                                    <a asp-action="WWCharDetails"
+                                       asp-route-id="@wwChar.Id"
+                                       style="color: #0d6efd; cursor: pointer; text-decoration: none;">
+                                        @wwChar.FacilityName
+                                    </a>
+                                </td>
                                 <td>@wwChar.Month</td>
                                 <td>@wwChar.Year</td>
                                 @* <td>@(string.IsNullOrEmpty(wwChar.LabCertification) ? "-" : wwChar.LabCertification)</td> *@
                                 @* <td>@(string.IsNullOrEmpty(wwChar.CollectedBy) ? "-" : wwChar.CollectedBy)</td> *@
                                 @* <td>@(string.IsNullOrEmpty(wwChar.AnalyzedBy) ? "-" : wwChar.AnalyzedBy)</td> *@
                                 <td class="table-actions">
-                                    <a asp-action="WWCharDetails" asp-route-id="@wwChar.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
                                     @if (canEdit)
                                     {
                                         <a asp-action="WWCharEdit" asp-route-id="@wwChar.Id" class="btn btn-sm btn-outline-secondary">

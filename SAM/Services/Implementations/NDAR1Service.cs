@@ -664,6 +664,13 @@ public class NDAR1Service : INDAR1Service
         if (facility == null)
             throw new BusinessRuleException("Facility not found for this report.");
 
+        var irrigationReport = await _context.IrrRprts
+            .Where(i => i.FacilityId == facility.Id &&
+                        i.Month == report.Month &&
+                        i.Year == report.Year)
+            .OrderByDescending(i => i.UpdatedDate)
+            .FirstOrDefaultAsync();
+
         // Load template file
         var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Application Report (NDAR-1).xlsx");
         if (!File.Exists(templatePath))
@@ -823,7 +830,7 @@ public class NDAR1Service : INDAR1Service
             worksheet.Cell($"U{floatingRow}").Value = report.Field4TwelveMonthFloatingTotal;
         }
 
-        WriteCertificationPage(workbook, facility);
+        WriteCertificationPage(workbook, facility, irrigationReport?.ComplianceStatus);
 
         // Convert to byte array
         using var stream = new MemoryStream();
@@ -863,7 +870,7 @@ public class NDAR1Service : INDAR1Service
         return blockEndColumn;
     }
 
-    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility)
+    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility, ComplianceStatusEnum? complianceStatus)
     {
         var certificationWorksheet = workbook.Worksheets
             .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
@@ -877,6 +884,8 @@ public class NDAR1Service : INDAR1Service
         {
             return;
         }
+
+        WriteFacilityStatusComplianceRows(certificationWorksheet, complianceStatus);
 
         certificationWorksheet.Cell("C10").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("E11").Value = facility.OperatorNumber ?? string.Empty;
@@ -892,6 +901,43 @@ public class NDAR1Service : INDAR1Service
         certificationWorksheet.Cell("O13").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("T13").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("U14").Value = DateTime.Today.ToString("MM/dd/yyyy");
+    }
+
+    private static void WriteFacilityStatusComplianceRows(IXLWorksheet certificationWorksheet, ComplianceStatusEnum? complianceStatus)
+    {
+        var statusOptionText = complianceStatus switch
+        {
+            ComplianceStatusEnum.Compliant => "\u2611 Compliant    \u2610 Non-Compliant",
+            ComplianceStatusEnum.NonCompliant => "\u2610 Compliant    \u2611 Non-Compliant",
+            _ => "\u2610 Compliant    \u2610 Non-Compliant"
+        };
+
+        var rowAddresses = new[] { "A1", "A2", "A3", "A4", "A5" };
+        var defaultQuestionText = new[]
+        {
+            "Did the application rates exceed the limits in Attachment B of your permit?",
+            "Were adequate measures taken to prevent effluent ponding in or runoff from the sites?",
+            "Was a suitable vegetative cover maintained on all sites as specified in your permit?",
+            "Were all setbacks listed in your permit maintained for every application to each permitted site ?",
+            "Were all freeboards maintained in accordance with the specified freeboard heights in your permit?"
+        };
+
+        for (var i = 0; i < rowAddresses.Length; i++)
+        {
+            var rowCell = certificationWorksheet.Cell(rowAddresses[i]);
+            var questionText = rowCell.GetString().Trim();
+            if (string.IsNullOrWhiteSpace(questionText))
+            {
+                questionText = defaultQuestionText[i];
+            }
+
+            var richText = rowCell.GetRichText();
+            richText.ClearText();
+            richText.AddText($"{questionText}    ");
+            richText.AddText(statusOptionText)
+                .SetFontSize(10)
+                .SetBold(false);
+        }
     }
 }
 

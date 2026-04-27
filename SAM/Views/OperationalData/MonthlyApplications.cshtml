@@ -39,8 +39,8 @@
 
         @if (Model.Any())
         {
-            <div id="monthlyAppsTableView" class="table-responsive responsive-table">
-                <table class="table table-hover">
+            <div id="monthlyAppsTableView" class="table-responsive responsive-table monthly-apps-table-wrapper fixed-height-table-wrapper">
+                <table class="table table-hover monthly-apps-table">
                     <thead>
                         <tr>
                             <th>Date</th>
@@ -51,14 +51,18 @@
                             <th>Volume (gal)</th>
                             <th>Nitrogen (mg/L)</th>
                             <th>Operator</th>
-                            <th class="text-end">Actions</th>
+                            <th class="table-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                     @foreach (var item in Model)
                     {
                         <tr>
-                            <td>@item.ApplicationDate.ToString("MM/dd/yyyy")</td>
+                            <td>
+                                <a asp-action="MonthlyApplicationDetails" asp-route-id="@item.Id">
+                                    @item.ApplicationDate.ToString("MM/dd/yyyy")
+                                </a>
+                            </td>
                             <td>@item.FacilityName</td>
                             <td>@item.SprayfieldName</td>
                             <td>@item.ZoneName</td>
@@ -66,16 +70,13 @@
                             <td>@item.VolumeGallons.ToString("F2")</td>
                             <td>@item.NitrogenMgL.ToString("F2")</td>
                             <td>@item.OperatorSnapshotName</td>
-                            <td class="text-end">
-                                <div class="btn-group">
-                                    <a asp-action="MonthlyApplicationDetails" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> 
-                                    </a>
+                            <td class="table-actions">
+                                <div class="d-inline-flex flex-nowrap align-items-center gap-1">
                                     <a asp-action="MonthlyApplicationEdit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-pencil"></i> 
+                                        <i class="bi bi-pencil"></i> Edit
                                     </a>
                                     <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(item.Id.ToString().Replace("-", ""))">
-                                        <i class="bi bi-trash"></i> 
+                                        <i class="bi bi-trash"></i> Delete
                                     </button>
                                 </div>
                                 <div class="modal fade" id="deleteModal@(item.Id.ToString().Replace("-", ""))" tabindex="-1" aria-hidden="true">
@@ -135,11 +136,8 @@
                                     <dd class="col-7 mb-1">@item.OperatorSnapshotName</dd>
                                 </dl>
 
-                                <div class="mt-auto d-flex justify-content-between">
-                                    <a asp-action="MonthlyApplicationDetails" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
-                                    <div class="btn-group">
+                                <div class="mt-auto d-flex justify-content-end">
+                                    <div class="btn-group" role="group" aria-label="Monthly application actions">
                                         <a asp-action="MonthlyApplicationEdit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>

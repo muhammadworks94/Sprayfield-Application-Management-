@@ -114,9 +114,9 @@
                                 @* <td>@(gwMonit.Temperature?.ToString("F1") ?? "N/A")</td> *@
                                 <td>@(gwMonit.Conductivity?.ToString("F2") ?? "N/A")</td>
                                 <td class="table-actions">
-                                    <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-primary">
+                                    @* <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
-                                    </a>
+                                    </a> *@
                                     @if (canEdit)
                                     {
                                         <a asp-action="GWMonitEdit" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-secondary">

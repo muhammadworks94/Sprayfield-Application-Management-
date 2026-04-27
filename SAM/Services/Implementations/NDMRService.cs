@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SAM.Data;
 using SAM.Domain.Entities;
+using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
 
@@ -14,6 +15,33 @@ namespace SAM.Services.Implementations;
 /// </summary>
 public class NDMRService : INDMRService
 {
+    private sealed class SamplingMetadata
+    {
+        public string SamplingType { get; init; } = "Grab";
+        public string SampleFrequency { get; init; } = string.Empty;
+    }
+
+    private static readonly IReadOnlyDictionary<string, SamplingMetadata> SamplingMetadataByParameterCode =
+        new Dictionary<string, SamplingMetadata>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["00310"] = new() { SampleFrequency = "Monthly" },
+            ["00916"] = new() { SampleFrequency = "3 x Year" },
+            ["31616"] = new() { SampleFrequency = "Monthly" },
+            ["00927"] = new() { SampleFrequency = "3 x Year" },
+            ["00620"] = new() { SampleFrequency = "Monthly" },
+            ["00610"] = new() { SampleFrequency = "Monthly" },
+            ["00625"] = new() { SampleFrequency = "Monthly" },
+            ["00400"] = new() { SampleFrequency = "Monthly" },
+            ["00665"] = new() { SamplingType = "Calculated", SampleFrequency = "3 x Year" },
+            ["00931"] = new() { SampleFrequency = "3 x Year" },
+            ["00929"] = new() { SampleFrequency = "Monthly" },
+            ["00530"] = new() { SampleFrequency = "3 x Year" },
+            ["00940"] = new() { SampleFrequency = "Per Event" },
+            ["50060"] = new() { SampleFrequency = "Monthly" },
+            ["00600"] = new() { SampleFrequency = "3 x Year" },
+            ["70300"] = new() { SampleFrequency = "3 x Year" }
+        };
+
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<NDMRService> _logger;
@@ -41,7 +69,8 @@ public class NDMRService : INDMRService
         string ppiLabel,
         string parameterCode,
         string parameterName,
-        string measuringPointLabel)
+        FlowMeasuringPointEnum? flowMeasuringPoint,
+        ParameterMonitoringPointEnum? parameterMonitoringPoint)
     {
         // Core report identification
         worksheet.Cell("C1").Value = facility.PermitNumber;              // Permit number
@@ -52,8 +81,14 @@ public class NDMRService : INDMRService
 
         // PPI and parameter identification
         worksheet.Cell("C2").Value = ppiLabel;                           // PPI label
-        worksheet.Cell("D2").Value = measuringPointLabel;                // Flow / parameter measuring point
-        worksheet.Cell("K2").Value = "Parameter Monitoring Point";       // Generic text; can be edited in Excel
+        WriteMonitoringPointOptions(
+            worksheet.Cell("D2"),
+            "Flow Measuring Point",
+            BuildFlowMonitoringPointOptions(flowMeasuringPoint));
+        WriteMonitoringPointOptions(
+            worksheet.Cell("K2"),
+            "Parameter Monitoring Point",
+            BuildParameterMonitoringPointOptions(parameterMonitoringPoint));
 
         // Parameter code: label in B3, value in D3 (match template layout; avoid duplicate code in F3)
         worksheet.Cell("B3").Value = "Parameter Code";                   // Label
@@ -76,7 +111,8 @@ public class NDMRService : INDMRService
         string ppiLabel,
         string parameterCode,
         string parameterName,
-        string measuringPointLabel,
+        FlowMeasuringPointEnum? flowMeasuringPoint,
+        ParameterMonitoringPointEnum? parameterMonitoringPoint,
         IReadOnlyList<GWMonit> gwMonits,
         int daysInMonth,
         int startRow,
@@ -92,7 +128,16 @@ public class NDMRService : INDMRService
             return;
         }
 
-        WriteStandardHeader(worksheet, facility, monthEnum, year, ppiLabel, parameterCode, parameterName, measuringPointLabel);
+        WriteStandardHeader(
+            worksheet,
+            facility,
+            monthEnum,
+            year,
+            ppiLabel,
+            parameterCode,
+            parameterName,
+            flowMeasuringPoint,
+            parameterMonitoringPoint);
 
         for (int day = 1; day <= daysInMonth; day++)
         {
@@ -132,6 +177,86 @@ public class NDMRService : INDMRService
         }
     }
 
+    private static IReadOnlyList<(string Text, bool Selected)> BuildFlowMonitoringPointOptions(FlowMeasuringPointEnum? selected)
+    {
+        return new List<(string Text, bool Selected)>
+        {
+            ("Influent", selected == FlowMeasuringPointEnum.Influent),
+            ("Effluent", selected == FlowMeasuringPointEnum.Effluent),
+            ("No flow generated", selected == FlowMeasuringPointEnum.NoFlowGenerated)
+        };
+    }
+
+    private static IReadOnlyList<(string Text, bool Selected)> BuildParameterMonitoringPointOptions(ParameterMonitoringPointEnum? selected)
+    {
+        return new List<(string Text, bool Selected)>
+        {
+            ("Influent", selected == ParameterMonitoringPointEnum.Influent),
+            ("Effluent", selected == ParameterMonitoringPointEnum.Effluent),
+            ("Groundwater Lowering", selected == ParameterMonitoringPointEnum.GroundwaterLowering),
+            ("Surface Water", selected == ParameterMonitoringPointEnum.SurfaceWater)
+        };
+    }
+
+    private static void WriteMonitoringPointOptions(
+        IXLCell cell,
+        string label,
+        IReadOnlyList<(string Text, bool Selected)> options)
+    {
+        var richText = cell.GetRichText();
+        richText.ClearText();
+
+        richText.AddText($"{label}: ");
+
+        for (var i = 0; i < options.Count; i++)
+        {
+            var option = options[i];
+            var marker = option.Selected ? "\u2611" : "\u2610";
+            richText.AddText($"{marker} {option.Text}")
+                .SetFontSize(9)
+                .SetBold(false);
+
+            if (i < options.Count - 1)
+            {
+                richText.AddText("    ");
+            }
+        }
+    }
+
+    private static void PopulateSamplingFooterRows(IXLWorksheet worksheet)
+    {
+        const int parameterCodeRow = 3;
+        const int samplingTypeRow = 40;
+        const int sampleFrequencyRow = 43;
+        const double footerFontSize = 9;
+
+        var startCol = XLHelper.GetColumnNumberFromLetter("D");
+        var endCol = XLHelper.GetColumnNumberFromLetter("S");
+
+        for (var colNum = startCol; colNum <= endCol; colNum++)
+        {
+            var col = XLHelper.GetColumnLetterFromNumber(colNum);
+            var parameterCode = worksheet.Cell($"{col}{parameterCodeRow}").GetString().Trim();
+
+            var samplingTypeCell = worksheet.Cell($"{col}{samplingTypeRow}");
+            var sampleFrequencyCell = worksheet.Cell($"{col}{sampleFrequencyRow}");
+
+            if (string.IsNullOrWhiteSpace(parameterCode) ||
+                !SamplingMetadataByParameterCode.TryGetValue(parameterCode, out var metadata))
+            {
+                samplingTypeCell.Clear(XLClearOptions.Contents);
+                sampleFrequencyCell.Clear(XLClearOptions.Contents);
+                continue;
+            }
+
+            samplingTypeCell.Value = metadata.SamplingType;
+            samplingTypeCell.Style.Font.FontSize = footerFontSize;
+
+            sampleFrequencyCell.Value = metadata.SampleFrequency;
+            sampleFrequencyCell.Style.Font.FontSize = footerFontSize;
+        }
+    }
+
     /// <summary>
     /// Exports an NDMR Excel file for the specified NDAR-1 report.
     /// The NDAR-1 report is used only as a convenient way to select
@@ -166,6 +291,12 @@ public class NDMRService : INDMRService
         if (!File.Exists(templatePath))
             throw new FileNotFoundException($"Template file not found: {templatePath}");
 
+        var wwChar = await _context.WWChars
+            .Where(w => w.FacilityId == facility.Id &&
+                        (int)w.Month == month &&
+                        w.Year == year)
+            .FirstOrDefaultAsync();
+
         using var workbook = new XLWorkbook(templatePath);
 
         // PPI 001 worksheet (daily flow monitoring)
@@ -180,7 +311,8 @@ public class NDMRService : INDMRService
             "002",
             "00310",
             "BOD5 (mg/L)",
-            "Flow Measuring Point");
+            wwChar?.FlowMeasuringPoint,
+            wwChar?.ParameterMonitoringPoint);
 
         // Match client one-page NDMR code layout on the master sheet.
         var masterParameterCodes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -208,6 +340,8 @@ public class NDMRService : INDMRService
             flowWorksheet.Cell($"{mapping.Key}3").Value = mapping.Value;
         }
 
+        PopulateSamplingFooterRows(flowWorksheet);
+
         // Preload irrigation events and groundwater samples for the month
         var gwMonits = await _context.GWMonits
             .Where(g => g.FacilityId == facility.Id &&
@@ -215,17 +349,18 @@ public class NDMRService : INDMRService
                         g.SampleDate <= endDate)
             .ToListAsync();
 
-        var wwChar = await _context.WWChars
-            .Where(w => w.FacilityId == facility.Id &&
-                        (int)w.Month == month &&
-                        w.Year == year)
-            .FirstOrDefaultAsync();
-
         var operatorLogs = await _context.OperatorLogs
             .Where(o => o.FacilityId == facility.Id &&
                         o.LogDate >= startDate &&
                         o.LogDate <= endDate)
             .ToListAsync();
+
+        var irrigationReport = await _context.IrrRprts
+            .Where(i => i.FacilityId == facility.Id &&
+                        (int)i.Month == month &&
+                        i.Year == year)
+            .OrderByDescending(i => i.UpdatedDate)
+            .FirstOrDefaultAsync();
 
         // Daily grid starts at row 6 (Day 1)
         const int startRow = 6;
@@ -343,7 +478,8 @@ public class NDMRService : INDMRService
             ppiLabel: "PPI TKN",
             parameterCode: "00625",
             parameterName: "Total Kjeldahl Nitrogen (TKN) (mg/L)",
-            measuringPointLabel: "TKN Sample Point",
+            flowMeasuringPoint: wwChar?.FlowMeasuringPoint,
+            parameterMonitoringPoint: wwChar?.ParameterMonitoringPoint,
             gwMonits: gwMonits,
             daysInMonth: daysInMonth,
             startRow: startRow,
@@ -358,7 +494,8 @@ public class NDMRService : INDMRService
             ppiLabel: "PPI NH3-N",
             parameterCode: "00610",
             parameterName: "Ammonia Nitrogen (NH3-N) (mg/L)",
-            measuringPointLabel: "NH3-N Sample Point",
+            flowMeasuringPoint: wwChar?.FlowMeasuringPoint,
+            parameterMonitoringPoint: wwChar?.ParameterMonitoringPoint,
             gwMonits: gwMonits,
             daysInMonth: daysInMonth,
             startRow: startRow,
@@ -373,7 +510,8 @@ public class NDMRService : INDMRService
             ppiLabel: "PPI NO3-N",
             parameterCode: "00620",
             parameterName: "Nitrate Nitrogen (NO3-N) (mg/L)",
-            measuringPointLabel: "NO3-N Sample Point",
+            flowMeasuringPoint: wwChar?.FlowMeasuringPoint,
+            parameterMonitoringPoint: wwChar?.ParameterMonitoringPoint,
             gwMonits: gwMonits,
             daysInMonth: daysInMonth,
             startRow: startRow,
@@ -389,7 +527,8 @@ public class NDMRService : INDMRService
             ppiLabel: "PPI TN",
             parameterCode: "00600",
             parameterName: "Total Nitrogen (as N) (mg/L)",
-            measuringPointLabel: "Total Nitrogen Sample Point",
+            flowMeasuringPoint: wwChar?.FlowMeasuringPoint,
+            parameterMonitoringPoint: wwChar?.ParameterMonitoringPoint,
             gwMonits: gwMonits,
             daysInMonth: daysInMonth,
             startRow: startRow,
@@ -400,7 +539,7 @@ public class NDMRService : INDMRService
                 return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
             });
 
-        WriteCertificationPage(workbook, facility);
+        WriteCertificationPage(workbook, facility, irrigationReport?.ComplianceStatus);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -416,7 +555,7 @@ public class NDMRService : INDMRService
         return stream.ToArray();
     }
 
-    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility)
+    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility, ComplianceStatusEnum? complianceStatus)
     {
         var certificationWorksheet = workbook.Worksheets
             .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
@@ -430,6 +569,27 @@ public class NDMRService : INDMRService
         {
             return;
         }
+
+        var complianceSelectionText = complianceStatus switch
+        {
+            ComplianceStatusEnum.Compliant => "☑ Compliant    ☐ Non-Compliant",
+            ComplianceStatusEnum.NonCompliant => "☐ Compliant    ☑ Non-Compliant",
+            _ => "☐ Compliant    ☐ Non-Compliant"
+        };
+
+        var complianceQuestionText = certificationWorksheet.Cell("A4").GetString().Trim();
+        if (string.IsNullOrWhiteSpace(complianceQuestionText))
+        {
+            complianceQuestionText = "Does all monitoring data and sampling frequencies meet the requirements in Attachment A of your permit?";
+        }
+
+        var complianceCell = certificationWorksheet.Cell("A4");
+        var complianceRichText = complianceCell.GetRichText();
+        complianceRichText.ClearText();
+        complianceRichText.AddText($"{complianceQuestionText}    ");
+        complianceRichText.AddText(complianceSelectionText)
+            .SetFontSize(11)
+            .SetBold(false);
 
         certificationWorksheet.Cell("C9").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("D10").Value = facility.OperatorNumber ?? string.Empty;

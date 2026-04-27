@@ -110,9 +110,6 @@
                                     <td>@report.CompanyName</td>
                                 }
                                 <td class="table-actions">
-                                    <a asp-action="IrrigationReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
                                     @if (canEdit)
                                     {
                                         <a asp-action="IrrigationReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
