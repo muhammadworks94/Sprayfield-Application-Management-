@@ -512,7 +512,8 @@ public class ReportsController : BaseController
             Field4MaxHourlyLoadingDaily = report.Field4MaxHourlyLoadingDaily,
             Field4MonthlyLoading = report.Field4MonthlyLoading,
             Field4MaxHourlyLoading = report.Field4MaxHourlyLoading,
-            Field4TwelveMonthFloatingTotal = report.Field4TwelveMonthFloatingTotal
+            Field4TwelveMonthFloatingTotal = report.Field4TwelveMonthFloatingTotal,
+            Fields = BuildNdarFieldEditModels(report)
         };
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(report.CompanyId);
@@ -588,6 +589,29 @@ public class ReportsController : BaseController
             report.Field4MonthlyLoading = viewModel.Field4MonthlyLoading;
             report.Field4MaxHourlyLoading = viewModel.Field4MaxHourlyLoading;
             report.Field4TwelveMonthFloatingTotal = viewModel.Field4TwelveMonthFloatingTotal;
+            report.Fields = viewModel.Fields
+                .Select((f, idx) => new NDAR1Field
+                {
+                    Id = f.Id ?? Guid.NewGuid(),
+                    NDAR1Id = report.Id,
+                    SprayfieldId = f.SprayfieldId,
+                    FieldOrder = idx + 1,
+                    MonthlyLoading = f.MonthlyLoading,
+                    MaxHourlyLoading = f.MaxHourlyLoading,
+                    TwelveMonthFloatingTotal = f.TwelveMonthFloatingTotal,
+                    DailyValues = f.DailyValues
+                        .Select(d => new NDAR1FieldDaily
+                        {
+                            Id = Guid.NewGuid(),
+                            DayNo = d.DayNo,
+                            VolumeApplied = d.VolumeApplied,
+                            TimeIrrigated = d.TimeIrrigated,
+                            DailyLoading = d.DailyLoading,
+                            MaxHourlyLoading = d.MaxHourlyLoading
+                        })
+                        .ToList()
+                })
+                .ToList();
 
             await _ndar1Service.UpdateAsync(report);
             TempData["SuccessMessage"] = "NDAR-1 report updated successfully.";
@@ -601,6 +625,90 @@ public class ReportsController : BaseController
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.FacilityId);
             return View(viewModel);
         }
+    }
+
+    private static List<NDAR1FieldEditViewModel> BuildNdarFieldEditModels(NDAR1 report)
+    {
+        if (report.Fields.Any())
+        {
+            return report.Fields
+                .OrderBy(f => f.FieldOrder)
+                .Select(f => new NDAR1FieldEditViewModel
+                {
+                    Id = f.Id,
+                    SprayfieldId = f.SprayfieldId,
+                    FieldCode = f.Sprayfield?.FieldId ?? string.Empty,
+                    Acres = f.Sprayfield?.SizeAcres,
+                    CropSummary = f.Sprayfield != null ? SAM.Utilities.SprayfieldZoneSummaryHelper.GetCropSummary(f.Sprayfield) ?? string.Empty : string.Empty,
+                    MonthlyLoading = f.MonthlyLoading,
+                    MaxHourlyLoading = f.MaxHourlyLoading,
+                    TwelveMonthFloatingTotal = f.TwelveMonthFloatingTotal,
+                    DailyValues = f.DailyValues
+                        .OrderBy(d => d.DayNo)
+                        .Select(d => new NDAR1FieldDailyEditViewModel
+                        {
+                            DayNo = d.DayNo,
+                            VolumeApplied = d.VolumeApplied,
+                            TimeIrrigated = d.TimeIrrigated,
+                            DailyLoading = d.DailyLoading,
+                            MaxHourlyLoading = d.MaxHourlyLoading
+                        })
+                        .ToList()
+                })
+                .ToList();
+        }
+
+        var legacy = new List<NDAR1FieldEditViewModel>();
+        AddLegacyFieldModel(legacy, report.Field1Id, report.Field1, 1, report.Field1MonthlyLoading, report.Field1MaxHourlyLoading, report.Field1TwelveMonthFloatingTotal, report.Field1VolumeAppliedDaily, report.Field1TimeIrrigatedDaily, report.Field1DailyLoadingDaily, report.Field1MaxHourlyLoadingDaily);
+        AddLegacyFieldModel(legacy, report.Field2Id, report.Field2, 2, report.Field2MonthlyLoading, report.Field2MaxHourlyLoading, report.Field2TwelveMonthFloatingTotal, report.Field2VolumeAppliedDaily, report.Field2TimeIrrigatedDaily, report.Field2DailyLoadingDaily, report.Field2MaxHourlyLoadingDaily);
+        AddLegacyFieldModel(legacy, report.Field3Id, report.Field3, 3, report.Field3MonthlyLoading, report.Field3MaxHourlyLoading, report.Field3TwelveMonthFloatingTotal, report.Field3VolumeAppliedDaily, report.Field3TimeIrrigatedDaily, report.Field3DailyLoadingDaily, report.Field3MaxHourlyLoadingDaily);
+        AddLegacyFieldModel(legacy, report.Field4Id, report.Field4, 4, report.Field4MonthlyLoading, report.Field4MaxHourlyLoading, report.Field4TwelveMonthFloatingTotal, report.Field4VolumeAppliedDaily, report.Field4TimeIrrigatedDaily, report.Field4DailyLoadingDaily, report.Field4MaxHourlyLoadingDaily);
+        return legacy;
+    }
+
+    private static void AddLegacyFieldModel(
+        List<NDAR1FieldEditViewModel> target,
+        Guid? sprayfieldId,
+        Sprayfield? sprayfield,
+        int order,
+        decimal monthlyLoading,
+        decimal maxHourlyLoading,
+        decimal floatingTotal,
+        List<decimal?> volumeDaily,
+        List<decimal?> timeDaily,
+        List<decimal?> loadingDaily,
+        List<decimal?> maxHourlyDaily)
+    {
+        if (!sprayfieldId.HasValue)
+        {
+            return;
+        }
+
+        var model = new NDAR1FieldEditViewModel
+        {
+            SprayfieldId = sprayfieldId.Value,
+            FieldCode = sprayfield?.FieldId ?? order.ToString(),
+            Acres = sprayfield?.SizeAcres,
+            CropSummary = sprayfield != null ? SAM.Utilities.SprayfieldZoneSummaryHelper.GetCropSummary(sprayfield) ?? string.Empty : string.Empty,
+            MonthlyLoading = monthlyLoading,
+            MaxHourlyLoading = maxHourlyLoading,
+            TwelveMonthFloatingTotal = floatingTotal
+        };
+
+        for (var day = 1; day <= 31; day++)
+        {
+            var idx = day - 1;
+            model.DailyValues.Add(new NDAR1FieldDailyEditViewModel
+            {
+                DayNo = day,
+                VolumeApplied = idx < volumeDaily.Count ? volumeDaily[idx] : null,
+                TimeIrrigated = idx < timeDaily.Count ? timeDaily[idx] : null,
+                DailyLoading = idx < loadingDaily.Count ? loadingDaily[idx] : null,
+                MaxHourlyLoading = idx < maxHourlyDaily.Count ? maxHourlyDaily[idx] : null
+            });
+        }
+
+        target.Add(model);
     }
 
     [HttpPost]

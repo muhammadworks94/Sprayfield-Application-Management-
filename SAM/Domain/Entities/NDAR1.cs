@@ -224,5 +224,41 @@ public class NDAR1 : CompanyScopedEntity
     public Sprayfield? Field2 { get; set; }
     public Sprayfield? Field3 { get; set; }
     public Sprayfield? Field4 { get; set; }
+    public ICollection<NDAR1Field> Fields { get; set; } = new List<NDAR1Field>();
+}
+
+/// <summary>
+/// Dynamic per-sprayfield NDAR-1 data for a report month.
+/// </summary>
+public class NDAR1Field
+{
+    public Guid Id { get; set; }
+    public Guid NDAR1Id { get; set; }
+    public Guid SprayfieldId { get; set; }
+    public int FieldOrder { get; set; }
+
+    public decimal MonthlyLoading { get; set; }
+    public decimal MaxHourlyLoading { get; set; }
+    public decimal TwelveMonthFloatingTotal { get; set; }
+
+    public NDAR1? NDAR1 { get; set; }
+    public Sprayfield? Sprayfield { get; set; }
+    public ICollection<NDAR1FieldDaily> DailyValues { get; set; } = new List<NDAR1FieldDaily>();
+}
+
+/// <summary>
+/// Daily values for one NDAR field row (1..31).
+/// </summary>
+public class NDAR1FieldDaily
+{
+    public Guid Id { get; set; }
+    public Guid NDAR1FieldId { get; set; }
+    public int DayNo { get; set; }
+    public decimal? VolumeApplied { get; set; }
+    public decimal? TimeIrrigated { get; set; }
+    public decimal? DailyLoading { get; set; }
+    public decimal? MaxHourlyLoading { get; set; }
+
+    public NDAR1Field? NDAR1Field { get; set; }
 }
 

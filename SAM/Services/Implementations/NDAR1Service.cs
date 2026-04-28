@@ -9,6 +9,7 @@ using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
 using SAM.Utilities;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace SAM.Services.Implementations;
 
@@ -52,6 +53,8 @@ public class NDAR1Service : INDAR1Service
             .Include(n => n.Field2)
             .Include(n => n.Field3)
             .Include(n => n.Field4)
+            .Include(n => n.Fields)
+                .ThenInclude(f => f.Sprayfield)
             .AsQueryable();
 
         if (companyId.HasValue)
@@ -87,6 +90,12 @@ public class NDAR1Service : INDAR1Service
             .Include(n => n.Field4)
                 .ThenInclude(f => f.ApplicationZones)
                     .ThenInclude(z => z.Crop)
+            .Include(n => n.Fields)
+                .ThenInclude(f => f.Sprayfield)
+                    .ThenInclude(s => s!.ApplicationZones)
+                        .ThenInclude(z => z.Crop)
+            .Include(n => n.Fields)
+                .ThenInclude(f => f.DailyValues)
             .FirstOrDefaultAsync(n => n.Id == id);
     }
 
@@ -114,6 +123,7 @@ public class NDAR1Service : INDAR1Service
 
         // Initialize daily arrays if empty
         InitializeDailyArrays(ndar1);
+        SyncDynamicFieldsFromLegacy(ndar1);
 
         _context.NDAR1s.Add(ndar1);
         await _context.SaveChangesAsync();
@@ -200,6 +210,43 @@ public class NDAR1Service : INDAR1Service
         existing.Field4MaxHourlyLoading = ndar1.Field4MaxHourlyLoading;
         existing.Field4TwelveMonthFloatingTotal = ndar1.Field4TwelveMonthFloatingTotal;
 
+        if (ndar1.Fields.Count > 0)
+        {
+            existing.Fields.Clear();
+            foreach (var field in ndar1.Fields.OrderBy(f => f.FieldOrder))
+            {
+                var mapped = new NDAR1Field
+                {
+                    Id = Guid.NewGuid(),
+                    NDAR1Id = existing.Id,
+                    SprayfieldId = field.SprayfieldId,
+                    FieldOrder = field.FieldOrder,
+                    MonthlyLoading = field.MonthlyLoading,
+                    MaxHourlyLoading = field.MaxHourlyLoading,
+                    TwelveMonthFloatingTotal = field.TwelveMonthFloatingTotal
+                };
+
+                foreach (var daily in field.DailyValues.OrderBy(d => d.DayNo))
+                {
+                    mapped.DailyValues.Add(new NDAR1FieldDaily
+                    {
+                        Id = Guid.NewGuid(),
+                        DayNo = daily.DayNo,
+                        VolumeApplied = daily.VolumeApplied,
+                        TimeIrrigated = daily.TimeIrrigated,
+                        DailyLoading = daily.DailyLoading,
+                        MaxHourlyLoading = daily.MaxHourlyLoading
+                    });
+                }
+
+                existing.Fields.Add(mapped);
+            }
+        }
+        else
+        {
+            SyncDynamicFieldsFromLegacy(existing);
+        }
+
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("NDAR-1 report updated (ID: {ReportId})", ndar1.Id);
@@ -267,7 +314,10 @@ public class NDAR1Service : INDAR1Service
 
         // Get sprayfields for this facility
         var sprayfields = await _sprayfieldService.GetByFacilityIdAsync(facilityId);
-        var sprayfieldList = sprayfields.Take(4).ToList(); // Limit to 4 fields
+        var sprayfieldList = sprayfields
+            .OrderBy(s => ParseFieldOrder(s.FieldId))
+            .ThenBy(s => s.FieldId)
+            .ToList();
         var sprayfieldById = sprayfieldList.ToDictionary(s => s.Id, s => s);
 
         // Get operator logs for weather data
@@ -370,7 +420,7 @@ public class NDAR1Service : INDAR1Service
             fieldApplications[sprayfieldId.Value].Add(application);
         }
 
-        // Process each field
+        // Process each legacy field block (first 4 kept for backward compatibility)
         ProcessFieldData(report.Field1Id, sprayfieldById, fieldApplications, volumeOverridesByDay, minutesOverridesByDay, report.Field1VolumeAppliedDaily,
             report.Field1TimeIrrigatedDaily, report.Field1DailyLoadingDaily,
             report.Field1MaxHourlyLoadingDaily, startDate, daysInMonth, hasNdarPayloadValues);
@@ -409,8 +459,68 @@ public class NDAR1Service : INDAR1Service
         // Calculate rolling 365-day hydraulic totals from zone-model applications.
         await CalculateRollingFloatingTotals(report, endDate);
         ApplyFloatingTotalOverrides(report, sprayfieldById, floatingOverridesByFieldCode);
+        BuildDynamicFields(report, sprayfieldList, sprayfieldById, fieldApplications, volumeOverridesByDay, minutesOverridesByDay, startDate, daysInMonth, hasNdarPayloadValues, endDate, floatingOverridesByFieldCode);
 
         return report;
+    }
+
+    private void BuildDynamicFields(
+        NDAR1 report,
+        List<Sprayfield> sprayfieldList,
+        Dictionary<Guid, Sprayfield> sprayfieldById,
+        Dictionary<Guid, List<MonthlyApplication>> fieldApplications,
+        Dictionary<int, Dictionary<string, decimal?>> volumeOverridesByDay,
+        Dictionary<int, Dictionary<string, decimal?>> minutesOverridesByDay,
+        DateTime startDate,
+        int daysInMonth,
+        bool usePayloadAsAuthoritative,
+        DateTime asOfDate,
+        Dictionary<string, decimal?> floatingOverridesByFieldCode)
+    {
+        report.Fields.Clear();
+        var order = 1;
+        foreach (var sprayfield in sprayfieldList)
+        {
+            var volumeDaily = Enumerable.Repeat<decimal?>(null, 31).ToList();
+            var timeDaily = Enumerable.Repeat<decimal?>(null, 31).ToList();
+            var loadingDaily = Enumerable.Repeat<decimal?>(null, 31).ToList();
+            var maxHourlyDaily = Enumerable.Repeat<decimal?>(null, 31).ToList();
+
+            ProcessFieldData(sprayfield.Id, sprayfieldById, fieldApplications, volumeOverridesByDay, minutesOverridesByDay, volumeDaily, timeDaily, loadingDaily, maxHourlyDaily, startDate, daysInMonth, usePayloadAsAuthoritative);
+
+            var field = new NDAR1Field
+            {
+                Id = Guid.NewGuid(),
+                SprayfieldId = sprayfield.Id,
+                FieldOrder = order++,
+                MonthlyLoading = loadingDaily.Where(v => v.HasValue).Sum(v => v ?? 0m),
+                MaxHourlyLoading = maxHourlyDaily.Where(v => v.HasValue).Select(v => v ?? 0m).DefaultIfEmpty(0m).Max(),
+                TwelveMonthFloatingTotal = 0m
+            };
+
+            var overrideFloating = !string.IsNullOrWhiteSpace(sprayfield.FieldId) &&
+                                  floatingOverridesByFieldCode.TryGetValue(sprayfield.FieldId, out var mappedFloating) &&
+                                  mappedFloating.HasValue
+                                  ? mappedFloating.Value
+                                  : GetRollingHydraulicInchesAsync(report.FacilityId, sprayfield.Id, asOfDate).GetAwaiter().GetResult();
+            field.TwelveMonthFloatingTotal = overrideFloating;
+
+            for (var day = 1; day <= 31; day++)
+            {
+                var idx = day - 1;
+                field.DailyValues.Add(new NDAR1FieldDaily
+                {
+                    Id = Guid.NewGuid(),
+                    DayNo = day,
+                    VolumeApplied = volumeDaily[idx],
+                    TimeIrrigated = timeDaily[idx],
+                    DailyLoading = loadingDaily[idx],
+                    MaxHourlyLoading = maxHourlyDaily[idx]
+                });
+            }
+
+            report.Fields.Add(field);
+        }
     }
 
     private void ProcessFieldData(
@@ -497,6 +607,69 @@ public class NDAR1Service : INDAR1Service
                 maxHourlyLoadingDaily[dayIndex] = (dailyLoading.Value / overrideMinutes.Value) * 60m;
             }
         }
+    }
+
+    private static int ParseFieldOrder(string? fieldId)
+    {
+        return int.TryParse(fieldId, out var parsed) ? parsed : int.MaxValue;
+    }
+
+    private void SyncDynamicFieldsFromLegacy(NDAR1 ndar1)
+    {
+        if (ndar1.Fields.Count > 0)
+        {
+            return;
+        }
+
+        AddLegacyField(ndar1, ndar1.Field1Id, 1, ndar1.Field1VolumeAppliedDaily, ndar1.Field1TimeIrrigatedDaily, ndar1.Field1DailyLoadingDaily, ndar1.Field1MaxHourlyLoadingDaily, ndar1.Field1MonthlyLoading, ndar1.Field1MaxHourlyLoading, ndar1.Field1TwelveMonthFloatingTotal);
+        AddLegacyField(ndar1, ndar1.Field2Id, 2, ndar1.Field2VolumeAppliedDaily, ndar1.Field2TimeIrrigatedDaily, ndar1.Field2DailyLoadingDaily, ndar1.Field2MaxHourlyLoadingDaily, ndar1.Field2MonthlyLoading, ndar1.Field2MaxHourlyLoading, ndar1.Field2TwelveMonthFloatingTotal);
+        AddLegacyField(ndar1, ndar1.Field3Id, 3, ndar1.Field3VolumeAppliedDaily, ndar1.Field3TimeIrrigatedDaily, ndar1.Field3DailyLoadingDaily, ndar1.Field3MaxHourlyLoadingDaily, ndar1.Field3MonthlyLoading, ndar1.Field3MaxHourlyLoading, ndar1.Field3TwelveMonthFloatingTotal);
+        AddLegacyField(ndar1, ndar1.Field4Id, 4, ndar1.Field4VolumeAppliedDaily, ndar1.Field4TimeIrrigatedDaily, ndar1.Field4DailyLoadingDaily, ndar1.Field4MaxHourlyLoadingDaily, ndar1.Field4MonthlyLoading, ndar1.Field4MaxHourlyLoading, ndar1.Field4TwelveMonthFloatingTotal);
+    }
+
+    private static void AddLegacyField(
+        NDAR1 ndar1,
+        Guid? sprayfieldId,
+        int order,
+        List<decimal?> volumeDaily,
+        List<decimal?> timeDaily,
+        List<decimal?> loadingDaily,
+        List<decimal?> maxHourlyDaily,
+        decimal monthlyLoading,
+        decimal maxHourlyLoading,
+        decimal floatingTotal)
+    {
+        if (!sprayfieldId.HasValue)
+        {
+            return;
+        }
+
+        var field = new NDAR1Field
+        {
+            Id = Guid.NewGuid(),
+            NDAR1Id = ndar1.Id,
+            SprayfieldId = sprayfieldId.Value,
+            FieldOrder = order,
+            MonthlyLoading = monthlyLoading,
+            MaxHourlyLoading = maxHourlyLoading,
+            TwelveMonthFloatingTotal = floatingTotal
+        };
+
+        for (var day = 1; day <= 31; day++)
+        {
+            var idx = day - 1;
+            field.DailyValues.Add(new NDAR1FieldDaily
+            {
+                Id = Guid.NewGuid(),
+                DayNo = day,
+                VolumeApplied = idx < volumeDaily.Count ? volumeDaily[idx] : null,
+                TimeIrrigated = idx < timeDaily.Count ? timeDaily[idx] : null,
+                DailyLoading = idx < loadingDaily.Count ? loadingDaily[idx] : null,
+                MaxHourlyLoading = idx < maxHourlyDaily.Count ? maxHourlyDaily[idx] : null
+            });
+        }
+
+        ndar1.Fields.Add(field);
     }
     private static bool TryParseNdarPayload(string? nextShiftNotes, out NdarDailyPayload payload)
     {
@@ -830,7 +1003,25 @@ public class NDAR1Service : INDAR1Service
             worksheet.Cell($"U{floatingRow}").Value = report.Field4TwelveMonthFloatingTotal;
         }
 
+        RemovePreExistingDynamicNdarSheets(workbook);
+
+        var exportFields = BuildExportFields(report);
+        if (exportFields.Count > 4)
+        {
+            var chunkIndex = 1;
+            for (var offset = 4; offset < exportFields.Count; offset += 4)
+            {
+                var chunk = exportFields.Skip(offset).Take(4).ToList();
+                var extraSheetName = $"NDAR-1 ({chunkIndex + 1})";
+                var extraSheet = worksheet.CopyTo(extraSheetName);
+                WriteNdarSheetChunk(extraSheet, facility, report, chunk);
+                chunkIndex++;
+            }
+        }
+
         WriteCertificationPage(workbook, facility, irrigationReport?.ComplianceStatus);
+        MoveSheetToEndByName(workbook, "Certification Page");
+        MoveSheetToEndByName(workbook, "Formulas & Weather Codes");
 
         // Convert to byte array
         using var stream = new MemoryStream();
@@ -870,6 +1061,128 @@ public class NDAR1Service : INDAR1Service
         return blockEndColumn;
     }
 
+    private static List<NdarExportField> BuildExportFields(NDAR1 report)
+    {
+        if (report.Fields.Any())
+        {
+            return report.Fields
+                .OrderBy(f => f.FieldOrder)
+                .Select(f => new NdarExportField
+                {
+                    Sprayfield = f.Sprayfield,
+                    Volume = To31(f.DailyValues.OrderBy(d => d.DayNo).Select(d => d.VolumeApplied).ToList()),
+                    Time = To31(f.DailyValues.OrderBy(d => d.DayNo).Select(d => d.TimeIrrigated).ToList()),
+                    DailyLoading = To31(f.DailyValues.OrderBy(d => d.DayNo).Select(d => d.DailyLoading).ToList()),
+                    MaxHourly = To31(f.DailyValues.OrderBy(d => d.DayNo).Select(d => d.MaxHourlyLoading).ToList()),
+                    MonthlyLoading = f.MonthlyLoading,
+                    MaxHourlyLoading = f.MaxHourlyLoading,
+                    FloatingTotal = f.TwelveMonthFloatingTotal
+                })
+                .ToList();
+        }
+
+        return new List<NdarExportField>
+        {
+            new() { Sprayfield = report.Field1, Volume = To31(report.Field1VolumeAppliedDaily), Time = To31(report.Field1TimeIrrigatedDaily), DailyLoading = To31(report.Field1DailyLoadingDaily), MaxHourly = To31(report.Field1MaxHourlyLoadingDaily), MonthlyLoading = report.Field1MonthlyLoading, MaxHourlyLoading = report.Field1MaxHourlyLoading, FloatingTotal = report.Field1TwelveMonthFloatingTotal },
+            new() { Sprayfield = report.Field2, Volume = To31(report.Field2VolumeAppliedDaily), Time = To31(report.Field2TimeIrrigatedDaily), DailyLoading = To31(report.Field2DailyLoadingDaily), MaxHourly = To31(report.Field2MaxHourlyLoadingDaily), MonthlyLoading = report.Field2MonthlyLoading, MaxHourlyLoading = report.Field2MaxHourlyLoading, FloatingTotal = report.Field2TwelveMonthFloatingTotal },
+            new() { Sprayfield = report.Field3, Volume = To31(report.Field3VolumeAppliedDaily), Time = To31(report.Field3TimeIrrigatedDaily), DailyLoading = To31(report.Field3DailyLoadingDaily), MaxHourly = To31(report.Field3MaxHourlyLoadingDaily), MonthlyLoading = report.Field3MonthlyLoading, MaxHourlyLoading = report.Field3MaxHourlyLoading, FloatingTotal = report.Field3TwelveMonthFloatingTotal },
+            new() { Sprayfield = report.Field4, Volume = To31(report.Field4VolumeAppliedDaily), Time = To31(report.Field4TimeIrrigatedDaily), DailyLoading = To31(report.Field4DailyLoadingDaily), MaxHourly = To31(report.Field4MaxHourlyLoadingDaily), MonthlyLoading = report.Field4MonthlyLoading, MaxHourlyLoading = report.Field4MaxHourlyLoading, FloatingTotal = report.Field4TwelveMonthFloatingTotal }
+        }.Where(x => x.Sprayfield != null).ToList();
+    }
+
+    private static List<decimal?> To31(List<decimal?> values)
+    {
+        var copy = values.Take(31).ToList();
+        while (copy.Count < 31)
+        {
+            copy.Add(null);
+        }
+
+        return copy;
+    }
+
+    private static void WriteNdarSheetChunk(IXLWorksheet worksheet, Facility facility, NDAR1 report, List<NdarExportField> chunk)
+    {
+        worksheet.Cell("D1").Value = facility.PermitNumber;
+        worksheet.Cell("I1").Value = facility.Name;
+        worksheet.Cell("P1").Value = facility.County;
+        worksheet.Cell("S1").Value = report.Month.ToString();
+        worksheet.Cell("V1").Value = report.Year;
+
+        var fieldValueColumns = new[]
+        {
+            ResolveFieldValueColumn(worksheet, "G", "J"),
+            ResolveFieldValueColumn(worksheet, "K", "N"),
+            ResolveFieldValueColumn(worksheet, "O", "R"),
+            ResolveFieldValueColumn(worksheet, "S", "V")
+        };
+        var dataColumnSets = new[] { ("G","H","I","J"), ("K","L","M","N"), ("O","P","Q","R"), ("S","T","U","V") };
+
+        for (int i = 0; i < 4; i++)
+        {
+            if (i >= chunk.Count)
+            {
+                continue;
+            }
+
+            var f = chunk[i];
+            var col = fieldValueColumns[i];
+            worksheet.Cell($"{col}2").Value = f.Sprayfield?.FieldId ?? string.Empty;
+            worksheet.Cell($"{col}3").Value = f.Sprayfield != null ? SprayfieldReportHelper.GetReportAcres(f.Sprayfield) : 0m;
+            worksheet.Cell($"{col}4").Value = f.Sprayfield != null ? SprayfieldZoneSummaryHelper.GetCropSummary(f.Sprayfield) ?? "" : "";
+            worksheet.Cell($"{col}5").Value = f.Sprayfield?.HourlyRateInches;
+            worksheet.Cell($"{col}6").Value = f.Sprayfield?.WeeklyRateInches;
+        }
+
+        var daysInMonth = DateTime.DaysInMonth(report.Year, (int)report.Month);
+        for (int day = 1; day <= daysInMonth; day++)
+        {
+            var row = 9 + day;
+            var dayIndex = day - 1;
+            worksheet.Cell($"A{row}").Value = day;
+            worksheet.Cell($"B{row}").Value = report.WeatherCodeDaily[dayIndex];
+            worksheet.Cell($"C{row}").Value = report.TemperatureDaily[dayIndex];
+            worksheet.Cell($"D{row}").Value = report.PrecipitationDaily[dayIndex];
+            worksheet.Cell($"E{row}").Value = report.StorageDaily[dayIndex];
+            worksheet.Cell($"F{row}").Value = report.FiveDayUpsetDaily[dayIndex];
+
+            for (int i = 0; i < 4; i++)
+            {
+                if (i >= chunk.Count) continue;
+                var f = chunk[i];
+                var cols = dataColumnSets[i];
+                worksheet.Cell($"{cols.Item1}{row}").Value = f.Volume[dayIndex];
+                worksheet.Cell($"{cols.Item2}{row}").Value = f.Time[dayIndex];
+                worksheet.Cell($"{cols.Item3}{row}").Value = f.DailyLoading[dayIndex];
+                worksheet.Cell($"{cols.Item4}{row}").Value = f.MaxHourly[dayIndex];
+            }
+        }
+
+        var monthlyRow = 41;
+        var floatingRow = 42;
+        var monthlyCols = new[] { "I", "M", "Q", "U" };
+        var maxCols = new[] { "J", "N", "R", "V" };
+        for (int i = 0; i < 4; i++)
+        {
+            if (i >= chunk.Count) continue;
+            worksheet.Cell($"{monthlyCols[i]}{monthlyRow}").Value = chunk[i].MonthlyLoading;
+            worksheet.Cell($"{maxCols[i]}{monthlyRow}").Value = chunk[i].MaxHourlyLoading;
+            worksheet.Cell($"{monthlyCols[i]}{floatingRow}").Value = chunk[i].FloatingTotal;
+        }
+    }
+
+    private sealed class NdarExportField
+    {
+        public Sprayfield? Sprayfield { get; set; }
+        public List<decimal?> Volume { get; set; } = new();
+        public List<decimal?> Time { get; set; } = new();
+        public List<decimal?> DailyLoading { get; set; } = new();
+        public List<decimal?> MaxHourly { get; set; } = new();
+        public decimal MonthlyLoading { get; set; }
+        public decimal MaxHourlyLoading { get; set; }
+        public decimal FloatingTotal { get; set; }
+    }
+
     private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility, ComplianceStatusEnum? complianceStatus)
     {
         var certificationWorksheet = workbook.Worksheets
@@ -901,6 +1214,31 @@ public class NDAR1Service : INDAR1Service
         certificationWorksheet.Cell("O13").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("T13").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("U14").Value = DateTime.Today.ToString("MM/dd/yyyy");
+    }
+
+    private static void RemovePreExistingDynamicNdarSheets(IXLWorkbook workbook)
+    {
+        var staleSheets = workbook.Worksheets
+            .Where(ws => Regex.IsMatch(ws.Name, @"^NDAR-1 \(\d+\)$", RegexOptions.IgnoreCase))
+            .ToList();
+
+        foreach (var sheet in staleSheets)
+        {
+            sheet.Delete();
+        }
+    }
+
+    private static void MoveSheetToEndByName(IXLWorkbook workbook, string sheetName)
+    {
+        var sheet = workbook.Worksheets
+            .FirstOrDefault(ws => string.Equals(ws.Name, sheetName, StringComparison.OrdinalIgnoreCase));
+
+        if (sheet == null)
+        {
+            return;
+        }
+
+        sheet.Position = workbook.Worksheets.Count;
     }
 
     private static void WriteFacilityStatusComplianceRows(IXLWorksheet certificationWorksheet, ComplianceStatusEnum? complianceStatus)

@@ -200,5 +200,29 @@ public class NDAR1EditViewModel
     [Display(Name = "Field 4 12-Month Floating Total (in)")]
     [DisplayFormat(DataFormatString = "{0:F2}")]
     public decimal Field4TwelveMonthFloatingTotal { get; set; }
+
+    public List<NDAR1FieldEditViewModel> Fields { get; set; } = new();
+}
+
+public class NDAR1FieldEditViewModel
+{
+    public Guid? Id { get; set; }
+    public Guid SprayfieldId { get; set; }
+    public string FieldCode { get; set; } = string.Empty;
+    public decimal? Acres { get; set; }
+    public string CropSummary { get; set; } = string.Empty;
+    public decimal MonthlyLoading { get; set; }
+    public decimal MaxHourlyLoading { get; set; }
+    public decimal TwelveMonthFloatingTotal { get; set; }
+    public List<NDAR1FieldDailyEditViewModel> DailyValues { get; set; } = new();
+}
+
+public class NDAR1FieldDailyEditViewModel
+{
+    public int DayNo { get; set; }
+    public decimal? VolumeApplied { get; set; }
+    public decimal? TimeIrrigated { get; set; }
+    public decimal? DailyLoading { get; set; }
+    public decimal? MaxHourlyLoading { get; set; }
 }
 

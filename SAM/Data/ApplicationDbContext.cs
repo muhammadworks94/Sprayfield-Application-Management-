@@ -37,6 +37,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<GWMonit> GWMonits => Set<GWMonit>();
     public DbSet<IrrRprt> IrrRprts => Set<IrrRprt>();
     public DbSet<NDAR1> NDAR1s => Set<NDAR1>();
+    public DbSet<NDAR1Field> NDAR1Fields => Set<NDAR1Field>();
+    public DbSet<NDAR1FieldDaily> NDAR1FieldDailies => Set<NDAR1FieldDaily>();
     public DbSet<OperatorLog> OperatorLogs => Set<OperatorLog>();
     public DbSet<UserRequest> UserRequests => Set<UserRequest>();
     public DbSet<CompanyRequest> CompanyRequests => Set<CompanyRequest>();
@@ -91,6 +93,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new GWMonitConfiguration());
         builder.ApplyConfiguration(new IrrRprtConfiguration());
         builder.ApplyConfiguration(new NDAR1Configuration());
+        builder.ApplyConfiguration(new NDAR1FieldConfiguration());
+        builder.ApplyConfiguration(new NDAR1FieldDailyConfiguration());
         builder.ApplyConfiguration(new OperatorLogConfiguration());
         builder.ApplyConfiguration(new UserRequestConfiguration());
         builder.ApplyConfiguration(new CompanyRequestConfiguration());

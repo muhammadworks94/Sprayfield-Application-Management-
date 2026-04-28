@@ -8,6 +8,7 @@
     var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var daysInMonth = DateTime.DaysInMonth(Model.Year, (int)Model.Month);
+    var hasDynamicFields = Model.Fields != null && Model.Fields.Count > 0;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
@@ -68,44 +69,47 @@
                 </div>
             </div>
 
-            <div class="form-section">
-                <div class="form-section-title">Field Selection</div>
-                
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label asp-for="Field1Id" class="form-label">Field 1</label>
-                            <select asp-for="Field1Id" asp-items="sprayfields" class="form-select">
-                                <option value="">-- Select Field --</option>
-                            </select>
+            @if (!hasDynamicFields)
+            {
+                <div class="form-section">
+                    <div class="form-section-title">Field Selection</div>
+                    
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label asp-for="Field1Id" class="form-label">Field 1</label>
+                                <select asp-for="Field1Id" asp-items="sprayfields" class="form-select">
+                                    <option value="">-- Select Field --</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label asp-for="Field2Id" class="form-label">Field 2</label>
-                            <select asp-for="Field2Id" asp-items="sprayfields" class="form-select">
-                                <option value="">-- Select Field --</option>
-                            </select>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label asp-for="Field2Id" class="form-label">Field 2</label>
+                                <select asp-for="Field2Id" asp-items="sprayfields" class="form-select">
+                                    <option value="">-- Select Field --</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label asp-for="Field3Id" class="form-label">Field 3</label>
-                            <select asp-for="Field3Id" asp-items="sprayfields" class="form-select">
-                                <option value="">-- Select Field --</option>
-                            </select>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label asp-for="Field3Id" class="form-label">Field 3</label>
+                                <select asp-for="Field3Id" asp-items="sprayfields" class="form-select">
+                                    <option value="">-- Select Field --</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label asp-for="Field4Id" class="form-label">Field 4</label>
-                            <select asp-for="Field4Id" asp-items="sprayfields" class="form-select">
-                                <option value="">-- Select Field --</option>
-                            </select>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label asp-for="Field4Id" class="form-label">Field 4</label>
+                                <select asp-for="Field4Id" asp-items="sprayfields" class="form-select">
+                                    <option value="">-- Select Field --</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            }
 
             <div class="form-section">
                 <div class="form-section-title">Daily Weather Data</div>
@@ -151,7 +155,7 @@
                 </div>
             </div>
 
-            @if (Model.Field1Id.HasValue)
+            @if (!hasDynamicFields && Model.Field1Id.HasValue)
             {
                 <div class="form-section">
                     <div class="form-section-title">Field 1 Daily Data</div>
@@ -215,7 +219,7 @@
                 </div>
             }
 
-            @if (Model.Field2Id.HasValue)
+            @if (!hasDynamicFields && Model.Field2Id.HasValue)
             {
                 <div class="form-section">
                     <div class="form-section-title">Field 2 Daily Data</div>
@@ -279,7 +283,7 @@
                 </div>
             }
 
-            @if (Model.Field3Id.HasValue)
+            @if (!hasDynamicFields && Model.Field3Id.HasValue)
             {
                 <div class="form-section">
                     <div class="form-section-title">Field 3 Daily Data</div>
@@ -343,7 +347,7 @@
                 </div>
             }
 
-            @if (Model.Field4Id.HasValue)
+            @if (!hasDynamicFields && Model.Field4Id.HasValue)
             {
                 <div class="form-section">
                     <div class="form-section-title">Field 4 Daily Data</div>
@@ -407,6 +411,85 @@
                 </div>
             }
 
+            @if (hasDynamicFields)
+            {
+                <div class="form-section">
+                    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                        <div class="form-section-title mb-0">All Field Daily Data</div>
+                        <button type="button" id="toggleAllFieldsBtn" class="btn btn-sm btn-outline-primary">Expand All</button>
+                    </div>
+                    <p class="text-muted small mt-2">Edit all sprayfields included in this NDAR report.</p>
+
+                    @for (int f = 0; f < Model.Fields.Count; f++)
+                    {
+                        var sectionId = $"fieldSection-{f}";
+                        <input asp-for="Fields[f].Id" type="hidden" />
+                        <input asp-for="Fields[f].SprayfieldId" type="hidden" />
+                        <div class="mt-3 mb-2 d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                            <div>
+                                <h6 class="fw-bold mb-1">Field @Model.Fields[f].FieldCode</h6>
+                                <div class="text-muted small">Acres: @(Model.Fields[f].Acres?.ToString("F2") ?? "N/A") | Crop: @(string.IsNullOrWhiteSpace(Model.Fields[f].CropSummary) ? "N/A" : Model.Fields[f].CropSummary)</div>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary field-toggle-btn"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#@sectionId"
+                                aria-expanded="false"
+                                aria-controls="@sectionId">
+                                Expand
+                            </button>
+                        </div>
+
+                        <div id="@sectionId" class="collapse ndar-field-collapse">
+                            <div class="table-responsive responsive-table wide-data-table mb-3">
+                                <table class="table table-bordered table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Day</th>
+                                            <th>Volume Applied (gal)</th>
+                                            <th>Time Irrigated (min)</th>
+                                            <th>Daily Loading (in)</th>
+                                            <th>Max Hourly Loading (in)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (int d = 0; d < Model.Fields[f].DailyValues.Count; d++)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    @Model.Fields[f].DailyValues[d].DayNo
+                                                    <input asp-for="Fields[f].DailyValues[d].DayNo" type="hidden" />
+                                                </td>
+                                                <td><input asp-for="Fields[f].DailyValues[d].VolumeApplied" type="number" step="any" class="form-control form-control-sm" /></td>
+                                                <td><input asp-for="Fields[f].DailyValues[d].TimeIrrigated" type="number" step="any" class="form-control form-control-sm" /></td>
+                                                <td><input asp-for="Fields[f].DailyValues[d].DailyLoading" type="number" step="any" class="form-control form-control-sm" /></td>
+                                                <td><input asp-for="Fields[f].DailyValues[d].MaxHourlyLoading" type="number" step="any" class="form-control form-control-sm" /></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <label asp-for="Fields[f].MonthlyLoading" class="form-label">Monthly Loading (in)</label>
+                                    <input asp-for="Fields[f].MonthlyLoading" type="number" step="any" class="form-control" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="Fields[f].MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
+                                    <input asp-for="Fields[f].MaxHourlyLoading" type="number" step="any" class="form-control" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="Fields[f].TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
+                                    <input asp-for="Fields[f].TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
             <div class="d-flex justify-content-end gap-2 mt-4 responsive-form-actions">
                 <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
@@ -419,6 +502,50 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (() => {
+            const collapses = Array.from(document.querySelectorAll('.ndar-field-collapse'));
+            const toggleAllBtn = document.getElementById('toggleAllFieldsBtn');
+
+            const areAllExpanded = () =>
+                collapses.length > 0 && collapses.every(panel => panel.classList.contains('show'));
+
+            const syncToggleAllLabel = () => {
+                if (!toggleAllBtn) return;
+                toggleAllBtn.textContent = areAllExpanded() ? 'Collapse All' : 'Expand All';
+            };
+
+            const syncToggleLabels = () => {
+                document.querySelectorAll('.field-toggle-btn').forEach(btn => {
+                    const targetId = btn.getAttribute('data-bs-target');
+                    const panel = targetId ? document.querySelector(targetId) : null;
+                    if (!panel) return;
+                    btn.textContent = panel.classList.contains('show') ? 'Collapse' : 'Expand';
+                    btn.setAttribute('aria-expanded', panel.classList.contains('show') ? 'true' : 'false');
+                });
+                syncToggleAllLabel();
+            };
+
+            collapses.forEach(panel => {
+                panel.addEventListener('shown.bs.collapse', syncToggleLabels);
+                panel.addEventListener('hidden.bs.collapse', syncToggleLabels);
+            });
+
+            toggleAllBtn?.addEventListener('click', () => {
+                const shouldCollapse = areAllExpanded();
+                collapses.forEach(panel => {
+                    const instance = bootstrap.Collapse.getOrCreateInstance(panel);
+                    if (shouldCollapse) {
+                        instance.hide();
+                    } else {
+                        instance.show();
+                    }
+                });
+            });
+
+            syncToggleLabels();
+        })();
+    </script>
 }
 
 
