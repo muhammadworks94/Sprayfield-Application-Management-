@@ -24,7 +24,7 @@
         <form asp-action="NDAR1ReportEdit" method="post">
             @Html.AntiForgeryToken()
             
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="CompanyId" />
@@ -133,16 +133,16 @@
                                         <input asp-for="WeatherCodeDaily[i]" class="form-control form-control-sm" />
                                     </td>
                                     <td>
-                                        <input asp-for="TemperatureDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        <input asp-for="TemperatureDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                     </td>
                                     <td>
-                                        <input asp-for="PrecipitationDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        <input asp-for="PrecipitationDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                     </td>
                                     <td>
-                                        <input asp-for="StorageDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        <input asp-for="StorageDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                     </td>
                                     <td>
-                                        <input asp-for="FiveDayUpsetDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                        <input asp-for="FiveDayUpsetDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                     </td>
                                 </tr>
                             }
@@ -175,16 +175,16 @@
                                     <tr>
                                         <td>@day</td>
                                         <td>
-                                            <input asp-for="Field1VolumeAppliedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field1VolumeAppliedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field1TimeIrrigatedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field1TimeIrrigatedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field1DailyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field1DailyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field1MaxHourlyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field1MaxHourlyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                     </tr>
                                 }
@@ -196,19 +196,19 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field1MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                <input asp-for="Field1MonthlyLoading" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field1MonthlyLoading" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field1MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                <input asp-for="Field1MaxHourlyLoading" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field1MaxHourlyLoading" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field1TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                <input asp-for="Field1TwelveMonthFloatingTotal" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field1TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                     </div>
@@ -239,16 +239,16 @@
                                     <tr>
                                         <td>@day</td>
                                         <td>
-                                            <input asp-for="Field2VolumeAppliedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field2VolumeAppliedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field2TimeIrrigatedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field2TimeIrrigatedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field2DailyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field2DailyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field2MaxHourlyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field2MaxHourlyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                     </tr>
                                 }
@@ -260,19 +260,19 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field2MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                <input asp-for="Field2MonthlyLoading" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field2MonthlyLoading" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field2MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                <input asp-for="Field2MaxHourlyLoading" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field2MaxHourlyLoading" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field2TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                <input asp-for="Field2TwelveMonthFloatingTotal" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field2TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                     </div>
@@ -303,16 +303,16 @@
                                     <tr>
                                         <td>@day</td>
                                         <td>
-                                            <input asp-for="Field3VolumeAppliedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field3VolumeAppliedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field3TimeIrrigatedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field3TimeIrrigatedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field3DailyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field3DailyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field3MaxHourlyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field3MaxHourlyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                     </tr>
                                 }
@@ -324,19 +324,19 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field3MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                <input asp-for="Field3MonthlyLoading" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field3MonthlyLoading" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field3MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                <input asp-for="Field3MaxHourlyLoading" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field3MaxHourlyLoading" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field3TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                <input asp-for="Field3TwelveMonthFloatingTotal" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field3TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                     </div>
@@ -367,16 +367,16 @@
                                     <tr>
                                         <td>@day</td>
                                         <td>
-                                            <input asp-for="Field4VolumeAppliedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field4VolumeAppliedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field4TimeIrrigatedDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field4TimeIrrigatedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field4DailyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field4DailyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                         <td>
-                                            <input asp-for="Field4MaxHourlyLoadingDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
+                                            <input asp-for="Field4MaxHourlyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
                                         </td>
                                     </tr>
                                 }
@@ -388,19 +388,19 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field4MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                <input asp-for="Field4MonthlyLoading" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field4MonthlyLoading" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field4MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                <input asp-for="Field4MaxHourlyLoading" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field4MaxHourlyLoading" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label asp-for="Field4TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                <input asp-for="Field4TwelveMonthFloatingTotal" type="number" step="0.01" class="form-control" />
+                                <input asp-for="Field4TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
                             </div>
                         </div>
                     </div>
@@ -420,4 +420,5 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }
+
 

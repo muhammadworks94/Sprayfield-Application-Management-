@@ -527,6 +527,11 @@ public class ReportsController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1ReportEdit(NDAR1EditViewModel viewModel)
     {
+        if (viewModel == null)
+        {
+            return BadRequest("Unable to read submitted form data. Please refresh the page and try again.");
+        }
+
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
         if (!ModelState.IsValid)

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using SAM.Data;
 using SAM.Data.Seeders;
@@ -14,6 +16,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.ValueCountLimit = 10000;
+});
 
 // Add Session support
 builder.Services.AddSession(options =>
@@ -119,7 +125,12 @@ builder.Services.AddScoped<SAM.Services.Interfaces.IUserActivityLogService, User
 builder.Services.AddScoped<SAM.Services.Interfaces.IErrorLogService, ErrorLogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ILookupQueryService, LookupQueryService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IBreadcrumbService, BreadcrumbService>();
-builder.Services.AddDataProtection();
+var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("SAM");
 builder.Services.Configure<ActivityLogOptions>(builder.Configuration.GetSection(ActivityLogOptions.SectionName));
 builder.Services.AddHostedService<UserActivityLogRetentionService>();
 
@@ -202,3 +213,5 @@ app.MapControllerRoute(
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.Run();
+
+
