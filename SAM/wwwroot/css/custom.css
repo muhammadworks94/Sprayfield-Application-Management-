@@ -4502,12 +4502,13 @@ small {
     min-height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
     scrollbar-gutter: stable;
   }
 
   .login-form-container {
-    margin: 2rem auto;
+    margin: auto;
   }
 
   .login-form-panel::-webkit-scrollbar {
@@ -5288,5 +5289,71 @@ dl.responsive-detail-list {
   .system-admin-page .page-section-actions > a,
   .system-admin-page .page-section-actions > button {
     font-size: 0.78rem;
+  }
+}
+
+/* ============================================
+   Large Screen Responsiveness Fixes
+   ============================================ */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-layout {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.main-content {
+  max-width: 100%;
+}
+
+.app-main-shell,
+.responsive-page-shell {
+  width: 100%;
+  max-width: none;
+}
+
+@media (min-width: 1400px) {
+  .main-content > main.p-4.app-main-shell,
+  .main-content > main.p-4.responsive-page-shell {
+    max-width: none;
+  }
+
+  body.login-page {
+    overflow-x: hidden;
+  }
+
+  .login-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .login-promo-panel,
+  .login-form-panel {
+    min-width: 0;
+  }
+
+  .login-promo-panel {
+    flex: 0 0 58%;
+    padding: clamp(2rem, 3vw, 4rem);
+  }
+
+  .login-form-panel {
+    flex: 0 0 42%;
+    padding: clamp(2rem, 3vw, 4rem);
+  }
+
+  .login-promo-content {
+    max-width: 40rem;
+  }
+
+  .login-form-container {
+    max-width: min(40rem, 100%);
   }
 }
