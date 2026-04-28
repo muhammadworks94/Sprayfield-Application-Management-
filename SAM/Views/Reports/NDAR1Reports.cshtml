@@ -170,7 +170,7 @@
                                     @* <a asp-action="NDAR1ReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
                                     </a> *@
-                                    <a asp-action="ExportNDAR1Report" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success">
+                                    <a asp-action="ExportNDAR1Report" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success js-report-export-link">
                                         <i class="bi bi-download"></i> Export
                                     </a>
                                     @if (canEdit)
@@ -237,6 +237,13 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            if (window.SAMLoading && window.SAMLoading.bindLinkClicks) {
+                window.SAMLoading.bindLinkClicks('.js-report-export-link', {
+                    loadingMessage: 'Generating export, please wait...',
+                    useFetchDownload: true
+                });
+            }
+
             const tableBtn = document.getElementById('ndar1ReportsTableViewBtn');
             const cardBtn = document.getElementById('ndar1ReportsCardViewBtn');
             const tableView = document.getElementById('ndar1ReportsTableView');

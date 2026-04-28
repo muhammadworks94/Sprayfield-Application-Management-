@@ -21,17 +21,17 @@
             </button>
             <ul class="dropdown-menu" aria-labelledby="reportExportDropdown">
                 <li>
-                    <a class="dropdown-item" asp-action="ExportNDAR1Report" asp-route-id="@Model.Id">
+                    <a class="dropdown-item js-report-export-link" asp-action="ExportNDAR1Report" asp-route-id="@Model.Id">
                         <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDAR-1
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item" asp-action="ExportNDMRReport" asp-route-id="@Model.Id">
+                    <a class="dropdown-item js-report-export-link" asp-action="ExportNDMRReport" asp-route-id="@Model.Id">
                         <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDMR
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item" asp-action="ExportNDMLRReport" asp-route-id="@Model.Id">
+                    <a class="dropdown-item js-report-export-link" asp-action="ExportNDMLRReport" asp-route-id="@Model.Id">
                         <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDMLR
                     </a>
                 </li>
@@ -48,6 +48,21 @@
         </a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            if (!window.SAMLoading || !window.SAMLoading.bindLinkClicks) {
+                return;
+            }
+
+            window.SAMLoading.bindLinkClicks('.js-report-export-link', {
+                loadingMessage: 'Generating export, please wait...',
+                useFetchDownload: true
+            });
+        })();
+    </script>
+}
 
 <div class="card">
     <div class="card-body">

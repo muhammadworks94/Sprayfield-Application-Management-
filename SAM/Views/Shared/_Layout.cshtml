@@ -76,11 +76,217 @@
         </div>
     </div>
 
+    <div id="globalLoadingOverlay" class="global-loading-overlay d-none" role="status" aria-live="polite" aria-atomic="true">
+        <div class="global-loading-content text-center">
+            <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+            <div id="globalLoadingMessage" class="fw-semibold">Loading, please wait...</div>
+            <span class="visually-hidden">Loading in progress</span>
+        </div>
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <style>
+        .global-loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .global-loading-content {
+            background: #fff;
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            min-width: 260px;
+        }
+    </style>
+    <script>
+        window.SAMLoading = (function () {
+            const overlay = document.getElementById('globalLoadingOverlay');
+            const messageEl = document.getElementById('globalLoadingMessage');
+
+            function show(message) {
+                if (!overlay) return;
+                if (messageEl && message) {
+                    messageEl.textContent = message;
+                }
+                overlay.classList.remove('d-none');
+            }
+
+            function hide() {
+                if (!overlay) return;
+                overlay.classList.add('d-none');
+            }
+
+            function bindFormSubmit(formSelector, options) {
+                const form = document.querySelector(formSelector);
+                if (!form) return;
+
+                const submitButton = form.querySelector('button[type="submit"]');
+                const originalButtonHtml = submitButton ? submitButton.innerHTML : '';
+                const loadingButtonHtml = (options && options.loadingButtonHtml) ||
+                    '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Loading...';
+                const loadingMessage = (options && options.loadingMessage) || 'Loading, please wait...';
+
+                form.addEventListener('submit', function (event) {
+                    if (form.dataset.submitted === 'true') {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    form.dataset.submitted = 'true';
+                    show(loadingMessage);
+
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.innerHTML = loadingButtonHtml;
+                        submitButton.setAttribute('aria-disabled', 'true');
+                    }
+                });
+
+                window.addEventListener('pageshow', function () {
+                    if (form.dataset.submitted === 'true') {
+                        form.dataset.submitted = 'false';
+                        hide();
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalButtonHtml;
+                            submitButton.removeAttribute('aria-disabled');
+                        }
+                    }
+                });
+            }
+
+            function bindLinkClicks(linkSelector, options) {
+                const links = document.querySelectorAll(linkSelector);
+                if (!links || links.length === 0) return;
+
+                const loadingMessage = (options && options.loadingMessage) || 'Loading, please wait...';
+                const disableOnClick = !options || options.disableOnClick !== false;
+                const useFetchDownload = !!(options && options.useFetchDownload);
+                const autoHideMs = (options && typeof options.autoHideMs === 'number') ? options.autoHideMs : 12000;
+                let hideTimer = null;
+
+                function enableLinks() {
+                    links.forEach(function (l) {
+                        l.classList.remove('disabled');
+                        l.removeAttribute('aria-disabled');
+                        l.style.pointerEvents = '';
+                    });
+                }
+
+                function scheduleHide() {
+                    if (hideTimer) {
+                        clearTimeout(hideTimer);
+                    }
+
+                    hideTimer = setTimeout(function () {
+                        hide();
+                        enableLinks();
+                        hideTimer = null;
+                    }, autoHideMs);
+                }
+
+                function getFilenameFromDisposition(disposition) {
+                    if (!disposition) return null;
+
+                    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+                    if (utf8Match && utf8Match[1]) {
+                        try {
+                            return decodeURIComponent(utf8Match[1]);
+                        } catch {
+                            return utf8Match[1];
+                        }
+                    }
+
+                    const quotedMatch = disposition.match(/filename="([^"]+)"/i);
+                    if (quotedMatch && quotedMatch[1]) {
+                        return quotedMatch[1];
+                    }
+
+                    const plainMatch = disposition.match(/filename=([^;]+)/i);
+                    return plainMatch && plainMatch[1] ? plainMatch[1].trim() : null;
+                }
+
+                async function downloadUsingFetch(link) {
+                    const url = link.getAttribute('href');
+                    if (!url) return;
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        credentials: 'same-origin'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Download failed');
+                    }
+
+                    const blob = await response.blob();
+                    const disposition = response.headers.get('Content-Disposition');
+                    const filename = getFilenameFromDisposition(disposition) || 'download';
+
+                    const objectUrl = window.URL.createObjectURL(blob);
+                    try {
+                        const tempLink = document.createElement('a');
+                        tempLink.href = objectUrl;
+                        tempLink.download = filename;
+                        tempLink.style.display = 'none';
+                        document.body.appendChild(tempLink);
+                        tempLink.click();
+                        tempLink.remove();
+                    } finally {
+                        window.URL.revokeObjectURL(objectUrl);
+                    }
+                }
+
+                links.forEach(function (link) {
+                    link.addEventListener('click', async function (event) {
+                        if (useFetchDownload) {
+                            event.preventDefault();
+                        }
+
+                        show(loadingMessage);
+
+                        if (disableOnClick) {
+                            links.forEach(function (l) {
+                                l.classList.add('disabled');
+                                l.setAttribute('aria-disabled', 'true');
+                                l.style.pointerEvents = 'none';
+                            });
+                        }
+
+                        if (useFetchDownload) {
+                            try {
+                                await downloadUsingFetch(link);
+                            } catch (error) {
+                                console.error(error);
+                            } finally {
+                                hide();
+                                enableLinks();
+                            }
+                        } else {
+                            scheduleHide();
+                        }
+                    });
+                });
+            }
+
+            return {
+                show: show,
+                hide: hide,
+                bindFormSubmit: bindFormSubmit,
+                bindLinkClicks: bindLinkClicks
+            };
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
     
     <script src="~/js/layout-navigation.js" asp-append-version="true"></script>

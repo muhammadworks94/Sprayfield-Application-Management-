@@ -76,5 +76,17 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            if (!window.SAMLoading || !window.SAMLoading.bindFormSubmit) {
+                return;
+            }
+
+            window.SAMLoading.bindFormSubmit('form[action*="GenerateIrrigationReport"]', {
+                loadingMessage: 'Generating report, please wait...',
+                loadingButtonHtml: '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Generating...'
+            });
+        })();
+    </script>
 }
 
