@@ -49,6 +49,7 @@
                             <th>Zone</th>
                             <th>Zone Acres</th>
                             <th>Volume (gal)</th>
+                            <th>Time (min)</th>
                             <th>Nitrogen (mg/L)</th>
                             <th>Operator</th>
                             <th class="table-actions">Actions</th>
@@ -68,6 +69,7 @@
                             <td>@item.ZoneName</td>
                             <td>@(item.ZoneAcres.HasValue ? $"{item.ZoneAcres.Value:F2}" : "-")</td>
                             <td>@item.VolumeGallons.ToString("F2")</td>
+                            <td>@(item.TimeIrrigatedMinutes?.ToString("F2") ?? "-")</td>
                             <td>@item.NitrogenMgL.ToString("F2")</td>
                             <td>@item.OperatorSnapshotName</td>
                             <td class="table-actions">
@@ -128,6 +130,9 @@
 
                                     <dt class="col-5">Volume</dt>
                                     <dd class="col-7 mb-1">@item.VolumeGallons.ToString("F2") gal</dd>
+
+                                    <dt class="col-5">Time</dt>
+                                    <dd class="col-7 mb-1">@(item.TimeIrrigatedMinutes?.ToString("F2") ?? "-") min</dd>
 
                                     <dt class="col-5">Nitrogen</dt>
                                     <dd class="col-7 mb-1">@item.NitrogenMgL.ToString("F2") mg/L</dd>

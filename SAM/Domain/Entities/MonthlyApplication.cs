@@ -11,6 +11,7 @@ public class MonthlyApplication : CompanyScopedEntity
     public Guid ZoneId { get; set; }
     public DateTime ApplicationDate { get; set; }
     public decimal VolumeGallons { get; set; }
+    public decimal? TimeIrrigatedMinutes { get; set; }
     public decimal NitrogenMgL { get; set; }
     public string? OperatorUserId { get; set; }
     public string OperatorSnapshotName { get; set; } = string.Empty;

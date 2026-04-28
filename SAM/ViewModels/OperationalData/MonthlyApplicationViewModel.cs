@@ -15,6 +15,7 @@ public class MonthlyApplicationViewModel
     public decimal? ZoneAcres { get; set; }
     public DateTime ApplicationDate { get; set; }
     public decimal VolumeGallons { get; set; }
+    public decimal? TimeIrrigatedMinutes { get; set; }
     public decimal NitrogenMgL { get; set; }
     public string? OperatorSnapshotName { get; set; }
     public string? Comments { get; set; }
@@ -46,6 +47,10 @@ public class MonthlyApplicationCreateViewModel
     [Range(0.01, double.MaxValue)]
     [Display(Name = "Volume (gallons)")]
     public decimal VolumeGallons { get; set; }
+
+    [Range(0.0, double.MaxValue)]
+    [Display(Name = "Time Irrigated (minutes)")]
+    public decimal? TimeIrrigatedMinutes { get; set; }
 
     [Range(0.0, double.MaxValue)]
     [Display(Name = "Nitrogen (mg/L)")]

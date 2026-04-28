@@ -95,6 +95,10 @@ namespace SAM.Controllers;
             LogDate = l.LogDate,
             OperatorName = l.OperatorName,
             WeatherConditions = l.WeatherConditions,
+            TemperatureF = l.TemperatureF,
+            PrecipitationIn = l.PrecipitationIn,
+            StorageFt = l.StorageFt,
+            FiveDayUpsetFt = l.FiveDayUpsetFt,
             ArrivalTime = l.ArrivalTime.ToString(@"hh\:mm"),
             TimeOnSiteHours = l.TimeOnSiteHours,
             MaintenancePerformed = l.MaintenancePerformed,
@@ -131,6 +135,10 @@ namespace SAM.Controllers;
             LogDate = log.LogDate,
             OperatorName = log.OperatorName,
             WeatherConditions = log.WeatherConditions,
+            TemperatureF = log.TemperatureF,
+            PrecipitationIn = log.PrecipitationIn,
+            StorageFt = log.StorageFt,
+            FiveDayUpsetFt = log.FiveDayUpsetFt,
             ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
             TimeOnSiteHours = log.TimeOnSiteHours,
             MaintenancePerformed = log.MaintenancePerformed,
@@ -228,14 +236,18 @@ namespace SAM.Controllers;
                 FacilityId = viewModel.FacilityId,
                 LogDate = viewModel.LogDate,
                 OperatorName = operatorName ?? string.Empty,
-                WeatherConditions = viewModel.WeatherConditions,
+                WeatherConditions = viewModel.WeatherConditions ?? string.Empty,
+                TemperatureF = viewModel.TemperatureF,
+                PrecipitationIn = viewModel.PrecipitationIn,
+                StorageFt = viewModel.StorageFt,
+                FiveDayUpsetFt = viewModel.FiveDayUpsetFt,
                 ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime),
                 TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0,
-                MaintenancePerformed = viewModel.MaintenancePerformed,
-                EquipmentInspected = viewModel.EquipmentInspected,
-                IssuesNoted = viewModel.IssuesNoted,
-                CorrectiveActions = viewModel.CorrectiveActions,
-                NextShiftNotes = viewModel.NextShiftNotes
+                MaintenancePerformed = viewModel.MaintenancePerformed ?? string.Empty,
+                EquipmentInspected = viewModel.EquipmentInspected ?? string.Empty,
+                IssuesNoted = viewModel.IssuesNoted ?? string.Empty,
+                CorrectiveActions = viewModel.CorrectiveActions ?? string.Empty,
+                NextShiftNotes = viewModel.NextShiftNotes ?? string.Empty
             };
 
             await _operatorLogService.CreateAsync(operatorLog);
@@ -272,6 +284,10 @@ namespace SAM.Controllers;
             LogDate = log.LogDate,
             OperatorName = operatorName == null ? log.OperatorName : operatorName,
             WeatherConditions = log.WeatherConditions,
+            TemperatureF = log.TemperatureF,
+            PrecipitationIn = log.PrecipitationIn,
+            StorageFt = log.StorageFt,
+            FiveDayUpsetFt = log.FiveDayUpsetFt,
             ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
             TimeOnSiteHours = log.TimeOnSiteHours,
             MaintenancePerformed = log.MaintenancePerformed,
@@ -305,14 +321,18 @@ namespace SAM.Controllers;
                 return NotFound();
 
             operatorLog.LogDate = viewModel.LogDate;
-            operatorLog.WeatherConditions = viewModel.WeatherConditions;
+            operatorLog.WeatherConditions = viewModel.WeatherConditions ?? string.Empty;
+            operatorLog.TemperatureF = viewModel.TemperatureF;
+            operatorLog.PrecipitationIn = viewModel.PrecipitationIn;
+            operatorLog.StorageFt = viewModel.StorageFt;
+            operatorLog.FiveDayUpsetFt = viewModel.FiveDayUpsetFt;
             operatorLog.ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime);
             operatorLog.TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0;
-            operatorLog.MaintenancePerformed = viewModel.MaintenancePerformed;
-            operatorLog.EquipmentInspected = viewModel.EquipmentInspected;
-            operatorLog.IssuesNoted = viewModel.IssuesNoted;
-            operatorLog.CorrectiveActions = viewModel.CorrectiveActions;
-            operatorLog.NextShiftNotes = viewModel.NextShiftNotes;
+            operatorLog.MaintenancePerformed = viewModel.MaintenancePerformed ?? string.Empty;
+            operatorLog.EquipmentInspected = viewModel.EquipmentInspected ?? string.Empty;
+            operatorLog.IssuesNoted = viewModel.IssuesNoted ?? string.Empty;
+            operatorLog.CorrectiveActions = viewModel.CorrectiveActions ?? string.Empty;
+            operatorLog.NextShiftNotes = viewModel.NextShiftNotes ?? string.Empty;
 
             await _operatorLogService.UpdateAsync(operatorLog);
             TempData["SuccessMessage"] = "Operator log updated successfully.";
@@ -376,6 +396,7 @@ namespace SAM.Controllers;
             ZoneAcres = zoneDisplayMaps.GetValueOrDefault(a.FacilityId)?.GetValueOrDefault(a.ZoneId)?.ZoneAcres,
             ApplicationDate = a.ApplicationDate,
             VolumeGallons = a.VolumeGallons,
+            TimeIrrigatedMinutes = a.TimeIrrigatedMinutes,
             NitrogenMgL = a.NitrogenMgL,
             OperatorSnapshotName = a.OperatorSnapshotName,
             Comments = a.Comments
@@ -466,6 +487,7 @@ namespace SAM.Controllers;
             ZoneId = viewModel.ZoneId,
             ApplicationDate = viewModel.ApplicationDate,
             VolumeGallons = viewModel.VolumeGallons,
+            TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes,
             NitrogenMgL = viewModel.NitrogenMgL,
             OperatorUserId = currentUser?.Id,
             OperatorSnapshotName = snapshotName,
@@ -502,6 +524,7 @@ namespace SAM.Controllers;
             ZoneId = application.ZoneId,
             ApplicationDate = application.ApplicationDate,
             VolumeGallons = application.VolumeGallons,
+            TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
             NitrogenMgL = application.NitrogenMgL,
             Comments = application.Comments
         });
@@ -565,6 +588,7 @@ namespace SAM.Controllers;
         application.ZoneId = viewModel.ZoneId;
         application.ApplicationDate = viewModel.ApplicationDate;
         application.VolumeGallons = viewModel.VolumeGallons;
+        application.TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes;
         application.NitrogenMgL = viewModel.NitrogenMgL;
         application.Comments = viewModel.Comments ?? string.Empty;
 
@@ -601,6 +625,7 @@ namespace SAM.Controllers;
             ZoneAcres = zoneDisplay?.ZoneAcres,
             ApplicationDate = application.ApplicationDate,
             VolumeGallons = application.VolumeGallons,
+            TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
             NitrogenMgL = application.NitrogenMgL,
             OperatorSnapshotName = application.OperatorSnapshotName,
             Comments = application.Comments

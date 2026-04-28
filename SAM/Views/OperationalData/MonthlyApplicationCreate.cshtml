@@ -70,6 +70,12 @@
                 </div>
 
                 <div class="col-lg-4 col-md-6">
+                    <label asp-for="TimeIrrigatedMinutes" class="form-label"></label>
+                    <input asp-for="TimeIrrigatedMinutes" type="number" step="any" min="0" class="form-control" />
+                    <span asp-validation-for="TimeIrrigatedMinutes" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
                     <label asp-for="NitrogenMgL" class="form-label required"></label>
                     <input asp-for="NitrogenMgL" type="number" step="any" min="0" class="form-control" />
                     <span asp-validation-for="NitrogenMgL" class="text-danger"></span>

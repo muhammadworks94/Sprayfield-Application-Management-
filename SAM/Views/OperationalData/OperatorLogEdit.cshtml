@@ -91,6 +91,37 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="TemperatureF" class="form-label"></label>
+                                    <input asp-for="TemperatureF" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TemperatureF" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="PrecipitationIn" class="form-label"></label>
+                                    <input asp-for="PrecipitationIn" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="PrecipitationIn" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="StorageFt" class="form-label"></label>
+                                    <input asp-for="StorageFt" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="StorageFt" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="FiveDayUpsetFt" class="form-label"></label>
+                                    <input asp-for="FiveDayUpsetFt" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="FiveDayUpsetFt" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-section">
@@ -185,4 +216,3 @@
         })();
     </script>
 }
-

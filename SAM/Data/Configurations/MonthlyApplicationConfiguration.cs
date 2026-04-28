@@ -14,6 +14,7 @@ public class MonthlyApplicationConfiguration : IEntityTypeConfiguration<MonthlyA
 
         builder.Property(a => a.ApplicationDate).IsRequired();
         builder.Property(a => a.VolumeGallons).HasColumnType("decimal(18,2)");
+        builder.Property(a => a.TimeIrrigatedMinutes).HasColumnType("decimal(10,2)");
         builder.Property(a => a.NitrogenMgL).HasColumnType("decimal(18,4)");
         builder.Property(a => a.OperatorSnapshotName).HasMaxLength(200);
         builder.Property(a => a.Comments).HasMaxLength(2000);

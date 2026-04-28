@@ -22,6 +22,18 @@ public class OperatorLogConfiguration : IEntityTypeConfiguration<OperatorLog>
         builder.Property(o => o.WeatherConditions)
             .HasMaxLength(200);
 
+        builder.Property(o => o.TemperatureF)
+            .HasColumnType("decimal(10,2)");
+
+        builder.Property(o => o.PrecipitationIn)
+            .HasColumnType("decimal(10,2)");
+
+        builder.Property(o => o.StorageFt)
+            .HasColumnType("decimal(10,2)");
+
+        builder.Property(o => o.FiveDayUpsetFt)
+            .HasColumnType("decimal(10,2)");
+
         builder.Property(o => o.ArrivalTime);
 
         builder.Property(o => o.TimeOnSiteHours)
