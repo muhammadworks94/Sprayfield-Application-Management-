@@ -16,7 +16,7 @@ public class MonthlyApplicationViewModel
     public DateTime ApplicationDate { get; set; }
     public decimal VolumeGallons { get; set; }
     public decimal? TimeIrrigatedMinutes { get; set; }
-    public decimal NitrogenMgL { get; set; }
+    public decimal MaximumHourlyLoadingInchesPerAcre { get; set; }
     public string? OperatorSnapshotName { get; set; }
     public string? Comments { get; set; }
 }
@@ -49,8 +49,9 @@ public class MonthlyApplicationCreateViewModel
     public decimal? TimeIrrigatedMinutes { get; set; }
 
     [Range(0.0, double.MaxValue)]
-    [Display(Name = "Nitrogen (mg/L)")]
-    public decimal NitrogenMgL { get; set; }
+    [Display(Name = "Maximum Hourly Loading (inches/acre)")]
+    [DisplayFormat(DataFormatString = "{0:0.00}", ApplyFormatInEditMode = true)]
+    public decimal MaximumHourlyLoadingInchesPerAcre { get; set; }
 
     [Display(Name = "Comments")]
     public string? Comments { get; set; }

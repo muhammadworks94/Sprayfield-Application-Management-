@@ -61,7 +61,7 @@ public class MonthlyApplicationService : IMonthlyApplicationService
         existing.ApplicationDate = application.ApplicationDate;
         existing.VolumeGallons = application.VolumeGallons;
         existing.TimeIrrigatedMinutes = application.TimeIrrigatedMinutes;
-        existing.NitrogenMgL = application.NitrogenMgL;
+        existing.MaximumHourlyLoadingInchesPerAcre = application.MaximumHourlyLoadingInchesPerAcre;
         existing.OperatorUserId = application.OperatorUserId;
         existing.OperatorSnapshotName = application.OperatorSnapshotName;
         existing.Comments = application.Comments;

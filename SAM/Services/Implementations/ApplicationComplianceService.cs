@@ -53,7 +53,6 @@ public class ApplicationComplianceService : IApplicationComplianceService
         var prospectivePanLbs = CalculatePanLbs(
             request.ApplicationDate,
             request.VolumeGallons,
-            request.NitrogenMgL,
             chemistryByMonth,
             facilityInputs.MineralizationRate,
             facilityInputs.VolatilizationRate);
@@ -185,7 +184,6 @@ public class ApplicationComplianceService : IApplicationComplianceService
             CalculatePanLbs(
                 a.ApplicationDate,
                 a.VolumeGallons,
-                a.NitrogenMgL,
                 chemistryByMonth,
                 mineralizationRate,
                 volatilizationRate));
@@ -241,7 +239,6 @@ public class ApplicationComplianceService : IApplicationComplianceService
     private decimal CalculatePanLbs(
         DateTime applicationDate,
         decimal volumeGallons,
-        decimal fallbackNitrogenMgL,
         IReadOnlyDictionary<(int Year, int Month), PanChemistryInputs> chemistryByMonth,
         decimal mineralizationRate,
         decimal volatilizationRate)
@@ -252,16 +249,14 @@ public class ApplicationComplianceService : IApplicationComplianceService
         }
 
         var key = (applicationDate.Year, applicationDate.Month);
-        if (chemistryByMonth.TryGetValue(key, out var chemistry))
+        if (!chemistryByMonth.TryGetValue(key, out var chemistry) || !chemistry.TknMgL.HasValue)
         {
-            var tkn = chemistry.TknMgL ?? fallbackNitrogenMgL;
-            return _panCalculationService
-                .Calculate(tkn, chemistry.Nh3MgL, chemistry.No2MgL, chemistry.No3MgL, mineralizationRate, volatilizationRate, volumeGallons, 1m)
-                .PanLbs;
+            throw new InvalidOperationException(
+                $"WWChar chemistry data (including TKN) is required for {applicationDate:yyyy-MM} before monthly applications can be projected.");
         }
 
         return _panCalculationService
-            .Calculate(fallbackNitrogenMgL, 0m, 0m, 0m, mineralizationRate, volatilizationRate, volumeGallons, 1m)
+            .Calculate(chemistry.TknMgL.Value, chemistry.Nh3MgL, chemistry.No2MgL, chemistry.No3MgL, mineralizationRate, volatilizationRate, volumeGallons, 1m)
             .PanLbs;
     }
 

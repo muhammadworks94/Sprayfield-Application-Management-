@@ -393,7 +393,7 @@ namespace SAM.Controllers;
             ApplicationDate = a.ApplicationDate,
             VolumeGallons = a.VolumeGallons,
             TimeIrrigatedMinutes = a.TimeIrrigatedMinutes,
-            NitrogenMgL = a.NitrogenMgL,
+            MaximumHourlyLoadingInchesPerAcre = a.MaximumHourlyLoadingInchesPerAcre,
             OperatorSnapshotName = a.OperatorSnapshotName,
             Comments = a.Comments
         });
@@ -446,14 +446,21 @@ namespace SAM.Controllers;
         ComplianceProjectionResult? complianceProjection = null;
         if (ModelState.IsValid && facility != null)
         {
-            complianceProjection = await _applicationComplianceService.GetProjectedComplianceAsync(new ComplianceProjectionRequest
+            try
             {
-                FacilityId = viewModel.FacilityId,
-                SprayfieldId = viewModel.SprayfieldId,
-                ApplicationDate = viewModel.ApplicationDate,
-                VolumeGallons = viewModel.VolumeGallons,
-                NitrogenMgL = viewModel.NitrogenMgL
-            });
+                complianceProjection = await _applicationComplianceService.GetProjectedComplianceAsync(new ComplianceProjectionRequest
+                {
+                    FacilityId = viewModel.FacilityId,
+                    SprayfieldId = viewModel.SprayfieldId,
+                    ApplicationDate = viewModel.ApplicationDate,
+                    VolumeGallons = viewModel.VolumeGallons
+                });
+            }
+            catch (InvalidOperationException)
+            {
+                ModelState.AddModelError(string.Empty, BuildMissingWwCharMessage(viewModel.ApplicationDate));
+                ViewBag.WWCharShortcutUrl = BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
+            }
 
             if (complianceProjection.RequiresConfirmation && !viewModel.ConfirmComplianceWarnings)
             {
@@ -467,6 +474,7 @@ namespace SAM.Controllers;
             var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
             ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
+            ViewBag.WWCharShortcutUrl ??= BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
             return View(viewModel);
         }
 
@@ -481,7 +489,7 @@ namespace SAM.Controllers;
             ApplicationDate = viewModel.ApplicationDate,
             VolumeGallons = viewModel.VolumeGallons,
             TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes,
-            NitrogenMgL = viewModel.NitrogenMgL,
+            MaximumHourlyLoadingInchesPerAcre = viewModel.MaximumHourlyLoadingInchesPerAcre,
             OperatorUserId = currentUser?.Id,
             OperatorSnapshotName = snapshotName,
             Comments = viewModel.Comments ?? string.Empty
@@ -513,7 +521,7 @@ namespace SAM.Controllers;
             ApplicationDate = application.ApplicationDate,
             VolumeGallons = application.VolumeGallons,
             TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
-            NitrogenMgL = application.NitrogenMgL,
+            MaximumHourlyLoadingInchesPerAcre = application.MaximumHourlyLoadingInchesPerAcre,
             Comments = application.Comments
         });
     }
@@ -541,15 +549,22 @@ namespace SAM.Controllers;
         ComplianceProjectionResult? complianceProjection = null;
         if (ModelState.IsValid && facility != null)
         {
-            complianceProjection = await _applicationComplianceService.GetProjectedComplianceAsync(new ComplianceProjectionRequest
+            try
             {
-                FacilityId = viewModel.FacilityId,
-                SprayfieldId = viewModel.SprayfieldId,
-                ApplicationDate = viewModel.ApplicationDate,
-                VolumeGallons = viewModel.VolumeGallons,
-                NitrogenMgL = viewModel.NitrogenMgL,
-                ExistingApplicationId = viewModel.Id
-            });
+                complianceProjection = await _applicationComplianceService.GetProjectedComplianceAsync(new ComplianceProjectionRequest
+                {
+                    FacilityId = viewModel.FacilityId,
+                    SprayfieldId = viewModel.SprayfieldId,
+                    ApplicationDate = viewModel.ApplicationDate,
+                    VolumeGallons = viewModel.VolumeGallons,
+                    ExistingApplicationId = viewModel.Id
+                });
+            }
+            catch (InvalidOperationException)
+            {
+                ModelState.AddModelError(string.Empty, BuildMissingWwCharMessage(viewModel.ApplicationDate));
+                ViewBag.WWCharShortcutUrl = BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
+            }
 
             if (complianceProjection.RequiresConfirmation && !viewModel.ConfirmComplianceWarnings)
             {
@@ -563,6 +578,7 @@ namespace SAM.Controllers;
             var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
             ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
+            ViewBag.WWCharShortcutUrl ??= BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
             return View(viewModel);
         }
 
@@ -576,7 +592,7 @@ namespace SAM.Controllers;
         application.ApplicationDate = viewModel.ApplicationDate;
         application.VolumeGallons = viewModel.VolumeGallons;
         application.TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes;
-        application.NitrogenMgL = viewModel.NitrogenMgL;
+        application.MaximumHourlyLoadingInchesPerAcre = viewModel.MaximumHourlyLoadingInchesPerAcre;
         application.Comments = viewModel.Comments ?? string.Empty;
 
         await _monthlyApplicationService.UpdateAsync(application);
@@ -607,7 +623,7 @@ namespace SAM.Controllers;
             ApplicationDate = application.ApplicationDate,
             VolumeGallons = application.VolumeGallons,
             TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
-            NitrogenMgL = application.NitrogenMgL,
+            MaximumHourlyLoadingInchesPerAcre = application.MaximumHourlyLoadingInchesPerAcre,
             OperatorSnapshotName = application.OperatorSnapshotName,
             Comments = application.Comments
         };
@@ -692,7 +708,12 @@ namespace SAM.Controllers;
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new
+            {
+                message = BuildMissingWwCharMessage(request.ApplicationDate),
+                wwCharShortcutUrl = BuildWwCharCreateShortcutUrl(request.FacilityId, request.ApplicationDate),
+                detail = ex.Message
+            });
         }
 
         return Json(new
@@ -820,7 +841,7 @@ namespace SAM.Controllers;
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireTechnician)]
-    public async Task<IActionResult> WWCharCreate(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> WWCharCreate(Guid? companyId = null, Guid? facilityId = null, int? month = null, int? year = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -852,6 +873,16 @@ namespace SAM.Controllers;
             CompanyId = companyId ?? Guid.Empty,
             FacilityId = facilityId ?? Guid.Empty
         };
+
+        if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+        {
+            viewModel.Month = (MonthEnum)month.Value;
+        }
+
+        if (year.HasValue && year.Value >= 2000 && year.Value <= 2100)
+        {
+            viewModel.Year = year.Value;
+        }
 
         // Initialize daily arrays with 31 empty entries
         InitializeDailyArrays(viewModel);
@@ -1947,6 +1978,24 @@ namespace SAM.Controllers;
         }
     }
 
+    private string BuildMissingWwCharMessage(DateTime applicationDate)
+    {
+        return $"WWChar chemistry (including TKN) is required for {applicationDate:MMM yyyy} before saving this Monthly Application.";
+    }
+
+    private string BuildWwCharCreateShortcutUrl(Guid facilityId, DateTime applicationDate)
+    {
+        return Url.Action(
+                   nameof(WWCharCreate),
+                   new
+                   {
+                       facilityId,
+                       month = applicationDate.Month,
+                       year = applicationDate.Year
+                   }) ?? string.Empty;
+    }
+
     #endregion
 }
+
 

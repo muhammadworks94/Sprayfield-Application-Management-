@@ -44,14 +44,9 @@
                     <thead>
                         <tr>
                             <th>Date</th>
-                            <th>Facility</th>
                             <th>Sprayfield</th>
-                            <th>Zone</th>
-                            <th>Zone Acres</th>
                             <th>Volume (gal)</th>
-                            <th>Time (min)</th>
-                            <th>Nitrogen (mg/L)</th>
-                            <th>Operator</th>
+                            <th>Maximum Hourly Loading (inches/acre)</th>
                             <th class="table-actions">Actions</th>
                         </tr>
                     </thead>
@@ -64,14 +59,9 @@
                                     @item.ApplicationDate.ToString("MM/dd/yyyy")
                                 </a>
                             </td>
-                            <td>@item.FacilityName</td>
                             <td>@item.SprayfieldName</td>
-                            <td>@item.ZoneName</td>
-                            <td>@(item.ZoneAcres.HasValue ? $"{item.ZoneAcres.Value:F2}" : "-")</td>
                             <td>@item.VolumeGallons.ToString("F2")</td>
-                            <td>@(item.TimeIrrigatedMinutes?.ToString("F2") ?? "-")</td>
-                            <td>@item.NitrogenMgL.ToString("F2")</td>
-                            <td>@item.OperatorSnapshotName</td>
+                            <td>@item.MaximumHourlyLoadingInchesPerAcre.ToString("F2")</td>
                             <td class="table-actions">
                                 <div class="d-inline-flex flex-nowrap align-items-center gap-1">
                                     <a asp-action="MonthlyApplicationEdit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
@@ -134,8 +124,8 @@
                                     <dt class="col-5">Time</dt>
                                     <dd class="col-7 mb-1">@(item.TimeIrrigatedMinutes?.ToString("F2") ?? "-") min</dd>
 
-                                    <dt class="col-5">Nitrogen</dt>
-                                    <dd class="col-7 mb-1">@item.NitrogenMgL.ToString("F2") mg/L</dd>
+                                    <dt class="col-5">Max Hourly Loading</dt>
+                                    <dd class="col-7 mb-1">@item.MaximumHourlyLoadingInchesPerAcre.ToString("F2") inches/acre</dd>
 
                                     <dt class="col-5">Operator</dt>
                                     <dd class="col-7 mb-1">@item.OperatorSnapshotName</dd>
@@ -233,4 +223,5 @@
         })();
     </script>
 }
+
 

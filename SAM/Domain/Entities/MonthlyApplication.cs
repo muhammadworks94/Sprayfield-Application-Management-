@@ -12,7 +12,7 @@ public class MonthlyApplication : CompanyScopedEntity
     public DateTime ApplicationDate { get; set; }
     public decimal VolumeGallons { get; set; }
     public decimal? TimeIrrigatedMinutes { get; set; }
-    public decimal NitrogenMgL { get; set; }
+    public decimal MaximumHourlyLoadingInchesPerAcre { get; set; }
     public string? OperatorUserId { get; set; }
     public string OperatorSnapshotName { get; set; } = string.Empty;
     public string Comments { get; set; } = string.Empty;

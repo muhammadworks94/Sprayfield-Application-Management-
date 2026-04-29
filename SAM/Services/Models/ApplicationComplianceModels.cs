@@ -6,7 +6,6 @@ public class ComplianceProjectionRequest
     public Guid SprayfieldId { get; set; }
     public DateTime ApplicationDate { get; set; }
     public decimal VolumeGallons { get; set; }
-    public decimal NitrogenMgL { get; set; }
     public Guid? ExistingApplicationId { get; set; }
 }
 
