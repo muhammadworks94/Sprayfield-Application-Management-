@@ -1,551 +1,242 @@
-@model SAM.ViewModels.Reports.NDAR1EditViewModel
-@using Microsoft.AspNetCore.Identity
-@using SAM.Domain.Entities
-@inject UserManager<ApplicationUser> UserManager
+@model SAM.ViewModels.Reports.NDAR1EditGridViewModel
 @{
     ViewData["Title"] = "Edit NDAR-1 Report";
-    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var daysInMonth = DateTime.DaysInMonth(Model.Year, (int)Model.Month);
-    var hasDynamicFields = Model.Fields != null && Model.Fields.Count > 0;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">Edit NDAR-1 report data for @Model.Month @Model.Year</p>
+        <p class="text-muted mb-0">Edit daily data for @Model.Month @Model.Year using shared Operator Logs and Monthly Applications records.</p>
     </div>
-    <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.Id" class="btn btn-secondary">
+    <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.NDAR1Id" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Back to Details
     </a>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <form asp-action="NDAR1ReportEdit" method="post">
-            @Html.AntiForgeryToken()
-            
-            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+        @Html.AntiForgeryToken()
+        <h5 class="mb-3">Daily Grid (Live Source)</h5>
+        <p class="text-muted small">Each row updates the same underlying records used in Operations.</p>
 
-            <input type="hidden" asp-for="Id" />
-            <input type="hidden" asp-for="CompanyId" />
-
-            <div class="form-section">
-                <div class="form-section-title">Basic Information</div>
-                
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="FacilityId" class="form-label required"></label>
-                            <select asp-for="FacilityId" asp-items="facilities" class="form-select">
-                                <option value="">-- Select Facility --</option>
-                            </select>
-                            <span asp-validation-for="FacilityId" class="text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="Month" class="form-label required"></label>
-                            <select asp-for="Month" asp-items="months" class="form-select"></select>
-                            <span asp-validation-for="Month" class="text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="Year" class="form-label required"></label>
-                            <input asp-for="Year" type="number" class="form-control" min="2000" max="2100" />
-                            <span asp-validation-for="Year" class="text-danger"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <div class="form-check">
-                        <input asp-for="DidIrrigationOccur" class="form-check-input" type="checkbox" />
-                        <label asp-for="DidIrrigationOccur" class="form-check-label">
-                            Did irrigation occur at this facility?
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            @if (!hasDynamicFields)
-            {
-                <div class="form-section">
-                    <div class="form-section-title">Field Selection</div>
-                    
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label asp-for="Field1Id" class="form-label">Field 1</label>
-                                <select asp-for="Field1Id" asp-items="sprayfields" class="form-select">
-                                    <option value="">-- Select Field --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label asp-for="Field2Id" class="form-label">Field 2</label>
-                                <select asp-for="Field2Id" asp-items="sprayfields" class="form-select">
-                                    <option value="">-- Select Field --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label asp-for="Field3Id" class="form-label">Field 3</label>
-                                <select asp-for="Field3Id" asp-items="sprayfields" class="form-select">
-                                    <option value="">-- Select Field --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label asp-for="Field4Id" class="form-label">Field 4</label>
-                                <select asp-for="Field4Id" asp-items="sprayfields" class="form-select">
-                                    <option value="">-- Select Field --</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-
-            <div class="form-section">
-                <div class="form-section-title">Daily Weather Data</div>
-                <p class="text-muted small">Enter daily weather values. Leave blank if no data available.</p>
-                
-                <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
-                    <table class="table table-bordered table-sm ndar-daily-table">
-                        <thead>
-                            <tr>
-                                <th>Day</th>
-                                <th>Weather Code</th>
-                                <th>Temperature (°F)</th>
-                                <th>Precipitation (in)</th>
-                                <th>Storage (ft)</th>
-                                <th>5-Day Upset (ft)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (int i = 0; i < 31; i++)
-                            {
-                                var day = i + 1;
-                                <tr>
-                                    <td>@day</td>
-                                    <td>
-                                        <input asp-for="WeatherCodeDaily[i]" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="TemperatureDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="PrecipitationDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="StorageDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="FiveDayUpsetDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            @if (!hasDynamicFields && Model.Field1Id.HasValue)
-            {
-                <div class="form-section">
-                    <div class="form-section-title">Field 1 Daily Data</div>
-                    <p class="text-muted small">Enter daily irrigation data for Field 1.</p>
-                    
-                <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
-                        <table class="table table-bordered table-sm ndar-daily-table">
-                            <thead>
-                                <tr>
-                                    <th>Day</th>
-                                    <th>Volume Applied (gal)</th>
-                                    <th>Time Irrigated (min)</th>
-                                    <th>Daily Loading (in)</th>
-                                    <th>Max Hourly Loading (in)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < 31; i++)
-                                {
-                                    var day = i + 1;
-                                    <tr>
-                                        <td>@day</td>
-                                        <td>
-                                            <input asp-for="Field1VolumeAppliedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field1TimeIrrigatedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field1DailyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field1MaxHourlyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="row mt-3">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field1MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                <input asp-for="Field1MonthlyLoading" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field1MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                <input asp-for="Field1MaxHourlyLoading" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field1TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                <input asp-for="Field1TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-
-            @if (!hasDynamicFields && Model.Field2Id.HasValue)
-            {
-                <div class="form-section">
-                    <div class="form-section-title">Field 2 Daily Data</div>
-                    <p class="text-muted small">Enter daily irrigation data for Field 2.</p>
-                    
-                <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
-                        <table class="table table-bordered table-sm ndar-daily-table">
-                            <thead>
-                                <tr>
-                                    <th>Day</th>
-                                    <th>Volume Applied (gal)</th>
-                                    <th>Time Irrigated (min)</th>
-                                    <th>Daily Loading (in)</th>
-                                    <th>Max Hourly Loading (in)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < 31; i++)
-                                {
-                                    var day = i + 1;
-                                    <tr>
-                                        <td>@day</td>
-                                        <td>
-                                            <input asp-for="Field2VolumeAppliedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field2TimeIrrigatedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field2DailyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field2MaxHourlyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="row mt-3">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field2MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                <input asp-for="Field2MonthlyLoading" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field2MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                <input asp-for="Field2MaxHourlyLoading" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field2TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                <input asp-for="Field2TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-
-            @if (!hasDynamicFields && Model.Field3Id.HasValue)
-            {
-                <div class="form-section">
-                    <div class="form-section-title">Field 3 Daily Data</div>
-                    <p class="text-muted small">Enter daily irrigation data for Field 3.</p>
-                    
-                <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
-                        <table class="table table-bordered table-sm ndar-daily-table">
-                            <thead>
-                                <tr>
-                                    <th>Day</th>
-                                    <th>Volume Applied (gal)</th>
-                                    <th>Time Irrigated (min)</th>
-                                    <th>Daily Loading (in)</th>
-                                    <th>Max Hourly Loading (in)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < 31; i++)
-                                {
-                                    var day = i + 1;
-                                    <tr>
-                                        <td>@day</td>
-                                        <td>
-                                            <input asp-for="Field3VolumeAppliedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field3TimeIrrigatedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field3DailyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field3MaxHourlyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="row mt-3">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field3MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                <input asp-for="Field3MonthlyLoading" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field3MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                <input asp-for="Field3MaxHourlyLoading" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field3TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                <input asp-for="Field3TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-
-            @if (!hasDynamicFields && Model.Field4Id.HasValue)
-            {
-                <div class="form-section">
-                    <div class="form-section-title">Field 4 Daily Data</div>
-                    <p class="text-muted small">Enter daily irrigation data for Field 4.</p>
-                    
-                <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
-                        <table class="table table-bordered table-sm ndar-daily-table">
-                            <thead>
-                                <tr>
-                                    <th>Day</th>
-                                    <th>Volume Applied (gal)</th>
-                                    <th>Time Irrigated (min)</th>
-                                    <th>Daily Loading (in)</th>
-                                    <th>Max Hourly Loading (in)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < 31; i++)
-                                {
-                                    var day = i + 1;
-                                    <tr>
-                                        <td>@day</td>
-                                        <td>
-                                            <input asp-for="Field4VolumeAppliedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field4TimeIrrigatedDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field4DailyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                        <td>
-                                            <input asp-for="Field4MaxHourlyLoadingDaily[i]" type="number" step="any" class="form-control form-control-sm" />
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="row mt-3">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field4MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                <input asp-for="Field4MonthlyLoading" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field4MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                <input asp-for="Field4MaxHourlyLoading" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label asp-for="Field4TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                <input asp-for="Field4TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-
-            @if (hasDynamicFields)
-            {
-                <div class="form-section">
-                    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
-                        <div class="form-section-title mb-0">All Field Daily Data</div>
-                        <button type="button" id="toggleAllFieldsBtn" class="btn btn-sm btn-outline-primary">Expand All</button>
-                    </div>
-                    <p class="text-muted small mt-2">Edit all sprayfields included in this NDAR report.</p>
-
-                    @for (int f = 0; f < Model.Fields.Count; f++)
+        <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
+            <table class="table table-bordered table-sm ndar-daily-table" id="ndarLiveGrid">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Weather</th>
+                        <th>Temp (F)</th>
+                        <th>Precip (in)</th>
+                        <th>Storage (ft)</th>
+                        <th>5-Day Upset (ft)</th>
+                        @foreach (var field in Model.FieldColumns)
+                        {
+                            <th>Field @field.FieldCode<br /><small>Vol (gal)</small></th>
+                            <th>Field @field.FieldCode<br /><small>Time (min)</small></th>
+                            <th>Field @field.FieldCode<br /><small>Max Hr (in/ac)</small></th>
+                            <th>Field @field.FieldCode<br /><small>Daily Load (in)</small></th>
+                        }
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
                     {
-                        var sectionId = $"fieldSection-{f}";
-                        <input asp-for="Fields[f].Id" type="hidden" />
-                        <input asp-for="Fields[f].SprayfieldId" type="hidden" />
-                        <div class="mt-3 mb-2 d-flex justify-content-between align-items-center gap-2 flex-wrap">
-                            <div>
-                                <h6 class="fw-bold mb-1">Field @Model.Fields[f].FieldCode</h6>
-                                <div class="text-muted small">Acres: @(Model.Fields[f].Acres?.ToString("F2") ?? "N/A") | Crop: @(string.IsNullOrWhiteSpace(Model.Fields[f].CropSummary) ? "N/A" : Model.Fields[f].CropSummary)</div>
-                            </div>
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-outline-primary field-toggle-btn"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#@sectionId"
-                                aria-expanded="false"
-                                aria-controls="@sectionId">
-                                Expand
-                            </button>
-                        </div>
-
-                        <div id="@sectionId" class="collapse ndar-field-collapse">
-                            <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper mb-3">
-                                <table class="table table-bordered table-sm ndar-daily-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Day</th>
-                                            <th>Volume Applied (gal)</th>
-                                            <th>Time Irrigated (min)</th>
-                                            <th>Daily Loading (in)</th>
-                                            <th>Max Hourly Loading (in)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @for (int d = 0; d < Model.Fields[f].DailyValues.Count; d++)
-                                        {
-                                            <tr>
-                                                <td>
-                                                    @Model.Fields[f].DailyValues[d].DayNo
-                                                    <input asp-for="Fields[f].DailyValues[d].DayNo" type="hidden" />
-                                                </td>
-                                                <td><input asp-for="Fields[f].DailyValues[d].VolumeApplied" type="number" step="any" class="form-control form-control-sm" /></td>
-                                                <td><input asp-for="Fields[f].DailyValues[d].TimeIrrigated" type="number" step="any" class="form-control form-control-sm" /></td>
-                                                <td><input asp-for="Fields[f].DailyValues[d].DailyLoading" type="number" step="any" class="form-control form-control-sm" /></td>
-                                                <td><input asp-for="Fields[f].DailyValues[d].MaxHourlyLoading" type="number" step="any" class="form-control form-control-sm" /></td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="row mb-4">
-                                <div class="col-md-4">
-                                    <label asp-for="Fields[f].MonthlyLoading" class="form-label">Monthly Loading (in)</label>
-                                    <input asp-for="Fields[f].MonthlyLoading" type="number" step="any" class="form-control" />
-                                </div>
-                                <div class="col-md-4">
-                                    <label asp-for="Fields[f].MaxHourlyLoading" class="form-label">Max Hourly Loading (in)</label>
-                                    <input asp-for="Fields[f].MaxHourlyLoading" type="number" step="any" class="form-control" />
-                                </div>
-                                <div class="col-md-4">
-                                    <label asp-for="Fields[f].TwelveMonthFloatingTotal" class="form-label">12-Month Floating Total (in)</label>
-                                    <input asp-for="Fields[f].TwelveMonthFloatingTotal" type="number" step="any" class="form-control" />
-                                </div>
-                            </div>
-                        </div>
+                        <tr data-day="@row.DayNo" data-date="@row.Date.ToString("yyyy-MM-dd")">
+                            <td><strong>@row.DayNo</strong></td>
+                            <td><input class="form-control form-control-sm" data-field="weatherCode" value="@row.WeatherCode" disabled title="Click Edit for this row to modify values." /></td>
+                            <td><input class="form-control form-control-sm" data-field="temperatureF" type="number" step="0.01" value="@row.TemperatureF" disabled title="Click Edit for this row to modify values." /></td>
+                            <td><input class="form-control form-control-sm" data-field="precipitationIn" type="number" step="0.01" value="@row.PrecipitationIn" disabled title="Click Edit for this row to modify values." /></td>
+                            <td><input class="form-control form-control-sm" data-field="storageFt" type="number" step="0.01" value="@row.StorageFt" disabled title="Click Edit for this row to modify values." /></td>
+                            <td><input class="form-control form-control-sm" data-field="fiveDayUpsetFt" type="number" step="0.01" value="@row.FiveDayUpsetFt" disabled title="Click Edit for this row to modify values." /></td>
+                            @foreach (var app in row.Applications)
+                            {
+                                <td><input class="form-control form-control-sm" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.VolumeGallons" disabled title="Click Edit for this row to modify values." /></td>
+                                <td><input class="form-control form-control-sm" data-app="timeIrrigatedMinutes" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.TimeIrrigatedMinutes" disabled title="Click Edit for this row to modify values." /></td>
+                                <td><input class="form-control form-control-sm" data-app="maximumHourlyLoadingInchesPerAcre" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.MaximumHourlyLoadingInchesPerAcre" disabled title="Click Edit for this row to modify values." /></td>
+                                <td><input class="form-control form-control-sm" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.DailyLoadingInches" disabled title="Calculated field (Volume / Acres). This value is read-only." /></td>
+                            }
+                            <td class="text-nowrap">
+                                <span class="badge bg-warning text-dark d-none lock-badge"></span>
+                                <button type="button" class="btn btn-sm btn-outline-primary row-edit-btn">Edit</button>
+                                <button type="button" class="btn btn-sm btn-primary row-update-btn d-none">Update</button>
+                                <button type="button" class="btn btn-sm btn-secondary row-cancel-btn d-none">Cancel</button>
+                                <input type="hidden" class="lock-token" value="" />
+                            </td>
+                        </tr>
                     }
-                </div>
-            }
-
-            <div class="d-flex justify-content-end gap-2 mt-4 responsive-form-actions">
-                <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle"></i> Save Changes
-                </button>
-            </div>
-        </form>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         (() => {
-            const collapses = Array.from(document.querySelectorAll('.ndar-field-collapse'));
-            const toggleAllBtn = document.getElementById('toggleAllFieldsBtn');
+            const ndar1Id = "@Model.NDAR1Id";
+            const antiForgery = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
 
-            const areAllExpanded = () =>
-                collapses.length > 0 && collapses.every(panel => panel.classList.contains('show'));
-
-            const syncToggleAllLabel = () => {
-                if (!toggleAllBtn) return;
-                toggleAllBtn.textContent = areAllExpanded() ? 'Collapse All' : 'Expand All';
+            const grid = document.getElementById('ndarLiveGrid');
+            if (!grid) return;
+            const defaultReadOnlyTitle = 'Click Edit for this row to modify values.';
+            const calculatedReadOnlyTitle = 'Calculated field (Volume / Acres). This value is read-only.';
+            const showError = (message) => {
+                const safeMessage = message || 'Something went wrong. Please try again.';
+                if (window.toastr) {
+                    window.toastr.error(safeMessage);
+                    return;
+                }
+                console.error(safeMessage);
+            };
+            const tryReadJson = async (response) => {
+                try {
+                    return await response.json();
+                } catch {
+                    return null;
+                }
             };
 
-            const syncToggleLabels = () => {
-                document.querySelectorAll('.field-toggle-btn').forEach(btn => {
-                    const targetId = btn.getAttribute('data-bs-target');
-                    const panel = targetId ? document.querySelector(targetId) : null;
-                    if (!panel) return;
-                    btn.textContent = panel.classList.contains('show') ? 'Collapse' : 'Expand';
-                    btn.setAttribute('aria-expanded', panel.classList.contains('show') ? 'true' : 'false');
-                });
-                syncToggleAllLabel();
-            };
-
-            collapses.forEach(panel => {
-                panel.addEventListener('shown.bs.collapse', syncToggleLabels);
-                panel.addEventListener('hidden.bs.collapse', syncToggleLabels);
-            });
-
-            toggleAllBtn?.addEventListener('click', () => {
-                const shouldCollapse = areAllExpanded();
-                collapses.forEach(panel => {
-                    const instance = bootstrap.Collapse.getOrCreateInstance(panel);
-                    if (shouldCollapse) {
-                        instance.hide();
-                    } else {
-                        instance.show();
+            const setEditable = (tr, editable) => {
+                tr.querySelectorAll('input[data-field], input[data-app]').forEach(i => {
+                    if (i.dataset.app === 'dailyLoadingInches') {
+                        i.disabled = true;
+                        i.title = calculatedReadOnlyTitle;
+                        return;
                     }
+                    i.disabled = !editable;
+                    i.title = editable ? '' : defaultReadOnlyTitle;
                 });
-            });
+                tr.querySelector('.row-edit-btn')?.classList.toggle('d-none', editable);
+                tr.querySelector('.row-update-btn')?.classList.toggle('d-none', !editable);
+                tr.querySelector('.row-cancel-btn')?.classList.toggle('d-none', !editable);
+            };
 
-            syncToggleLabels();
+            const collectRowPayload = (tr) => {
+                const apps = {};
+                tr.querySelectorAll('input[data-app]').forEach(i => {
+                    const sprayfieldId = i.dataset.sprayfieldId;
+                    const key = i.dataset.app;
+                    if (!apps[sprayfieldId]) {
+                        apps[sprayfieldId] = { sprayfieldId, volumeGallons: null, timeIrrigatedMinutes: null, maximumHourlyLoadingInchesPerAcre: null };
+                    }
+                    if (key === 'dailyLoadingInches') return;
+                    const value = i.value.trim();
+                    apps[sprayfieldId][key] = value === '' ? null : Number(value);
+                });
+
+                const numOrNull = selector => {
+                    const raw = tr.querySelector(selector)?.value?.trim();
+                    return raw === '' || raw == null ? null : Number(raw);
+                };
+
+                return {
+                    dayNo: Number(tr.dataset.day),
+                    lockToken: tr.querySelector('.lock-token').value,
+                    weatherCode: tr.querySelector('input[data-field="weatherCode"]').value,
+                    temperatureF: numOrNull('input[data-field="temperatureF"]'),
+                    precipitationIn: numOrNull('input[data-field="precipitationIn"]'),
+                    storageFt: numOrNull('input[data-field="storageFt"]'),
+                    fiveDayUpsetFt: numOrNull('input[data-field="fiveDayUpsetFt"]'),
+                    applications: Object.values(apps)
+                };
+            };
+
+            const refreshRowFromResponse = (tr, row) => {
+                tr.querySelector('input[data-field="weatherCode"]').value = row.weatherCode ?? '';
+                tr.querySelector('input[data-field="temperatureF"]').value = row.temperatureF ?? '';
+                tr.querySelector('input[data-field="precipitationIn"]').value = row.precipitationIn ?? '';
+                tr.querySelector('input[data-field="storageFt"]').value = row.storageFt ?? '';
+                tr.querySelector('input[data-field="fiveDayUpsetFt"]').value = row.fiveDayUpsetFt ?? '';
+
+                row.applications.forEach(app => {
+                    const sf = app.sprayfieldId;
+                    const v = tr.querySelector(`input[data-app="volumeGallons"][data-sprayfield-id="${sf}"]`);
+                    const t = tr.querySelector(`input[data-app="timeIrrigatedMinutes"][data-sprayfield-id="${sf}"]`);
+                    const h = tr.querySelector(`input[data-app="maximumHourlyLoadingInchesPerAcre"][data-sprayfield-id="${sf}"]`);
+                    const d = tr.querySelector(`input[data-app="dailyLoadingInches"][data-sprayfield-id="${sf}"]`);
+                    if (v) v.value = app.volumeGallons ?? '';
+                    if (t) t.value = app.timeIrrigatedMinutes ?? '';
+                    if (h) h.value = app.maximumHourlyLoadingInchesPerAcre ?? '';
+                    if (d) d.value = app.dailyLoadingInches ?? '';
+                });
+            };
+
+            grid.addEventListener('click', async e => {
+                const tr = e.target.closest('tr[data-day]');
+                if (!tr) return;
+
+                if (e.target.classList.contains('row-edit-btn')) {
+                    const dayNo = Number(tr.dataset.day);
+                    const resp = await fetch(`@Url.Action("NDAR1BeginRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}`, {
+                        method: 'POST',
+                        headers: { 'RequestVerificationToken': antiForgery }
+                    });
+                    const result = await tryReadJson(resp);
+                    if (!resp.ok || !result) {
+                        showError('Unable to start editing this row right now. Please try again.');
+                        return;
+                    }
+                    if (!result.success) {
+                        const badge = tr.querySelector('.lock-badge');
+                        badge.textContent = result.message || 'Locked';
+                        badge.classList.remove('d-none');
+                        const editBtn = tr.querySelector('.row-edit-btn');
+                        if (editBtn && result.message) {
+                            editBtn.title = result.message;
+                        }
+                        if (result.message) {
+                            showError(result.message);
+                        }
+                        return;
+                    }
+                    tr.querySelector('.lock-token').value = result.lockToken;
+                    tr.querySelector('.lock-badge').classList.add('d-none');
+                    setEditable(tr, true);
+                }
+
+                if (e.target.classList.contains('row-update-btn')) {
+                    const payload = collectRowPayload(tr);
+                    const resp = await fetch(`@Url.Action("NDAR1UpdateRow", "Reports")?ndar1Id=${ndar1Id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': antiForgery
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await tryReadJson(resp);
+                    if (!resp.ok) {
+                        if (resp.status === 409 && result?.message) {
+                            showError(result.message);
+                        } else {
+                            showError('Unable to update the row right now. Please try again.');
+                        }
+                        return;
+                    }
+                    if (!result) {
+                        showError('Unable to update the row right now. Please try again.');
+                        return;
+                    }
+                    if (!result.success) {
+                        showError(result.message || 'Unable to update row.');
+                        return;
+                    }
+                    refreshRowFromResponse(tr, result.row);
+                    tr.querySelector('.lock-token').value = '';
+                    setEditable(tr, false);
+                }
+
+                if (e.target.classList.contains('row-cancel-btn')) {
+                    const dayNo = Number(tr.dataset.day);
+                    const lockToken = tr.querySelector('.lock-token').value;
+                    await fetch(`@Url.Action("NDAR1CancelRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}&lockToken=${lockToken}`, {
+                        method: 'POST',
+                        headers: { 'RequestVerificationToken': antiForgery }
+                    });
+                    tr.querySelector('.lock-token').value = '';
+                    setEditable(tr, false);
+                }
+            });
         })();
     </script>
 }
-
-

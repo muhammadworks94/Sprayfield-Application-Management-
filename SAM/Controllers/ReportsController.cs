@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
 using SAM.Domain.Entities;
@@ -20,6 +21,7 @@ public class ReportsController : BaseController
     private readonly IIrrRprtService _irrRprtService;
     private readonly IFacilityService _facilityService;
     private readonly INDAR1Service _ndar1Service;
+    private readonly INDAR1RowEditService _ndar1RowEditService;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly INDMRService _ndmrService;
     private readonly INDMLRService _ndmlrService;
@@ -28,6 +30,7 @@ public class ReportsController : BaseController
         IIrrRprtService irrRprtService,
         IFacilityService facilityService,
         INDAR1Service ndar1Service,
+        INDAR1RowEditService ndar1RowEditService,
         ISprayfieldService sprayfieldService,
         INDMRService ndmrService,
         INDMLRService ndmlrService,
@@ -38,6 +41,7 @@ public class ReportsController : BaseController
         _irrRprtService = irrRprtService;
         _facilityService = facilityService;
         _ndar1Service = ndar1Service;
+        _ndar1RowEditService = ndar1RowEditService;
         _sprayfieldService = sprayfieldService;
         _ndmrService = ndmrService;
         _ndmlrService = ndmlrService;
@@ -467,60 +471,76 @@ public class ReportsController : BaseController
             return NotFound();
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+        var grid = await _ndar1RowEditService.BuildGridAsync(id);
+        return View(grid);
+    }
 
-        var viewModel = new NDAR1EditViewModel
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1BeginRowEdit(Guid ndar1Id, int dayNo)
+    {
+        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+        if (report == null)
         {
-            Id = report.Id,
-            CompanyId = report.CompanyId,
-            FacilityId = report.FacilityId,
-            Month = report.Month,
-            Year = report.Year,
-            DidIrrigationOccur = report.DidIrrigationOccur,
-            WeatherCodeDaily = report.WeatherCodeDaily,
-            TemperatureDaily = report.TemperatureDaily,
-            PrecipitationDaily = report.PrecipitationDaily,
-            StorageDaily = report.StorageDaily,
-            FiveDayUpsetDaily = report.FiveDayUpsetDaily,
-            Field1Id = report.Field1Id,
-            Field1VolumeAppliedDaily = report.Field1VolumeAppliedDaily,
-            Field1TimeIrrigatedDaily = report.Field1TimeIrrigatedDaily,
-            Field1DailyLoadingDaily = report.Field1DailyLoadingDaily,
-            Field1MaxHourlyLoadingDaily = report.Field1MaxHourlyLoadingDaily,
-            Field1MonthlyLoading = report.Field1MonthlyLoading,
-            Field1MaxHourlyLoading = report.Field1MaxHourlyLoading,
-            Field1TwelveMonthFloatingTotal = report.Field1TwelveMonthFloatingTotal,
-            Field2Id = report.Field2Id,
-            Field2VolumeAppliedDaily = report.Field2VolumeAppliedDaily,
-            Field2TimeIrrigatedDaily = report.Field2TimeIrrigatedDaily,
-            Field2DailyLoadingDaily = report.Field2DailyLoadingDaily,
-            Field2MaxHourlyLoadingDaily = report.Field2MaxHourlyLoadingDaily,
-            Field2MonthlyLoading = report.Field2MonthlyLoading,
-            Field2MaxHourlyLoading = report.Field2MaxHourlyLoading,
-            Field2TwelveMonthFloatingTotal = report.Field2TwelveMonthFloatingTotal,
-            Field3Id = report.Field3Id,
-            Field3VolumeAppliedDaily = report.Field3VolumeAppliedDaily,
-            Field3TimeIrrigatedDaily = report.Field3TimeIrrigatedDaily,
-            Field3DailyLoadingDaily = report.Field3DailyLoadingDaily,
-            Field3MaxHourlyLoadingDaily = report.Field3MaxHourlyLoadingDaily,
-            Field3MonthlyLoading = report.Field3MonthlyLoading,
-            Field3MaxHourlyLoading = report.Field3MaxHourlyLoading,
-            Field3TwelveMonthFloatingTotal = report.Field3TwelveMonthFloatingTotal,
-            Field4Id = report.Field4Id,
-            Field4VolumeAppliedDaily = report.Field4VolumeAppliedDaily,
-            Field4TimeIrrigatedDaily = report.Field4TimeIrrigatedDaily,
-            Field4DailyLoadingDaily = report.Field4DailyLoadingDaily,
-            Field4MaxHourlyLoadingDaily = report.Field4MaxHourlyLoadingDaily,
-            Field4MonthlyLoading = report.Field4MonthlyLoading,
-            Field4MaxHourlyLoading = report.Field4MaxHourlyLoading,
-            Field4TwelveMonthFloatingTotal = report.Field4TwelveMonthFloatingTotal,
-            Fields = BuildNdarFieldEditModels(report)
-        };
+            return NotFound();
+        }
 
-        ViewBag.Facilities = await GetFacilitySelectListAsync(report.CompanyId);
-        ViewBag.Months = GetMonthSelectList();
-        ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(report.FacilityId);
+        await EnsureCompanyAccessAsync(report.CompanyId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var userDisplay = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "User";
+        var result = await _ndar1RowEditService.BeginRowEditAsync(ndar1Id, dayNo, userId, userDisplay);
+        return Json(result);
+    }
 
-        return View(viewModel);
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1UpdateRow([FromBody] NDAR1DayRowUpdateRequest request, Guid ndar1Id)
+    {
+        try
+        {
+            var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+            if (report == null)
+            {
+                return NotFound();
+            }
+
+            await EnsureCompanyAccessAsync(report.CompanyId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var result = await _ndar1RowEditService.UpdateRowAsync(ndar1Id, request, userId);
+            if (!result.Success)
+            {
+                Response.StatusCode = 409;
+            }
+            return Json(result);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "NDAR1 row update failed for NDAR1 {Ndar1Id}, day {DayNo}", ndar1Id, request?.DayNo);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "We couldn't update this row right now. Please try again."
+            });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1CancelRowEdit(Guid ndar1Id, int dayNo, Guid lockToken)
+    {
+        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+        if (report == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await _ndar1RowEditService.CancelRowEditAsync(ndar1Id, dayNo, lockToken, userId);
+        return Ok(new { success = true });
     }
 
     [HttpPost]

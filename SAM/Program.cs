@@ -111,6 +111,7 @@ builder.Services.AddScoped<SAM.Services.Interfaces.IGWMonitService, GWMonitServi
 builder.Services.AddScoped<SAM.Services.Interfaces.IIrrRprtService, IrrRprtService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IPANCalculationService, PANCalculationService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDAR1Service, NDAR1Service>();
+builder.Services.AddScoped<SAM.Services.Interfaces.INDAR1RowEditService, NDAR1RowEditService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDMRService, NDMRService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDMLRService, NDMLRService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserService, UserService>();

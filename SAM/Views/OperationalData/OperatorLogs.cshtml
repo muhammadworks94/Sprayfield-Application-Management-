@@ -69,11 +69,6 @@
                             <th><i class="bi bi-person"></i> Operator</th>
                             <th><i class="bi bi-clock"></i> Arrival Time</th>
                             <th><i class="bi bi-hourglass"></i> Time on Site (hours)</th>
-                            <th><i class="bi bi-building"></i> Facility</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                         </tr>
                     </thead>
@@ -87,11 +82,6 @@
                                 <td>@log.OperatorName</td>
                                 <td>@log.ArrivalTime</td>
                                 <td>@(log.TimeOnSiteHours.HasValue ? log.TimeOnSiteHours.Value.ToString("F2") : "N/A")</td>
-                                <td>@log.FacilityName</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@log.CompanyName</td>
-                                }
                                 <td class="table-actions">
                                     <a asp-action="OperatorLogEdit" asp-route-id="@log.Id" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-pencil"></i> Edit
@@ -145,8 +135,8 @@
                                     <dt class="col-5"><i class="bi bi-person me-1"></i>Operator</dt>
                                     <dd class="col-7 mb-1">@log.OperatorName</dd>
 
-                                    <dt class="col-5"><i class="bi bi-building me-1"></i>Facility</dt>
-                                    <dd class="col-7 mb-1">@log.FacilityName</dd>
+                                    @* <dt class="col-5"><i class="bi bi-building me-1"></i>Facility</dt> *@
+                                    @* <dd class="col-7 mb-1">@log.FacilityName</dd> *@
                                     
                                     <dt class="col-5"><i class="bi bi-clock me-1"></i>Arrival</dt>
                                     <dd class="col-7 mb-1">@log.ArrivalTime</dd>
@@ -156,8 +146,8 @@
 
                                     @if (isGlobalAdmin)
                                     {
-                                        <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-7 mb-1">@log.CompanyName</dd>
+                                        @* <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt> *@
+                                        @* <dd class="col-7 mb-1">@log.CompanyName</dd> *@
                                     }
                                 </dl>
 

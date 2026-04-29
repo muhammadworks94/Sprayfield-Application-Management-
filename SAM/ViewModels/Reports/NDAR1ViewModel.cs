@@ -226,3 +226,75 @@ public class NDAR1FieldDailyEditViewModel
     public decimal? MaxHourlyLoading { get; set; }
 }
 
+public class NDAR1EditGridViewModel
+{
+    public Guid NDAR1Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid FacilityId { get; set; }
+    public string FacilityName { get; set; } = string.Empty;
+    public MonthEnum Month { get; set; }
+    public int Year { get; set; }
+    public List<NDAR1GridFieldColumnViewModel> FieldColumns { get; set; } = new();
+    public List<NDAR1GridDayRowViewModel> Rows { get; set; } = new();
+}
+
+public class NDAR1GridFieldColumnViewModel
+{
+    public Guid SprayfieldId { get; set; }
+    public string FieldCode { get; set; } = string.Empty;
+    public decimal? Acres { get; set; }
+}
+
+public class NDAR1GridDayRowViewModel
+{
+    public int DayNo { get; set; }
+    public DateTime Date { get; set; }
+    public string? WeatherCode { get; set; }
+    public decimal? TemperatureF { get; set; }
+    public decimal? PrecipitationIn { get; set; }
+    public decimal? StorageFt { get; set; }
+    public decimal? FiveDayUpsetFt { get; set; }
+    public Guid? LockToken { get; set; }
+    public string? LockedBy { get; set; }
+    public bool IsLockedByCurrentUser { get; set; }
+    public List<NDAR1GridApplicationCellViewModel> Applications { get; set; } = new();
+}
+
+public class NDAR1GridApplicationCellViewModel
+{
+    public Guid SprayfieldId { get; set; }
+    public decimal? VolumeGallons { get; set; }
+    public decimal? TimeIrrigatedMinutes { get; set; }
+    public decimal? MaximumHourlyLoadingInchesPerAcre { get; set; }
+    public decimal? DailyLoadingInches { get; set; }
+}
+
+public class NDAR1DayRowUpdateRequest
+{
+    public int DayNo { get; set; }
+    public Guid LockToken { get; set; }
+    public string? WeatherCode { get; set; }
+    public decimal? TemperatureF { get; set; }
+    public decimal? PrecipitationIn { get; set; }
+    public decimal? StorageFt { get; set; }
+    public decimal? FiveDayUpsetFt { get; set; }
+    public List<NDAR1GridApplicationCellViewModel> Applications { get; set; } = new();
+}
+
+public class NDAR1RowEditLockResult
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public Guid? LockToken { get; set; }
+    public int DayNo { get; set; }
+    public string? LockedBy { get; set; }
+    public int? RemainingSeconds { get; set; }
+}
+
+public class NDAR1RowEditResult
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public NDAR1GridDayRowViewModel? Row { get; set; }
+}
+
