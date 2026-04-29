@@ -243,6 +243,9 @@ public class NDAR1GridFieldColumnViewModel
     public Guid SprayfieldId { get; set; }
     public string FieldCode { get; set; } = string.Empty;
     public decimal? Acres { get; set; }
+    public decimal MonthlyVolumeTotalGallons { get; set; }
+    public decimal MonthlyDailyLoadingTotalInches { get; set; }
+    public decimal TwelveMonthFloatingTotalInches { get; set; }
 }
 
 public class NDAR1GridDayRowViewModel
@@ -295,6 +298,7 @@ public class NDAR1RowEditResult
 {
     public bool Success { get; set; }
     public string? Message { get; set; }
+    public bool IsValidationError { get; set; }
     public NDAR1GridDayRowViewModel? Row { get; set; }
 }
 

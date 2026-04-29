@@ -511,7 +511,7 @@ public class ReportsController : BaseController
             var result = await _ndar1RowEditService.UpdateRowAsync(ndar1Id, request, userId);
             if (!result.Success)
             {
-                Response.StatusCode = 409;
+                Response.StatusCode = result.IsValidationError ? 400 : 409;
             }
             return Json(result);
         }

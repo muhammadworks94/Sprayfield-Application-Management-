@@ -106,6 +106,18 @@ public class DashboardController : BaseController
         var recentGWMonits = (await _gwMonitService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
         var reports = (await _irrRprtService.GetAllAsync(companyId)).ToList();
 
+        if (companyId.HasValue)
+        {
+            facilities = facilities.Where(f => f.CompanyId == companyId.Value).ToList();
+            sprayfields = sprayfields.Where(s => s.CompanyId == companyId.Value).ToList();
+            monitoringWells = monitoringWells.Where(w => w.CompanyId == companyId.Value).ToList();
+            recentLogs = recentLogs.Where(l => l.CompanyId == companyId.Value).ToList();
+            recentIrrigations = recentIrrigations.Where(a => a.CompanyId == companyId.Value).ToList();
+            allWWChars = allWWChars.Where(w => w.CompanyId == companyId.Value).ToList();
+            recentGWMonits = recentGWMonits.Where(g => g.CompanyId == companyId.Value).ToList();
+            reports = reports.Where(r => r.CompanyId == companyId.Value).ToList();
+        }
+
         viewModel.TotalFacilities = facilities.Count;
         viewModel.TotalSprayfields = sprayfields.Count;
         viewModel.TotalSprayfieldAcres = sprayfields.Sum(s => s.SizeAcres);
@@ -266,6 +278,7 @@ public class DashboardController : BaseController
         sprayfields = sprayfields.Where(s => s.FacilityId.HasValue && visibleFacilityIds.Contains(s.FacilityId.Value)).ToList();
 
         var applicationsForRollingWindow = (await _monthlyApplicationService.GetAllAsync(companyId))
+            .Where(a => !companyId.HasValue || a.CompanyId == companyId.Value)
             .Where(a => visibleFacilityIds.Contains(a.FacilityId))
             .Where(a => a.ApplicationDate >= rollingWindowStart && a.ApplicationDate < rollingWindowEndExclusive)
             .ToList();
@@ -332,7 +345,7 @@ public class DashboardController : BaseController
         }
 
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.SelectedCompanyId = selectedCompanyId;
+        ViewBag.SelectedCompanyId = companyId;
 
         var companyName = "All Companies";
         if (companyId.HasValue)

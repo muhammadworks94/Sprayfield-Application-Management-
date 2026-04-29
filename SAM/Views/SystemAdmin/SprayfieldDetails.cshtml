@@ -73,16 +73,25 @@
                     <dd class="col-sm-7">@Model.SizeAcres.ToString("F2") acres</dd>
 
                     <dt class="col-sm-5 text-muted">Hydraulic Limit</dt>
-                    <dd class="col-sm-7">@Model.HydraulicLoadingLimitInPerYr.ToString("F2") inches/year</dd>
+                    <dd class="col-sm-7">
+                        @Model.HydraulicLoadingLimitInPerYr.ToString("F2") inches/year
+                        <div class="small text-muted">Used as NDAR annual fallback when Annual Rate is not provided.</div>
+                    </dd>
 
                     <dt class="col-sm-5 text-muted">Hourly Rate</dt>
                     <dd class="col-sm-7">@((Model.HourlyRateInches?.ToString("F2") ?? "-")) in/hr</dd>
 
                     <dt class="col-sm-5 text-muted">Annual Rate</dt>
-                    <dd class="col-sm-7">@((Model.AnnualRateInches?.ToString("F2") ?? "-")) inches/year</dd>
+                    <dd class="col-sm-7">
+                        @((Model.AnnualRateInches?.ToString("F2") ?? "-")) inches/year
+                        <div class="small text-muted">NDAR uses this value when provided.</div>
+                    </dd>
 
                     <dt class="col-sm-5 text-muted">Weekly Rate</dt>
-                    <dd class="col-sm-7">@((Model.WeeklyRateInches?.ToString("F2") ?? "-")) in/week</dd>
+                    <dd class="col-sm-7">
+                        @((Model.WeeklyRateInches?.ToString("F2") ?? "-")) in/week
+                        <div class="small text-muted">Planning-only value. Not used as NDAR annual fallback.</div>
+                    </dd>
                 </dl>
             </div>
         </div>

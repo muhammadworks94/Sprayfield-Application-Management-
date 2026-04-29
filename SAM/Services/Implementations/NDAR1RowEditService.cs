@@ -3,6 +3,7 @@ using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 using SAM.ViewModels.Reports;
 
 namespace SAM.Services.Implementations;
@@ -65,6 +66,26 @@ public class NDAR1RowEditService : INDAR1RowEditService
             FieldColumns = fieldColumns
         };
 
+        var rollingStart = start.AddMonths(-11);
+        var rollingEndExclusive = end;
+        var rollingApps = await _context.MonthlyApplications
+            .Where(x => x.FacilityId == report.FacilityId && x.ApplicationDate >= rollingStart && x.ApplicationDate < rollingEndExclusive)
+            .ToListAsync();
+
+        foreach (var field in vm.FieldColumns)
+        {
+            var monthlyForField = monthlyApps.Where(x => x.SprayfieldId == field.SprayfieldId).ToList();
+            field.MonthlyVolumeTotalGallons = Math.Round(monthlyForField.Sum(x => x.VolumeGallons), 0, MidpointRounding.AwayFromZero);
+
+            if (field.Acres.HasValue && field.Acres.Value > 0m)
+            {
+                field.MonthlyDailyLoadingTotalInches = monthlyForField.Sum(x => x.VolumeGallons / (field.Acres.Value * 27152m));
+                field.TwelveMonthFloatingTotalInches = rollingApps
+                    .Where(x => x.SprayfieldId == field.SprayfieldId)
+                    .Sum(x => x.VolumeGallons / (field.Acres.Value * 27152m));
+            }
+        }
+
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(report.Year, (int)report.Month, day);
@@ -73,7 +94,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
             {
                 DayNo = day,
                 Date = date,
-                WeatherCode = log?.WeatherConditions,
+                WeatherCode = WeatherCodeCatalog.TryNormalizeAbbreviation(log?.WeatherConditions, out var code) ? code : null,
                 TemperatureF = log?.TemperatureF,
                 PrecipitationIn = log?.PrecipitationIn,
                 StorageFt = log?.StorageFt,
@@ -199,6 +220,17 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 return;
             }
 
+            if (!WeatherCodeCatalog.TryNormalizeAbbreviation(request.WeatherCode, out var normalizedWeatherCode))
+            {
+                lockValidationFailure = new NDAR1RowEditResult
+                {
+                    Success = false,
+                    IsValidationError = true,
+                    Message = "Weather code is invalid. Please select a valid abbreviation."
+                };
+                return;
+            }
+
             await using var tx = await _context.Database.BeginTransactionAsync();
 
             var operatorLog = await _context.OperatorLogs
@@ -221,7 +253,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     FacilityId = report.FacilityId,
                     LogDate = dayDate,
                     OperatorName = "System",
-                    WeatherConditions = request.WeatherCode ?? string.Empty,
+                    WeatherConditions = normalizedWeatherCode ?? string.Empty,
                     TemperatureF = request.TemperatureF,
                     PrecipitationIn = request.PrecipitationIn,
                     StorageFt = request.StorageFt,
@@ -239,7 +271,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
             }
             else if (operatorLog != null)
             {
-                operatorLog.WeatherConditions = request.WeatherCode ?? string.Empty;
+                operatorLog.WeatherConditions = normalizedWeatherCode ?? string.Empty;
                 operatorLog.TemperatureF = request.TemperatureF;
                 operatorLog.PrecipitationIn = request.PrecipitationIn;
                 operatorLog.StorageFt = request.StorageFt;

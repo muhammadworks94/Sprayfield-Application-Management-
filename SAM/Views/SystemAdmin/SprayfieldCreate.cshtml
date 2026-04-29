@@ -98,7 +98,7 @@
                         <label asp-for="HydraulicLoadingLimitInPerYr" class="form-label required"></label>
                         <input asp-for="HydraulicLoadingLimitInPerYr" type="number" step="0.01" min="0" class="form-control" />
                         <span asp-validation-for="HydraulicLoadingLimitInPerYr" class="text-danger"></span>
-                        <small class="form-text text-muted">Annual hydraulic loading limit in inches per year</small>
+                        <small class="form-text text-muted">Fallback annual value for NDAR (in/yr) when Annual Rate is not provided.</small>
                     </div>
                 </div>
 
@@ -116,7 +116,7 @@
                             <label asp-for="AnnualRateInches" class="form-label"></label>
                             <input asp-for="AnnualRateInches" type="number" step="0.01" min="0" class="form-control" />
                             <span asp-validation-for="AnnualRateInches" class="text-danger"></span>
-                            <small class="form-text text-muted">Explicit NDAR annual rate in inches per year.</small>
+                            <small class="form-text text-muted">Primary NDAR annual value (in/yr). If empty, NDAR uses Hydraulic Loading Limit fallback.</small>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -124,7 +124,7 @@
                             <label asp-for="WeeklyRateInches" class="form-label"></label>
                             <input asp-for="WeeklyRateInches" type="number" step="0.01" min="0" class="form-control" />
                             <span asp-validation-for="WeeklyRateInches" class="text-danger"></span>
-                            <small class="form-text text-muted">Legacy weekly planning rate in inches per week.</small>
+                            <small class="form-text text-muted">Planning-only weekly value (in/week). Not used as NDAR annual fallback.</small>
                         </div>
                     </div>
                 </div>

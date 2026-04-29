@@ -1,6 +1,15 @@
 @model SAM.ViewModels.Reports.NDAR1EditGridViewModel
 @{
     ViewData["Title"] = "Edit NDAR-1 Report";
+    var weatherOptions = new[]
+    {
+        new { Code = "C", Label = "Clear (C)" },
+        new { Code = "CL", Label = "Cloudy (CL)" },
+        new { Code = "PC", Label = "Partly Cloudy (PC)" },
+        new { Code = "R", Label = "Rain (R)" },
+        new { Code = "SL", Label = "Sleet (SL)" },
+        new { Code = "SN", Label = "Snow (SN)" }
+    };
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
@@ -43,7 +52,22 @@
                     {
                         <tr data-day="@row.DayNo" data-date="@row.Date.ToString("yyyy-MM-dd")">
                             <td><strong>@row.DayNo</strong></td>
-                            <td><input class="form-control form-control-sm" data-field="weatherCode" value="@row.WeatherCode" disabled title="Click Edit for this row to modify values." /></td>
+                            <td>
+                                <select class="form-select form-select-sm" data-field="weatherCode" disabled title="Click Edit for this row to modify values.">
+                                    <option value=""></option>
+                                    @foreach (var weather in weatherOptions)
+                                    {
+                                        if (string.Equals(row.WeatherCode, weather.Code, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <option value="@weather.Code" selected>@weather.Label</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@weather.Code">@weather.Label</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
                             <td><input class="form-control form-control-sm" data-field="temperatureF" type="number" step="0.01" value="@row.TemperatureF" disabled title="Click Edit for this row to modify values." /></td>
                             <td><input class="form-control form-control-sm" data-field="precipitationIn" type="number" step="0.01" value="@row.PrecipitationIn" disabled title="Click Edit for this row to modify values." /></td>
                             <td><input class="form-control form-control-sm" data-field="storageFt" type="number" step="0.01" value="@row.StorageFt" disabled title="Click Edit for this row to modify values." /></td>
@@ -65,10 +89,52 @@
                         </tr>
                     }
                 </tbody>
+                <tfoot>
+                    <tr class="table-light">
+                        <th colspan="6">Monthly Total - Volume Applied (gal)</th>
+                        @foreach (var field in Model.FieldColumns)
+                        {
+                            <th data-total-volume="@field.SprayfieldId">@field.MonthlyVolumeTotalGallons.ToString("F0")</th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                        }
+                        <th></th>
+                    </tr>
+                    <tr class="table-light">
+                        <th colspan="6">Monthly Total - Daily Loading (in)</th>
+                        @foreach (var field in Model.FieldColumns)
+                        {
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th data-total-loading="@field.SprayfieldId">@field.MonthlyDailyLoadingTotalInches.ToString("F2")</th>
+                        }
+                        <th></th>
+                    </tr>
+                    <tr class="table-light">
+                        <th colspan="6">12-Month Floating Total (in)</th>
+                        @foreach (var field in Model.FieldColumns)
+                        {
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th data-total-floating="@field.SprayfieldId">@field.TwelveMonthFloatingTotalInches.ToString("F2")</th>
+                        }
+                        <th></th>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
 </div>
+
+<style>
+    #ndarLiveGrid select.weather-select-selected {
+        background-image: none !important;
+        padding-right: 0.5rem;
+    }
+</style>
 
 @section Scripts {
     <script>
@@ -80,6 +146,47 @@
             if (!grid) return;
             const defaultReadOnlyTitle = 'Click Edit for this row to modify values.';
             const calculatedReadOnlyTitle = 'Calculated field (Volume / Acres). This value is read-only.';
+            const fieldAcresById = {
+                @for (var i = 0; i < Model.FieldColumns.Count; i++)
+                {
+                    var field = Model.FieldColumns[i];
+                    @:"@field.SprayfieldId": @(field.Acres.HasValue ? field.Acres.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null")@(i < Model.FieldColumns.Count - 1 ? "," : "")
+                }
+            };
+
+            const recalcFooterTotals = () => {
+                const volumeTotals = {};
+                const loadingTotals = {};
+
+                Object.keys(fieldAcresById).forEach(sf => {
+                    volumeTotals[sf] = 0;
+                    loadingTotals[sf] = 0;
+                });
+
+                grid.querySelectorAll('tbody tr[data-day]').forEach(tr => {
+                    Object.keys(fieldAcresById).forEach(sf => {
+                        const volumeInput = tr.querySelector(`input[data-app="volumeGallons"][data-sprayfield-id="${sf}"]`);
+                        const rawVolume = volumeInput?.value?.trim() ?? '';
+                        const volume = rawVolume === '' ? null : Number(rawVolume);
+                        if (volume != null && !Number.isNaN(volume)) {
+                            volumeTotals[sf] += volume;
+                        }
+
+                        const acres = fieldAcresById[sf];
+                        if (acres && volume != null && !Number.isNaN(volume) && acres > 0) {
+                            loadingTotals[sf] += (volume / (acres * 27152));
+                        }
+                    });
+                });
+
+                Object.keys(fieldAcresById).forEach(sf => {
+                    const volumeCell = grid.querySelector(`[data-total-volume="${sf}"]`);
+                    const loadingCell = grid.querySelector(`[data-total-loading="${sf}"]`);
+                    if (volumeCell) volumeCell.textContent = Math.round(volumeTotals[sf]).toString();
+                    if (loadingCell) loadingCell.textContent = loadingTotals[sf].toFixed(2);
+                });
+            };
+
             const showError = (message) => {
                 const safeMessage = message || 'Something went wrong. Please try again.';
                 if (window.toastr) {
@@ -109,8 +216,14 @@
                 }
             };
 
+            const syncWeatherIconState = (selectEl) => {
+                if (!selectEl) return;
+                const hasValue = !!selectEl.value && selectEl.value.trim() !== '';
+                selectEl.classList.toggle('weather-select-selected', hasValue);
+            };
+
             const setEditable = (tr, editable) => {
-                tr.querySelectorAll('input[data-field], input[data-app]').forEach(i => {
+                tr.querySelectorAll('input[data-field], select[data-field], input[data-app]').forEach(i => {
                     if (i.dataset.app === 'dailyLoadingInches') {
                         i.disabled = true;
                         i.title = calculatedReadOnlyTitle;
@@ -122,6 +235,7 @@
                 tr.querySelector('.row-edit-btn')?.classList.toggle('d-none', editable);
                 tr.querySelector('.row-update-btn')?.classList.toggle('d-none', !editable);
                 tr.querySelector('.row-cancel-btn')?.classList.toggle('d-none', !editable);
+                syncWeatherIconState(tr.querySelector('select[data-field="weatherCode"]'));
             };
 
             const closeOtherEditingRows = async (currentTr) => {
@@ -167,7 +281,7 @@
                 return {
                     dayNo: Number(tr.dataset.day),
                     lockToken: tr.querySelector('.lock-token').value,
-                    weatherCode: tr.querySelector('input[data-field="weatherCode"]').value,
+                    weatherCode: tr.querySelector('select[data-field="weatherCode"]').value,
                     temperatureF: numOrNull('input[data-field="temperatureF"]'),
                     precipitationIn: numOrNull('input[data-field="precipitationIn"]'),
                     storageFt: numOrNull('input[data-field="storageFt"]'),
@@ -177,7 +291,8 @@
             };
 
             const refreshRowFromResponse = (tr, row) => {
-                tr.querySelector('input[data-field="weatherCode"]').value = row.weatherCode ?? '';
+                tr.querySelector('select[data-field="weatherCode"]').value = row.weatherCode ?? '';
+                syncWeatherIconState(tr.querySelector('select[data-field="weatherCode"]'));
                 tr.querySelector('input[data-field="temperatureF"]').value = row.temperatureF ?? '';
                 tr.querySelector('input[data-field="precipitationIn"]').value = row.precipitationIn ?? '';
                 tr.querySelector('input[data-field="storageFt"]').value = row.storageFt ?? '';
@@ -248,7 +363,7 @@
                     });
                     const result = await tryReadJson(resp);
                     if (!resp.ok) {
-                        if (resp.status === 409 && result?.message) {
+                        if ((resp.status === 409 || resp.status === 400) && result?.message) {
                             showError(result.message);
                         } else {
                             showError('Unable to update the row right now. Please try again.');
@@ -264,6 +379,7 @@
                         return;
                     }
                     refreshRowFromResponse(tr, result.row);
+                    recalcFooterTotals();
                     tr.querySelector('.lock-token').value = '';
                     setEditable(tr, false);
                 }
@@ -279,6 +395,13 @@
                     setEditable(tr, false);
                 }
             });
+
+            grid.querySelectorAll('select[data-field="weatherCode"]').forEach(selectEl => {
+                syncWeatherIconState(selectEl);
+                selectEl.addEventListener('change', () => syncWeatherIconState(selectEl));
+            });
+
+            recalcFooterTotals();
         })();
     </script>
 }
