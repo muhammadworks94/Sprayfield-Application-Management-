@@ -52,11 +52,17 @@ public class Sprayfield : CompanyScopedEntity
     /// Weekly irrigation rate in inches per week.
     /// </summary>
     public decimal? WeeklyRateInches { get; set; }
+    public Guid SoilId { get; set; }
+    public Guid NozzleId { get; set; }
+    public Guid? CropId { get; set; }
 
     // Navigation properties
     public Facility? Facility { get; set; }
     public Guid? FacilityId { get; set; }
-    public ICollection<ApplicationZone> ApplicationZones { get; set; } = new List<ApplicationZone>();
+    public Soil? Soil { get; set; }
+    public Nozzle? Nozzle { get; set; }
+    public Crop? Crop { get; set; }
+    public ICollection<MonthlyApplication> MonthlyApplications { get; set; } = new List<MonthlyApplication>();
 }
 
 

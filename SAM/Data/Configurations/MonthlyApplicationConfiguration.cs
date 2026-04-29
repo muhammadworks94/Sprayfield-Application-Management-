@@ -21,7 +21,7 @@ public class MonthlyApplicationConfiguration : IEntityTypeConfiguration<MonthlyA
 
         builder.HasIndex(a => a.CompanyId);
         builder.HasIndex(a => a.FacilityId);
-        builder.HasIndex(a => a.ZoneId);
+        builder.HasIndex(a => a.SprayfieldId);
         builder.HasIndex(a => a.ApplicationDate);
         builder.HasIndex(a => a.OperatorUserId);
 
@@ -35,9 +35,9 @@ public class MonthlyApplicationConfiguration : IEntityTypeConfiguration<MonthlyA
             .HasForeignKey(a => a.FacilityId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(a => a.Zone)
-            .WithMany(z => z.MonthlyApplications)
-            .HasForeignKey(a => a.ZoneId)
+        builder.HasOne(a => a.Sprayfield)
+            .WithMany(s => s.MonthlyApplications)
+            .HasForeignKey(a => a.SprayfieldId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(a => a.OperatorUser)

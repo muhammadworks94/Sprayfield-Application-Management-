@@ -9,7 +9,7 @@ public class MonthlyApplicationViewModel
     public string? CompanyName { get; set; }
     public Guid FacilityId { get; set; }
     public string? FacilityName { get; set; }
-    public Guid ZoneId { get; set; }
+    public Guid SprayfieldId { get; set; }
     public string? ZoneName { get; set; }
     public string? SprayfieldName { get; set; }
     public decimal? ZoneAcres { get; set; }
@@ -34,10 +34,6 @@ public class MonthlyApplicationCreateViewModel
     [Required]
     [Display(Name = "Sprayfield")]
     public Guid SprayfieldId { get; set; }
-
-    [Required]
-    [Display(Name = "Application Zone")]
-    public Guid ZoneId { get; set; }
 
     [Required]
     [Display(Name = "Application Date")]

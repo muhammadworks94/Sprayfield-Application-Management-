@@ -102,7 +102,6 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ICropService, CropService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISprayfieldService,SprayfieldService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IMonitoringWellService, MonitoringWellService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IOperatorLogService, OperatorLogService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IApplicationZoneService, ApplicationZoneService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IApplicationComplianceService, ApplicationComplianceService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IMonthlyApplicationService, MonthlyApplicationService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ILoadCalculationService, LoadCalculationService>();

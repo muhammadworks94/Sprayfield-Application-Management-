@@ -3,7 +3,7 @@ namespace SAM.Services.Models;
 public class ComplianceProjectionRequest
 {
     public Guid FacilityId { get; set; }
-    public Guid ZoneId { get; set; }
+    public Guid SprayfieldId { get; set; }
     public DateTime ApplicationDate { get; set; }
     public decimal VolumeGallons { get; set; }
     public decimal NitrogenMgL { get; set; }

@@ -21,13 +21,13 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
     public async Task<ComplianceProjectionResult> GetProjectedComplianceAsync(ComplianceProjectionRequest request)
     {
-        var zone = await _context.ApplicationZones
-            .Include(z => z.Sprayfield)
-            .FirstOrDefaultAsync(z => z.Id == request.ZoneId);
+        var field = await _context.Sprayfields
+            .Include(s => s.Crop)
+            .FirstOrDefaultAsync(s => s.Id == request.SprayfieldId);
 
-        if (zone?.Sprayfield == null)
+        if (field == null)
         {
-            throw new InvalidOperationException("Application zone or sprayfield not found.");
+            throw new InvalidOperationException("Sprayfield not found.");
         }
 
         if (request.FacilityId == Guid.Empty)
@@ -35,7 +35,6 @@ public class ApplicationComplianceService : IApplicationComplianceService
             throw new InvalidOperationException("Facility is required.");
         }
 
-        var field = zone.Sprayfield;
         var asOfDate = request.ApplicationDate.Date;
         var windowStart = asOfDate.AddDays(-364);
         var facilityInputs = await GetFacilityPanInputsAsync(request.FacilityId);
@@ -169,10 +168,9 @@ public class ApplicationComplianceService : IApplicationComplianceService
     {
         var query = _context.MonthlyApplications
             .AsNoTracking()
-            .Include(a => a.Zone)
+            .Include(a => a.Sprayfield)
             .Where(a => a.FacilityId == facilityId
-                        && a.Zone != null
-                        && a.Zone.SprayfieldId == sprayfieldId
+                        && a.SprayfieldId == sprayfieldId
                         && a.ApplicationDate >= startDate
                         && a.ApplicationDate <= endDate);
 
@@ -340,48 +338,23 @@ public class ApplicationComplianceService : IApplicationComplianceService
 
     private async Task<decimal?> GetWeightedPanLimitAsync(Guid sprayfieldId)
     {
-        var zones = await _context.ApplicationZones
+        var sprayfield = await _context.Sprayfields
             .AsNoTracking()
-            .Include(z => z.Crop)
-            .Where(z => z.SprayfieldId == sprayfieldId && z.Active)
-            .ToListAsync();
+            .Include(s => s.Crop)
+            .FirstOrDefaultAsync(s => s.Id == sprayfieldId);
 
-        if (zones.Count == 0)
+        if (sprayfield?.Crop == null)
         {
             return null;
         }
 
-        decimal weightedLimit = 0m;
-        decimal coveredPercent = 0m;
-
-        foreach (var zone in zones)
+        var panLimit = sprayfield.Crop.PANLimit;
+        if (!panLimit.HasValue || panLimit.Value <= 0)
         {
-            if (zone.Crop == null)
-            {
-                continue;
-            }
-
-            var zonePanLimit = zone.Crop.PANLimit;
-            if (!zonePanLimit.HasValue || zonePanLimit.Value <= 0)
-            {
-                zonePanLimit = PanLimitDerivation.DeriveFromNUptake(zone.Crop.NUptake);
-            }
-
-            if (zonePanLimit <= 0)
-            {
-                continue;
-            }
-
-            coveredPercent += zone.PercentOfField;
-            weightedLimit += (zone.PercentOfField / 100m) * zonePanLimit.Value;
+            panLimit = PanLimitDerivation.DeriveFromNUptake(sprayfield.Crop.NUptake);
         }
 
-        if (coveredPercent <= 0)
-        {
-            return null;
-        }
-
-        return weightedLimit;
+        return panLimit > 0 ? panLimit : null;
     }
 
     private sealed record PanRateInputs(decimal MineralizationRate, decimal VolatilizationRate);

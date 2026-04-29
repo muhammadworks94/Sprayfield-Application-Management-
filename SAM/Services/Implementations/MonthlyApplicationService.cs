@@ -17,18 +17,17 @@ public class MonthlyApplicationService : IMonthlyApplicationService
         _loadCalculationService = loadCalculationService;
     }
 
-    public async Task<IEnumerable<MonthlyApplication>> GetAllAsync(Guid? companyId = null, Guid? facilityId = null, Guid? zoneId = null)
+    public async Task<IEnumerable<MonthlyApplication>> GetAllAsync(Guid? companyId = null, Guid? facilityId = null, Guid? sprayfieldId = null)
     {
         var query = _context.MonthlyApplications
-            .Include(a => a.Zone)
-                .ThenInclude(z => z!.Sprayfield)
+            .Include(a => a.Sprayfield)
             .Include(a => a.Facility)
             .Include(a => a.Company)
             .AsQueryable();
 
         if (companyId.HasValue) query = query.Where(a => a.CompanyId == companyId.Value);
         if (facilityId.HasValue) query = query.Where(a => a.FacilityId == facilityId.Value);
-        if (zoneId.HasValue) query = query.Where(a => a.ZoneId == zoneId.Value);
+        if (sprayfieldId.HasValue) query = query.Where(a => a.SprayfieldId == sprayfieldId.Value);
 
         return await query
             .OrderByDescending(a => a.ApplicationDate)
@@ -38,8 +37,7 @@ public class MonthlyApplicationService : IMonthlyApplicationService
     public async Task<MonthlyApplication?> GetByIdAsync(Guid id)
     {
         return await _context.MonthlyApplications
-            .Include(a => a.Zone)
-                .ThenInclude(z => z!.Sprayfield)
+            .Include(a => a.Sprayfield)
             .Include(a => a.Facility)
             .Include(a => a.Company)
             .FirstOrDefaultAsync(a => a.Id == id);
@@ -59,9 +57,10 @@ public class MonthlyApplicationService : IMonthlyApplicationService
             ?? throw new EntityNotFoundException(nameof(MonthlyApplication), application.Id);
 
         existing.FacilityId = application.FacilityId;
-        existing.ZoneId = application.ZoneId;
+        existing.SprayfieldId = application.SprayfieldId;
         existing.ApplicationDate = application.ApplicationDate;
         existing.VolumeGallons = application.VolumeGallons;
+        existing.TimeIrrigatedMinutes = application.TimeIrrigatedMinutes;
         existing.NitrogenMgL = application.NitrogenMgL;
         existing.OperatorUserId = application.OperatorUserId;
         existing.OperatorSnapshotName = application.OperatorSnapshotName;
@@ -82,50 +81,4 @@ public class MonthlyApplicationService : IMonthlyApplicationService
         return true;
     }
 
-    public async Task<bool> AnyByZoneIdAsync(Guid zoneId)
-    {
-        return await _context.MonthlyApplications.AnyAsync(a => a.ZoneId == zoneId);
-    }
-
-    public async Task<int> DeleteByZoneIdAsync(Guid zoneId)
-    {
-        var applications = await _context.MonthlyApplications
-            .Where(a => a.ZoneId == zoneId)
-            .ToListAsync();
-
-        if (applications.Count == 0)
-        {
-            return 0;
-        }
-
-        _context.MonthlyApplications.RemoveRange(applications);
-        await _context.SaveChangesAsync();
-        return applications.Count;
-    }
-
-    public async Task<int> ReassignZoneAsync(Guid fromZoneId, Guid toZoneId)
-    {
-        var applications = await _context.MonthlyApplications
-            .Where(a => a.ZoneId == fromZoneId)
-            .ToListAsync();
-
-        if (applications.Count == 0)
-        {
-            return 0;
-        }
-
-        foreach (var application in applications)
-        {
-            application.ZoneId = toZoneId;
-        }
-
-        await _context.SaveChangesAsync();
-
-        foreach (var application in applications)
-        {
-            await _loadCalculationService.RecalculateForApplicationAsync(application.Id);
-        }
-
-        return applications.Count;
-    }
 }

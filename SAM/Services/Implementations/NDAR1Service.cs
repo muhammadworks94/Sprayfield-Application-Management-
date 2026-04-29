@@ -76,21 +76,16 @@ public class NDAR1Service : INDAR1Service
             .Include(n => n.Company)
             .Include(n => n.Facility)
             .Include(n => n.Field1)
-                .ThenInclude(f => f.ApplicationZones)
-                    .ThenInclude(z => z.Crop)
+                .ThenInclude(f => f!.Crop)
             .Include(n => n.Field2)
-                .ThenInclude(f => f.ApplicationZones)
-                    .ThenInclude(z => z.Crop)
+                .ThenInclude(f => f!.Crop)
             .Include(n => n.Field3)
-                .ThenInclude(f => f.ApplicationZones)
-                    .ThenInclude(z => z.Crop)
+                .ThenInclude(f => f!.Crop)
             .Include(n => n.Field4)
-                .ThenInclude(f => f.ApplicationZones)
-                    .ThenInclude(z => z.Crop)
+                .ThenInclude(f => f!.Crop)
             .Include(n => n.Fields)
                 .ThenInclude(f => f.Sprayfield)
-                    .ThenInclude(s => s!.ApplicationZones)
-                        .ThenInclude(z => z.Crop)
+                    .ThenInclude(s => s!.Crop)
             .Include(n => n.Fields)
                 .ThenInclude(f => f.DailyValues)
             .FirstOrDefaultAsync(n => n.Id == id);
@@ -302,8 +297,7 @@ public class NDAR1Service : INDAR1Service
         var daysInMonth = DateTime.DaysInMonth(year, month);
 
         var applications = await _context.MonthlyApplications
-            .Include(a => a.Zone)
-                .ThenInclude(z => z!.Sprayfield)
+            .Include(a => a.Sprayfield)
             .Where(a => a.FacilityId == facilityId &&
                        a.ApplicationDate >= startDate &&
                        a.ApplicationDate <= endDate)
@@ -364,18 +358,13 @@ public class NDAR1Service : INDAR1Service
         var fieldApplications = new Dictionary<Guid, List<MonthlyApplication>>();
         foreach (var application in applications)
         {
-            var sprayfieldId = application.Zone?.SprayfieldId;
-            if (!sprayfieldId.HasValue)
+            var sprayfieldId = application.SprayfieldId;
+            if (!fieldApplications.ContainsKey(sprayfieldId))
             {
-                continue;
+                fieldApplications[sprayfieldId] = new List<MonthlyApplication>();
             }
 
-            if (!fieldApplications.ContainsKey(sprayfieldId.Value))
-            {
-                fieldApplications[sprayfieldId.Value] = new List<MonthlyApplication>();
-            }
-
-            fieldApplications[sprayfieldId.Value].Add(application);
+            fieldApplications[sprayfieldId].Add(application);
         }
 
         // Process each legacy field block (first 4 kept for backward compatibility)

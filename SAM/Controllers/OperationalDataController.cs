@@ -29,7 +29,6 @@ namespace SAM.Controllers;
         private readonly IGWMonitService _gwMonitService;
         private readonly IFacilityService _facilityService;
         private readonly ISprayfieldService _sprayfieldService;
-        private readonly IApplicationZoneService _applicationZoneService;
         private readonly IApplicationComplianceService _applicationComplianceService;
         private readonly IMonitoringWellService _monitoringWellService;
         private readonly ILookupQueryService _lookupQueryService;
@@ -42,7 +41,6 @@ namespace SAM.Controllers;
             IGWMonitService gwMonitService,
             IFacilityService facilityService,
             ISprayfieldService sprayfieldService,
-            IApplicationZoneService applicationZoneService,
             IApplicationComplianceService applicationComplianceService,
             IMonitoringWellService monitoringWellService,
             ILookupQueryService lookupQueryService,
@@ -57,7 +55,6 @@ namespace SAM.Controllers;
             _gwMonitService = gwMonitService;
             _facilityService = facilityService;
             _sprayfieldService = sprayfieldService;
-            _applicationZoneService = applicationZoneService;
             _applicationComplianceService = applicationComplianceService;
             _monitoringWellService = monitoringWellService;
             _lookupQueryService = lookupQueryService;
@@ -374,7 +371,7 @@ namespace SAM.Controllers;
     #region Monthly Applications
 
     [HttpGet]
-    public async Task<IActionResult> MonthlyApplications(Guid? facilityId = null, Guid? sprayfieldId = null, Guid? zoneId = null)
+    public async Task<IActionResult> MonthlyApplications(Guid? facilityId = null, Guid? sprayfieldId = null)
     {
         var companyId = await GetEffectiveCompanyIdAsync();
         if (companyId.HasValue)
@@ -382,18 +379,17 @@ namespace SAM.Controllers;
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var applications = await _monthlyApplicationService.GetAllAsync(companyId, facilityId, zoneId);
-        var zoneDisplayMaps = await BuildOperationalZoneDisplayMapsAsync(applications.Select(a => a.FacilityId).Distinct());
+        var applications = await _monthlyApplicationService.GetAllAsync(companyId, facilityId, sprayfieldId);
         var items = applications.Select(a => new MonthlyApplicationViewModel
         {
             Id = a.Id,
             CompanyId = a.CompanyId,
             FacilityId = a.FacilityId,
             FacilityName = a.Facility?.Name,
-            ZoneId = a.ZoneId,
-            ZoneName = zoneDisplayMaps.GetValueOrDefault(a.FacilityId)?.GetValueOrDefault(a.ZoneId)?.ZoneDisplayLabel ?? a.Zone?.ZoneName,
-            SprayfieldName = zoneDisplayMaps.GetValueOrDefault(a.FacilityId)?.GetValueOrDefault(a.ZoneId)?.SprayfieldOrdinalLabel ?? a.Zone?.Sprayfield?.PermitFieldName ?? a.Zone?.Sprayfield?.FieldId,
-            ZoneAcres = zoneDisplayMaps.GetValueOrDefault(a.FacilityId)?.GetValueOrDefault(a.ZoneId)?.ZoneAcres,
+            SprayfieldId = a.SprayfieldId,
+            ZoneName = a.Sprayfield?.FieldId,
+            SprayfieldName = a.Sprayfield?.PermitFieldName ?? a.Sprayfield?.FieldId,
+            ZoneAcres = a.Sprayfield is null ? null : SprayfieldReportHelper.GetReportAcres(a.Sprayfield),
             ApplicationDate = a.ApplicationDate,
             VolumeGallons = a.VolumeGallons,
             TimeIrrigatedMinutes = a.TimeIrrigatedMinutes,
@@ -404,7 +400,6 @@ namespace SAM.Controllers;
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyId, facilityId);
-        ViewBag.Zones = await GetZoneSelectListAsync(companyId, sprayfieldId);
         return View(items);
     }
 
@@ -419,7 +414,6 @@ namespace SAM.Controllers;
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyId, facilityId);
-        ViewBag.Zones = await GetZoneSelectListAsync(companyId, sprayfieldId);
 
         return View(new MonthlyApplicationCreateViewModel
         {
@@ -433,9 +427,9 @@ namespace SAM.Controllers;
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MonthlyApplicationCreate(MonthlyApplicationCreateViewModel viewModel)
     {
-        if (viewModel.ZoneId == Guid.Empty)
+        if (viewModel.SprayfieldId == Guid.Empty)
         {
-            ModelState.AddModelError("ZoneId", "Application zone is required.");
+            ModelState.AddModelError("SprayfieldId", "Sprayfield is required.");
         }
 
         var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
@@ -455,7 +449,7 @@ namespace SAM.Controllers;
             complianceProjection = await _applicationComplianceService.GetProjectedComplianceAsync(new ComplianceProjectionRequest
             {
                 FacilityId = viewModel.FacilityId,
-                ZoneId = viewModel.ZoneId,
+                SprayfieldId = viewModel.SprayfieldId,
                 ApplicationDate = viewModel.ApplicationDate,
                 VolumeGallons = viewModel.VolumeGallons,
                 NitrogenMgL = viewModel.NitrogenMgL
@@ -473,7 +467,6 @@ namespace SAM.Controllers;
             var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
             ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
-            ViewBag.Zones = await GetZoneSelectListAsync(companyIdForLists, viewModel.SprayfieldId);
             return View(viewModel);
         }
 
@@ -484,7 +477,7 @@ namespace SAM.Controllers;
         {
             CompanyId = facility!.CompanyId,
             FacilityId = viewModel.FacilityId,
-            ZoneId = viewModel.ZoneId,
+            SprayfieldId = viewModel.SprayfieldId,
             ApplicationDate = viewModel.ApplicationDate,
             VolumeGallons = viewModel.VolumeGallons,
             TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes,
@@ -508,20 +501,15 @@ namespace SAM.Controllers;
 
         await EnsureCompanyAccessAsync(application.CompanyId);
 
-        var zone = await _applicationZoneService.GetByIdAsync(application.ZoneId);
-        var sprayfieldId = zone?.SprayfieldId ?? Guid.Empty;
-
         ViewBag.Facilities = await GetFacilitySelectListAsync(application.CompanyId);
         ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(application.CompanyId, application.FacilityId);
-        ViewBag.Zones = await GetZoneSelectListAsync(application.CompanyId, sprayfieldId);
 
         return View(new MonthlyApplicationEditViewModel
         {
             Id = application.Id,
             CompanyId = application.CompanyId,
             FacilityId = application.FacilityId,
-            SprayfieldId = sprayfieldId,
-            ZoneId = application.ZoneId,
+            SprayfieldId = application.SprayfieldId,
             ApplicationDate = application.ApplicationDate,
             VolumeGallons = application.VolumeGallons,
             TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
@@ -534,9 +522,9 @@ namespace SAM.Controllers;
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MonthlyApplicationEdit(MonthlyApplicationEditViewModel viewModel)
     {
-        if (viewModel.ZoneId == Guid.Empty)
+        if (viewModel.SprayfieldId == Guid.Empty)
         {
-            ModelState.AddModelError("ZoneId", "Application zone is required.");
+            ModelState.AddModelError("SprayfieldId", "Sprayfield is required.");
         }
 
         var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
@@ -556,7 +544,7 @@ namespace SAM.Controllers;
             complianceProjection = await _applicationComplianceService.GetProjectedComplianceAsync(new ComplianceProjectionRequest
             {
                 FacilityId = viewModel.FacilityId,
-                ZoneId = viewModel.ZoneId,
+                SprayfieldId = viewModel.SprayfieldId,
                 ApplicationDate = viewModel.ApplicationDate,
                 VolumeGallons = viewModel.VolumeGallons,
                 NitrogenMgL = viewModel.NitrogenMgL,
@@ -575,7 +563,6 @@ namespace SAM.Controllers;
             var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
             ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
-            ViewBag.Zones = await GetZoneSelectListAsync(companyIdForLists, viewModel.SprayfieldId);
             return View(viewModel);
         }
 
@@ -585,7 +572,7 @@ namespace SAM.Controllers;
 
         application.CompanyId = facility!.CompanyId;
         application.FacilityId = viewModel.FacilityId;
-        application.ZoneId = viewModel.ZoneId;
+        application.SprayfieldId = viewModel.SprayfieldId;
         application.ApplicationDate = viewModel.ApplicationDate;
         application.VolumeGallons = viewModel.VolumeGallons;
         application.TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes;
@@ -606,12 +593,6 @@ namespace SAM.Controllers;
 
         await EnsureCompanyAccessAsync(application.CompanyId);
 
-        var zone = application.Zone ?? await _applicationZoneService.GetByIdAsync(application.ZoneId);
-        var zoneDisplayMap = zone?.Sprayfield?.FacilityId is Guid applicationFacilityId
-            ? await BuildOperationalZoneDisplayMapAsync(applicationFacilityId)
-            : new Dictionary<Guid, OperationalZoneDisplayInfo>();
-        var zoneDisplay = zoneDisplayMap.GetValueOrDefault(application.ZoneId);
-
         var viewModel = new MonthlyApplicationViewModel
         {
             Id = application.Id,
@@ -619,10 +600,10 @@ namespace SAM.Controllers;
             CompanyName = application.Company?.Name,
             FacilityId = application.FacilityId,
             FacilityName = application.Facility?.Name,
-            ZoneId = application.ZoneId,
-            ZoneName = zoneDisplay?.ZoneDisplayLabel ?? zone?.ZoneName,
-            SprayfieldName = zoneDisplay?.SprayfieldOrdinalLabel ?? zone?.Sprayfield?.PermitFieldName ?? zone?.Sprayfield?.FieldId,
-            ZoneAcres = zoneDisplay?.ZoneAcres,
+            SprayfieldId = application.SprayfieldId,
+            ZoneName = application.Sprayfield?.FieldId,
+            SprayfieldName = application.Sprayfield?.PermitFieldName ?? application.Sprayfield?.FieldId,
+            ZoneAcres = application.Sprayfield is null ? null : SprayfieldReportHelper.GetReportAcres(application.Sprayfield),
             ApplicationDate = application.ApplicationDate,
             VolumeGallons = application.VolumeGallons,
             TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
@@ -682,36 +663,6 @@ namespace SAM.Controllers;
         return Json(new { companyId = facility.CompanyId, sprayfields = filtered });
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetZonesForSprayfield(Guid sprayfieldId)
-    {
-        if (sprayfieldId == Guid.Empty)
-            return BadRequest("Sprayfield is required.");
-
-        var sprayfield = await _sprayfieldService.GetByIdAsync(sprayfieldId);
-        if (sprayfield == null)
-            return NotFound("Sprayfield not found.");
-
-        await EnsureCompanyAccessAsync(sprayfield.CompanyId);
-
-        var zones = await _applicationZoneService.GetBySprayfieldIdAsync(sprayfieldId);
-        var zoneDisplayMap = sprayfield.FacilityId.HasValue
-            ? await BuildOperationalZoneDisplayMapAsync(sprayfield.FacilityId.Value)
-            : new Dictionary<Guid, OperationalZoneDisplayInfo>();
-
-        return Json(zones
-            .Where(z => z.Active)
-            .Select(z =>
-            {
-                var display = zoneDisplayMap.GetValueOrDefault(z.Id);
-                var displayName = display == null
-                    ? z.ZoneName
-                    : $"{display.ZoneDisplayLabel} ({display.ZoneAcres:F2} acres)";
-
-                return new { id = z.Id, name = displayName };
-            }));
-    }
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ValidateMonthlyApplication([FromBody] ComplianceProjectionRequest request)
@@ -721,9 +672,9 @@ namespace SAM.Controllers;
             return BadRequest(new { message = "Facility is required." });
         }
 
-        if (request.ZoneId == Guid.Empty)
+        if (request.SprayfieldId == Guid.Empty)
         {
-            return BadRequest(new { message = "Zone is required." });
+            return BadRequest(new { message = "Sprayfield is required." });
         }
 
         var facility = await _facilityService.GetByIdAsync(request.FacilityId);
@@ -1848,67 +1799,6 @@ namespace SAM.Controllers;
 
         var monitoringWells = await _lookupQueryService.GetMonitoringWellsAsync(companyId, facilityId);
         return new SelectList(monitoringWells, "Id", "WellId");
-    }
-
-    private async Task<SelectList> GetZoneSelectListAsync(Guid? companyId = null, Guid? sprayfieldId = null)
-    {
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-        if (!companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
-
-        if (!sprayfieldId.HasValue || sprayfieldId == Guid.Empty)
-        {
-            return new SelectList(Enumerable.Empty<SelectListItem>(), "Value", "Text");
-        }
-
-        var zones = await _lookupQueryService.GetApplicationZonesAsync(companyId, sprayfieldId);
-        var sprayfield = await _sprayfieldService.GetByIdAsync(sprayfieldId.Value);
-        var zoneDisplayMap = sprayfield?.FacilityId is Guid facilityId
-            ? await BuildOperationalZoneDisplayMapAsync(facilityId)
-            : new Dictionary<Guid, OperationalZoneDisplayInfo>();
-
-        var items = zones
-            .Select(z =>
-            {
-                var display = zoneDisplayMap.GetValueOrDefault(z.Id);
-                var text = display == null
-                    ? z.ZoneName
-                    : $"{display.ZoneDisplayLabel} ({display.ZoneAcres:F2} acres)";
-
-                return new SelectListItem
-                {
-                    Value = z.Id.ToString(),
-                    Text = text
-                };
-            })
-            .ToList();
-
-        return new SelectList(items, "Value", "Text");
-    }
-
-    private async Task<Dictionary<Guid, IReadOnlyDictionary<Guid, OperationalZoneDisplayInfo>>> BuildOperationalZoneDisplayMapsAsync(IEnumerable<Guid> facilityIds)
-    {
-        var result = new Dictionary<Guid, IReadOnlyDictionary<Guid, OperationalZoneDisplayInfo>>();
-
-        foreach (var facilityId in facilityIds.Where(id => id != Guid.Empty).Distinct())
-        {
-            result[facilityId] = await BuildOperationalZoneDisplayMapAsync(facilityId);
-        }
-
-        return result;
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, OperationalZoneDisplayInfo>> BuildOperationalZoneDisplayMapAsync(Guid facilityId)
-    {
-        if (facilityId == Guid.Empty)
-        {
-            return new Dictionary<Guid, OperationalZoneDisplayInfo>();
-        }
-
-        var sprayfields = (await _sprayfieldService.GetByFacilityIdAsync(facilityId)).ToList();
-        return OperationalZoneDisplayHelper.BuildZoneDisplayMap(sprayfields);
     }
 
     private SelectList GetMonthSelectList()

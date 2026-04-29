@@ -29,7 +29,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Nozzle> Nozzles => Set<Nozzle>();
     public DbSet<Crop> Crops => Set<Crop>();
     public DbSet<Sprayfield> Sprayfields => Set<Sprayfield>();
-    public DbSet<ApplicationZone> ApplicationZones => Set<ApplicationZone>();
     public DbSet<MonthlyApplication> MonthlyApplications => Set<MonthlyApplication>();
     public DbSet<LoadCalculation> LoadCalculations => Set<LoadCalculation>();
     public DbSet<MonitoringWell> MonitoringWells => Set<MonitoringWell>();
@@ -85,7 +84,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new NozzleConfiguration());
         builder.ApplyConfiguration(new CropConfiguration());
         builder.ApplyConfiguration(new SprayfieldConfiguration());
-        builder.ApplyConfiguration(new ApplicationZoneConfiguration());
         builder.ApplyConfiguration(new MonthlyApplicationConfiguration());
         builder.ApplyConfiguration(new LoadCalculationConfiguration());
         builder.ApplyConfiguration(new MonitoringWellConfiguration());

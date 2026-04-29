@@ -189,8 +189,7 @@ public class IrrRprtService : IIrrRprtService
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
         var applications = await _context.MonthlyApplications
-            .Include(a => a.Zone)
-                .ThenInclude(z => z!.Sprayfield)
+            .Include(a => a.Sprayfield)
             .Where(a => a.FacilityId == facilityId &&
                        a.ApplicationDate >= startDate &&
                        a.ApplicationDate <= endDate)
@@ -246,8 +245,7 @@ public class IrrRprtService : IIrrRprtService
             var no3 = wwChar?.NO3N ?? 0m;
 
             var volumeBySprayfield = applications
-                .Where(a => a.Zone != null)
-                .GroupBy(i => i.Zone!.SprayfieldId)
+                .GroupBy(i => i.SprayfieldId)
                 .ToDictionary(g => g.Key, g => g.Sum(i => i.VolumeGallons));
 
             decimal totalPanLbs = 0m;

@@ -3,7 +3,6 @@
     ViewData["Title"] = "Create Monthly Application";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var zones = ViewBag.Zones as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
 }
 
 @section PageTitleInline {
@@ -19,7 +18,7 @@
 }
 
 <div class="mb-4">
-    <p class="text-muted mb-0">Log a zone-level wastewater application entry.</p>
+    <p class="text-muted mb-0">Log a sprayfield-level wastewater application entry.</p>
 </div>
 
 <div class="card">
@@ -47,14 +46,6 @@
                         <option value="">-- Select Sprayfield --</option>
                     </select>
                     <span asp-validation-for="SprayfieldId" class="text-danger"></span>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <label asp-for="ZoneId" class="form-label required"></label>
-                    <select asp-for="ZoneId" asp-items="zones" class="form-select" id="zoneSelect">
-                        <option value="">-- Select Zone --</option>
-                    </select>
-                    <span asp-validation-for="ZoneId" class="text-danger"></span>
                 </div>
 
                 <div class="col-lg-4 col-md-6">
@@ -96,124 +87,25 @@
     </div>
 </div>
 
-<div class="modal fade" id="complianceWarningModal" tabindex="-1" aria-labelledby="complianceWarningModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="complianceWarningModalLabel">Compliance Warning</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-2">Please review these warnings before continuing:</p>
-                <ul class="mb-0 ps-3" id="complianceWarningList"></ul>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="complianceWarningContinueButton">Continue and Save Application</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         (function () {
             const facilitySelect = document.getElementById('facilitySelect');
             const sprayfieldSelect = document.getElementById('sprayfieldSelect');
-            const zoneSelect = document.getElementById('zoneSelect');
             const companyIdInput = document.getElementById('companyIdInput');
             const form = document.getElementById('monthlyApplicationForm');
-            const confirmComplianceWarningsInput = document.getElementById('confirmComplianceWarningsInput');
-            const complianceWarningSummaryInput = document.getElementById('complianceWarningSummaryInput');
-            const complianceWarningModalElement = document.getElementById('complianceWarningModal');
-            const complianceWarningList = document.getElementById('complianceWarningList');
-            const complianceWarningContinueButton = document.getElementById('complianceWarningContinueButton');
             const antiForgeryToken = form?.querySelector('input[name="__RequestVerificationToken"]')?.value;
-            let isConfirmedSubmit = false;
-            let complianceWarningModalInstance = null;
-
-            function resetSelect(select, placeholder) {
-                select.innerHTML = '';
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = placeholder;
-                select.appendChild(option);
-            }
-
-            function ensureComplianceModal() {
-                if (!complianceWarningModalElement || typeof bootstrap === 'undefined') {
-                    return null;
-                }
-
-                if (!complianceWarningModalInstance) {
-                    complianceWarningModalInstance = new bootstrap.Modal(complianceWarningModalElement, {
-                        backdrop: 'static',
-                        keyboard: false
-                    });
-                }
-
-                return complianceWarningModalInstance;
-            }
-
-            function escapeHtml(text) {
-                return String(text ?? '')
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#039;');
-            }
-
-            function showComplianceWarningModal(warnings, continueLabel) {
-                const modal = ensureComplianceModal();
-                if (!modal || !complianceWarningList || !complianceWarningContinueButton) {
-                    if (typeof toastr !== 'undefined') {
-                        toastr.warning((warnings || []).join(' '), 'Compliance warning');
-                    }
-
-                    return Promise.resolve(false);
-                }
-
-                complianceWarningList.innerHTML = (warnings || [])
-                    .map(warning => `<li>${escapeHtml(warning)}</li>`)
-                    .join('');
-                complianceWarningContinueButton.textContent = continueLabel;
-
-                if (typeof toastr !== 'undefined') {
-                    toastr.warning((warnings || []).join(' '), 'Compliance warning');
-                }
-
-                return new Promise(resolve => {
-                    let approved = false;
-
-                    const onContinue = () => {
-                        approved = true;
-                        modal.hide();
-                    };
-
-                    const onHidden = () => {
-                        resolve(approved);
-                    };
-
-                    complianceWarningContinueButton.addEventListener('click', onContinue, { once: true });
-                    complianceWarningModalElement.addEventListener('hidden.bs.modal', onHidden, { once: true });
-                    modal.show();
-                });
-            }
 
             async function loadSprayfields(facilityId) {
-                resetSelect(sprayfieldSelect, '-- Select Sprayfield --');
-                resetSelect(zoneSelect, '-- Select Zone --');
+                sprayfieldSelect.innerHTML = '<option value="">-- Select Sprayfield --</option>';
                 if (!facilityId) return;
 
                 const res = await fetch('@Url.Action("GetSprayfieldsForFacility", "OperationalData")?facilityId=' + encodeURIComponent(facilityId));
                 if (!res.ok) return;
                 const data = await res.json();
 
-                if (data.companyId && companyIdInput) {
-                    companyIdInput.value = data.companyId;
-                }
+                if (data.companyId && companyIdInput) companyIdInput.value = data.companyId;
 
                 (data.sprayfields || []).forEach(sf => {
                     const option = document.createElement('option');
@@ -223,28 +115,10 @@
                 });
             }
 
-            async function loadZones(sprayfieldId) {
-                resetSelect(zoneSelect, '-- Select Zone --');
-                if (!sprayfieldId) return;
-
-                const res = await fetch('@Url.Action("GetZonesForSprayfield", "OperationalData")?sprayfieldId=' + encodeURIComponent(sprayfieldId));
-                if (!res.ok) return;
-                const data = await res.json();
-                (data || []).forEach(z => {
-                    const option = document.createElement('option');
-                    option.value = z.id;
-                    option.textContent = z.name;
-                    zoneSelect.appendChild(option);
-                });
-            }
-
-            facilitySelect?.addEventListener('change', () => loadSprayfields(facilitySelect.value));
-            sprayfieldSelect?.addEventListener('change', () => loadZones(sprayfieldSelect.value));
-
             async function validateComplianceBeforeSubmit() {
                 const payload = {
                     facilityId: facilitySelect?.value || null,
-                    zoneId: zoneSelect?.value || null,
+                    sprayfieldId: sprayfieldSelect?.value || null,
                     applicationDate: document.getElementById('ApplicationDate')?.value || null,
                     volumeGallons: document.getElementById('VolumeGallons')?.value || 0,
                     nitrogenMgL: document.getElementById('NitrogenMgL')?.value || 0
@@ -259,45 +133,24 @@
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) {
-                    return null;
-                }
-
+                if (!response.ok) return null;
                 return await response.json();
             }
 
+            facilitySelect?.addEventListener('change', () => loadSprayfields(facilitySelect.value));
+
             form?.addEventListener('submit', async function (event) {
-                if (isConfirmedSubmit) {
-                    return;
-                }
-
                 event.preventDefault();
-                if (!form.checkValidity()) {
-                    return;
-                }
-
-                confirmComplianceWarningsInput.value = 'false';
-                complianceWarningSummaryInput.value = '';
+                if (!form.checkValidity()) return;
 
                 const result = await validateComplianceBeforeSubmit();
-                if (!result) {
-                    isConfirmedSubmit = true;
-                    form.submit();
-                    return;
+                if (result && result.requiresConfirmation && (result.warnings || []).length > 0) {
+                    const ok = confirm((result.warnings || []).join('\n'));
+                    if (!ok) return;
+                    document.getElementById('confirmComplianceWarningsInput').value = 'true';
+                    document.getElementById('complianceWarningSummaryInput').value = (result.warnings || []).join(' | ');
                 }
 
-                const warnings = result.warnings || [];
-                if (result.requiresConfirmation && warnings.length > 0) {
-                    const approved = await showComplianceWarningModal(warnings, 'Continue and Save Application');
-                    if (!approved) {
-                        return;
-                    }
-
-                    confirmComplianceWarningsInput.value = 'true';
-                    complianceWarningSummaryInput.value = warnings.join(' | ');
-                }
-
-                isConfirmedSubmit = true;
                 form.submit();
             });
 
@@ -307,4 +160,3 @@
         })();
     </script>
 }
-

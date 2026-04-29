@@ -3,6 +3,7 @@ using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 
 namespace SAM.Services.Implementations;
 
@@ -18,17 +19,18 @@ public class LoadCalculationService : ILoadCalculationService
     public async Task<LoadCalculation> RecalculateForApplicationAsync(Guid applicationId)
     {
         var application = await _context.MonthlyApplications
-            .Include(a => a.Zone)
+            .Include(a => a.Sprayfield)
             .FirstOrDefaultAsync(a => a.Id == applicationId)
             ?? throw new EntityNotFoundException(nameof(MonthlyApplication), applicationId);
 
-        if (application.Zone == null || application.Zone.Acres <= 0)
+        var acres = application.Sprayfield is null ? 0m : SprayfieldReportHelper.GetReportAcres(application.Sprayfield);
+        if (acres <= 0)
         {
-            throw new BusinessRuleException("Cannot calculate load because zone acreage is missing or zero.");
+            throw new BusinessRuleException("Cannot calculate load because sprayfield acreage is missing or zero.");
         }
 
         var lbs = application.VolumeGallons * application.NitrogenMgL * 8.34m / 1_000_000m;
-        var lbsPerAcre = lbs / application.Zone.Acres;
+        var lbsPerAcre = lbs / acres;
 
         var existing = await _context.LoadCalculations
             .FirstOrDefaultAsync(c => c.ApplicationId == applicationId);
@@ -44,8 +46,8 @@ public class LoadCalculationService : ILoadCalculationService
 
         existing.LbsApplied = lbs;
         existing.LbsPerAcre = lbsPerAcre;
-        existing.ZoneAcresSnapshot = application.Zone.Acres;
-        existing.ZonePercentSnapshot = application.Zone.PercentOfField;
+        existing.ZoneAcresSnapshot = acres;
+        existing.ZonePercentSnapshot = 100m;
         existing.FormulaVersion = "v1";
         existing.CalculatedAtUtc = DateTime.UtcNow;
 

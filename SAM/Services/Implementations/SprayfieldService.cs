@@ -27,12 +27,9 @@ public class SprayfieldService : ISprayfieldService
         var query = _context.Sprayfields
             .Include(s => s.Company)
             .Include(s => s.Facility)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Soil)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Crop)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Nozzle)
+            .Include(s => s.Soil)
+            .Include(s => s.Crop)
+            .Include(s => s.Nozzle)
             .AsQueryable();
 
         if (companyId.HasValue)
@@ -49,12 +46,9 @@ public class SprayfieldService : ISprayfieldService
         return await _context.Sprayfields
             .Include(s => s.Company)
             .Include(s => s.Facility)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Soil)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Crop)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Nozzle)
+            .Include(s => s.Soil)
+            .Include(s => s.Crop)
+            .Include(s => s.Nozzle)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
@@ -123,6 +117,9 @@ public class SprayfieldService : ISprayfieldService
 
         existing.FieldId = sprayfield.FieldId;
         existing.SizeAcres = sprayfield.SizeAcres;
+        existing.SoilId = sprayfield.SoilId;
+        existing.NozzleId = sprayfield.NozzleId;
+        existing.CropId = sprayfield.CropId;
         existing.FacilityId = sprayfield.FacilityId;
         existing.HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr;
         existing.HourlyRateInches = sprayfield.HourlyRateInches;
@@ -141,7 +138,7 @@ public class SprayfieldService : ISprayfieldService
             throw new EntityNotFoundException(nameof(Sprayfield), id);
 
         // Check if sprayfield is referenced
-        var hasReferences = await _context.ApplicationZones.AnyAsync(z => z.SprayfieldId == id);
+        var hasReferences = await _context.MonthlyApplications.AnyAsync(a => a.SprayfieldId == id);
 
         if (hasReferences)
             throw new BusinessRuleException("Cannot delete sprayfield because it has associated irrigation records.");
@@ -163,12 +160,9 @@ public class SprayfieldService : ISprayfieldService
     {
         var sprayfields = await _context.Sprayfields
             .Where(s => s.CompanyId == companyId)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Soil)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Crop)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Nozzle)
+            .Include(s => s.Soil)
+            .Include(s => s.Crop)
+            .Include(s => s.Nozzle)
             .ToListAsync();
         return SprayfieldReportHelper.OrderByFieldIdNatural(sprayfields).ToList();
     }
@@ -177,12 +171,9 @@ public class SprayfieldService : ISprayfieldService
     {
         var sprayfields = await _context.Sprayfields
             .Where(s => s.FacilityId == facilityId)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Soil)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Crop)
-            .Include(s => s.ApplicationZones)
-                .ThenInclude(z => z.Nozzle)
+            .Include(s => s.Soil)
+            .Include(s => s.Crop)
+            .Include(s => s.Nozzle)
             .ToListAsync();
         return SprayfieldReportHelper.OrderByFieldIdNatural(sprayfields).ToList();
     }

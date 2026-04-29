@@ -191,6 +191,9 @@ public static class CompanySeeder
             FacilityId = facility1.Id,
             FieldId = "SF-001",
             SizeAcres = 25.5m,
+            SoilId = soil1.Id,
+            NozzleId = nozzle1.Id,
+            CropId = crop1.Id,
             HydraulicLoadingLimitInPerYr = 48.0m,
             WeeklyRateInches = 1.0m,
             CreatedDate = DateTime.UtcNow,
@@ -205,6 +208,9 @@ public static class CompanySeeder
             FacilityId = facility1.Id,
             FieldId = "SF-002",
             SizeAcres = 30.0m,
+            SoilId = soil2.Id,
+            NozzleId = nozzle2.Id,
+            CropId = crop2.Id,
             HydraulicLoadingLimitInPerYr = 45.0m,
             WeeklyRateInches = 0.9m,
             CreatedDate = DateTime.UtcNow,
@@ -319,59 +325,11 @@ public static class CompanySeeder
             FacilityId = facility2.Id,
             FieldId = "SF-101",
             SizeAcres = 20.0m,
+            SoilId = soil3.Id,
+            NozzleId = nozzle3.Id,
+            CropId = crop3.Id,
             HydraulicLoadingLimitInPerYr = 50.0m,
             WeeklyRateInches = 1.1m,
-            CreatedDate = DateTime.UtcNow,
-            CreatedBy = "system",
-            IsDeleted = false
-        };
-
-        var zone1 = new ApplicationZone
-        {
-            Id = Guid.NewGuid(),
-            CompanyId = company1.Id,
-            SprayfieldId = sprayfield1.Id,
-            ZoneName = "A",
-            PercentOfField = 100m,
-            Acres = sprayfield1.SizeAcres,
-            SoilId = soil1.Id,
-            CropId = crop1.Id,
-            NozzleId = nozzle1.Id,
-            Active = true,
-            CreatedDate = DateTime.UtcNow,
-            CreatedBy = "system",
-            IsDeleted = false
-        };
-
-        var zone2 = new ApplicationZone
-        {
-            Id = Guid.NewGuid(),
-            CompanyId = company1.Id,
-            SprayfieldId = sprayfield2.Id,
-            ZoneName = "A",
-            PercentOfField = 100m,
-            Acres = sprayfield2.SizeAcres,
-            SoilId = soil2.Id,
-            CropId = crop2.Id,
-            NozzleId = nozzle2.Id,
-            Active = true,
-            CreatedDate = DateTime.UtcNow,
-            CreatedBy = "system",
-            IsDeleted = false
-        };
-
-        var zone3 = new ApplicationZone
-        {
-            Id = Guid.NewGuid(),
-            CompanyId = company2.Id,
-            SprayfieldId = sprayfield3.Id,
-            ZoneName = "A",
-            PercentOfField = 100m,
-            Acres = sprayfield3.SizeAcres,
-            SoilId = soil3.Id,
-            CropId = crop3.Id,
-            NozzleId = nozzle3.Id,
-            Active = true,
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
@@ -385,7 +343,6 @@ public static class CompanySeeder
         context.Facilities.AddRange(facility1, facility2);
         context.MonitoringWells.AddRange(well1, well2, well3);
         context.Sprayfields.AddRange(sprayfield1, sprayfield2, sprayfield3);
-        context.ApplicationZones.AddRange(zone1, zone2, zone3);
 
         await context.SaveChangesAsync();
 

@@ -43,10 +43,10 @@ public class NDMLRService : INDMLRService
     {
         var report = await _context.NDAR1s
             .Include(r => r.Facility)
-            .Include(r => r.Field1).ThenInclude(f => f!.ApplicationZones).ThenInclude(z => z.Crop)
-            .Include(r => r.Field2).ThenInclude(f => f!.ApplicationZones).ThenInclude(z => z.Crop)
-            .Include(r => r.Field3).ThenInclude(f => f!.ApplicationZones).ThenInclude(z => z.Crop)
-            .Include(r => r.Field4).ThenInclude(f => f!.ApplicationZones).ThenInclude(z => z.Crop)
+            .Include(r => r.Field1).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field2).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field3).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field4).ThenInclude(f => f!.Crop)
             .FirstOrDefaultAsync(r => r.Id == ndar1Id);
 
         if (report == null)
@@ -116,8 +116,7 @@ public class NDMLRService : INDMLRService
             if (ids[i].HasValue && fields[i] == null)
             {
                 var sprayfield = await _context.Sprayfields
-                    .Include(s => s.ApplicationZones)
-                        .ThenInclude(z => z.Crop)
+                    .Include(s => s.Crop)
                     .FirstOrDefaultAsync(s => s.Id == ids[i]!.Value);
                 switch (i)
                 {

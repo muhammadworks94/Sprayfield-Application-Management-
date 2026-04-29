@@ -41,6 +41,9 @@ public class SprayfieldConfiguration : IEntityTypeConfiguration<Sprayfield>
             .HasDefaultValue(true);
 
         builder.HasIndex(s => s.CompanyId);
+        builder.HasIndex(s => s.SoilId);
+        builder.HasIndex(s => s.NozzleId);
+        builder.HasIndex(s => s.CropId);
         builder.HasIndex(s => new { s.CompanyId, s.FieldId }).IsUnique();
 
         builder.HasOne(s => s.Company)
@@ -51,6 +54,21 @@ public class SprayfieldConfiguration : IEntityTypeConfiguration<Sprayfield>
         builder.HasOne(s => s.Facility)
             .WithMany(f => f.Sprayfields)
             .HasForeignKey(s => s.FacilityId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.Soil)
+            .WithMany(so => so.Sprayfields)
+            .HasForeignKey(s => s.SoilId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.Nozzle)
+            .WithMany(n => n.Sprayfields)
+            .HasForeignKey(s => s.NozzleId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.Crop)
+            .WithMany(c => c.Sprayfields)
+            .HasForeignKey(s => s.CropId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
