@@ -81,9 +81,15 @@
                             }
                             <td class="text-nowrap">
                                 <span class="badge bg-warning text-dark d-none lock-badge"></span>
-                                <button type="button" class="btn btn-sm btn-outline-primary row-edit-btn">Edit</button>
-                                <button type="button" class="btn btn-sm btn-primary row-update-btn d-none">Update</button>
-                                <button type="button" class="btn btn-sm btn-secondary row-cancel-btn d-none">Cancel</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary row-edit-btn" title="Edit" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-container="body" aria-label="Edit">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary row-update-btn d-none" title="Save" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-container="body" aria-label="Save">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-secondary row-cancel-btn d-none" title="Cancel" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-container="body" aria-label="Cancel">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                                 <input type="hidden" class="lock-token" value="" />
                             </td>
                         </tr>
@@ -133,6 +139,68 @@
     #ndarLiveGrid select.weather-select-selected {
         background-image: none !important;
         padding-right: 0.5rem;
+    }
+
+    /* Keep day column visible while horizontally scrolling */
+    #ndarLiveGrid th:first-child,
+    #ndarLiveGrid td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        background-color: #fff;
+        min-width: 72px;
+        box-shadow: 1px 0 0 #dee2e6;
+    }
+
+    #ndarLiveGrid thead th:first-child {
+        z-index: 5;
+        background-color: #f8f9fa;
+    }
+
+    #ndarLiveGrid tfoot th:first-child,
+    #ndarLiveGrid tfoot td:first-child {
+        background-color: #f8f9fa;
+    }
+
+    /* Keep row actions always visible while horizontally scrolling */
+    #ndarLiveGrid th:last-child,
+    #ndarLiveGrid td:last-child {
+        position: sticky;
+        right: 0;
+        z-index: 3;
+        background-color: #fff;
+        width: 88px;
+        min-width: 88px;
+        max-width: 88px;
+        box-shadow: -1px 0 0 #dee2e6;
+    }
+
+    #ndarLiveGrid thead th:last-child {
+        z-index: 4;
+        background-color: #f8f9fa;
+    }
+
+    #ndarLiveGrid tbody td:last-child {
+        z-index: 3;
+    }
+
+    #ndarLiveGrid tfoot th:last-child,
+    #ndarLiveGrid tfoot td:last-child {
+        background-color: #f8f9fa;
+    }
+
+    #ndarLiveGrid td.text-nowrap {
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    #ndarLiveGrid td.text-nowrap .btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 </style>
 
@@ -198,15 +266,15 @@
             const setButtonLoading = (button, isLoading, loadingText = '') => {
                 if (!button) return;
                 if (isLoading) {
-                    button.dataset.originalText = button.textContent;
+                    button.dataset.originalHtml = button.innerHTML;
                     button.disabled = true;
                     button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + loadingText;
                     return;
                 }
 
                 button.disabled = false;
-                button.textContent = button.dataset.originalText || 'Edit';
-                delete button.dataset.originalText;
+                button.innerHTML = button.dataset.originalHtml || '<i class="bi bi-pencil-square"></i>';
+                delete button.dataset.originalHtml;
             };
             const tryReadJson = async (response) => {
                 try {
@@ -315,8 +383,12 @@
                 const tr = e.target.closest('tr[data-day]');
                 if (!tr) return;
 
-                if (e.target.classList.contains('row-edit-btn')) {
-                    const editBtn = e.target;
+                const editBtnTarget = e.target.closest('.row-edit-btn');
+                const updateBtnTarget = e.target.closest('.row-update-btn');
+                const cancelBtnTarget = e.target.closest('.row-cancel-btn');
+
+                if (editBtnTarget) {
+                    const editBtn = editBtnTarget;
                     setButtonLoading(editBtn, true, '');
                     const dayNo = Number(tr.dataset.day);
                     try {
@@ -351,7 +423,7 @@
                     }
                 }
 
-                if (e.target.classList.contains('row-update-btn')) {
+                if (updateBtnTarget) {
                     const payload = collectRowPayload(tr);
                     const resp = await fetch(`@Url.Action("NDAR1UpdateRow", "Reports")?ndar1Id=${ndar1Id}`, {
                         method: 'POST',
@@ -384,7 +456,7 @@
                     setEditable(tr, false);
                 }
 
-                if (e.target.classList.contains('row-cancel-btn')) {
+                if (cancelBtnTarget) {
                     const dayNo = Number(tr.dataset.day);
                     const lockToken = tr.querySelector('.lock-token').value;
                     await fetch(`@Url.Action("NDAR1CancelRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}&lockToken=${lockToken}`, {
@@ -400,6 +472,16 @@
                 syncWeatherIconState(selectEl);
                 selectEl.addEventListener('change', () => syncWeatherIconState(selectEl));
             });
+
+            if (window.bootstrap?.Tooltip) {
+                grid.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                    window.bootstrap.Tooltip.getOrCreateInstance(el, {
+                        container: 'body',
+                        boundary: document.body,
+                        fallbackPlacements: ['left', 'right', 'top']
+                    });
+                });
+            }
 
             recalcFooterTotals();
         })();

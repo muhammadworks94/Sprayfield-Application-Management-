@@ -113,40 +113,50 @@
             var dynamicFields = report.Fields?.OrderBy(f => f.FieldOrder).ToList() ?? new List<SAM.Domain.Entities.NDAR1Field>();
             <div class="border-top pt-3 mt-3">
                 <h5 class="detail-section-label mb-4">Field Information</h5>
-                <div class="row">
-                    @foreach (var field in dynamicFields)
-                    {
-                        <div class="col-md-6 mb-4">
-                            <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field: @(field.Sprayfield?.FieldId ?? "N/A")</h6>
-                            <dl class="row small">
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
-                                <dd class="col-sm-7 mb-2">@((field.Sprayfield?.SizeAcres ?? 0m).ToString("F2")) acres</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(field.Sprayfield != null ? SprayfieldZoneSummaryHelper.GetCropSummary(field.Sprayfield) ?? "N/A" : "N/A")</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-speedometer2 me-1"></i>Permitted Hourly Rate:</dt>
-                                <dd class="col-sm-7 mb-2">@((field.Sprayfield?.HourlyRateInches?.ToString("F2") ?? "0.00")) in/hr</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-range me-1"></i>Permitted Annual Rate:</dt>
-                                <dd class="col-sm-7 mb-2">
-                                    @(((field.Sprayfield?.AnnualRateInches ?? field.Sprayfield?.HydraulicLoadingLimitInPerYr ?? 0m).ToString("F2"))) in/yr
-                                    <div class="small text-muted">
-                                        @(field.Sprayfield?.AnnualRateInches.HasValue == true
-                                            ? "Source: Sprayfield Annual Rate (provided)."
-                                            : "Source: Hydraulic Loading Limit fallback (Annual Rate not provided).")
-                                    </div>
-                                </dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-week me-1"></i>Weekly Rate:</dt>
-                                <dd class="col-sm-7 mb-2">
-                                    @((field.Sprayfield?.WeeklyRateInches?.ToString("F2") ?? "-")) in/week
-                                    <div class="small text-muted">Planning-only value. Not used as annual fallback.</div>
-                                </dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
-                                <dd class="col-sm-7 mb-2">@field.MonthlyLoading.ToString("F2") in</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
-                                <dd class="col-sm-7 mb-2">@field.TwelveMonthFloatingTotal.ToString("F2") in</dd>
-                            </dl>
-                        </div>
-                    }
-                </div>
+                @if (dynamicFields.Any())
+                {
+                    <div class="row">
+                        @foreach (var field in dynamicFields)
+                        {
+                            <div class="col-md-6 mb-4">
+                                <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field: @(field.Sprayfield?.FieldId ?? "N/A")</h6>
+                                <dl class="row small">
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
+                                    <dd class="col-sm-7 mb-2">@((field.Sprayfield?.SizeAcres ?? 0m).ToString("F2")) acres</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
+                                    <dd class="col-sm-7 mb-2">@(field.Sprayfield != null ? SprayfieldZoneSummaryHelper.GetCropSummary(field.Sprayfield) ?? "N/A" : "N/A")</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-speedometer2 me-1"></i>Permitted Hourly Rate:</dt>
+                                    <dd class="col-sm-7 mb-2">@((field.Sprayfield?.HourlyRateInches?.ToString("F2") ?? "0.00")) in/hr</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-range me-1"></i>Permitted Annual Rate:</dt>
+                                    <dd class="col-sm-7 mb-2">
+                                        @(((field.Sprayfield?.AnnualRateInches ?? field.Sprayfield?.HydraulicLoadingLimitInPerYr ?? 0m).ToString("F2"))) in/yr
+                                        <div class="small text-muted">
+                                            @(field.Sprayfield?.AnnualRateInches.HasValue == true
+                                                ? "Source: Sprayfield Annual Rate (provided)."
+                                                : "Source: Hydraulic Loading Limit fallback (Annual Rate not provided).")
+                                        </div>
+                                    </dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-week me-1"></i>Weekly Rate:</dt>
+                                    <dd class="col-sm-7 mb-2">
+                                        @((field.Sprayfield?.WeeklyRateInches?.ToString("F2") ?? "-")) in/week
+                                        <div class="small text-muted">Planning-only value. Not used as annual fallback.</div>
+                                    </dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
+                                    <dd class="col-sm-7 mb-2">@field.MonthlyLoading.ToString("F2") in</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
+                                    <dd class="col-sm-7 mb-2">@field.TwelveMonthFloatingTotal.ToString("F2") in</dd>
+                                </dl>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        No field information is available for this report yet. Click Edit to add field application data.
+                    </div>
+                }
             </div>
         }
     </div>
