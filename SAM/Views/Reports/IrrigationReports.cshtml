@@ -75,14 +75,7 @@
                             <th><i class="bi bi-calendar"></i> Period</th>
                             <th><i class="bi bi-building"></i> Facility</th>
                             <th><i class="bi bi-water"></i> Total Volume (gallons)</th>
-                            <th><i class="bi bi-speedometer2"></i> Application Rate (inches)</th>
-                            <th><i class="bi bi-graph-up"></i> Hydraulic Loading (in/yr)</th>
-                            <th><i class="bi bi-percent"></i> Efficiency (%)</th>
                             <th><i class="bi bi-shield-check"></i> Compliance Status</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                         </tr>
                     </thead>
@@ -97,18 +90,11 @@
                                 </td>
                                 <td>@report.FacilityName</td>
                                 <td>@report.TotalVolumeApplied.ToString("N0")</td>
-                                <td>@report.TotalApplicationRate.ToString("F2")</td>
-                                <td>@report.HydraulicLoadingRate.ToString("F2")</td>
-                                <td>@report.ApplicationEfficiency.ToString("F1")</td>
                                 <td>
                                     <span class="badge badge-@(report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant ? "compliant" : report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant ? "non-compliant" : "under-review")">
                                         @report.ComplianceStatus
                                     </span>
                                 </td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@report.CompanyName</td>
-                                }
                                 <td class="table-actions">
                                     @if (canEdit)
                                     {

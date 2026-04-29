@@ -887,15 +887,28 @@ small {
   box-shadow: inset 0 -1px 0 var(--border-color);
 }
 
+.wwchar-daily-table thead th:first-child {
+  left: 0;
+  z-index: 5;
+  min-width: 72px;
+  box-shadow: inset -1px 0 0 var(--border-color), inset 0 -1px 0 var(--border-color);
+}
+
 .wwchar-daily-table tbody td {
   vertical-align: middle;
   padding: 0 !important;
 }
 
 .wwchar-daily-table tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: var(--white);
   text-align: center;
   font-weight: 600;
+  min-width: 72px;
   padding: 0.6rem 0.5rem !important;
+  box-shadow: inset -1px 0 0 var(--border-color);
 }
 
 .wwchar-daily-table .form-control-sm,
