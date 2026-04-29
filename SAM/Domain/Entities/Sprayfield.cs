@@ -44,6 +44,12 @@ public class Sprayfield : CompanyScopedEntity
     public decimal HydraulicLoadingLimitInPerYr { get; set; }
 
     /// <summary>
+    /// Explicit annual application rate for NDAR reporting in inches per year.
+    /// Kept separate from hydraulic limit so permitting semantics remain unambiguous.
+    /// </summary>
+    public decimal? AnnualRateInches { get; set; }
+
+    /// <summary>
     /// Hourly irrigation rate in inches.
     /// </summary>
     public decimal? HourlyRateInches { get; set; }

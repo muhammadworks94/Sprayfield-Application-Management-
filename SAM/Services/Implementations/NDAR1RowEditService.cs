@@ -96,8 +96,8 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 row.Applications.Add(new NDAR1GridApplicationCellViewModel
                 {
                     SprayfieldId = field.SprayfieldId,
-                    VolumeGallons = app?.VolumeGallons,
-                    TimeIrrigatedMinutes = app?.TimeIrrigatedMinutes,
+                    VolumeGallons = app != null ? Math.Round(app.VolumeGallons, 0, MidpointRounding.AwayFromZero) : null,
+                    TimeIrrigatedMinutes = app?.TimeIrrigatedMinutes.HasValue == true ? Math.Round(app.TimeIrrigatedMinutes.Value, 0, MidpointRounding.AwayFromZero) : null,
                     MaximumHourlyLoadingInchesPerAcre = app?.MaximumHourlyLoadingInchesPerAcre,
                     DailyLoadingInches = dailyLoading
                 });

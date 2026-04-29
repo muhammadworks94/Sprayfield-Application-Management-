@@ -50,8 +50,8 @@
                             <td><input class="form-control form-control-sm" data-field="fiveDayUpsetFt" type="number" step="0.01" value="@row.FiveDayUpsetFt" disabled title="Click Edit for this row to modify values." /></td>
                             @foreach (var app in row.Applications)
                             {
-                                <td><input class="form-control form-control-sm" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.VolumeGallons" disabled title="Click Edit for this row to modify values." /></td>
-                                <td><input class="form-control form-control-sm" data-app="timeIrrigatedMinutes" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.TimeIrrigatedMinutes" disabled title="Click Edit for this row to modify values." /></td>
+                                <td><input class="form-control form-control-sm" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.VolumeGallons" disabled title="Click Edit for this row to modify values." /></td>
+                                <td><input class="form-control form-control-sm" data-app="timeIrrigatedMinutes" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.TimeIrrigatedMinutes" disabled title="Click Edit for this row to modify values." /></td>
                                 <td><input class="form-control form-control-sm" data-app="maximumHourlyLoadingInchesPerAcre" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.MaximumHourlyLoadingInchesPerAcre" disabled title="Click Edit for this row to modify values." /></td>
                                 <td><input class="form-control form-control-sm" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.DailyLoadingInches" disabled title="Calculated field (Volume / Acres). This value is read-only." /></td>
                             }
@@ -88,6 +88,19 @@
                 }
                 console.error(safeMessage);
             };
+            const setButtonLoading = (button, isLoading, loadingText = '') => {
+                if (!button) return;
+                if (isLoading) {
+                    button.dataset.originalText = button.textContent;
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + loadingText;
+                    return;
+                }
+
+                button.disabled = false;
+                button.textContent = button.dataset.originalText || 'Edit';
+                delete button.dataset.originalText;
+            };
             const tryReadJson = async (response) => {
                 try {
                     return await response.json();
@@ -109,6 +122,28 @@
                 tr.querySelector('.row-edit-btn')?.classList.toggle('d-none', editable);
                 tr.querySelector('.row-update-btn')?.classList.toggle('d-none', !editable);
                 tr.querySelector('.row-cancel-btn')?.classList.toggle('d-none', !editable);
+            };
+
+            const closeOtherEditingRows = async (currentTr) => {
+                const editingRows = grid.querySelectorAll('tr[data-day] .row-update-btn:not(.d-none)');
+                for (const updateBtn of editingRows) {
+                    const tr = updateBtn.closest('tr[data-day]');
+                    if (!tr || tr === currentTr) continue;
+                    const dayNo = Number(tr.dataset.day);
+                    const lockToken = tr.querySelector('.lock-token')?.value;
+                    if (lockToken) {
+                        try {
+                            await fetch(`@Url.Action("NDAR1CancelRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}&lockToken=${lockToken}`, {
+                                method: 'POST',
+                                headers: { 'RequestVerificationToken': antiForgery }
+                            });
+                        } catch {
+                            // Best-effort release for client-side row state cleanup.
+                        }
+                    }
+                    tr.querySelector('.lock-token').value = '';
+                    setEditable(tr, false);
+                }
             };
 
             const collectRowPayload = (tr) => {
@@ -154,8 +189,8 @@
                     const t = tr.querySelector(`input[data-app="timeIrrigatedMinutes"][data-sprayfield-id="${sf}"]`);
                     const h = tr.querySelector(`input[data-app="maximumHourlyLoadingInchesPerAcre"][data-sprayfield-id="${sf}"]`);
                     const d = tr.querySelector(`input[data-app="dailyLoadingInches"][data-sprayfield-id="${sf}"]`);
-                    if (v) v.value = app.volumeGallons ?? '';
-                    if (t) t.value = app.timeIrrigatedMinutes ?? '';
+                    if (v) v.value = app.volumeGallons == null ? '' : Math.round(app.volumeGallons);
+                    if (t) t.value = app.timeIrrigatedMinutes == null ? '' : Math.round(app.timeIrrigatedMinutes);
                     if (h) h.value = app.maximumHourlyLoadingInchesPerAcre ?? '';
                     if (d) d.value = app.dailyLoadingInches ?? '';
                 });
@@ -166,32 +201,39 @@
                 if (!tr) return;
 
                 if (e.target.classList.contains('row-edit-btn')) {
+                    const editBtn = e.target;
+                    setButtonLoading(editBtn, true, '');
                     const dayNo = Number(tr.dataset.day);
-                    const resp = await fetch(`@Url.Action("NDAR1BeginRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}`, {
-                        method: 'POST',
-                        headers: { 'RequestVerificationToken': antiForgery }
-                    });
-                    const result = await tryReadJson(resp);
-                    if (!resp.ok || !result) {
-                        showError('Unable to start editing this row right now. Please try again.');
-                        return;
-                    }
-                    if (!result.success) {
-                        const badge = tr.querySelector('.lock-badge');
-                        badge.textContent = result.message || 'Locked';
-                        badge.classList.remove('d-none');
-                        const editBtn = tr.querySelector('.row-edit-btn');
-                        if (editBtn && result.message) {
-                            editBtn.title = result.message;
+                    try {
+                        const resp = await fetch(`@Url.Action("NDAR1BeginRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}`, {
+                            method: 'POST',
+                            headers: { 'RequestVerificationToken': antiForgery }
+                        });
+                        const result = await tryReadJson(resp);
+                        if (!resp.ok || !result) {
+                            showError('Unable to start editing this row right now. Please try again.');
+                            return;
                         }
-                        if (result.message) {
-                            showError(result.message);
+                        if (!result.success) {
+                            const badge = tr.querySelector('.lock-badge');
+                            badge.textContent = result.message || 'Locked';
+                            badge.classList.remove('d-none');
+                            const rowEditBtn = tr.querySelector('.row-edit-btn');
+                            if (rowEditBtn && result.message) {
+                                rowEditBtn.title = result.message;
+                            }
+                            if (result.message) {
+                                showError(result.message);
+                            }
+                            return;
                         }
-                        return;
+                        await closeOtherEditingRows(tr);
+                        tr.querySelector('.lock-token').value = result.lockToken;
+                        tr.querySelector('.lock-badge').classList.add('d-none');
+                        setEditable(tr, true);
+                    } finally {
+                        setButtonLoading(editBtn, false);
                     }
-                    tr.querySelector('.lock-token').value = result.lockToken;
-                    tr.querySelector('.lock-badge').classList.add('d-none');
-                    setEditable(tr, true);
                 }
 
                 if (e.target.classList.contains('row-update-btn')) {

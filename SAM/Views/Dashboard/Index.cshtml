@@ -10,6 +10,18 @@
     var hasOperationalData = Model.OperationalEfficiencyByDate.Any();
     var hasWastewaterData = Model.WastewaterTrends.Any();
     var hasGroundwaterChartData = Model.GroundwaterOverview.ByWell.Any(x => x.PH.HasValue);
+    var hasFieldLoadingData = Model.FieldLoadingProgress.Any();
+    var initialFieldLoadingRows = 8;
+
+    string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Critical" => "bg-danger-subtle text-danger border border-danger-subtle",
+            "Warning" => "bg-warning-subtle text-warning border border-warning-subtle",
+            _ => "bg-success-subtle text-success border border-success-subtle"
+        };
+    }
 }
 
 
@@ -285,6 +297,88 @@
         </div>
     </div>
 </div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card dashboard-chart-card h-100 dashboard-animate-in">
+            <div class="card-body">
+                <h5 class="fw-semibold mb-3">
+                    <i class="bi bi-speedometer2 me-2"></i>Application Limit Tracking (Real-Time)
+                </h5>
+                @if (hasFieldLoadingData)
+                {
+                    var orderedFieldRows = Model.FieldLoadingProgress.OrderBy(x => x.FacilityName).ThenBy(x => x.FieldCode).ToList();
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Facility</th>
+                                    <th>Field</th>
+                                    <th>Current Month Loading (in)</th>
+                                    <th>12-Month Floating Total (in)</th>
+                                    <th>Annual Limit (in/yr)</th>
+                                    <th>Annual Utilization</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="field-loading-rows">
+                                @for (var i = 0; i < orderedFieldRows.Count; i++)
+                                {
+                                    var item = orderedFieldRows[i];
+                                    var hiddenClass = i >= initialFieldLoadingRows ? "d-none extra-field-loading-row" : "";
+                                    <tr class="@hiddenClass">
+                                        <td>@item.FacilityName</td>
+                                        <td>@item.FieldCode</td>
+                                        <td>
+                                            @item.CurrentMonthLoadingInches.ToString("F2")
+                                            <div class="small text-muted">@item.CurrentMonthUtilizationPercent.ToString("F1")% of annual</div>
+                                        </td>
+                                        <td>
+                                            @item.Rolling12MonthLoadingInches.ToString("F2")
+                                            <div class="small text-muted">@item.Rolling12MonthUtilizationPercent.ToString("F1")% of annual</div>
+                                        </td>
+                                        <td>@item.AnnualLimitInches.ToString("F2")</td>
+                                        <td>
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar @(item.AnnualStatus == "Critical" ? "bg-danger" : item.AnnualStatus == "Warning" ? "bg-warning" : "bg-success")"
+                                                     role="progressbar"
+                                                     style="width: @Math.Min(item.Rolling12MonthUtilizationPercent, 100m).ToString("F0")%;"
+                                                     aria-valuenow="@item.Rolling12MonthUtilizationPercent"
+                                                     aria-valuemin="0"
+                                                     aria-valuemax="100"></div>
+                                            </div>
+                                            <div class="small mt-1">@item.Rolling12MonthUtilizationPercent.ToString("F1")%</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetStatusBadgeClass(item.AnnualStatus)">@item.AnnualStatus</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    @if (orderedFieldRows.Count > initialFieldLoadingRows)
+                    {
+                        <div class="mt-2">
+                            <button type="button" id="toggle-field-loading-rows" class="btn btn-sm btn-outline-primary">
+                                Show More
+                            </button>
+                        </div>
+                    }
+                    <div class="small text-muted mt-2">
+                        Thresholds: Normal &lt; 75%, Warning 75%-89.9%, Critical &ge; 90% of annual limit.
+                    </div>
+                }
+                else
+                {
+                    <div class="dashboard-empty-state">
+                        <i class="bi bi-inbox me-2"></i>No application loading data available for the current tracking window.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 
 @section Scripts {
@@ -330,6 +424,17 @@
             }
 
             document.addEventListener('DOMContentLoaded', function() {
+                const toggleButton = document.getElementById('toggle-field-loading-rows');
+                if (toggleButton) {
+                    toggleButton.addEventListener('click', function() {
+                        const hiddenRows = document.querySelectorAll('.extra-field-loading-row');
+                        const anyHidden = Array.from(hiddenRows).some(row => row.classList.contains('d-none'));
+
+                        hiddenRows.forEach(row => row.classList.toggle('d-none', !anyHidden));
+                        toggleButton.textContent = anyHidden ? 'Show Less' : 'Show More';
+                    });
+                }
+
                 const compliantPercent = @Model.IrrigationCompliance.CompliantPercent;
                 const underReviewPercent = @Model.IrrigationCompliance.UnderReviewPercent;
                 const nonCompliantPercent = @Model.IrrigationCompliance.NonCompliantPercent;
