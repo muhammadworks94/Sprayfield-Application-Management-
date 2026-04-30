@@ -127,6 +127,7 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ILookupQueryService, LookupQu
 builder.Services.AddScoped<SAM.Services.Interfaces.IBreadcrumbService, BreadcrumbService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IFacilityPermitResolver, FacilityPermitResolver>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IPcsCatalogService, PcsCatalogService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IProjectKnowledgeService, ProjectKnowledgeService>();
 var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
 Directory.CreateDirectory(dataProtectionKeysPath);
 
