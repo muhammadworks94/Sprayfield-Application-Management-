@@ -515,7 +515,11 @@ public class NDAR1Service : INDAR1Service
             {
                 maxHourlyLoadingDaily[dayIndex] = null;
             }
-            else if (!minutesFromApplications.HasValue || minutesFromApplications.Value <= 0 || minutesFromApplications.Value < 60m)
+            else if (!minutesFromApplications.HasValue || minutesFromApplications.Value <= 0)
+            {
+                maxHourlyLoadingDaily[dayIndex] = null;
+            }
+            else if (minutesFromApplications.Value < 60m)
             {
                 maxHourlyLoadingDaily[dayIndex] = dailyLoading;
             }

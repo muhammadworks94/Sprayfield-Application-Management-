@@ -14,6 +14,7 @@ public class MonthlyApplicationViewModel
     public string? SprayfieldName { get; set; }
     public decimal? ZoneAcres { get; set; }
     public DateTime ApplicationDate { get; set; }
+    public decimal? DailyLoadingInches { get; set; }
     public decimal VolumeGallons { get; set; }
     public decimal? TimeIrrigatedMinutes { get; set; }
     public decimal MaximumHourlyLoadingInchesPerAcre { get; set; }
@@ -23,6 +24,8 @@ public class MonthlyApplicationViewModel
 
 public class MonthlyApplicationCreateViewModel
 {
+    public const decimal MonthlyApplicationGallonsPerAcreInch = 27154m;
+
     [Required]
     [Display(Name = "Company")]
     public Guid CompanyId { get; set; }
@@ -40,8 +43,11 @@ public class MonthlyApplicationCreateViewModel
     [DataType(DataType.Date)]
     public DateTime ApplicationDate { get; set; } = DateTime.Today;
 
-    [Range(0.01, double.MaxValue)]
-    [Display(Name = "Volume (gallons)")]
+    [Range(0.000001, double.MaxValue)]
+    [Display(Name = "Daily Loading (inches)")]
+    public decimal DailyLoadingInches { get; set; }
+
+    [Display(Name = "Volume Applied (gallons)")]
     public decimal VolumeGallons { get; set; }
 
     [Range(0.0, double.MaxValue)]

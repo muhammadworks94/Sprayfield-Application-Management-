@@ -71,9 +71,9 @@
                 </div>
 
                 <div class="col-lg-4 col-md-6">
-                    <label asp-for="VolumeGallons" class="form-label required"></label>
-                    <input asp-for="VolumeGallons" type="number" step="any" min="0.01" class="form-control" />
-                    <span asp-validation-for="VolumeGallons" class="text-danger"></span>
+                    <label asp-for="DailyLoadingInches" class="form-label required"></label>
+                    <input asp-for="DailyLoadingInches" type="number" step="0.000001" min="0.000001" class="form-control" id="dailyLoadingInput" />
+                    <span asp-validation-for="DailyLoadingInches" class="text-danger"></span>
                 </div>
 
                 <div class="col-lg-4 col-md-6">
@@ -84,8 +84,13 @@
 
                 <div class="col-lg-4 col-md-6">
                     <label asp-for="MaximumHourlyLoadingInchesPerAcre" class="form-label required"></label>
-                    <input asp-for="MaximumHourlyLoadingInchesPerAcre" asp-format="{0:0.00}" type="number" step="0.01" min="0" class="form-control" />
+                    <input asp-for="MaximumHourlyLoadingInchesPerAcre" asp-format="{0:0.00}" type="number" step="0.01" min="0" class="form-control" id="maxHourlyInput" readonly />
                     <span asp-validation-for="MaximumHourlyLoadingInchesPerAcre" class="text-danger"></span>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="VolumeGallons" class="form-label"></label>
+                    <input asp-for="VolumeGallons" type="number" step="any" min="0" class="form-control" id="volumeInput" readonly />
+                    <span asp-validation-for="VolumeGallons" class="text-danger"></span>
                 </div>
 
                 <div class="col-12">
@@ -112,8 +117,36 @@
             const companyIdInput = document.getElementById('companyIdInput');
             const form = document.getElementById('monthlyApplicationForm');
             const antiForgeryToken = form?.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            const dailyLoadingInput = document.getElementById('dailyLoadingInput');
+            const volumeInput = document.getElementById('volumeInput');
+            const maxHourlyInput = document.getElementById('maxHourlyInput');
+            const gallonsPerAcreInch = @SAM.ViewModels.OperationalData.MonthlyApplicationCreateViewModel.MonthlyApplicationGallonsPerAcreInch;
+            let sprayfieldMeta = {};
+
+            function recalcCalculatedFields() {
+                const selected = sprayfieldSelect?.value || '';
+                const meta = sprayfieldMeta[selected];
+                const acres = meta && meta.acres != null ? Number(meta.acres) : NaN;
+                const annualRate = meta && meta.annualRateInches != null ? Number(meta.annualRateInches) : NaN;
+                const dailyLoading = Number(dailyLoadingInput?.value || 0);
+                const hasDaily = !Number.isNaN(dailyLoading) && dailyLoading > 0;
+                const hasAcres = !Number.isNaN(acres) && acres > 0;
+
+                if (maxHourlyInput) {
+                    maxHourlyInput.value = !Number.isNaN(annualRate) ? annualRate.toFixed(2) : '';
+                }
+
+                if (volumeInput) {
+                    if (hasDaily && hasAcres) {
+                        volumeInput.value = (dailyLoading * acres * gallonsPerAcreInch).toFixed(6);
+                    } else {
+                        volumeInput.value = '';
+                    }
+                }
+            }
 
             async function loadSprayfields(facilityId) {
+                const selectedSprayfieldId = sprayfieldSelect?.value || '@Model.SprayfieldId';
                 sprayfieldSelect.innerHTML = '<option value="">-- Select Sprayfield --</option>';
                 if (!facilityId) return;
 
@@ -122,13 +155,17 @@
                 const data = await res.json();
 
                 if (data.companyId && companyIdInput) companyIdInput.value = data.companyId;
+                sprayfieldMeta = {};
 
                 (data.sprayfields || []).forEach(sf => {
                     const option = document.createElement('option');
                     option.value = sf.id;
                     option.textContent = sf.name;
+                    sprayfieldMeta[sf.id] = { acres: sf.acres, annualRateInches: sf.annualRateInches };
+                    if (sf.id === selectedSprayfieldId) option.selected = true;
                     sprayfieldSelect.appendChild(option);
                 });
+                recalcCalculatedFields();
             }
 
             async function validateComplianceBeforeSubmit() {
@@ -136,7 +173,7 @@
                     facilityId: facilitySelect?.value || null,
                     sprayfieldId: sprayfieldSelect?.value || null,
                     applicationDate: document.getElementById('ApplicationDate')?.value || null,
-                    volumeGallons: document.getElementById('VolumeGallons')?.value || 0
+                    volumeGallons: volumeInput?.value || 0
                 };
 
                 const response = await fetch('@Url.Action("ValidateMonthlyApplication", "OperationalData")', {
@@ -172,6 +209,10 @@
             }
 
             facilitySelect?.addEventListener('change', () => loadSprayfields(facilitySelect.value));
+            sprayfieldSelect?.addEventListener('change', recalcCalculatedFields);
+            dailyLoadingInput?.addEventListener('input', recalcCalculatedFields);
+            loadSprayfields(facilitySelect?.value);
+            recalcCalculatedFields();
 
             form?.addEventListener('submit', async function (event) {
                 event.preventDefault();

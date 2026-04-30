@@ -391,6 +391,7 @@ namespace SAM.Controllers;
             SprayfieldName = a.Sprayfield?.PermitFieldName ?? a.Sprayfield?.FieldId,
             ZoneAcres = a.Sprayfield is null ? null : SprayfieldReportHelper.GetReportAcres(a.Sprayfield),
             ApplicationDate = a.ApplicationDate,
+            DailyLoadingInches = a.Sprayfield is null ? null : ComputeDailyLoadingFromVolume(a.VolumeGallons, SprayfieldReportHelper.GetReportAcres(a.Sprayfield)),
             VolumeGallons = a.VolumeGallons,
             TimeIrrigatedMinutes = a.TimeIrrigatedMinutes,
             MaximumHourlyLoadingInchesPerAcre = a.MaximumHourlyLoadingInchesPerAcre,
@@ -443,6 +444,36 @@ namespace SAM.Controllers;
             await EnsureCompanyAccessAsync(facility.CompanyId);
         }
 
+        Sprayfield? sprayfield = null;
+        decimal computedVolumeGallons = 0m;
+
+        if (ModelState.IsValid)
+        {
+            sprayfield = await _sprayfieldService.GetByIdAsync(viewModel.SprayfieldId);
+            if (sprayfield == null || sprayfield.FacilityId != viewModel.FacilityId)
+            {
+                ModelState.AddModelError("SprayfieldId", "Selected sprayfield was not found for this facility.");
+            }
+            else
+            {
+                var acres = SprayfieldReportHelper.GetReportAcres(sprayfield);
+                if (acres <= 0m)
+                {
+                    ModelState.AddModelError("SprayfieldId", "Sprayfield area (acres) must be configured before saving this monthly application.");
+                }
+                else if (!sprayfield.AnnualRateInches.HasValue)
+                {
+                    ModelState.AddModelError("SprayfieldId", "Permitted (Max) Annual Rate must be configured for this sprayfield before saving this monthly application.");
+                }
+                else
+                {
+                    computedVolumeGallons = viewModel.DailyLoadingInches * acres * MonthlyApplicationCreateViewModel.MonthlyApplicationGallonsPerAcreInch;
+                    viewModel.VolumeGallons = computedVolumeGallons;
+                    viewModel.MaximumHourlyLoadingInchesPerAcre = sprayfield.AnnualRateInches.Value;
+                }
+            }
+        }
+
         ComplianceProjectionResult? complianceProjection = null;
         if (ModelState.IsValid && facility != null)
         {
@@ -453,7 +484,7 @@ namespace SAM.Controllers;
                     FacilityId = viewModel.FacilityId,
                     SprayfieldId = viewModel.SprayfieldId,
                     ApplicationDate = viewModel.ApplicationDate,
-                    VolumeGallons = viewModel.VolumeGallons
+                    VolumeGallons = computedVolumeGallons
                 });
             }
             catch (InvalidOperationException)
@@ -462,7 +493,7 @@ namespace SAM.Controllers;
                 ViewBag.WWCharShortcutUrl = BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
             }
 
-            if (complianceProjection.RequiresConfirmation && !viewModel.ConfirmComplianceWarnings)
+            if (complianceProjection?.RequiresConfirmation == true && !viewModel.ConfirmComplianceWarnings)
             {
                 ModelState.AddModelError(string.Empty, string.Join(" ", complianceProjection.Warnings));
                 viewModel.ComplianceWarningSummary = string.Join(" | ", complianceProjection.Warnings);
@@ -487,9 +518,9 @@ namespace SAM.Controllers;
             FacilityId = viewModel.FacilityId,
             SprayfieldId = viewModel.SprayfieldId,
             ApplicationDate = viewModel.ApplicationDate,
-            VolumeGallons = viewModel.VolumeGallons,
+            VolumeGallons = computedVolumeGallons,
             TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes,
-            MaximumHourlyLoadingInchesPerAcre = viewModel.MaximumHourlyLoadingInchesPerAcre,
+            MaximumHourlyLoadingInchesPerAcre = sprayfield!.AnnualRateInches!.Value,
             OperatorUserId = currentUser?.Id,
             OperatorSnapshotName = snapshotName,
             Comments = viewModel.Comments ?? string.Empty
@@ -512,6 +543,7 @@ namespace SAM.Controllers;
         ViewBag.Facilities = await GetFacilitySelectListAsync(application.CompanyId);
         ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(application.CompanyId, application.FacilityId);
 
+        var areaAcres = application.Sprayfield is null ? 0m : SprayfieldReportHelper.GetReportAcres(application.Sprayfield);
         return View(new MonthlyApplicationEditViewModel
         {
             Id = application.Id,
@@ -519,9 +551,10 @@ namespace SAM.Controllers;
             FacilityId = application.FacilityId,
             SprayfieldId = application.SprayfieldId,
             ApplicationDate = application.ApplicationDate,
+            DailyLoadingInches = areaAcres > 0m ? application.VolumeGallons / (areaAcres * MonthlyApplicationCreateViewModel.MonthlyApplicationGallonsPerAcreInch) : 0m,
             VolumeGallons = application.VolumeGallons,
             TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
-            MaximumHourlyLoadingInchesPerAcre = application.MaximumHourlyLoadingInchesPerAcre,
+            MaximumHourlyLoadingInchesPerAcre = application.Sprayfield?.AnnualRateInches ?? application.MaximumHourlyLoadingInchesPerAcre,
             Comments = application.Comments
         });
     }
@@ -546,6 +579,36 @@ namespace SAM.Controllers;
             await EnsureCompanyAccessAsync(facility.CompanyId);
         }
 
+        Sprayfield? sprayfield = null;
+        decimal computedVolumeGallons = 0m;
+
+        if (ModelState.IsValid)
+        {
+            sprayfield = await _sprayfieldService.GetByIdAsync(viewModel.SprayfieldId);
+            if (sprayfield == null || sprayfield.FacilityId != viewModel.FacilityId)
+            {
+                ModelState.AddModelError("SprayfieldId", "Selected sprayfield was not found for this facility.");
+            }
+            else
+            {
+                var acres = SprayfieldReportHelper.GetReportAcres(sprayfield);
+                if (acres <= 0m)
+                {
+                    ModelState.AddModelError("SprayfieldId", "Sprayfield area (acres) must be configured before saving this monthly application.");
+                }
+                else if (!sprayfield.AnnualRateInches.HasValue)
+                {
+                    ModelState.AddModelError("SprayfieldId", "Permitted (Max) Annual Rate must be configured for this sprayfield before saving this monthly application.");
+                }
+                else
+                {
+                    computedVolumeGallons = viewModel.DailyLoadingInches * acres * MonthlyApplicationCreateViewModel.MonthlyApplicationGallonsPerAcreInch;
+                    viewModel.VolumeGallons = computedVolumeGallons;
+                    viewModel.MaximumHourlyLoadingInchesPerAcre = sprayfield.AnnualRateInches.Value;
+                }
+            }
+        }
+
         ComplianceProjectionResult? complianceProjection = null;
         if (ModelState.IsValid && facility != null)
         {
@@ -556,7 +619,7 @@ namespace SAM.Controllers;
                     FacilityId = viewModel.FacilityId,
                     SprayfieldId = viewModel.SprayfieldId,
                     ApplicationDate = viewModel.ApplicationDate,
-                    VolumeGallons = viewModel.VolumeGallons,
+                    VolumeGallons = computedVolumeGallons,
                     ExistingApplicationId = viewModel.Id
                 });
             }
@@ -566,7 +629,7 @@ namespace SAM.Controllers;
                 ViewBag.WWCharShortcutUrl = BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
             }
 
-            if (complianceProjection.RequiresConfirmation && !viewModel.ConfirmComplianceWarnings)
+            if (complianceProjection?.RequiresConfirmation == true && !viewModel.ConfirmComplianceWarnings)
             {
                 ModelState.AddModelError(string.Empty, string.Join(" ", complianceProjection.Warnings));
                 viewModel.ComplianceWarningSummary = string.Join(" | ", complianceProjection.Warnings);
@@ -590,9 +653,9 @@ namespace SAM.Controllers;
         application.FacilityId = viewModel.FacilityId;
         application.SprayfieldId = viewModel.SprayfieldId;
         application.ApplicationDate = viewModel.ApplicationDate;
-        application.VolumeGallons = viewModel.VolumeGallons;
+        application.VolumeGallons = computedVolumeGallons;
         application.TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes;
-        application.MaximumHourlyLoadingInchesPerAcre = viewModel.MaximumHourlyLoadingInchesPerAcre;
+        application.MaximumHourlyLoadingInchesPerAcre = sprayfield!.AnnualRateInches!.Value;
         application.Comments = viewModel.Comments ?? string.Empty;
 
         await _monthlyApplicationService.UpdateAsync(application);
@@ -621,6 +684,7 @@ namespace SAM.Controllers;
             SprayfieldName = application.Sprayfield?.PermitFieldName ?? application.Sprayfield?.FieldId,
             ZoneAcres = application.Sprayfield is null ? null : SprayfieldReportHelper.GetReportAcres(application.Sprayfield),
             ApplicationDate = application.ApplicationDate,
+            DailyLoadingInches = application.Sprayfield is null ? null : ComputeDailyLoadingFromVolume(application.VolumeGallons, SprayfieldReportHelper.GetReportAcres(application.Sprayfield)),
             VolumeGallons = application.VolumeGallons,
             TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
             MaximumHourlyLoadingInchesPerAcre = application.MaximumHourlyLoadingInchesPerAcre,
@@ -673,7 +737,13 @@ namespace SAM.Controllers;
         var sprayfields = await _sprayfieldService.GetAllAsync(facility.CompanyId);
         var filtered = sprayfields
             .Where(s => s.FacilityId == facilityId)
-            .Select(s => new { id = s.Id, name = s.PermitFieldName ?? s.FieldId })
+            .Select(s => new
+            {
+                id = s.Id,
+                name = s.PermitFieldName ?? s.FieldId,
+                acres = SprayfieldReportHelper.GetReportAcres(s),
+                annualRateInches = s.AnnualRateInches
+            })
             .ToList();
 
         return Json(new { companyId = facility.CompanyId, sprayfields = filtered });
@@ -700,6 +770,23 @@ namespace SAM.Controllers;
         }
 
         await EnsureCompanyAccessAsync(facility.CompanyId);
+
+        var sprayfield = await _sprayfieldService.GetByIdAsync(request.SprayfieldId);
+        if (sprayfield == null || sprayfield.FacilityId != request.FacilityId)
+        {
+            return BadRequest(new { message = "Selected sprayfield was not found for this facility." });
+        }
+
+        var acres = SprayfieldReportHelper.GetReportAcres(sprayfield);
+        if (acres <= 0m)
+        {
+            return BadRequest(new { message = "Sprayfield area (acres) must be configured before saving this monthly application." });
+        }
+
+        if (!sprayfield.AnnualRateInches.HasValue)
+        {
+            return BadRequest(new { message = "Permitted (Max) Annual Rate must be configured for this sprayfield before saving this monthly application." });
+        }
 
         ComplianceProjectionResult projection;
         try
@@ -1993,6 +2080,16 @@ namespace SAM.Controllers;
                        month = applicationDate.Month,
                        year = applicationDate.Year
                    }) ?? string.Empty;
+    }
+
+    private static decimal? ComputeDailyLoadingFromVolume(decimal volumeGallons, decimal acres)
+    {
+        if (acres <= 0m)
+        {
+            return null;
+        }
+
+        return volumeGallons / (acres * MonthlyApplicationCreateViewModel.MonthlyApplicationGallonsPerAcreInch);
     }
 
     #endregion

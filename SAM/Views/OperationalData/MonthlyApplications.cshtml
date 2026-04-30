@@ -45,6 +45,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Sprayfield</th>
+                            <th>Daily Loading (in)</th>
                             <th>Volume (gal)</th>
                             <th>Maximum Hourly Loading (inches/acre)</th>
                             <th class="table-actions">Actions</th>
@@ -60,6 +61,7 @@
                                 </a>
                             </td>
                             <td>@item.SprayfieldName</td>
+                            <td>@(item.DailyLoadingInches?.ToString("F6") ?? "-")</td>
                             <td>@item.VolumeGallons.ToString("F2")</td>
                             <td>@item.MaximumHourlyLoadingInchesPerAcre.ToString("F2")</td>
                             <td class="table-actions">
@@ -120,6 +122,9 @@
 
                                     <dt class="col-5">Volume</dt>
                                     <dd class="col-7 mb-1">@item.VolumeGallons.ToString("F2") gal</dd>
+
+                                    <dt class="col-5">Daily Loading</dt>
+                                    <dd class="col-7 mb-1">@(item.DailyLoadingInches?.ToString("F6") ?? "-") in</dd>
 
                                     <dt class="col-5">Time</dt>
                                     <dd class="col-7 mb-1">@(item.TimeIrrigatedMinutes?.ToString("F2") ?? "-") min</dd>

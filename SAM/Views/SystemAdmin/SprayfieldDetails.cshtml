@@ -2,28 +2,62 @@
 @{
     ViewData["Title"] = "Sprayfield Details";
     var canDuplicate = ViewBag.CanDuplicate is bool allowed && allowed;
+    var hourlyRate = Model.HourlyRateInches?.ToString("F2") ?? "-";
+    var annualRate = Model.AnnualRateInches?.ToString("F2") ?? "-";
+    var weeklyRate = Model.WeeklyRateInches?.ToString("F2") ?? "-";
 }
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-    <div>
-        <p class="text-muted mb-1">System Administration / Sprayfields</p>
-        <h2 class="mb-0">@Model.FieldId</h2>
+<div class="sprayfield-detail-shell">
+    <div class="sprayfield-hero mb-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <p class="text-muted mb-1">System Administration / Sprayfields</p>
+                <h2 class="mb-1">@Model.FieldId</h2>
+                <p class="mb-0 text-muted">Configuration and permitted loading profile for this sprayfield.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a asp-action="SprayfieldEdit" asp-route-id="@Model.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil-square"></i> Edit Sprayfield
+                </a>
+                @if (canDuplicate)
+                {
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#duplicateSprayfieldDetailsModal">
+                        <i class="bi bi-copy"></i> Duplicate
+                    </button>
+                }
+                <a asp-action="SystemAdmin" asp-route-tab="sprayfields" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="quick-stat">
+                    <div class="quick-stat-label">Wetted Acres</div>
+                    <div class="quick-stat-value">@Model.SizeAcres.ToString("F2") <span>acres</span></div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="quick-stat">
+                    <div class="quick-stat-label">Permitted (Max) Hourly Rate</div>
+                    <div class="quick-stat-value">@hourlyRate <span>in/hr</span></div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="quick-stat">
+                    <div class="quick-stat-label">Permitted (Max) Annual Rate</div>
+                    <div class="quick-stat-value">@annualRate <span>in/yr</span></div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="quick-stat">
+                    <div class="quick-stat-label">Weekly Rate (Planning)</div>
+                    <div class="quick-stat-value">@weeklyRate <span>in/week</span></div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="SprayfieldEdit" asp-route-id="@Model.Id" class="btn btn-primary">
-            <i class="bi bi-pencil-square"></i> Edit Sprayfield
-        </a>
-        @if (canDuplicate)
-        {
-            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#duplicateSprayfieldDetailsModal">
-                <i class="bi bi-copy"></i> Duplicate
-            </button>
-        }
-        <a asp-action="SystemAdmin" asp-route-tab="sprayfields" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Back to List
-        </a>
-    </div>
-</div>
 
 @if (canDuplicate)
 {
@@ -54,64 +88,112 @@
     </div>
 }
 
-<div class="row g-4">
-    <div class="col-xl-6">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body p-4">
-                <h5 class="mb-3">Field Details</h5>
-                <dl class="row mb-0">
-                    <dt class="col-sm-5 text-muted">Field ID</dt>
-                    <dd class="col-sm-7 fw-semibold">@Model.FieldId</dd>
+    <div class="row g-4">
+        <div class="col-xl-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">Field Details</h5>
+                    <dl class="row detail-grid mb-0">
+                        <dt class="col-sm-5 text-muted">Field ID</dt>
+                        <dd class="col-sm-7 fw-semibold">@Model.FieldId</dd>
 
-                    <dt class="col-sm-5 text-muted">Company</dt>
-                    <dd class="col-sm-7">@(Model.CompanyName ?? "-")</dd>
+                        <dt class="col-sm-5 text-muted">Company</dt>
+                        <dd class="col-sm-7">@(Model.CompanyName ?? "-")</dd>
 
-                    <dt class="col-sm-5 text-muted">Facility</dt>
-                    <dd class="col-sm-7">@(Model.FacilityName ?? "-")</dd>
+                        <dt class="col-sm-5 text-muted">Facility</dt>
+                        <dd class="col-sm-7">@(Model.FacilityName ?? "-")</dd>
 
-                    <dt class="col-sm-5 text-muted">Wetted Acres</dt>
-                    <dd class="col-sm-7">@Model.SizeAcres.ToString("F2") acres</dd>
+                        <dt class="col-sm-5 text-muted">Wetted Acres</dt>
+                        <dd class="col-sm-7">@Model.SizeAcres.ToString("F2") acres</dd>
 
-                    <dt class="col-sm-5 text-muted">Hydraulic Limit</dt>
-                    <dd class="col-sm-7">
-                        @Model.HydraulicLoadingLimitInPerYr.ToString("F2") inches/year
-                        <div class="small text-muted">Used as NDAR annual fallback when Annual Rate is not provided.</div>
-                    </dd>
+                        <dt class="col-sm-5 text-muted">Hydraulic Limit</dt>
+                        <dd class="col-sm-7">
+                            @Model.HydraulicLoadingLimitInPerYr.ToString("F2") inches/year
+                            <div class="small text-muted detail-note">Used as NDAR annual fallback when Annual Rate is not provided.</div>
+                        </dd>
 
-                    <dt class="col-sm-5 text-muted">Hourly Rate</dt>
-                    <dd class="col-sm-7">@((Model.HourlyRateInches?.ToString("F2") ?? "-")) in/hr</dd>
+                        <dt class="col-sm-5 text-muted">Permitted (Max) Hourly Rate</dt>
+                        <dd class="col-sm-7">@hourlyRate in/hr</dd>
 
-                    <dt class="col-sm-5 text-muted">Annual Rate</dt>
-                    <dd class="col-sm-7">
-                        @((Model.AnnualRateInches?.ToString("F2") ?? "-")) inches/year
-                        <div class="small text-muted">NDAR uses this value when provided.</div>
-                    </dd>
+                        <dt class="col-sm-5 text-muted">Permitted (Max) Annual Rate</dt>
+                        <dd class="col-sm-7">
+                            @annualRate inches/year
+                            <div class="small text-muted detail-note">NDAR uses this value when provided.</div>
+                        </dd>
 
-                    <dt class="col-sm-5 text-muted">Weekly Rate</dt>
-                    <dd class="col-sm-7">
-                        @((Model.WeeklyRateInches?.ToString("F2") ?? "-")) in/week
-                        <div class="small text-muted">Planning-only value. Not used as NDAR annual fallback.</div>
-                    </dd>
-                </dl>
+                        <dt class="col-sm-5 text-muted">Weekly Rate</dt>
+                        <dd class="col-sm-7">
+                            @weeklyRate in/week
+                            <div class="small text-muted detail-note">Planning-only value. Not used as NDAR annual fallback.</div>
+                        </dd>
+                    </dl>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-6">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body p-4">
-                <h5 class="mb-3">Agronomy Settings</h5>
-                <dl class="row mb-0">
-                    <dt class="col-sm-4 text-muted">Soil</dt>
-                    <dd class="col-sm-8">@(Model.SoilName ?? "-")</dd>
+        <div class="col-xl-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">Agronomy Settings</h5>
+                    <dl class="row detail-grid mb-0">
+                        <dt class="col-sm-4 text-muted">Soil</dt>
+                        <dd class="col-sm-8">@(Model.SoilName ?? "-")</dd>
 
-                    <dt class="col-sm-4 text-muted">Nozzle</dt>
-                    <dd class="col-sm-8">@(Model.NozzleName ?? "-")</dd>
+                        <dt class="col-sm-4 text-muted">Nozzle</dt>
+                        <dd class="col-sm-8">@(Model.NozzleName ?? "-")</dd>
 
-                    <dt class="col-sm-4 text-muted">Crop</dt>
-                    <dd class="col-sm-8">@(Model.CropName ?? "-")</dd>
-                </dl>
+                        <dt class="col-sm-4 text-muted">Crop</dt>
+                        <dd class="col-sm-8">@(Model.CropName ?? "-")</dd>
+                    </dl>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .sprayfield-detail-shell .sprayfield-hero {
+        border: 1px solid rgba(16, 24, 40, 0.08);
+        border-radius: 16px;
+        padding: 1.25rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .sprayfield-detail-shell .quick-stat {
+        border: 1px solid rgba(16, 24, 40, 0.1);
+        border-radius: 12px;
+        background: #fff;
+        padding: 0.9rem 1rem;
+        height: 100%;
+    }
+
+    .sprayfield-detail-shell .quick-stat-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: #64748b;
+        margin-bottom: 0.3rem;
+    }
+
+    .sprayfield-detail-shell .quick-stat-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+
+    .sprayfield-detail-shell .quick-stat-value span {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #64748b;
+    }
+
+    .sprayfield-detail-shell .detail-grid dt,
+    .sprayfield-detail-shell .detail-grid dd {
+        margin-bottom: 0.85rem;
+    }
+
+    .sprayfield-detail-shell .detail-note {
+        margin-top: 0.2rem;
+    }
+</style>
