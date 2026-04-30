@@ -26,6 +26,7 @@ public class WWCharService : IWWCharService
         var query = _context.WWChars
             .Include(w => w.Company)
             .Include(w => w.Facility)
+            .Include(w => w.FacilityPermit)
             .AsQueryable();
 
         if (companyId.HasValue)
@@ -49,6 +50,7 @@ public class WWCharService : IWWCharService
         return await _context.WWChars
             .Include(w => w.Company)
             .Include(w => w.Facility)
+            .Include(w => w.FacilityPermit)
             .FirstOrDefaultAsync(w => w.Id == id);
     }
 
@@ -163,6 +165,12 @@ public class WWCharService : IWWCharService
         existing.LabCertification = wwChar.LabCertification;
         existing.CollectedBy = wwChar.CollectedBy;
         existing.AnalyzedBy = wwChar.AnalyzedBy;
+        existing.NO2N = wwChar.NO2N;
+        existing.TKNN = wwChar.TKNN;
+        existing.NO3N = wwChar.NO3N;
+        existing.FlowMeasuringPoint = wwChar.FlowMeasuringPoint;
+        existing.ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint;
+        existing.FacilityPermitId = wwChar.FacilityPermitId;
 
         await _context.SaveChangesAsync();
 

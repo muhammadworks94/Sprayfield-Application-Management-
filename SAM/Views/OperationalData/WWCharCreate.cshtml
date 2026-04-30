@@ -52,7 +52,8 @@
             <div class="form-section">
                 <div class="form-section-title">Basic Information</div>
                 
-                <input type="hidden" asp-for="CompanyId" />
+            <input type="hidden" asp-for="CompanyId" />
+            <input type="hidden" asp-for="FacilityPermitId" />
                 
                 <div class="row">
                     <div class="col-md-4">
@@ -83,6 +84,12 @@
                 </div>
 
                 <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label class="form-label">Resolved Permit Version</label>
+                            <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.FacilityPermitDisplay) ? "No active permit for selected date" : Model.FacilityPermitDisplay)" readonly />
+                        </div>
+                    </div>
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label asp-for="FlowMeasuringPoint" class="form-label"></label>
@@ -229,6 +236,56 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Permit Template Parameters (PCS)</div>
+                @if (Model.TemplateParameters.Any())
+                {
+                    <div class="table-responsive responsive-table wide-data-table fixed-height-table-wrapper mb-3">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>PCS</th>
+                                    <th>Parameter</th>
+                                    <th>Freq</th>
+                                    <th>Sample</th>
+                                    <th>Months</th>
+                                    @for (int day = 1; day <= 31; day++)
+                                    {
+                                        <th>@day</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @for (int i = 0; i < Model.TemplateParameters.Count; i++)
+                            {
+                                <tr>
+                                    <td>
+                                        @Model.TemplateParameters[i].PcsCode
+                                        <input type="hidden" asp-for="TemplateParameters[i].FacilityPermitTemplateParameterId" />
+                                        <input type="hidden" asp-for="TemplateParameters[i].PcsCode" />
+                                        <input type="hidden" asp-for="TemplateParameters[i].ParameterName" />
+                                        <input type="hidden" asp-for="TemplateParameters[i].Units" />
+                                    </td>
+                                    <td>@Model.TemplateParameters[i].ParameterName (@Model.TemplateParameters[i].Units)</td>
+                                    <td>@Model.TemplateParameters[i].MeasurementFrequency</td>
+                                    <td>@Model.TemplateParameters[i].SampleType</td>
+                                    <td>@Model.TemplateParameters[i].ScheduledMonthsCsv</td>
+                                    @for (int d = 0; d < 31; d++)
+                                    {
+                                        <td><input asp-for="TemplateParameters[i].DailyValues[d]" type="number" step="0.000001" class="form-control form-control-sm" /></td>
+                                    }
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning">@(Model.TemplateParametersStatusMessage ?? "No permit template parameters found for the selected facility/month/year.")</div>
+                }
             </div>
 
             <div class="form-section">

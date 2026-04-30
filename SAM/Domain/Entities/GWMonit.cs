@@ -165,6 +165,6 @@ public class GWMonit : CompanyScopedEntity
     // Navigation properties
     public Facility? Facility { get; set; }
     public MonitoringWell? MonitoringWell { get; set; }
+    public ICollection<GWMonitTemplateValue> TemplateValues { get; set; } = new List<GWMonitTemplateValue>();
 }
-
 

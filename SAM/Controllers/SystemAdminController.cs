@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
+using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
@@ -27,6 +28,9 @@ public partial class SystemAdminController : BaseController
     private readonly IMonthlyApplicationService _monthlyApplicationService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly ILookupQueryService _lookupQueryService;
+    private readonly ApplicationDbContext _context;
+    private readonly IPcsCatalogService _pcsCatalogService;
+    private readonly IWebHostEnvironment _environment;
 
     public SystemAdminController(
         IFacilityService facilityService,
@@ -37,6 +41,9 @@ public partial class SystemAdminController : BaseController
         IMonthlyApplicationService monthlyApplicationService,
         IMonitoringWellService monitoringWellService,
         ILookupQueryService lookupQueryService,
+        ApplicationDbContext context,
+        IPcsCatalogService pcsCatalogService,
+        IWebHostEnvironment environment,
         UserManager<ApplicationUser> userManager,
         ILogger<SystemAdminController> logger)
         : base(userManager, logger)
@@ -49,6 +56,9 @@ public partial class SystemAdminController : BaseController
         _monthlyApplicationService = monthlyApplicationService;
         _monitoringWellService = monitoringWellService;
         _lookupQueryService = lookupQueryService;
+        _context = context;
+        _pcsCatalogService = pcsCatalogService;
+        _environment = environment;
     }
 
 

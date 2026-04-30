@@ -23,6 +23,7 @@ public class WWChar : CompanyScopedEntity
     /// Year of the report.
     /// </summary>
     public int Year { get; set; }
+    public Guid? FacilityPermitId { get; set; }
 
     /// <summary>
     /// Array of daily BOD5 values (max 31 items, stored as JSON).
@@ -141,6 +142,8 @@ public class WWChar : CompanyScopedEntity
 
     // Navigation properties
     public Facility? Facility { get; set; }
+    public FacilityPermit? FacilityPermit { get; set; }
+    public ICollection<WWCharTemplateValue> TemplateValues { get; set; } = new List<WWCharTemplateValue>();
 }
 
 

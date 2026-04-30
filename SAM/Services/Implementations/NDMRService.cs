@@ -21,39 +21,21 @@ public class NDMRService : INDMRService
         public string SampleFrequency { get; init; } = string.Empty;
     }
 
-    private static readonly IReadOnlyDictionary<string, SamplingMetadata> SamplingMetadataByParameterCode =
-        new Dictionary<string, SamplingMetadata>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["00310"] = new() { SampleFrequency = "Monthly" },
-            ["00916"] = new() { SampleFrequency = "3 x Year" },
-            ["31616"] = new() { SampleFrequency = "Monthly" },
-            ["00927"] = new() { SampleFrequency = "3 x Year" },
-            ["00620"] = new() { SampleFrequency = "Monthly" },
-            ["00610"] = new() { SampleFrequency = "Monthly" },
-            ["00625"] = new() { SampleFrequency = "Monthly" },
-            ["00400"] = new() { SampleFrequency = "Monthly" },
-            ["00665"] = new() { SamplingType = "Calculated", SampleFrequency = "3 x Year" },
-            ["00931"] = new() { SampleFrequency = "3 x Year" },
-            ["00929"] = new() { SampleFrequency = "Monthly" },
-            ["00530"] = new() { SampleFrequency = "3 x Year" },
-            ["00940"] = new() { SampleFrequency = "Per Event" },
-            ["50060"] = new() { SampleFrequency = "Monthly" },
-            ["00600"] = new() { SampleFrequency = "3 x Year" },
-            ["70300"] = new() { SampleFrequency = "3 x Year" }
-        };
-
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<NDMRService> _logger;
+    private readonly IFacilityPermitResolver _facilityPermitResolver;
 
     public NDMRService(
         ApplicationDbContext context,
         IWebHostEnvironment environment,
-        ILogger<NDMRService> logger)
+        ILogger<NDMRService> logger,
+        IFacilityPermitResolver facilityPermitResolver)
     {
         _context = context;
         _environment = environment;
         _logger = logger;
+        _facilityPermitResolver = facilityPermitResolver;
     }
 
     /// <summary>
@@ -223,7 +205,7 @@ public class NDMRService : INDMRService
         }
     }
 
-    private static void PopulateSamplingFooterRows(IXLWorksheet worksheet)
+    private static void PopulateSamplingFooterRows(IXLWorksheet worksheet, IReadOnlyDictionary<string, SamplingMetadata> samplingMetadataByParameterCode)
     {
         const int parameterCodeRow = 3;
         const int samplingTypeRow = 40;
@@ -242,7 +224,7 @@ public class NDMRService : INDMRService
             var sampleFrequencyCell = worksheet.Cell($"{col}{sampleFrequencyRow}");
 
             if (string.IsNullOrWhiteSpace(parameterCode) ||
-                !SamplingMetadataByParameterCode.TryGetValue(parameterCode, out var metadata))
+                !samplingMetadataByParameterCode.TryGetValue(parameterCode, out var metadata))
             {
                 samplingTypeCell.Clear(XLClearOptions.Contents);
                 sampleFrequencyCell.Clear(XLClearOptions.Contents);
@@ -301,6 +283,8 @@ public class NDMRService : INDMRService
 
         // PPI 001 worksheet (daily flow monitoring)
         var flowWorksheet = workbook.Worksheet("PPI 001");
+        var reportDate = new DateTime(year, month, 1);
+        var permit = await _facilityPermitResolver.ResolveForDateAsync(facility.Id, reportDate);
 
         // Always write a consistent header for the master PPI sheet.
         WriteStandardHeader(
@@ -314,33 +298,52 @@ public class NDMRService : INDMRService
             wwChar?.FlowMeasuringPoint,
             wwChar?.ParameterMonitoringPoint);
 
-        // Match client one-page NDMR code layout on the master sheet.
-        var masterParameterCodes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        if (permit != null)
         {
-            ["D"] = "00310",
-            ["E"] = "00916",
-            ["F"] = "31616",
-            ["G"] = "00927",
-            ["H"] = "00620",
-            ["I"] = "00610",
-            ["J"] = "00625",
-            ["K"] = "00400",
-            ["L"] = "00665",
-            ["M"] = "00931",
-            ["N"] = "00929",
-            ["O"] = "00530",
-            ["P"] = "00940",
-            ["Q"] = "50060",
-            ["R"] = "00600",
-            ["S"] = "70300"
-        };
-
-        foreach (var mapping in masterParameterCodes)
-        {
-            flowWorksheet.Cell($"{mapping.Key}3").Value = mapping.Value;
+            flowWorksheet.Cell("C1").Value = $"{permit.PermitNumber} v{permit.PermitVersion}";
         }
 
-        PopulateSamplingFooterRows(flowWorksheet);
+        // Match client one-page NDMR code layout on the master sheet.
+        var permitTemplateRows = permit == null
+            ? new List<FacilityPermitTemplateParameter>()
+            : await _context.FacilityPermitTemplateParameters
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
+                .OrderBy(x => x.SortOrder)
+                .ToListAsync();
+
+        if (permitTemplateRows.Any())
+        {
+            var hasFlow = permitTemplateRows.Any(x => string.Equals(x.PcsParameterCatalog!.PcsCode, "50050", StringComparison.OrdinalIgnoreCase) && x.IsRequired);
+            if (!hasFlow)
+            {
+                throw new BusinessRuleException("Permit template must include required PCS code 50050 (Flow) for NDMR export.");
+            }
+        }
+
+        var codeSlots = new[] { "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S" };
+        var codesToRender = permitTemplateRows.Any()
+            ? permitTemplateRows.Select(x => x.PcsParameterCatalog?.PcsCode ?? string.Empty).Where(x => !string.IsNullOrWhiteSpace(x)).Take(codeSlots.Length).ToList()
+            : new List<string> { "00310", "00916", "31616", "00927", "00620", "00610", "00625", "00400", "00665", "00931", "00929", "00530", "00940", "50060", "00600", "70300" };
+
+        var samplingMetadataByParameterCode = new Dictionary<string, SamplingMetadata>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in permitTemplateRows)
+        {
+            var code = row.PcsParameterCatalog?.PcsCode;
+            if (string.IsNullOrWhiteSpace(code)) continue;
+            samplingMetadataByParameterCode[code] = new SamplingMetadata
+            {
+                SamplingType = row.SampleType.ToString(),
+                SampleFrequency = row.MeasurementFrequency.ToString()
+            };
+        }
+
+        for (var idx = 0; idx < codesToRender.Count && idx < codeSlots.Length; idx++)
+        {
+            flowWorksheet.Cell($"{codeSlots[idx]}3").Value = codesToRender[idx];
+        }
+
+        PopulateSamplingFooterRows(flowWorksheet, samplingMetadataByParameterCode);
 
         // Preload irrigation events and groundwater samples for the month
         var gwMonits = await _context.GWMonits

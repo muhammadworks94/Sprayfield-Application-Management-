@@ -33,6 +33,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<LoadCalculation> LoadCalculations => Set<LoadCalculation>();
     public DbSet<MonitoringWell> MonitoringWells => Set<MonitoringWell>();
     public DbSet<WWChar> WWChars => Set<WWChar>();
+    public DbSet<FacilityPermit> FacilityPermits => Set<FacilityPermit>();
+    public DbSet<PcsParameterCatalog> PcsParameterCatalogs => Set<PcsParameterCatalog>();
+    public DbSet<FacilityPermitTemplateParameter> FacilityPermitTemplateParameters => Set<FacilityPermitTemplateParameter>();
+    public DbSet<WWCharTemplateValue> WWCharTemplateValues => Set<WWCharTemplateValue>();
+    public DbSet<GWMonitTemplateValue> GWMonitTemplateValues => Set<GWMonitTemplateValue>();
     public DbSet<GWMonit> GWMonits => Set<GWMonit>();
     public DbSet<IrrRprt> IrrRprts => Set<IrrRprt>();
     public DbSet<NDAR1> NDAR1s => Set<NDAR1>();
@@ -89,6 +94,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new LoadCalculationConfiguration());
         builder.ApplyConfiguration(new MonitoringWellConfiguration());
         builder.ApplyConfiguration(new WWCharConfiguration());
+        builder.ApplyConfiguration(new FacilityPermitConfiguration());
+        builder.ApplyConfiguration(new PcsParameterCatalogConfiguration());
+        builder.ApplyConfiguration(new FacilityPermitTemplateParameterConfiguration());
+        builder.ApplyConfiguration(new WWCharTemplateValueConfiguration());
+        builder.ApplyConfiguration(new GWMonitTemplateValueConfiguration());
         builder.ApplyConfiguration(new GWMonitConfiguration());
         builder.ApplyConfiguration(new IrrRprtConfiguration());
         builder.ApplyConfiguration(new NDAR1Configuration());

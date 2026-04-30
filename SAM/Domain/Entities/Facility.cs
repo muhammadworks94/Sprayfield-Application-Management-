@@ -147,6 +147,7 @@ public class Facility : CompanyScopedEntity
     public ICollection<OperatorLog> OperatorLogs { get; set; } = new List<OperatorLog>();
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
     public ICollection<NDAR1> NDAR1s { get; set; } = new List<NDAR1>();
+    public ICollection<FacilityPermit> FacilityPermits { get; set; } = new List<FacilityPermit>();
 }
 
 

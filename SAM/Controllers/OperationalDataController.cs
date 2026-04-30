@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
+using SAM.Data;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
@@ -32,6 +34,8 @@ namespace SAM.Controllers;
         private readonly IApplicationComplianceService _applicationComplianceService;
         private readonly IMonitoringWellService _monitoringWellService;
         private readonly ILookupQueryService _lookupQueryService;
+        private readonly IFacilityPermitResolver _facilityPermitResolver;
+        private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
 
         public OperationalDataController(
@@ -44,6 +48,8 @@ namespace SAM.Controllers;
             IApplicationComplianceService applicationComplianceService,
             IMonitoringWellService monitoringWellService,
             ILookupQueryService lookupQueryService,
+            IFacilityPermitResolver facilityPermitResolver,
+            ApplicationDbContext context,
             IWebHostEnvironment environment,
             UserManager<ApplicationUser> userManager,
             ILogger<OperationalDataController> logger)
@@ -58,6 +64,8 @@ namespace SAM.Controllers;
             _applicationComplianceService = applicationComplianceService;
             _monitoringWellService = monitoringWellService;
             _lookupQueryService = lookupQueryService;
+            _facilityPermitResolver = facilityPermitResolver;
+            _context = context;
             _environment = environment;
         }
 
@@ -868,6 +876,8 @@ namespace SAM.Controllers;
             LabCertification = w.LabCertification,
             CollectedBy = w.CollectedBy,
             AnalyzedBy = w.AnalyzedBy,
+            FacilityPermitId = w.FacilityPermitId,
+            FacilityPermitDisplay = w.FacilityPermit != null ? $"{w.FacilityPermit.PermitNumber} v{w.FacilityPermit.PermitVersion}" : null,
             FlowMeasuringPoint = w.FlowMeasuringPoint,
             ParameterMonitoringPoint = w.ParameterMonitoringPoint
         });
@@ -916,12 +926,21 @@ namespace SAM.Controllers;
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
             AnalyzedBy = wwChar.AnalyzedBy,
+            FacilityPermitId = wwChar.FacilityPermitId,
+            FacilityPermitDisplay = wwChar.FacilityPermit != null ? $"{wwChar.FacilityPermit.PermitNumber} v{wwChar.FacilityPermit.PermitVersion}" : null,
             NO2N = wwChar.NO2N,
             TKNN = wwChar.TKNN,
             NO3N = wwChar.NO3N,
             FlowMeasuringPoint = wwChar.FlowMeasuringPoint,
             ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint
         };
+
+        viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(
+            wwChar.CompanyId,
+            wwChar.FacilityId,
+            wwChar.FacilityPermitId,
+            new DateTime(wwChar.Year, (int)wwChar.Month, 1),
+            wwChar.Id);
 
         return View(viewModel);
     }
@@ -974,6 +993,26 @@ namespace SAM.Controllers;
         // Initialize daily arrays with 31 empty entries
         InitializeDailyArrays(viewModel);
 
+        if (viewModel.FacilityId != Guid.Empty)
+        {
+            var reportDate = new DateTime(viewModel.Year, (int)viewModel.Month, 1);
+            var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, reportDate);
+            viewModel.FacilityPermitId = resolvedPermit?.Id;
+            viewModel.FacilityPermitDisplay = resolvedPermit != null ? $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}" : null;
+            viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(
+                viewModel.CompanyId,
+                viewModel.FacilityId,
+                resolvedPermit?.Id,
+                reportDate,
+                null);
+            viewModel.TemplateParametersStatusMessage = await BuildWwCharTemplateStatusMessageAsync(
+                viewModel.CompanyId,
+                viewModel.FacilityId,
+                resolvedPermit?.Id,
+                reportDate,
+                viewModel.TemplateParameters.Count);
+        }
+
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Months = GetMonthSelectList();
         ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
@@ -1003,6 +1042,23 @@ namespace SAM.Controllers;
 
         // Ensure arrays are initialized
         EnsureDailyArraysInitialized(viewModel);
+        var createReportDate = new DateTime(viewModel.Year, (int)viewModel.Month, 1);
+        var resolvedCreatePermit = viewModel.FacilityId != Guid.Empty
+            ? await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, createReportDate)
+            : null;
+        viewModel.FacilityPermitId = resolvedCreatePermit?.Id;
+        viewModel.FacilityPermitDisplay = resolvedCreatePermit != null ? $"{resolvedCreatePermit.PermitNumber} v{resolvedCreatePermit.PermitVersion}" : null;
+        if (!viewModel.TemplateParameters.Any())
+        {
+            viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(viewModel.CompanyId, viewModel.FacilityId, resolvedCreatePermit?.Id, createReportDate, null);
+        }
+        viewModel.TemplateParametersStatusMessage = await BuildWwCharTemplateStatusMessageAsync(
+            viewModel.CompanyId,
+            viewModel.FacilityId,
+            resolvedCreatePermit?.Id,
+            createReportDate,
+            viewModel.TemplateParameters.Count);
+        EnsureTemplateArraysInitialized(viewModel.TemplateParameters);
 
         if (!ModelState.IsValid)
         {
@@ -1043,11 +1099,13 @@ namespace SAM.Controllers;
                 NO2N = viewModel.NO2N,
                 TKNN = viewModel.TKNN,
                 NO3N = viewModel.NO3N,
+                FacilityPermitId = viewModel.FacilityPermitId,
                 FlowMeasuringPoint = viewModel.FlowMeasuringPoint,
                 ParameterMonitoringPoint = viewModel.ParameterMonitoringPoint
             };
 
             await _wwCharService.CreateAsync(wwChar);
+            await SaveWwCharTemplateValuesAsync(wwChar, viewModel.TemplateParameters);
             TempData["SuccessMessage"] = $"Wastewater characteristics record created for {wwChar.Month} {wwChar.Year}.";
             return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
         }
@@ -1059,6 +1117,16 @@ namespace SAM.Controllers;
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
             ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
             ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
+            if (!viewModel.TemplateParameters.Any())
+            {
+                viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(viewModel.CompanyId, viewModel.FacilityId, resolvedCreatePermit?.Id, createReportDate, null);
+            }
+            viewModel.TemplateParametersStatusMessage = await BuildWwCharTemplateStatusMessageAsync(
+                viewModel.CompanyId,
+                viewModel.FacilityId,
+                resolvedCreatePermit?.Id,
+                createReportDate,
+                viewModel.TemplateParameters.Count);
             return View(viewModel);
         }
     }
@@ -1101,12 +1169,26 @@ namespace SAM.Controllers;
             NO2N = wwChar.NO2N.HasValue ? Math.Round(wwChar.NO2N.Value, 2) : (decimal?)null,
             TKNN = wwChar.TKNN.HasValue ? Math.Round(wwChar.TKNN.Value, 2) : (decimal?)null,
             NO3N = wwChar.NO3N.HasValue ? Math.Round(wwChar.NO3N.Value, 2) : (decimal?)null,
+            FacilityPermitId = wwChar.FacilityPermitId,
+            FacilityPermitDisplay = wwChar.FacilityPermit != null ? $"{wwChar.FacilityPermit.PermitNumber} v{wwChar.FacilityPermit.PermitVersion}" : null,
             FlowMeasuringPoint = wwChar.FlowMeasuringPoint,
             ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint
         };
 
         // Ensure arrays are initialized with 31 entries
         EnsureDailyArraysInitialized(viewModel);
+        viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(
+            wwChar.CompanyId,
+            wwChar.FacilityId,
+            wwChar.FacilityPermitId,
+            new DateTime(wwChar.Year, (int)wwChar.Month, 1),
+            wwChar.Id);
+        viewModel.TemplateParametersStatusMessage = await BuildWwCharTemplateStatusMessageAsync(
+            wwChar.CompanyId,
+            wwChar.FacilityId,
+            wwChar.FacilityPermitId,
+            new DateTime(wwChar.Year, (int)wwChar.Month, 1),
+            viewModel.TemplateParameters.Count);
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(wwChar.CompanyId);
         ViewBag.Months = GetMonthSelectList();
@@ -1126,6 +1208,23 @@ namespace SAM.Controllers;
 
         // Ensure arrays are initialized
         EnsureDailyArraysInitialized(viewModel);
+        var editReportDate = new DateTime(viewModel.Year, (int)viewModel.Month, 1);
+        var resolvedEditPermit = viewModel.FacilityId != Guid.Empty
+            ? await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, editReportDate)
+            : null;
+        viewModel.FacilityPermitId = resolvedEditPermit?.Id;
+        viewModel.FacilityPermitDisplay = resolvedEditPermit != null ? $"{resolvedEditPermit.PermitNumber} v{resolvedEditPermit.PermitVersion}" : null;
+        if (!viewModel.TemplateParameters.Any())
+        {
+            viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(viewModel.CompanyId, viewModel.FacilityId, resolvedEditPermit?.Id, editReportDate, viewModel.Id);
+        }
+        viewModel.TemplateParametersStatusMessage = await BuildWwCharTemplateStatusMessageAsync(
+            viewModel.CompanyId,
+            viewModel.FacilityId,
+            resolvedEditPermit?.Id,
+            editReportDate,
+            viewModel.TemplateParameters.Count);
+        EnsureTemplateArraysInitialized(viewModel.TemplateParameters);
 
         if (!ModelState.IsValid)
         {
@@ -1166,10 +1265,12 @@ namespace SAM.Controllers;
             wwChar.NO2N = viewModel.NO2N;
             wwChar.TKNN = viewModel.TKNN;
             wwChar.NO3N = viewModel.NO3N;
+            wwChar.FacilityPermitId = viewModel.FacilityPermitId;
             wwChar.FlowMeasuringPoint = viewModel.FlowMeasuringPoint;
             wwChar.ParameterMonitoringPoint = viewModel.ParameterMonitoringPoint;
 
             await _wwCharService.UpdateAsync(wwChar);
+            await SaveWwCharTemplateValuesAsync(wwChar, viewModel.TemplateParameters);
             TempData["SuccessMessage"] = $"Wastewater characteristics record updated for {wwChar.Month} {wwChar.Year}.";
             return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
         }
@@ -1181,6 +1282,16 @@ namespace SAM.Controllers;
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
             ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
             ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
+            if (!viewModel.TemplateParameters.Any())
+            {
+                viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(viewModel.CompanyId, viewModel.FacilityId, resolvedEditPermit?.Id, editReportDate, viewModel.Id);
+            }
+            viewModel.TemplateParametersStatusMessage = await BuildWwCharTemplateStatusMessageAsync(
+                viewModel.CompanyId,
+                viewModel.FacilityId,
+                resolvedEditPermit?.Id,
+                editReportDate,
+                viewModel.TemplateParameters.Count);
             return View(viewModel);
         }
     }
@@ -2080,6 +2191,144 @@ namespace SAM.Controllers;
                        month = applicationDate.Month,
                        year = applicationDate.Year
                    }) ?? string.Empty;
+    }
+
+    private static void EnsureTemplateArraysInitialized(List<WWCharTemplateParameterInputViewModel>? parameters)
+    {
+        if (parameters == null) return;
+        foreach (var parameter in parameters)
+        {
+            while (parameter.DailyValues.Count < 31) parameter.DailyValues.Add(null);
+            while (parameter.DailyValues.Count > 31) parameter.DailyValues.RemoveAt(parameter.DailyValues.Count - 1);
+        }
+    }
+
+    private async Task<List<WWCharTemplateParameterInputViewModel>> BuildWwCharTemplateInputsAsync(
+        Guid companyId,
+        Guid facilityId,
+        Guid? resolvedPermitId,
+        DateTime reportDate,
+        Guid? wwCharId)
+    {
+        var permitId = resolvedPermitId;
+        if (!permitId.HasValue)
+        {
+            var permit = await _facilityPermitResolver.ResolveForDateAsync(facilityId, reportDate);
+            permitId = permit?.Id;
+        }
+
+        if (!permitId.HasValue) return new List<WWCharTemplateParameterInputViewModel>();
+
+        var templateRows = await _context.FacilityPermitTemplateParameters
+            .Include(x => x.PcsParameterCatalog)
+            .Where(x => x.FacilityPermitId == permitId.Value && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
+            .OrderBy(x => x.SortOrder)
+            .ToListAsync();
+
+        var existingValues = wwCharId.HasValue
+            ? await _context.WWCharTemplateValues.Where(x => x.WWCharId == wwCharId.Value).ToListAsync()
+            : new List<WWCharTemplateValue>();
+
+        var result = new List<WWCharTemplateParameterInputViewModel>();
+        foreach (var row in templateRows)
+        {
+            var vm = new WWCharTemplateParameterInputViewModel
+            {
+                FacilityPermitTemplateParameterId = row.Id,
+                PcsCode = row.PcsParameterCatalog?.PcsCode ?? string.Empty,
+                ParameterName = row.ParameterDisplayOverride ?? row.PcsParameterCatalog?.UserFriendlyName ?? row.PcsParameterCatalog?.OfficialParameterName ?? string.Empty,
+                Units = row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty,
+                IsRequired = row.IsRequired,
+                MeasurementFrequency = row.MeasurementFrequency.ToString(),
+                SampleType = row.SampleType.ToString(),
+                ScheduledMonthsCsv = row.ScheduledMonthsCsv,
+                DailyMaximumLimit = row.DailyMaximumLimit,
+                DailyValues = Enumerable.Repeat<decimal?>(null, 31).ToList()
+            };
+
+            foreach (var value in existingValues.Where(v => v.FacilityPermitTemplateParameterId == row.Id && v.DayNo >= 1 && v.DayNo <= 31))
+            {
+                vm.DailyValues[value.DayNo - 1] = value.NumericValue;
+            }
+
+            result.Add(vm);
+        }
+
+        return result;
+    }
+
+    private async Task SaveWwCharTemplateValuesAsync(WWChar wwChar, List<WWCharTemplateParameterInputViewModel>? templateParameters)
+    {
+        if (templateParameters == null) return;
+
+        var existing = await _context.WWCharTemplateValues.Where(x => x.WWCharId == wwChar.Id).ToListAsync();
+        _context.WWCharTemplateValues.RemoveRange(existing);
+
+        foreach (var parameter in templateParameters)
+        {
+            for (var day = 1; day <= parameter.DailyValues.Count && day <= 31; day++)
+            {
+                var value = parameter.DailyValues[day - 1];
+                if (!value.HasValue) continue;
+
+                _context.WWCharTemplateValues.Add(new WWCharTemplateValue
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyId = wwChar.CompanyId,
+                    WWCharId = wwChar.Id,
+                    FacilityPermitTemplateParameterId = parameter.FacilityPermitTemplateParameterId,
+                    DayNo = day,
+                    NumericValue = value,
+                    CreatedBy = User?.Identity?.Name ?? "System"
+                });
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<string?> BuildWwCharTemplateStatusMessageAsync(
+        Guid companyId,
+        Guid facilityId,
+        Guid? resolvedPermitId,
+        DateTime reportDate,
+        int templateParameterCount)
+    {
+        if (templateParameterCount > 0) return null;
+        if (facilityId == Guid.Empty) return "Select a facility to load permit template parameters.";
+
+        var anyPermitsForFacility = await _context.FacilityPermits
+            .AnyAsync(x => x.CompanyId == companyId && x.FacilityId == facilityId && !x.IsDeleted);
+
+        if (!anyPermitsForFacility)
+        {
+            return "No permit versions are configured for this facility. Add a permit version first in System Administration > Facilities > Permit Versions.";
+        }
+
+        FacilityPermit? permit = null;
+        if (resolvedPermitId.HasValue)
+        {
+            permit = await _context.FacilityPermits
+                .Where(x => x.Id == resolvedPermitId.Value && !x.IsDeleted)
+                .FirstOrDefaultAsync();
+        }
+
+        permit ??= await _facilityPermitResolver.ResolveForDateAsync(facilityId, reportDate);
+
+        if (permit == null)
+        {
+            return $"Permit versions exist, but none are active for {reportDate:MMM yyyy}. Update permit effective dates in System Administration > Facilities > Permit Versions.";
+        }
+
+        var hasNdmrRows = await _context.FacilityPermitTemplateParameters
+            .AnyAsync(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0);
+
+        if (!hasNdmrRows)
+        {
+            return $"Resolved permit {permit.PermitNumber} v{permit.PermitVersion} for {reportDate:MMM yyyy}, but it has no NDMR template parameters. Add PCS rows under Permit Versions.";
+        }
+
+        return "Permit template parameters are not available for this period.";
     }
 
     private static decimal? ComputeDailyLoadingFromVolume(decimal volumeGallons, decimal acres)

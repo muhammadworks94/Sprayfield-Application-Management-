@@ -9,6 +9,8 @@ public class WWCharViewModel
     public Guid CompanyId { get; set; }
     public string? CompanyName { get; set; }
     public Guid FacilityId { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
     public string? FacilityName { get; set; }
     
     [Required]
@@ -94,6 +96,8 @@ public class WWCharViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string AnalyzedBy { get; set; } = string.Empty;
+
+    public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
 }
 
 public class WWCharCreateViewModel
@@ -105,6 +109,9 @@ public class WWCharCreateViewModel
     [Required]
     [Display(Name = "Facility")]
     public Guid FacilityId { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
     
     [Required]
     [Display(Name = "Month")]
@@ -189,6 +196,8 @@ public class WWCharCreateViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string AnalyzedBy { get; set; } = string.Empty;
+
+    public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
 }
 
 public class WWCharEditViewModel
@@ -202,6 +211,9 @@ public class WWCharEditViewModel
     [Required]
     [Display(Name = "Facility")]
     public Guid FacilityId { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
     
     [Required]
     [Display(Name = "Month")]
@@ -286,6 +298,22 @@ public class WWCharEditViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string AnalyzedBy { get; set; } = string.Empty;
+
+    public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+}
+
+public class WWCharTemplateParameterInputViewModel
+{
+    public Guid FacilityPermitTemplateParameterId { get; set; }
+    public string PcsCode { get; set; } = string.Empty;
+    public string ParameterName { get; set; } = string.Empty;
+    public string Units { get; set; } = string.Empty;
+    public bool IsRequired { get; set; }
+    public string MeasurementFrequency { get; set; } = string.Empty;
+    public string SampleType { get; set; } = string.Empty;
+    public string? ScheduledMonthsCsv { get; set; }
+    public decimal? DailyMaximumLimit { get; set; }
+    public List<decimal?> DailyValues { get; set; } = new();
 }
 
 

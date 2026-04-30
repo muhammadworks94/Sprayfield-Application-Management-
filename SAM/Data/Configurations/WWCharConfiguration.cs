@@ -172,11 +172,17 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
 
         builder.HasIndex(w => w.CompanyId);
         builder.HasIndex(w => w.FacilityId);
+        builder.HasIndex(w => w.FacilityPermitId);
         builder.HasIndex(w => new { w.FacilityId, w.Month, w.Year }).IsUnique();
 
         builder.HasOne(w => w.Facility)
             .WithMany(f => f.WWChars)
             .HasForeignKey(w => w.FacilityId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(w => w.FacilityPermit)
+            .WithMany(p => p.WWChars)
+            .HasForeignKey(w => w.FacilityPermitId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

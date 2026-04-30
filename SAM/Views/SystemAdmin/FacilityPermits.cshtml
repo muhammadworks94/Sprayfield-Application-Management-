@@ -1,0 +1,245 @@
+@using SAM.Domain.Entities
+@using SAM.Domain.Enums
+@{
+    ViewData["Title"] = "Facility Permit Versions";
+    var facility = ViewBag.Facility as Facility;
+    var permits = ViewBag.Permits as List<FacilityPermit> ?? new();
+    var activePermits = permits.Where(p => p.IsActive).OrderByDescending(p => p.EffectiveStartDate).ToList();
+    var archivedPermits = permits.Where(p => !p.IsActive).OrderByDescending(p => p.EffectiveStartDate).ToList();
+    var pcsCatalog = ViewBag.PcsCatalog as List<PcsParameterCatalog> ?? new();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="mb-1">Permit Versions</h3>
+        <p class="text-muted mb-0">@facility?.Name</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form asp-action="ImportPcsCatalogFromTsv" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="facilityId" value="@facility?.Id" />
+            <button class="btn btn-outline-secondary" type="submit">Import PCS Catalog</button>
+        </form>
+        <a asp-action="FacilityDetails" asp-route-id="@facility?.Id" class="btn btn-secondary">Back</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="mb-3">Add Permit Version</h5>
+        <form asp-action="FacilityPermitCreate" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="facilityId" value="@facility?.Id" />
+            <div class="row g-3">
+                <div class="col-md-3"><input name="permitNumber" class="form-control" placeholder="Permit Number" required /></div>
+                <div class="col-md-2"><input name="permitVersion" class="form-control" placeholder="Version (e.g. 4.1)" required /></div>
+                <div class="col-md-2"><input name="effectiveStartDate" type="date" class="form-control" required /></div>
+                <div class="col-md-2"><input name="effectiveEndDate" type="date" class="form-control" /></div>
+                <div class="col-md-3"><input name="permitPdf" type="file" class="form-control" accept=".pdf" /></div>
+                <div class="col-12"><textarea name="notes" class="form-control" rows="2" placeholder="Notes (optional)"></textarea></div>
+                <div class="col-12"><button type="submit" class="btn btn-primary">Add Permit</button></div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Active Permit Versions</h5>
+    <span class="badge bg-primary-subtle text-primary-emphasis">@activePermits.Count</span>
+</div>
+
+@foreach (var permit in activePermits)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="mb-1">@permit.PermitNumber v@permit.PermitVersion</h5>
+                    <div class="text-muted small">@permit.EffectiveStartDate.ToString("yyyy-MM-dd") to @(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? "open-ended")</div>
+                </div>
+                <div class="d-flex gap-2">
+                    @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
+                    {
+                        <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)">PDF</a>
+                    }
+                    @if (permit.IsActive)
+                    {
+                        <form asp-action="FacilityPermitArchive" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="permitId" value="@permit.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Archive</button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            @{
+                var rows = permit.TemplateParameters
+                    .OrderBy(x => x.SortOrder)
+                    .Select(x => new
+                    {
+                        Row = x,
+                        Code = x.PcsParameterCatalog?.PcsCode ?? "",
+                        Name = x.PcsParameterCatalog?.UserFriendlyName ?? x.PcsParameterCatalog?.OfficialParameterName ?? ""
+                    })
+                    .ToList();
+            }
+
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>PCS</th><th>Parameter</th><th>Freq</th><th>Sample Type</th><th>Months</th><th>Daily Max</th><th>Required</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in rows)
+                    {
+                        <tr>
+                            <td>@item.Code</td>
+                            <td>@item.Name</td>
+                            <td>@item.Row.MeasurementFrequency</td>
+                            <td>@item.Row.SampleType</td>
+                            <td>@item.Row.ScheduledMonthsCsv</td>
+                            <td>@item.Row.DailyMaximumLimit</td>
+                            <td>@(item.Row.IsRequired ? "Yes" : "No")</td>
+                            <td>
+                                <form asp-action="DeletePermitTemplateParameter" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@item.Row.Id" />
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            <h6 class="mb-2">Add Template Parameter</h6>
+            <form asp-action="AddPermitTemplateParameter" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="facilityPermitId" value="@permit.Id" />
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">PCS</label>
+                        <select class="form-select form-select-sm" name="pcsParameterCatalogId" required>
+                            <option value="">Select</option>
+                            @foreach (var p in pcsCatalog)
+                            {
+                                <option value="@p.Id">@p.PcsCode - @p.UserFriendlyName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-1"><label class="form-label">Sort</label><input type="number" name="sortOrder" class="form-control form-control-sm" value="0" /></div>
+                    <div class="col-md-2">
+                        <label class="form-label">Frequency</label>
+                        <select class="form-select form-select-sm" name="measurementFrequency">
+                            @foreach (var f in (MeasurementFrequencyEnum[])ViewBag.Frequencies) { <option value="@f">@f</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Sample Type</label>
+                        <select class="form-select form-select-sm" name="sampleType">
+                            @foreach (var s in (SampleTypeEnum[])ViewBag.SampleTypes) { <option value="@s">@s</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-2"><label class="form-label">Months CSV</label><input name="scheduledMonthsCsv" class="form-control form-control-sm" placeholder="4,8,11" /></div>
+                    <div class="col-md-1"><label class="form-label">Daily Max</label><input name="dailyMaximumLimit" type="number" step="0.000001" class="form-control form-control-sm" /></div>
+                    <div class="col-md-1 form-check mt-4"><input class="form-check-input" type="checkbox" name="isRequired" value="true" /><label class="form-check-label">Required</label></div>
+                    <div class="col-12">
+                        <input type="hidden" name="reportTypes" value="@PermitTemplateReportTypeEnum.Ndmr" />
+                        <button class="btn btn-sm btn-primary" type="submit">Add</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<div class="accordion mb-4" id="archivedPermitsAccordion">
+    <div class="accordion-item border rounded-3">
+        <h2 class="accordion-header" id="archivedPermitsHeading">
+            <button class="accordion-button collapsed d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#archivedPermitsSection" aria-expanded="false" aria-controls="archivedPermitsSection">
+                <span class="fw-semibold">Archived Permit Versions</span>
+                <span class="ms-2 badge bg-secondary">@archivedPermits.Count</span>
+            </button>
+        </h2>
+        <div id="archivedPermitsSection" class="accordion-collapse collapse" aria-labelledby="archivedPermitsHeading" data-bs-parent="#archivedPermitsAccordion">
+            <div class="accordion-body">
+            @if (!archivedPermits.Any())
+            {
+                <div class="text-muted">No archived permit versions.</div>
+            }
+            else
+            {
+                @foreach (var permit in archivedPermits)
+                {
+                    <div class="card mb-3 border-secondary-subtle">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="mb-1">@permit.PermitNumber v@permit.PermitVersion</h5>
+                                    <div class="text-muted small">@permit.EffectiveStartDate.ToString("yyyy-MM-dd") to @(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? "open-ended")</div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
+                                    {
+                                        <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)">PDF</a>
+                                    }
+                                    <form asp-action="FacilityPermitUnarchive" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="permitId" value="@permit.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Unarchive</button>
+                                    </form>
+                                    <form asp-action="FacilityPermitDelete" method="post" onsubmit="return confirm('Delete this archived permit version? This action hides it from the system.');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="permitId" value="@permit.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                    <span class="badge text-bg-secondary">Archived</span>
+                                </div>
+                            </div>
+
+                            @{
+                                var rows = permit.TemplateParameters
+                                    .OrderBy(x => x.SortOrder)
+                                    .Select(x => new
+                                    {
+                                        Row = x,
+                                        Code = x.PcsParameterCatalog?.PcsCode ?? "",
+                                        Name = x.PcsParameterCatalog?.UserFriendlyName ?? x.PcsParameterCatalog?.OfficialParameterName ?? ""
+                                    })
+                                    .ToList();
+                            }
+
+                            <div class="table-responsive mb-0">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>PCS</th><th>Parameter</th><th>Freq</th><th>Sample Type</th><th>Months</th><th>Daily Max</th><th>Required</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach (var item in rows)
+                                    {
+                                        <tr>
+                                            <td>@item.Code</td>
+                                            <td>@item.Name</td>
+                                            <td>@item.Row.MeasurementFrequency</td>
+                                            <td>@item.Row.SampleType</td>
+                                            <td>@item.Row.ScheduledMonthsCsv</td>
+                                            <td>@item.Row.DailyMaximumLimit</td>
+                                            <td>@(item.Row.IsRequired ? "Yes" : "No")</td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
