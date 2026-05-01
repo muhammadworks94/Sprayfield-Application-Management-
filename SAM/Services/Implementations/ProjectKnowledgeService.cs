@@ -173,8 +173,8 @@ flowchart TD
         return new ProjectSectionViewModel
         {
             Id = "permit-template-glossary",
-            Title = "Permit Template and Attachment A Guide",
-            Intro = "This quick guide explains key terms, what each permit template field means, and how the values are used in daily entry and reporting.",
+            Title = "Permit Template and Attachment A/C Guide",
+            Intro = "This quick guide explains key terms, what each permit template field means, and how Attachment A (wastewater) and Attachment C (groundwater) template rows are used in daily entry and reporting.",
             Cards =
             {
                 new ProjectInfoCardViewModel
@@ -186,7 +186,8 @@ flowchart TD
                         "Permit Number: The regulatory permit identifier issued by the authority (for example WQ0004332).",
                         "Permit Version: Revision/reissue label of the same permit number (for example 4.1). Versions let us keep history when limits or requirements change.",
                         "Permit Effective Dates: Date range that determines which permit version applies to a given report month.",
-                        "Attachment A (Limitations and Monitoring Requirements): Section of permit defining limits, monitoring frequency, and sample type for each parameter."
+                        "Attachment A (Limitations and Monitoring Requirements): Wastewater section defining limits, monitoring frequency, and sample type.",
+                        "Attachment C (Groundwater Monitoring and Limitations): Groundwater section defining monitoring requirements, daily maximums, sample type, and special footnote instructions."
                     }
                 },
                 new ProjectInfoCardViewModel
@@ -195,10 +196,12 @@ flowchart TD
                     Bullets =
                     {
                         "Admin creates a permit version and adds permit template parameter rows from PCS catalog.",
-                        "Each row stores limits and monitoring requirements from Attachment A.",
-                        "When WWChar is opened for a facility/month, system resolves active permit by date and loads that version's template rows.",
+                        "Each row stores limits and monitoring requirements from Attachment A (WW) or Attachment C (GW), based on report section.",
+                        "When WWChar is opened for a facility/month, system resolves active permit by date and loads wastewater template rows.",
+                        "When GW Monitoring Create/Edit is opened for a facility/sample date, system resolves active permit and loads groundwater template rows.",
                         "Operator enters daily values under those rows; SAM stores values tied to the exact permit template row.",
-                        "NDMR export uses the same permit/template context so report output matches configured permit requirements."
+                        "NDMR/GW reporting uses the same permit/template context so output matches configured permit requirements.",
+                        "Per-row notes (permit instructions/footnotes) are shown through an info icon tooltip in admin and monitoring dialogs."
                     }
                 }
             },
@@ -206,7 +209,7 @@ flowchart TD
             {
                 new ProjectTableViewModel
                 {
-                    Caption = "Permit Template Property Dictionary (Attachment A fields)",
+                    Caption = "Permit Template Property Dictionary (Attachment A + C fields)",
                     Headers = { "Property", "Definition", "How SAM Uses It" },
                     Rows =
                     {
@@ -216,10 +219,11 @@ flowchart TD
                         new List<string> { "MonthlyAverageLimit", "Maximum/target monthly average limit from permit.", "Displayed to operators as reference during WWChar entry; supports permit-context review." },
                         new List<string> { "MonthlyGeometricMeanLimit", "Monthly geometric mean limit from permit.", "Displayed in WWChar template grid to guide entry and compliance awareness." },
                         new List<string> { "DailyMinimumLimit", "Permit-required daily minimum threshold.", "Displayed in WWChar template grid as lower-bound reference." },
-                        new List<string> { "DailyMaximumLimit", "Permit-required daily maximum threshold.", "Displayed in admin + WWChar grid; commonly used quick compliance reference." },
-                        new List<string> { "MeasurementFrequency", "How often sampling/measurement must occur (Daily/Weekly/Monthly/ThreeTimesPerYear/etc.).", "Shown in WWChar template rows; helps operators follow monitoring schedule." },
+                        new List<string> { "DailyMaximumLimit", "Permit-required daily maximum threshold.", "Displayed in admin + WW/GW monitoring grids; commonly used quick compliance reference." },
+                        new List<string> { "MeasurementFrequency", "How often sampling/measurement must occur (Daily/Weekly/Monthly/3 x Year/etc.).", "Shown in WWChar/GW template rows and exports using user-friendly labels." },
                         new List<string> { "SampleType", "Required sampling method (Grab/Composite/Recorder/Calculated).", "Shown in WWChar template rows so recorded data matches permit method." },
-                        new List<string> { "ScheduledMonthsCsv", "Optional month numbers for periodic sampling (for example 4,8,11 for Apr/Aug/Nov).", "Used with frequencies like ThreeTimesPerYear to communicate exact sampling months." },
+                        new List<string> { "ScheduledMonthsCsv", "Optional month numbers for periodic sampling (for example 4,8,11 for Apr/Aug/Nov).", "Used with periodic frequencies (for example 3 x Year, Annual). Not needed for Monthly." },
+                        new List<string> { "Notes", "Optional permit instructions/footnote text for that row.", "Shown in info-icon tooltip in Permit Versions and WW/GW monitoring template dialogs." },
                         new List<string> { "SortOrder", "Display order of rows in template.", "Controls row order in admin and WWChar dynamic grid." },
                         new List<string> { "IsRequired", "Marks parameter as required for template workflow.", "Highlights required rows and supports rule-driven report readiness checks." },
                         new List<string> { "ReportTypes", "Flags that indicate which report flows this row applies to (NDMR/NVMR/GW59/GW59A).", "Filters which rows load into each operational/report workflow." }
@@ -228,10 +232,12 @@ flowchart TD
                 new ProjectTableViewModel
                 {
                     Caption = "Common Examples",
-                    Headers = { "Attachment A Text", "Stored Value in SAM", "Notes" },
+                    Headers = { "Permit Text", "Stored Value in SAM", "Notes" },
                     Rows =
                     {
-                        new List<string> { "3 x Year (Apr, Aug, Nov)", "MeasurementFrequency = ThreeTimesPerYear, ScheduledMonthsCsv = 4,8,11", "Frequency + month list together preserve permit intent." },
+                        new List<string> { "3 x Year (Apr, Aug, Nov)", "MeasurementFrequency = ThreeTimesPerYear, ScheduledMonthsCsv = 4,8,11", "Display label is \"3 x Year\" while enum storage stays ThreeTimesPerYear." },
+                        new List<string> { "Monthly", "MeasurementFrequency = Monthly, ScheduledMonthsCsv = null", "Monthly means every month; Months CSV is not required." },
+                        new List<string> { "Attachment C footnote instruction", "Notes = [instruction text]", "Displayed in info-icon tooltip in admin + GW monitoring dialog." },
                         new List<string> { "Sample Type: Grab", "SampleType = Grab", "Shown in WWChar row for operator guidance." },
                         new List<string> { "Daily Max limit provided", "DailyMaximumLimit = [permit value]", "Displayed as read-only reference in WWChar template grid." }
                     }
@@ -245,10 +251,10 @@ flowchart TD
                     Steps =
                     {
                         "Create/verify permit version with correct permit number, version, and effective dates.",
-                        "Add all Attachment A PCS rows under that permit version.",
-                        "For each row, set limits, frequency, sample type, and months CSV where needed.",
+                        "Add Attachment A (wastewater) and Attachment C (groundwater) PCS rows under that permit version.",
+                        "For each row, set limits, frequency, sample type, notes, and months CSV only when periodic schedule applies.",
                         "Confirm required Flow row (PCS 50050) exists for NDMR flow.",
-                        "Open WWChar for target month/year and verify expected rows/limits appear."
+                        "Open WWChar (for month/year) and GW Monitoring (for sample date) to verify expected rows/limits/notes appear."
                     }
                 }
             }

@@ -234,30 +234,28 @@ public partial class SystemAdminController
         SampleTypeEnum sampleType,
         MeasurementFrequencyEnum measurementFrequency,
         string? scheduledMonthsCsv,
+        string? notes,
         bool isRequired,
         int sortOrder,
-        List<PermitTemplateReportTypeEnum>? reportTypes)
+        PermitTemplateReportTypeEnum reportType = PermitTemplateReportTypeEnum.Ndmr)
     {
         var permit = await _context.FacilityPermits.Include(p => p.Facility).FirstOrDefaultAsync(p => p.Id == facilityPermitId);
         if (permit == null) return NotFound();
         await EnsureCompanyAccessAsync(permit.CompanyId);
 
+        var selectedReportType = reportType == PermitTemplateReportTypeEnum.None
+            ? PermitTemplateReportTypeEnum.Ndmr
+            : reportType;
+
         var exists = await _context.FacilityPermitTemplateParameters
-            .AnyAsync(x => x.FacilityPermitId == facilityPermitId && x.PcsParameterCatalogId == pcsParameterCatalogId);
+            .AnyAsync(x =>
+                x.FacilityPermitId == facilityPermitId &&
+                x.PcsParameterCatalogId == pcsParameterCatalogId &&
+                x.ReportTypes == selectedReportType);
         if (exists)
         {
-            TempData["ErrorMessage"] = "PCS code already exists in this permit template.";
+            TempData["ErrorMessage"] = "PCS code already exists in this permit template section.";
             return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
-        }
-
-        var flags = PermitTemplateReportTypeEnum.None;
-        foreach (var rt in reportTypes ?? new())
-        {
-            flags |= rt;
-        }
-        if (flags == PermitTemplateReportTypeEnum.None)
-        {
-            flags = PermitTemplateReportTypeEnum.Ndmr;
         }
 
         _context.FacilityPermitTemplateParameters.Add(new FacilityPermitTemplateParameter
@@ -272,13 +270,70 @@ public partial class SystemAdminController
             SampleType = sampleType,
             MeasurementFrequency = measurementFrequency,
             ScheduledMonthsCsv = string.IsNullOrWhiteSpace(scheduledMonthsCsv) ? null : scheduledMonthsCsv,
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
             SortOrder = sortOrder,
             IsRequired = isRequired,
-            ReportTypes = flags
+            ReportTypes = selectedReportType
         });
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Permit template parameter added.";
         return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> UpdatePermitTemplateParameter(
+        Guid id,
+        decimal? monthlyAverageLimit,
+        decimal? monthlyGeometricMeanLimit,
+        decimal? dailyMinimumLimit,
+        decimal? dailyMaximumLimit,
+        SampleTypeEnum sampleType,
+        MeasurementFrequencyEnum measurementFrequency,
+        string? scheduledMonthsCsv,
+        string? notes,
+        bool isRequired,
+        int sortOrder,
+        PermitTemplateReportTypeEnum reportType = PermitTemplateReportTypeEnum.Ndmr)
+    {
+        var row = await _context.FacilityPermitTemplateParameters
+            .Include(x => x.FacilityPermit)
+            .FirstOrDefaultAsync(x => x.Id == id);
+        if (row == null) return NotFound();
+        await EnsureCompanyAccessAsync(row.CompanyId);
+
+        var selectedReportType = reportType == PermitTemplateReportTypeEnum.None
+            ? PermitTemplateReportTypeEnum.Ndmr
+            : reportType;
+
+        var duplicate = await _context.FacilityPermitTemplateParameters
+            .AnyAsync(x =>
+                x.Id != row.Id &&
+                x.FacilityPermitId == row.FacilityPermitId &&
+                x.PcsParameterCatalogId == row.PcsParameterCatalogId &&
+                x.ReportTypes == selectedReportType);
+        if (duplicate)
+        {
+            TempData["ErrorMessage"] = "A template row with the same PCS code already exists in the selected section.";
+            return RedirectToAction(nameof(FacilityPermits), new { facilityId = row.FacilityPermit!.FacilityId });
+        }
+
+        row.MonthlyAverageLimit = monthlyAverageLimit;
+        row.MonthlyGeometricMeanLimit = monthlyGeometricMeanLimit;
+        row.DailyMinimumLimit = dailyMinimumLimit;
+        row.DailyMaximumLimit = dailyMaximumLimit;
+        row.SampleType = sampleType;
+        row.MeasurementFrequency = measurementFrequency;
+        row.ScheduledMonthsCsv = string.IsNullOrWhiteSpace(scheduledMonthsCsv) ? null : scheduledMonthsCsv;
+        row.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        row.SortOrder = sortOrder;
+        row.IsRequired = isRequired;
+        row.ReportTypes = selectedReportType;
+
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Permit template parameter updated.";
+        return RedirectToAction(nameof(FacilityPermits), new { facilityId = row.FacilityPermit!.FacilityId });
     }
 
     [HttpPost]

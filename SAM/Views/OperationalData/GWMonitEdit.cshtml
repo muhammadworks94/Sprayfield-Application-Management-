@@ -17,6 +17,7 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" asp-for="Id" />
                     <input type="hidden" asp-for="CompanyId" />
+                    <input type="hidden" asp-for="FacilityPermitId" />
                     
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
@@ -49,7 +50,56 @@
                                     <span asp-validation-for="SampleDate" class="text-danger"></span>
                                 </div>
                             </div>
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label class="form-label">Resolved Permit Version</label>
+                                    <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.FacilityPermitDisplay) ? "No active permit for selected date" : Model.FacilityPermitDisplay)" readonly />
+                                </div>
+                            </div>
                         </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Groundwater Permit Template Parameters (Attachment C)</div>
+                        @if (Model.TemplateParameters.Any())
+                        {
+                            <div class="table-responsive fixed-height-table-wrapper mb-3">
+                                <table class="table table-bordered table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>PCS</th>
+                                            <th>Parameter</th>
+                                            <th>Units</th>
+                                            <th>M. Frequency</th>
+                                            <th>Sample Type</th>
+                                            <th>Months</th>
+                                            <th>Daily Max</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    @for (int i = 0; i < Model.TemplateParameters.Count; i++)
+                                    {
+                                        <tr>
+                                            <td>@Model.TemplateParameters[i].PcsCode</td>
+                                            <td>
+                                                @Model.TemplateParameters[i].ParameterName
+                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[i].Notes) ? "No notes." : Model.TemplateParameters[i].Notes)"></i>
+                                            </td>
+                                            <td>@Model.TemplateParameters[i].Units</td>
+                                            <td>@Model.TemplateParameters[i].MeasurementFrequency</td>
+                                            <td>@Model.TemplateParameters[i].SampleType</td>
+                                            <td>@(string.IsNullOrWhiteSpace(Model.TemplateParameters[i].ScheduledMonthsCsv) ? "-" : Model.TemplateParameters[i].ScheduledMonthsCsv)</td>
+                                            <td>@(Model.TemplateParameters[i].DailyMaximumLimit?.ToString("0.######") ?? "-")</td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning">@(Model.TemplateParametersStatusMessage ?? "No groundwater permit template parameters found for the selected facility/date.")</div>
+                        }
                     </div>
 
                     <div class="form-section">
@@ -363,6 +413,10 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+
         // Update monitoring wells when facility changes
         document.getElementById('facilitySelect')?.addEventListener('change', function() {
             var facilityId = this.value;

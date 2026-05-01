@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SAM.Data;
 using SAM.Domain.Entities;
+using SAM.Domain.Extensions;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
@@ -334,7 +335,7 @@ public class NDMRService : INDMRService
             samplingMetadataByParameterCode[code] = new SamplingMetadata
             {
                 SamplingType = row.SampleType.ToString(),
-                SampleFrequency = row.MeasurementFrequency.ToString()
+                SampleFrequency = row.MeasurementFrequency.ToDisplayLabel()
             };
         }
 

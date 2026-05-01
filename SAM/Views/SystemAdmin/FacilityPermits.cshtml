@@ -1,5 +1,6 @@
 @using SAM.Domain.Entities
 @using SAM.Domain.Enums
+@using SAM.Domain.Extensions
 @{
     ViewData["Title"] = "Facility Permit Versions";
     var facility = ViewBag.Facility as Facility;
@@ -8,13 +9,20 @@
     var archivedPermits = permits.Where(p => !p.IsActive).OrderByDescending(p => p.EffectiveStartDate).ToList();
     var pcsCatalog = ViewBag.PcsCatalog as List<PcsParameterCatalog> ?? new();
     string Fmt(decimal? value) => value.HasValue ? value.Value.ToString("0.######") : "-";
+    string NotesTitle(string? notes) => string.IsNullOrWhiteSpace(notes) ? "No notes." : notes;
+}
+
+@functions {
+    private static string ReportTypeLabel(PermitTemplateReportTypeEnum reportType)
+    {
+        if ((reportType & PermitTemplateReportTypeEnum.Gw59A) != 0) return "Groundwater (GW59A)";
+        if ((reportType & PermitTemplateReportTypeEnum.Gw59) != 0) return "Groundwater (GW59)";
+        return "Wastewater (NDMR)";
+    }
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        @* <h3 class="mb-1">Permit Versions</h3> *@
-        <p class="text-muted mb-0">@facility?.Name</p>
-    </div>
+    <div><p class="text-muted mb-0">@facility?.Name</p></div>
     <div class="d-flex gap-2">
         <form asp-action="ImportPcsCatalogFromTsv" method="post">
             @Html.AntiForgeryToken()
@@ -44,257 +52,379 @@
     </div>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0">Active Permit Versions</h5>
-    <span class="badge bg-primary-subtle text-primary-emphasis">@activePermits.Count</span>
-</div>
+<ul class="nav nav-tabs mb-3" id="permitTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active-pane" type="button" role="tab" aria-controls="active-pane" aria-selected="true">
+            Active Permits <span class="badge bg-primary-subtle text-primary-emphasis ms-1">@activePermits.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="archived-tab" data-bs-toggle="tab" data-bs-target="#archived-pane" type="button" role="tab" aria-controls="archived-pane" aria-selected="false">
+            Archived Permits <span class="badge bg-secondary ms-1">@archivedPermits.Count</span>
+        </button>
+    </li>
+</ul>
 
-@foreach (var permit in activePermits)
-{
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <h5 class="mb-1">@permit.PermitNumber v@permit.PermitVersion</h5>
-                    <div class="text-muted small">@permit.EffectiveStartDate.ToString("yyyy-MM-dd") to @(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? "open-ended")</div>
-                </div>
-                <div class="d-flex gap-2">
-                    @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
-                    {
-                        <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)">PDF</a>
-                    }
-                    @if (permit.IsActive)
-                    {
-                        <form asp-action="FacilityPermitArchive" method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="permitId" value="@permit.Id" />
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Archive</button>
-                        </form>
-                    }
-                </div>
-            </div>
-
-            @{
+<div class="tab-content" id="permitTabsContent">
+    <div class="tab-pane fade show active" id="active-pane" role="tabpanel" aria-labelledby="active-tab">
+        @if (!activePermits.Any())
+        {
+            <div class="alert alert-info">No active permit versions.</div>
+        }
+        else
+        {
+            @for (var idx = 0; idx < activePermits.Count; idx++)
+            {
+                var permit = activePermits[idx];
                 var rows = permit.TemplateParameters
                     .OrderBy(x => x.SortOrder)
                     .Select(x => new
                     {
                         Row = x,
                         Code = x.PcsParameterCatalog?.PcsCode ?? "",
-                        Name = x.PcsParameterCatalog?.UserFriendlyName ?? x.PcsParameterCatalog?.OfficialParameterName ?? ""
+                        Name = x.ParameterDisplayOverride ?? x.PcsParameterCatalog?.UserFriendlyName ?? x.PcsParameterCatalog?.OfficialParameterName ?? "",
+                        Units = x.UnitsOverride ?? x.PcsParameterCatalog?.AcceptedUnits ?? ""
                     })
                     .ToList();
-            }
+                var wwRows = rows.Where(r => (r.Row.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0).ToList();
+                var gwRows = rows.Where(r => (r.Row.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0 || (r.Row.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0).ToList();
+                var wwCollapseId = $"ww_{permit.Id:N}";
+                var gwCollapseId = $"gw_{permit.Id:N}";
+                var addCollapseId = $"add_{permit.Id:N}";
 
-            <div class="table-responsive mb-3">
-                <table class="table table-sm table-bordered align-middle">
-                    <thead>
-                        <tr>
-                            <th>PCS</th><th>Parameter</th><th>Freq</th><th>Sample Type</th><th>Months</th><th>Monthly Avg</th><th>Monthly Geo Mean</th><th>Daily Min</th><th>Daily Max</th><th>Required</th><th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var item in rows)
-                    {
-                        <tr>
-                            <td>@item.Code</td>
-                            <td>@item.Name</td>
-                            <td>@item.Row.MeasurementFrequency</td>
-                            <td>@item.Row.SampleType</td>
-                            <td>@(string.IsNullOrWhiteSpace(item.Row.ScheduledMonthsCsv) ? "-" : item.Row.ScheduledMonthsCsv)</td>
-                            <td>@Fmt(item.Row.MonthlyAverageLimit)</td>
-                            <td>@Fmt(item.Row.MonthlyGeometricMeanLimit)</td>
-                            <td>@Fmt(item.Row.DailyMinimumLimit)</td>
-                            <td>@Fmt(item.Row.DailyMaximumLimit)</td>
-                            <td>
-                                @if (item.Row.IsRequired)
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="mb-1">@permit.PermitNumber v@permit.PermitVersion</h5>
+                                <div class="text-muted small">@permit.EffectiveStartDate.ToString("yyyy-MM-dd") to @(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? "open-ended")</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
                                 {
-                                    <span class="badge text-bg-success">Required</span>
+                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)">PDF</a>
                                 }
-                                else
-                                {
-                                    <span class="badge text-bg-secondary">Optional</span>
-                                }
-                            </td>
-                            <td>
-                                <form asp-action="DeletePermitTemplateParameter" method="post">
+                                <form asp-action="FacilityPermitArchive" method="post">
                                     @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@item.Row.Id" />
-                                    <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                                    <input type="hidden" name="permitId" value="@permit.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Archive</button>
                                 </form>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-
-            <h6 class="mb-1">Add Template Parameter</h6>
-            <p class="text-muted small mb-3">Map one Attachment A parameter to this permit version. Limits are optional when not specified in permit text.</p>
-            <form asp-action="AddPermitTemplateParameter" method="post">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="facilityPermitId" value="@permit.Id" />
-                <div class="row g-3 align-items-end">
-                    <div class="col-lg-4 col-md-6">
-                        <label class="form-label">PCS</label>
-                        <select class="form-select" name="pcsParameterCatalogId" required>
-                            <option value="">Select PCS code and parameter</option>
-                            @foreach (var p in pcsCatalog)
-                            {
-                                <option value="@p.Id">@p.PcsCode - @p.UserFriendlyName</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-lg-2 col-md-3">
-                        <label class="form-label">Sort Order</label>
-                        <input type="number" name="sortOrder" class="form-control" value="0" />
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <label class="form-label">Frequency</label>
-                        <select class="form-select" name="measurementFrequency">
-                            @foreach (var f in (MeasurementFrequencyEnum[])ViewBag.Frequencies)
-                            {
-                                if (f == MeasurementFrequencyEnum.Unspecified) { continue; }
-                                <option value="@f" selected="@(f == MeasurementFrequencyEnum.Monthly)">@f</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <label class="form-label">Sample Type</label>
-                        <select class="form-select" name="sampleType">
-                            @foreach (var s in (SampleTypeEnum[])ViewBag.SampleTypes)
-                            {
-                                if (s == SampleTypeEnum.Unspecified) { continue; }
-                                <option value="@s" selected="@(s == SampleTypeEnum.Grab)">@s</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <label class="form-label">Months (CSV)</label>
-                        <input name="scheduledMonthsCsv" class="form-control" placeholder="4,8,11" />
-                    </div>
-                    <div class="col-lg-2 col-md-3">
-                        <label class="form-label">Monthly Avg</label>
-                        <input name="monthlyAverageLimit" type="number" step="0.000001" class="form-control" />
-                    </div>
-                    <div class="col-lg-2 col-md-3">
-                        <label class="form-label">Monthly Geo Mean</label>
-                        <input name="monthlyGeometricMeanLimit" type="number" step="0.000001" class="form-control" />
-                    </div>
-                    <div class="col-lg-2 col-md-3">
-                        <label class="form-label">Daily Min</label>
-                        <input name="dailyMinimumLimit" type="number" step="0.000001" class="form-control" />
-                    </div>
-                    <div class="col-lg-2 col-md-3">
-                        <label class="form-label">Daily Max</label>
-                        <input name="dailyMaximumLimit" type="number" step="0.000001" class="form-control" />
-                    </div>
-                    <div class="col-12">
-                        <div class="form-text">Use months only for periodic schedules like 3x/year (example: 4,8,11).</div>
-                    </div>
-                    <div class="col-lg-2 col-md-3">
-                        <div class="form-check pt-2">
-                            <input class="form-check-input" type="checkbox" name="isRequired" value="true" id="required_@permit.Id" />
-                            <label class="form-check-label" for="required_@permit.Id">Required parameter</label>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-12 d-flex gap-2 align-items-center">
-                        <input type="hidden" name="reportTypes" value="@PermitTemplateReportTypeEnum.Ndmr" />
-                        <button class="btn btn-primary" type="submit">Add Template Parameter</button>
-                        <span class="text-muted small">This row will be used in WWChar and NDMR template mapping.</span>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-}
 
-<div class="accordion mb-4" id="archivedPermitsAccordion">
-    <div class="accordion-item border rounded-3">
-        <h2 class="accordion-header" id="archivedPermitsHeading">
-            <button class="accordion-button collapsed d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#archivedPermitsSection" aria-expanded="false" aria-controls="archivedPermitsSection">
-                <span class="fw-semibold">Archived Permit Versions</span>
-                <span class="ms-2 badge bg-secondary">@archivedPermits.Count</span>
-            </button>
-        </h2>
-        <div id="archivedPermitsSection" class="accordion-collapse collapse" aria-labelledby="archivedPermitsHeading" data-bs-parent="#archivedPermitsAccordion">
-            <div class="accordion-body">
-            @if (!archivedPermits.Any())
-            {
-                <div class="text-muted">No archived permit versions.</div>
-            }
-            else
-            {
-                @foreach (var permit in archivedPermits)
-                {
-                    <div class="card mb-3 border-secondary-subtle">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div>
-                                    <h5 class="mb-1">@permit.PermitNumber v@permit.PermitVersion</h5>
-                                    <div class="text-muted small">@permit.EffectiveStartDate.ToString("yyyy-MM-dd") to @(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? "open-ended")</div>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
-                                    {
-                                        <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)">PDF</a>
-                                    }
-                                    <form asp-action="FacilityPermitUnarchive" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="permitId" value="@permit.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-success">Unarchive</button>
-                                    </form>
-                                    <form asp-action="FacilityPermitDelete" method="post" onsubmit="return confirm('Delete this archived permit version? This action hides it from the system.');">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="permitId" value="@permit.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </form>
-                                    <span class="badge text-bg-secondary">Archived</span>
+                        <div class="accordion" id="permitAccordion_@permit.Id">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading_@wwCollapseId">
+                                    <button class="accordion-button @(idx == 0 ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#@wwCollapseId" aria-expanded="@(idx == 0 ? "true" : "false")" aria-controls="@wwCollapseId">
+                                        Wastewater Monitoring (Attachment A) (@wwRows.Count)
+                                    </button>
+                                </h2>
+                                <div id="@wwCollapseId" class="accordion-collapse collapse @(idx == 0 ? "show" : "")" aria-labelledby="heading_@wwCollapseId" data-bs-parent="#permitAccordion_@permit.Id">
+                                    <div class="accordion-body template-section">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered align-middle">
+                                                <thead>
+                                                    <tr>
+                                                        <th>PCS</th><th>Parameter</th><th>Units</th><th>M. Frequency</th><th>Sample Type</th><th>Months</th><th>Monthly Avg</th><th>Monthly Geo Mean</th><th>Daily Min</th><th>Daily Max</th><th>Required</th><th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @if (!wwRows.Any())
+                                                    {
+                                                        <tr><td colspan="12" class="text-muted text-center">No wastewater rows configured.</td></tr>
+                                                    }
+                                                    @foreach (var item in wwRows)
+                                                    {
+                                                        var editId = $"edit_{item.Row.Id:N}";
+                                                        <tr>
+                                                            <td>@item.Code</td>
+                                                            <td>
+                                                                @item.Name
+                                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@NotesTitle(item.Row.Notes)"></i>
+                                                            </td>
+                                                            <td>@item.Units</td>
+                                                            <td>@item.Row.MeasurementFrequency.ToDisplayLabel()</td>
+                                                            <td>@item.Row.SampleType</td>
+                                                            <td>@(string.IsNullOrWhiteSpace(item.Row.ScheduledMonthsCsv) ? "-" : item.Row.ScheduledMonthsCsv)</td>
+                                                            <td>@Fmt(item.Row.MonthlyAverageLimit)</td>
+                                                            <td>@Fmt(item.Row.MonthlyGeometricMeanLimit)</td>
+                                                            <td>@Fmt(item.Row.DailyMinimumLimit)</td>
+                                                            <td>@Fmt(item.Row.DailyMaximumLimit)</td>
+                                                            <td>@(item.Row.IsRequired ? "Required" : "Optional")</td>
+                                                            <td class="d-flex gap-1">
+                                                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#@editId">Edit</button>
+                                                                <form asp-action="DeletePermitTemplateParameter" method="post">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <input type="hidden" name="id" value="@item.Row.Id" />
+                                                                    <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                        <tr class="collapse inline-edit-collapse" id="@editId">
+                                                            <td colspan="12">
+                                                                <form asp-action="UpdatePermitTemplateParameter" method="post" class="row g-2 align-items-end">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <input type="hidden" name="id" value="@item.Row.Id" />
+                                                                    <div class="col-md-2"><label class="form-label">Sort Order</label><input class="form-control form-control-sm" type="number" name="sortOrder" value="@item.Row.SortOrder" /></div>
+                                                                    <div class="col-md-2"><label class="form-label">M. Frequency</label><select class="form-select form-select-sm frequency-select" name="measurementFrequency">@foreach (MeasurementFrequencyEnum f in ViewBag.Frequencies){ if(f==MeasurementFrequencyEnum.Unspecified){continue;}<option value="@f" selected="@(item.Row.MeasurementFrequency==f)">@f.ToDisplayLabel()</option>}</select></div>
+                                                                    <div class="col-md-2"><label class="form-label">Sample Type</label><select class="form-select form-select-sm" name="sampleType">@foreach (SampleTypeEnum s in ViewBag.SampleTypes){ if(s==SampleTypeEnum.Unspecified){continue;}<option value="@s" selected="@(item.Row.SampleType==s)">@s</option>}</select></div>
+                                                                    <div class="col-md-2"><label class="form-label">Months CSV</label><input class="form-control form-control-sm months-csv-input" name="scheduledMonthsCsv" value="@item.Row.ScheduledMonthsCsv" /></div>
+                                                                    <div class="col-md-2"><label class="form-label">Monthly Avg</label><input class="form-control form-control-sm" type="number" step="0.000001" name="monthlyAverageLimit" value="@item.Row.MonthlyAverageLimit" /></div>
+                                                                    <div class="col-md-2"><label class="form-label">Monthly Geo</label><input class="form-control form-control-sm" type="number" step="0.000001" name="monthlyGeometricMeanLimit" value="@item.Row.MonthlyGeometricMeanLimit" /></div>
+                                                                    <div class="col-md-2"><label class="form-label">Daily Min</label><input class="form-control form-control-sm" type="number" step="0.000001" name="dailyMinimumLimit" value="@item.Row.DailyMinimumLimit" /></div>
+                                                                    <div class="col-md-2"><label class="form-label">Daily Max</label><input class="form-control form-control-sm" type="number" step="0.000001" name="dailyMaximumLimit" value="@item.Row.DailyMaximumLimit" /></div>
+                                                                    <div class="col-md-3"><label class="form-label">Section</label><select class="form-select form-select-sm" name="reportType"><option value="@PermitTemplateReportTypeEnum.Ndmr" selected="@(item.Row.ReportTypes==PermitTemplateReportTypeEnum.Ndmr)">Wastewater (NDMR)</option><option value="@PermitTemplateReportTypeEnum.Gw59" selected="@(item.Row.ReportTypes==PermitTemplateReportTypeEnum.Gw59)">Groundwater (GW59)</option><option value="@PermitTemplateReportTypeEnum.Gw59A" selected="@(item.Row.ReportTypes==PermitTemplateReportTypeEnum.Gw59A)">Groundwater (GW59A)</option></select></div>
+                                                                    <div class="col-md-3"><label class="form-label">Notes</label><input class="form-control form-control-sm" name="notes" value="@item.Row.Notes" /></div>
+                                                                    <div class="col-md-2 form-check mt-4"><input class="form-check-input" id="req_@item.Row.Id" type="checkbox" name="isRequired" value="true" checked="@item.Row.IsRequired" /><label class="form-check-label" for="req_@item.Row.Id">Required</label></div>
+                                                                    <div class="col-12 d-flex gap-2"><button class="btn btn-sm btn-primary" type="submit">Save</button><button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#@editId">Cancel</button></div>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            @{
-                                var rows = permit.TemplateParameters
-                                    .OrderBy(x => x.SortOrder)
-                                    .Select(x => new
-                                    {
-                                        Row = x,
-                                        Code = x.PcsParameterCatalog?.PcsCode ?? "",
-                                        Name = x.PcsParameterCatalog?.UserFriendlyName ?? x.PcsParameterCatalog?.OfficialParameterName ?? ""
-                                    })
-                                    .ToList();
-                            }
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading_@gwCollapseId">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@gwCollapseId" aria-expanded="false" aria-controls="@gwCollapseId">
+                                        Groundwater Monitoring (Attachment C) (@gwRows.Count)
+                                    </button>
+                                </h2>
+                                <div id="@gwCollapseId" class="accordion-collapse collapse" aria-labelledby="heading_@gwCollapseId" data-bs-parent="#permitAccordion_@permit.Id">
+                                    <div class="accordion-body template-section">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered align-middle">
+                                                <thead>
+                                                    <tr>
+                                                        <th>PCS</th><th>Parameter</th><th>Units</th><th>M. Frequency</th><th>Sample Type</th><th>Months</th><th>Daily Max</th><th>Required</th><th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @if (!gwRows.Any())
+                                                    {
+                                                        <tr><td colspan="9" class="text-muted text-center">No groundwater rows configured.</td></tr>
+                                                    }
+                                                    @foreach (var item in gwRows)
+                                                    {
+                                                        var editId = $"edit_{item.Row.Id:N}";
+                                                        <tr>
+                                                            <td>@item.Code</td>
+                                                            <td>
+                                                                @item.Name
+                                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@NotesTitle(item.Row.Notes)"></i>
+                                                            </td>
+                                                            <td>@item.Units</td>
+                                                            <td>@item.Row.MeasurementFrequency.ToDisplayLabel()</td>
+                                                            <td>@item.Row.SampleType</td>
+                                                            <td>@(string.IsNullOrWhiteSpace(item.Row.ScheduledMonthsCsv) ? "-" : item.Row.ScheduledMonthsCsv)</td>
+                                                            <td>@Fmt(item.Row.DailyMaximumLimit)</td>
+                                                            <td>@(item.Row.IsRequired ? "Required" : "Optional")</td>
+                                                            <td class="d-flex gap-1">
+                                                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#@editId">Edit</button>
+                                                                <form asp-action="DeletePermitTemplateParameter" method="post">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <input type="hidden" name="id" value="@item.Row.Id" />
+                                                                    <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                        <tr class="collapse inline-edit-collapse" id="@editId">
+                                                            <td colspan="9">
+                                                                <form asp-action="UpdatePermitTemplateParameter" method="post" class="row g-2 align-items-end">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <input type="hidden" name="id" value="@item.Row.Id" />
+                                                                    <div class="col-md-2"><label class="form-label">Sort Order</label><input class="form-control form-control-sm" type="number" name="sortOrder" value="@item.Row.SortOrder" /></div>
+                                                                    <div class="col-md-2"><label class="form-label">M. Frequency</label><select class="form-select form-select-sm frequency-select" name="measurementFrequency">@foreach (MeasurementFrequencyEnum f in ViewBag.Frequencies){ if(f==MeasurementFrequencyEnum.Unspecified){continue;}<option value="@f" selected="@(item.Row.MeasurementFrequency==f)">@f.ToDisplayLabel()</option>}</select></div>
+                                                                    <div class="col-md-2"><label class="form-label">Sample Type</label><select class="form-select form-select-sm" name="sampleType">@foreach (SampleTypeEnum s in ViewBag.SampleTypes){ if(s==SampleTypeEnum.Unspecified){continue;}<option value="@s" selected="@(item.Row.SampleType==s)">@s</option>}</select></div>
+                                                                    <div class="col-md-2"><label class="form-label">Months CSV</label><input class="form-control form-control-sm months-csv-input" name="scheduledMonthsCsv" value="@item.Row.ScheduledMonthsCsv" /></div>
+                                                                    <div class="col-md-2"><label class="form-label">Daily Max</label><input class="form-control form-control-sm" type="number" step="0.000001" name="dailyMaximumLimit" value="@item.Row.DailyMaximumLimit" /></div>
+                                                                    <div class="col-md-2"><label class="form-label">Section</label><select class="form-select form-select-sm" name="reportType"><option value="@PermitTemplateReportTypeEnum.Ndmr" selected="@(item.Row.ReportTypes==PermitTemplateReportTypeEnum.Ndmr)">Wastewater (NDMR)</option><option value="@PermitTemplateReportTypeEnum.Gw59" selected="@(item.Row.ReportTypes==PermitTemplateReportTypeEnum.Gw59)">Groundwater (GW59)</option><option value="@PermitTemplateReportTypeEnum.Gw59A" selected="@(item.Row.ReportTypes==PermitTemplateReportTypeEnum.Gw59A)">Groundwater (GW59A)</option></select></div>
+                                                                    <div class="col-md-4"><label class="form-label">Notes</label><input class="form-control form-control-sm" name="notes" value="@item.Row.Notes" /></div>
+                                                                    <div class="col-md-2 form-check mt-4"><input class="form-check-input" id="gw_req_@item.Row.Id" type="checkbox" name="isRequired" value="true" checked="@item.Row.IsRequired" /><label class="form-check-label" for="gw_req_@item.Row.Id">Required</label></div>
+                                                                    <input type="hidden" name="monthlyAverageLimit" value="@item.Row.MonthlyAverageLimit" />
+                                                                    <input type="hidden" name="monthlyGeometricMeanLimit" value="@item.Row.MonthlyGeometricMeanLimit" />
+                                                                    <input type="hidden" name="dailyMinimumLimit" value="@item.Row.DailyMinimumLimit" />
+                                                                    <div class="col-12 d-flex gap-2"><button class="btn btn-sm btn-primary" type="submit">Save</button><button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#@editId">Cancel</button></div>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <div class="table-responsive mb-0">
-                                <table class="table table-sm table-bordered align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>PCS</th><th>Parameter</th><th>Freq</th><th>Sample Type</th><th>Months</th><th>Monthly Avg</th><th>Monthly Geo Mean</th><th>Daily Min</th><th>Daily Max</th><th>Required</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading_@addCollapseId">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@addCollapseId" aria-expanded="false" aria-controls="@addCollapseId">
+                                        Add Template Parameter
+                                    </button>
+                                </h2>
+                                <div id="@addCollapseId" class="accordion-collapse collapse" aria-labelledby="heading_@addCollapseId" data-bs-parent="#permitAccordion_@permit.Id">
+                                    <div class="accordion-body">
+                                        <form asp-action="AddPermitTemplateParameter" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="facilityPermitId" value="@permit.Id" />
+                                            <div class="row g-3 align-items-end">
+                                                <div class="col-lg-4 col-md-6">
+                                                    <label class="form-label">PCS</label>
+                                                    <select class="form-select" name="pcsParameterCatalogId" required>
+                                                        <option value="">Select PCS code and parameter</option>
+                                                        @foreach (var p in pcsCatalog)
+                                                        {
+                                                            <option value="@p.Id">@p.PcsCode - @p.UserFriendlyName (@p.AcceptedUnits)</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">Section</label><select class="form-select" name="reportType"><option value="@PermitTemplateReportTypeEnum.Ndmr">Wastewater (NDMR)</option><option value="@PermitTemplateReportTypeEnum.Gw59">Groundwater (GW59)</option><option value="@PermitTemplateReportTypeEnum.Gw59A">Groundwater (GW59A)</option></select></div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">Sort Order</label><input type="number" name="sortOrder" class="form-control" value="0" /></div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">M. Frequency</label><select class="form-select frequency-select" name="measurementFrequency">@foreach (MeasurementFrequencyEnum f in ViewBag.Frequencies){ if(f==MeasurementFrequencyEnum.Unspecified){continue;}<option value="@f" selected="@(f==MeasurementFrequencyEnum.Monthly)">@f.ToDisplayLabel()</option>}</select></div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">Sample Type</label><select class="form-select" name="sampleType">@foreach (SampleTypeEnum s in ViewBag.SampleTypes){ if(s==SampleTypeEnum.Unspecified){continue;}<option value="@s" selected="@(s==SampleTypeEnum.Grab)">@s</option>}</select></div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">Months (CSV)</label><input name="scheduledMonthsCsv" class="form-control months-csv-input" placeholder="4,8,11" /></div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">Monthly Avg</label><input name="monthlyAverageLimit" type="number" step="0.000001" class="form-control" /></div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">Monthly Geo Mean</label><input name="monthlyGeometricMeanLimit" type="number" step="0.000001" class="form-control" /></div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">Daily Min</label><input name="dailyMinimumLimit" type="number" step="0.000001" class="form-control" /></div>
+                                                <div class="col-lg-2 col-md-3"><label class="form-label">Daily Max</label><input name="dailyMaximumLimit" type="number" step="0.000001" class="form-control" /></div>
+                                                <div class="col-lg-4 col-md-6"><label class="form-label">Notes</label><input name="notes" class="form-control" placeholder="Special instructions / footnotes" /></div>
+                                                <div class="col-lg-2 col-md-3"><div class="form-check pt-4"><input class="form-check-input" type="checkbox" name="isRequired" value="true" id="required_@permit.Id" /><label class="form-check-label" for="required_@permit.Id">Required</label></div></div>
+                                                <div class="col-12"><div class="form-text">Units are sourced from PCS catalog and shown in table rows.</div></div>
+                                                <div class="col-12"><button class="btn btn-primary" type="submit">Add Template Parameter</button></div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <div class="tab-pane fade" id="archived-pane" role="tabpanel" aria-labelledby="archived-tab">
+        @if (!archivedPermits.Any())
+        {
+            <div class="alert alert-info">No archived permit versions.</div>
+        }
+        else
+        {
+            @foreach (var permit in archivedPermits)
+            {
+                var rows = permit.TemplateParameters.OrderBy(x => x.SortOrder).Select(x => new
+                {
+                    Row = x,
+                    Code = x.PcsParameterCatalog?.PcsCode ?? "",
+                    Name = x.ParameterDisplayOverride ?? x.PcsParameterCatalog?.UserFriendlyName ?? x.PcsParameterCatalog?.OfficialParameterName ?? "",
+                    Units = x.UnitsOverride ?? x.PcsParameterCatalog?.AcceptedUnits ?? ""
+                }).ToList();
+
+                <div class="card mb-3 border-secondary-subtle">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="mb-1">@permit.PermitNumber v@permit.PermitVersion</h5>
+                                <div class="text-muted small">@permit.EffectiveStartDate.ToString("yyyy-MM-dd") to @(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? "open-ended")</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
+                                {
+                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)">PDF</a>
+                                }
+                                <form asp-action="FacilityPermitUnarchive" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="permitId" value="@permit.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Unarchive</button>
+                                </form>
+                                <form asp-action="FacilityPermitDelete" method="post" onsubmit="return confirm('Delete this archived permit version? This action hides it from the system.');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="permitId" value="@permit.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle">
+                                <thead>
+                                    <tr><th>PCS</th><th>Parameter</th><th>Units</th><th>M. Frequency</th><th>Sample Type</th><th>Months</th><th>Daily Max</th><th>Section</th></tr>
+                                </thead>
+                                <tbody>
                                     @foreach (var item in rows)
                                     {
                                         <tr>
                                             <td>@item.Code</td>
-                                            <td>@item.Name</td>
-                                            <td>@item.Row.MeasurementFrequency</td>
+                                            <td>@item.Name <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@NotesTitle(item.Row.Notes)"></i></td>
+                                            <td>@item.Units</td>
+                                            <td>@item.Row.MeasurementFrequency.ToDisplayLabel()</td>
                                             <td>@item.Row.SampleType</td>
                                             <td>@(string.IsNullOrWhiteSpace(item.Row.ScheduledMonthsCsv) ? "-" : item.Row.ScheduledMonthsCsv)</td>
-                                            <td>@Fmt(item.Row.MonthlyAverageLimit)</td>
-                                            <td>@Fmt(item.Row.MonthlyGeometricMeanLimit)</td>
-                                            <td>@Fmt(item.Row.DailyMinimumLimit)</td>
                                             <td>@Fmt(item.Row.DailyMaximumLimit)</td>
-                                            <td>@(item.Row.IsRequired ? "Required" : "Optional")</td>
+                                            <td>@ReportTypeLabel(item.Row.ReportTypes)</td>
                                         </tr>
                                     }
-                                    </tbody>
-                                </table>
-                            </div>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                }
+                </div>
             }
-        </div>
+        }
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+
+        function isPeriodicFrequency(value) {
+            return value === 'ThreeTimesPerYear' || value === 'Annual' || value === 'Unspecified';
+        }
+
+        function syncMonthsCsvState(container) {
+            var frequencySelect = container.querySelector('.frequency-select');
+            var monthsInput = container.querySelector('.months-csv-input');
+            if (!frequencySelect || !monthsInput) return;
+
+            var enableMonths = isPeriodicFrequency(frequencySelect.value);
+            monthsInput.disabled = !enableMonths;
+            monthsInput.classList.toggle('bg-light', !enableMonths);
+            if (!enableMonths) {
+                monthsInput.value = '';
+                monthsInput.placeholder = 'Not needed for this frequency';
+            } else if (!monthsInput.placeholder || monthsInput.placeholder === 'Not needed for this frequency') {
+                monthsInput.placeholder = '4,8,11';
+            }
+        }
+
+        document.querySelectorAll('form').forEach(function (formEl) {
+            if (formEl.querySelector('.frequency-select') && formEl.querySelector('.months-csv-input')) {
+                syncMonthsCsvState(formEl);
+                formEl.querySelector('.frequency-select').addEventListener('change', function () {
+                    syncMonthsCsvState(formEl);
+                });
+            }
+        });
+
+        // Keep inline editing focused: one open row at a time within the same section
+        document.querySelectorAll('.inline-edit-collapse').forEach(function (collapseEl) {
+            collapseEl.addEventListener('show.bs.collapse', function () {
+                var section = collapseEl.closest('.template-section');
+                if (!section) return;
+
+                section.querySelectorAll('.inline-edit-collapse.show').forEach(function (openEl) {
+                    if (openEl !== collapseEl) {
+                        bootstrap.Collapse.getOrCreateInstance(openEl, { toggle: false }).hide();
+                    }
+                });
+            });
+        });
+    </script>
+}

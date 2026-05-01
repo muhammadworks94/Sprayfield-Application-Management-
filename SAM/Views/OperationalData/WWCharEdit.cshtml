@@ -242,7 +242,7 @@
                                 <tr>
                                     <th>PCS</th>
                                     <th>Parameter</th>
-                                    <th>Freq</th>
+                                    <th>M. Frequency</th>
                                     <th>Sample</th>
                                     <th>Months</th>
                                     <th>Monthly Avg</th>
@@ -265,8 +265,12 @@
                                             <input type="hidden" asp-for="TemplateParameters[i].PcsCode" />
                                             <input type="hidden" asp-for="TemplateParameters[i].ParameterName" />
                                             <input type="hidden" asp-for="TemplateParameters[i].Units" />
+                                            <input type="hidden" asp-for="TemplateParameters[i].Notes" />
                                         </td>
-                                        <td>@Model.TemplateParameters[i].ParameterName (@Model.TemplateParameters[i].Units)</td>
+                                        <td>
+                                            @Model.TemplateParameters[i].ParameterName (@Model.TemplateParameters[i].Units)
+                                            <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[i].Notes) ? "No notes." : Model.TemplateParameters[i].Notes)"></i>
+                                        </td>
                                         <td>@Model.TemplateParameters[i].MeasurementFrequency</td>
                                         <td>@Model.TemplateParameters[i].SampleType</td>
                                         <td>@Model.TemplateParameters[i].ScheduledMonthsCsv</td>
@@ -330,5 +334,10 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+    </script>
 }
 

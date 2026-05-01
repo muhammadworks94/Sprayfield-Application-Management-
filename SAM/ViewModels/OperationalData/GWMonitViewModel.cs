@@ -253,6 +253,11 @@ public class GWMonitCreateViewModel
     [StringLength(2000)]
     [Display(Name = "Comments")]
     public string Comments { get; set; } = string.Empty;
+
+    public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
+    public string? TemplateParametersStatusMessage { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
 }
 
 public class GWMonitEditViewModel
@@ -383,6 +388,22 @@ public class GWMonitEditViewModel
     [StringLength(2000)]
     [Display(Name = "Comments")]
     public string Comments { get; set; } = string.Empty;
+
+    public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
+    public string? TemplateParametersStatusMessage { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
 }
 
+public class GWMonitTemplateParameterViewModel
+{
+    public string PcsCode { get; set; } = string.Empty;
+    public string ParameterName { get; set; } = string.Empty;
+    public string Units { get; set; } = string.Empty;
+    public string MeasurementFrequency { get; set; } = string.Empty;
+    public string SampleType { get; set; } = string.Empty;
+    public string? ScheduledMonthsCsv { get; set; }
+    public decimal? DailyMaximumLimit { get; set; }
+    public string? Notes { get; set; }
+}
 

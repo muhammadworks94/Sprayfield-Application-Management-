@@ -15,6 +15,7 @@ public class FacilityPermitTemplateParameterConfiguration : IEntityTypeConfigura
         builder.Property(x => x.ParameterDisplayOverride).HasMaxLength(255);
         builder.Property(x => x.UnitsOverride).HasMaxLength(100);
         builder.Property(x => x.ScheduledMonthsCsv).HasMaxLength(100);
+        builder.Property(x => x.Notes).HasMaxLength(2000);
         builder.Property(x => x.MonthlyAverageLimit).HasPrecision(18, 6);
         builder.Property(x => x.MonthlyGeometricMeanLimit).HasPrecision(18, 6);
         builder.Property(x => x.DailyMinimumLimit).HasPrecision(18, 6);
@@ -26,7 +27,7 @@ public class FacilityPermitTemplateParameterConfiguration : IEntityTypeConfigura
         builder.HasIndex(x => x.CompanyId);
         builder.HasIndex(x => x.FacilityPermitId);
         builder.HasIndex(x => new { x.FacilityPermitId, x.SortOrder });
-        builder.HasIndex(x => new { x.FacilityPermitId, x.PcsParameterCatalogId }).IsUnique();
+        builder.HasIndex(x => new { x.FacilityPermitId, x.PcsParameterCatalogId, x.ReportTypes }).IsUnique();
 
         builder.HasOne(x => x.FacilityPermit)
             .WithMany(p => p.TemplateParameters)
