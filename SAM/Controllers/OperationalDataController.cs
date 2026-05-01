@@ -15,6 +15,7 @@ using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
+using SAM.Services.Helpers;
 using SAM.Utilities;
 using SAM.ViewModels.OperationalData;
 
@@ -1097,13 +1098,11 @@ namespace SAM.Controllers;
                 LabCertification = viewModel.LabCertification,
                 CollectedBy = viewModel.CollectedBy,
                 AnalyzedBy = viewModel.AnalyzedBy,
-                NO2N = viewModel.NO2N,
-                TKNN = viewModel.TKNN,
-                NO3N = viewModel.NO3N,
                 FacilityPermitId = viewModel.FacilityPermitId,
                 FlowMeasuringPoint = viewModel.FlowMeasuringPoint,
                 ParameterMonitoringPoint = viewModel.ParameterMonitoringPoint
             };
+            ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
             await _wwCharService.CreateAsync(wwChar);
             await SaveWwCharTemplateValuesAsync(wwChar, viewModel.TemplateParameters);
@@ -1263,12 +1262,10 @@ namespace SAM.Controllers;
             wwChar.LabCertification = viewModel.LabCertification;
             wwChar.CollectedBy = viewModel.CollectedBy;
             wwChar.AnalyzedBy = viewModel.AnalyzedBy;
-            wwChar.NO2N = viewModel.NO2N;
-            wwChar.TKNN = viewModel.TKNN;
-            wwChar.NO3N = viewModel.NO3N;
             wwChar.FacilityPermitId = viewModel.FacilityPermitId;
             wwChar.FlowMeasuringPoint = viewModel.FlowMeasuringPoint;
             wwChar.ParameterMonitoringPoint = viewModel.ParameterMonitoringPoint;
+            ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
             await _wwCharService.UpdateAsync(wwChar);
             await SaveWwCharTemplateValuesAsync(wwChar, viewModel.TemplateParameters);
@@ -2335,6 +2332,9 @@ namespace SAM.Controllers;
             .Where(x => x.FacilityPermitId == permitId.Value && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
             .OrderBy(x => x.SortOrder)
             .ToListAsync();
+        templateRows = templateRows
+            .Where(row => IsTemplateRowApplicableForMonth(row, reportDate.Month))
+            .ToList();
 
         var existingValues = wwCharId.HasValue
             ? await _context.WWCharTemplateValues.Where(x => x.WWCharId == wwCharId.Value).ToListAsync()
@@ -2400,6 +2400,67 @@ namespace SAM.Controllers;
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    private static bool IsTemplateRowApplicableForMonth(FacilityPermitTemplateParameter row, int month)
+    {
+        var alwaysInclude = row.MeasurementFrequency is MeasurementFrequencyEnum.Daily
+            or MeasurementFrequencyEnum.Weekly
+            or MeasurementFrequencyEnum.Monthly
+            or MeasurementFrequencyEnum.Continuous;
+        if (alwaysInclude)
+        {
+            return true;
+        }
+
+        // Strict mode for periodic/unspecified rows: only include when schedule explicitly includes the month.
+        if (string.IsNullOrWhiteSpace(row.ScheduledMonthsCsv))
+        {
+            return false;
+        }
+
+        var months = row.ScheduledMonthsCsv
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => int.TryParse(value, out var parsed) ? parsed : -1);
+        return months.Any(m => m == month);
+    }
+
+    private static void ApplyLegacyChemistrySnapshotsFromTemplate(
+        WWChar wwChar,
+        List<WWCharTemplateParameterInputViewModel>? templateParameters)
+    {
+        if (templateParameters == null || templateParameters.Count == 0)
+        {
+            wwChar.NO2N = 0m;
+            return;
+        }
+
+        var tknRow = templateParameters.FirstOrDefault(p => string.Equals(p.PcsCode, WWCharChemistryResolver.TknPcsCode, StringComparison.OrdinalIgnoreCase));
+        var no3Row = templateParameters.FirstOrDefault(p => string.Equals(p.PcsCode, WWCharChemistryResolver.No3PcsCode, StringComparison.OrdinalIgnoreCase));
+        var nh3Row = templateParameters.FirstOrDefault(p => string.Equals(p.PcsCode, "00610", StringComparison.OrdinalIgnoreCase));
+
+        var tknAverage = tknRow == null ? null : WWCharChemistryResolver.AverageNonNull(tknRow.DailyValues);
+        var no3Average = no3Row == null ? null : WWCharChemistryResolver.AverageNonNull(no3Row.DailyValues);
+
+        wwChar.NO2N = 0m;
+        if (tknAverage.HasValue)
+        {
+            wwChar.TKNN = tknAverage.Value;
+        }
+
+        if (no3Average.HasValue)
+        {
+            wwChar.NO3N = no3Average.Value;
+        }
+
+        if (nh3Row != null)
+        {
+            wwChar.NH3NDaily = nh3Row.DailyValues.Take(31).ToList();
+            while (wwChar.NH3NDaily.Count < 31)
+            {
+                wwChar.NH3NDaily.Add(null);
+            }
+        }
     }
 
     private async Task<string?> BuildWwCharTemplateStatusMessageAsync(

@@ -7,6 +7,7 @@ using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
 using SAM.Utilities;
 using SAM.Domain.Entities.Base;
+using SAM.Services.Helpers;
 
 namespace SAM.Services.Implementations;
 
@@ -213,6 +214,28 @@ public class IrrRprtService : IIrrRprtService
         // Calculate nitrogen loading rate from WWChar data if available
         var wwChar = await _context.WWChars
             .FirstOrDefaultAsync(w => w.FacilityId == facilityId && (int)w.Month == month && w.Year == year);
+        List<WWCharTemplateValue> wwCharTemplateValues = new();
+        Dictionary<Guid, string> pcsByTemplateParameterId = new();
+        if (wwChar != null)
+        {
+            wwCharTemplateValues = await _context.WWCharTemplateValues
+                .Where(x => x.WWCharId == wwChar.Id)
+                .ToListAsync();
+
+            var templateParameterIds = wwCharTemplateValues
+                .Select(x => x.FacilityPermitTemplateParameterId)
+                .Distinct()
+                .ToList();
+            if (templateParameterIds.Count > 0)
+            {
+                pcsByTemplateParameterId = await _context.FacilityPermitTemplateParameters
+                    .Include(x => x.PcsParameterCatalog)
+                    .Where(x => templateParameterIds.Contains(x.Id))
+                    .ToDictionaryAsync(
+                        x => x.Id,
+                        x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty);
+            }
+        }
 
         decimal nitrogenLoadingRate = 0m;
         decimal panUptakeRate = 0m;
@@ -239,10 +262,22 @@ public class IrrRprtService : IIrrRprtService
         {
             var mr = (facility.MineralizationRatePercent ?? 40m) / 100m;
             var vr = (facility.VolatilizationRatePercent ?? 50m) / 100m;
-            var tkn = wwChar?.TKNN ?? 0m;
+            var tkn = wwChar == null
+                ? 0m
+                : WWCharChemistryResolver.AverageTemplateValueForPcs(
+                    wwChar.Id,
+                    WWCharChemistryResolver.TknPcsCode,
+                    wwCharTemplateValues,
+                    pcsByTemplateParameterId) ?? wwChar.TKNN ?? 0m;
             var nh3 = avgNH3N ?? 0m;
-            var no2 = wwChar?.NO2N ?? 0m;
-            var no3 = wwChar?.NO3N ?? 0m;
+            var no2 = 0m;
+            var no3 = wwChar == null
+                ? 0m
+                : WWCharChemistryResolver.AverageTemplateValueForPcs(
+                    wwChar.Id,
+                    WWCharChemistryResolver.No3PcsCode,
+                    wwCharTemplateValues,
+                    pcsByTemplateParameterId) ?? wwChar.NO3N ?? 0m;
 
             var volumeBySprayfield = applications
                 .GroupBy(i => i.SprayfieldId)

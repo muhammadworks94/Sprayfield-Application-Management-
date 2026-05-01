@@ -198,8 +198,10 @@ flowchart TD
                         "Admin creates a permit version and adds permit template parameter rows from PCS catalog.",
                         "Each row stores limits and monitoring requirements from Attachment A (WW) or Attachment C (GW), based on report section.",
                         "When WWChar is opened for a facility/month, system resolves active permit by date and loads wastewater template rows.",
+                        "WWChar now filters periodic rows by selected month (for example 3 x Year / Annual rows only appear when ScheduledMonthsCsv includes that month; blank periodic schedules are hidden).",
                         "When GW Monitoring Create/Edit is opened for a facility/sample date, system resolves active permit and loads groundwater template rows.",
-                        "Operator enters daily values under those rows; SAM stores values tied to the exact permit template row.",
+                        "Operator enters daily values in day-row format under those rows; SAM stores values tied to the exact permit template row.",
+                        "PAN chemistry in WWChar workflow is sourced from template PCS rows: 00625 (TKN) and 00620 (NO3). NO2 is treated as 0 for PAN.",
                         "NDMR/GW reporting uses the same permit/template context so output matches configured permit requirements.",
                         "Per-row notes (permit instructions/footnotes) are shown through an info icon tooltip in admin and monitoring dialogs."
                     }
@@ -253,6 +255,7 @@ flowchart TD
                         "Create/verify permit version with correct permit number, version, and effective dates.",
                         "Add Attachment A (wastewater) and Attachment C (groundwater) PCS rows under that permit version.",
                         "For each row, set limits, frequency, sample type, notes, and months CSV only when periodic schedule applies.",
+                        "Do not enter NO2/TKN/NO3 in WWChar form fields; chemistry is now derived from Attachment A template rows.",
                         "Confirm required Flow row (PCS 50050) exists for NDMR flow.",
                         "Open WWChar (for month/year) and GW Monitoring (for sample date) to verify expected rows/limits/notes appear."
                     }
@@ -278,7 +281,7 @@ flowchart TD
                         "User selects facility/sprayfield/date and enters Daily Loading (inches).",
                         "System computes Volume (gallons) = DailyLoading * SprayfieldArea * 27,154.",
                         "Maximum Hourly Loading is sourced from sprayfield annual-rate field (current configured behavior).",
-                        "Compliance endpoint validates WWChar dependency (including TKN) for same month/year."
+                        "Compliance endpoint validates WWChar chemistry dependency for same month/year (TKN/NO3 sourced from template PCS 00625/00620)."
                     }
                 },
                 new ProjectStepFlowViewModel

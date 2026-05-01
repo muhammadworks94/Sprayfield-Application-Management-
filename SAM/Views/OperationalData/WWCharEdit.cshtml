@@ -104,183 +104,57 @@
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="NO2N" class="form-label">
-                                NO2 as N
-                                <i class="bi bi-info-circle ms-1 text-muted"
-                                   title="Nitrite as Nitrogen (mg/L)"
-                                   aria-label="Nitrite as Nitrogen (mg/L)"></i>
-                            </label>
-                            <input asp-for="NO2N" type="number" step="0.01" min="0" class="form-control" />
-                            <span asp-validation-for="NO2N" class="text-danger"></span>
-                            <small class="form-text text-muted">Nitrite as N (mg/L). Used for PAN calculation.</small>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="TKNN" class="form-label">
-                                TKN as N
-                                <i class="bi bi-info-circle ms-1 text-muted"
-                                   title="Total Kjeldahl Nitrogen as Nitrogen (mg/L)"
-                                   aria-label="Total Kjeldahl Nitrogen as Nitrogen (mg/L)"></i>
-                            </label>
-                            <input asp-for="TKNN" type="number" step="0.01" min="0" class="form-control" />
-                            <span asp-validation-for="TKNN" class="text-danger"></span>
-                            <small class="form-text text-muted">TKN as N (mg/L). Used for PAN calculation.</small>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label asp-for="NO3N" class="form-label">
-                                NO3 as N
-                                <i class="bi bi-info-circle ms-1 text-muted"
-                                   title="Nitrate as Nitrogen (mg/L)"
-                                   aria-label="Nitrate as Nitrogen (mg/L)"></i>
-                            </label>
-                            <input asp-for="NO3N" type="number" step="0.01" min="0" class="form-control" />
-                            <span asp-validation-for="NO3N" class="text-danger"></span>
-                            <small class="form-text text-muted">NO3 as N (mg/L). Used for PAN calculation.</small>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div class="form-section">
-                <div class="form-section-title">Daily Data (Days 1-31)</div>
-                <p class="text-muted small">Enter daily values for each parameter. Leave blank if no data available.</p>
-                
-                <div class="table-responsive responsive-table wide-data-table wwchar-daily-table-wrapper fixed-height-table-wrapper">
-                    <table class="table table-bordered wwchar-daily-table">
-                        <thead>
-                            <tr>
-                                <th>Day</th>
-                                <th>BOD5 <i class="bi bi-info-circle ms-1 text-muted" title="Biochemical Oxygen Demand, 5-day (mg/L)" aria-label="Biochemical Oxygen Demand, 5-day (mg/L)"></i><br/>(mg/L)</th>
-                                <th>TSS <i class="bi bi-info-circle ms-1 text-muted" title="Total Suspended Solids (mg/L)" aria-label="Total Suspended Solids (mg/L)"></i><br/>(mg/L)</th>
-                                <th>Flow Rate<br/>(GPM)</th>
-                                <th>pH</th>
-                                <th>NH3-N <i class="bi bi-info-circle ms-1 text-muted" title="Ammonia as Nitrogen (mg/L)" aria-label="Ammonia as Nitrogen (mg/L)"></i><br/>(mg/L)</th>
-                                <th>Fecal Coliform<br/>(CFU/100mL)</th>
-                                <th>Residual Chloride<br/>(mg/L)</th>
-                                <th>Ca <i class="bi bi-info-circle ms-1 text-muted" title="Calcium (mg/L)" aria-label="Calcium (mg/L)"></i><br/>(mg/L)</th>
-                                <th>Mg <i class="bi bi-info-circle ms-1 text-muted" title="Magnesium (mg/L)" aria-label="Magnesium (mg/L)"></i><br/>(mg/L)</th>
-                                <th>Na <i class="bi bi-info-circle ms-1 text-muted" title="Sodium (mg/L)" aria-label="Sodium (mg/L)"></i><br/>(mg/L)</th>
-                                <th>SAR <i class="bi bi-info-circle ms-1 text-muted" title="Sodium Adsorption Ratio (mg/L)" aria-label="Sodium Adsorption Ratio (mg/L)"></i><br/>(mg/L)</th>
-                                <th>TN <i class="bi bi-info-circle ms-1 text-muted" title="Total Nitrogen (mg/L)" aria-label="Total Nitrogen (mg/L)"></i><br/>(mg/L)</th>
-                                <th>Composite<br/>Time</th>
-                                <th>ORC <i class="bi bi-info-circle ms-1 text-muted" title="Operator in Responsible Charge On Site" aria-label="Operator in Responsible Charge On Site"></i><br/>On Site</th>
-                                <th>Lagoon<br/>Freeboard<br/>(inches)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (int i = 0; i < 31; i++)
-                            {
-                                <tr>
-                                    <td><strong>@(i + 1)</strong></td>
-                                    <td>
-                                        <input asp-for="BOD5Daily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="TSSDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="FlowRateDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="PHDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="NH3NDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="FecalColiformDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="ChlorideDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="CaDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="MgDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="NaDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="SARDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="TNDaily[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <input asp-for="CompositeTime[i]" type="time" class="form-control form-control-sm" />
-                                    </td>
-                                    <td>
-                                        <select asp-for="ORCOnSite[i]" asp-items="orcOnSiteOptions" class="form-select form-select-sm">
-                                            <option value="">-</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <input asp-for="LagoonFreeboard[i]" type="number" step="0.01" class="form-control form-control-sm" />
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <div class="form-section-title">Permit Template Parameters (PCS)</div>
+                <div class="form-section-title">Attachment A Template Daily Data (Days 1-31)</div>
+                <p class="text-muted small mb-2">Template rows are month-filtered and shown as daily entry columns.</p>
                 @if (Model.TemplateParameters.Any())
                 {
+                    @for (int p = 0; p < Model.TemplateParameters.Count; p++)
+                    {
+                        <input type="hidden" asp-for="TemplateParameters[p].FacilityPermitTemplateParameterId" />
+                        <input type="hidden" asp-for="TemplateParameters[p].PcsCode" />
+                        <input type="hidden" asp-for="TemplateParameters[p].ParameterName" />
+                        <input type="hidden" asp-for="TemplateParameters[p].Units" />
+                        <input type="hidden" asp-for="TemplateParameters[p].Notes" />
+                    }
                     <div class="table-responsive responsive-table wide-data-table fixed-height-table-wrapper mb-3">
                         <table class="table table-bordered table-sm">
                             <thead>
                                 <tr>
-                                    <th>PCS</th>
-                                    <th>Parameter</th>
-                                    <th>M. Frequency</th>
-                                    <th>Sample</th>
-                                    <th>Months</th>
-                                    <th>Monthly Avg</th>
-                                    <th>Monthly Geo Mean</th>
-                                    <th>Daily Min</th>
-                                    <th>Daily Max</th>
-                                    @for (int day = 1; day <= 31; day++)
+                                    <th>Day</th>
+                                    <th>ORC On Site</th>
+                                    <th>Lagoon Freeboard (in)</th>
+                                    @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                                     {
-                                        <th>@day</th>
+                                        <th>
+                                            @Model.TemplateParameters[p].PcsCode
+                                            <div class="small fw-normal">
+                                                @Model.TemplateParameters[p].ParameterName (@Model.TemplateParameters[p].Units)
+                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[p].Notes) ? "No notes." : Model.TemplateParameters[p].Notes)"></i>
+                                            </div>
+                                            <div class="small text-muted">
+                                                @Model.TemplateParameters[p].MeasurementFrequency | @Model.TemplateParameters[p].SampleType | Max: @(Model.TemplateParameters[p].DailyMaximumLimit?.ToString() ?? "-")
+                                            </div>
+                                        </th>
                                     }
                                 </tr>
                             </thead>
                             <tbody>
-                                @for (int i = 0; i < Model.TemplateParameters.Count; i++)
+                                @for (int d = 0; d < 31; d++)
                                 {
                                     <tr>
+                                        <td><strong>@(d + 1)</strong></td>
                                         <td>
-                                            @Model.TemplateParameters[i].PcsCode
-                                            <input type="hidden" asp-for="TemplateParameters[i].FacilityPermitTemplateParameterId" />
-                                            <input type="hidden" asp-for="TemplateParameters[i].PcsCode" />
-                                            <input type="hidden" asp-for="TemplateParameters[i].ParameterName" />
-                                            <input type="hidden" asp-for="TemplateParameters[i].Units" />
-                                            <input type="hidden" asp-for="TemplateParameters[i].Notes" />
+                                            <select asp-for="ORCOnSite[d]" asp-items="orcOnSiteOptions" class="form-select form-select-sm">
+                                                <option value="">-</option>
+                                            </select>
                                         </td>
-                                        <td>
-                                            @Model.TemplateParameters[i].ParameterName (@Model.TemplateParameters[i].Units)
-                                            <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[i].Notes) ? "No notes." : Model.TemplateParameters[i].Notes)"></i>
-                                        </td>
-                                        <td>@Model.TemplateParameters[i].MeasurementFrequency</td>
-                                        <td>@Model.TemplateParameters[i].SampleType</td>
-                                        <td>@Model.TemplateParameters[i].ScheduledMonthsCsv</td>
-                                        <td>@Model.TemplateParameters[i].MonthlyAverageLimit</td>
-                                        <td>@Model.TemplateParameters[i].MonthlyGeometricMeanLimit</td>
-                                        <td>@Model.TemplateParameters[i].DailyMinimumLimit</td>
-                                        <td>@Model.TemplateParameters[i].DailyMaximumLimit</td>
-                                        @for (int d = 0; d < 31; d++)
+                                        <td><input asp-for="LagoonFreeboard[d]" type="number" step="0.01" class="form-control form-control-sm" /></td>
+                                        @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                                         {
-                                            <td><input asp-for="TemplateParameters[i].DailyValues[d]" type="number" step="0.000001" class="form-control form-control-sm" /></td>
+                                            <td><input asp-for="TemplateParameters[p].DailyValues[d]" type="number" step="0.000001" class="form-control form-control-sm" /></td>
                                         }
                                     </tr>
                                 }

@@ -219,6 +219,24 @@ public class ApplicationComplianceService : IApplicationComplianceService
             .Where(w => w.FacilityId == facilityId && w.Year >= minYear && w.Year <= maxYear)
             .ToListAsync();
 
+        var wwCharIds = wwChars.Select(w => w.Id).ToList();
+        var templateValues = wwCharIds.Count == 0
+            ? new List<Domain.Entities.WWCharTemplateValue>()
+            : await _context.WWCharTemplateValues
+                .AsNoTracking()
+                .Where(v => wwCharIds.Contains(v.WWCharId))
+                .ToListAsync();
+        var templateParameterIds = templateValues.Select(v => v.FacilityPermitTemplateParameterId).Distinct().ToList();
+        var pcsByTemplateParameterId = templateParameterIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.FacilityPermitTemplateParameters
+                .AsNoTracking()
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => templateParameterIds.Contains(x.Id))
+                .ToDictionaryAsync(
+                    x => x.Id,
+                    x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty);
+
         return wwChars
             .GroupBy(w => (w.Year, (int)w.Month))
             .ToDictionary(
@@ -228,11 +246,23 @@ public class ApplicationComplianceService : IApplicationComplianceService
                     var latest = g
                         .OrderByDescending(x => x.UpdatedDate ?? x.CreatedDate)
                         .First();
+                    var nh3Average = latest.NH3NDaily.Where(v => v.HasValue).Select(v => v!.Value).DefaultIfEmpty(0m).Average();
+                    var tknFromTemplate = WWCharChemistryResolver.AverageTemplateValueForPcs(
+                        latest.Id,
+                        WWCharChemistryResolver.TknPcsCode,
+                        templateValues,
+                        pcsByTemplateParameterId);
+                    var no3FromTemplate = WWCharChemistryResolver.AverageTemplateValueForPcs(
+                        latest.Id,
+                        WWCharChemistryResolver.No3PcsCode,
+                        templateValues,
+                        pcsByTemplateParameterId);
+
                     return new PanChemistryInputs(
-                        latest.TKNN,
-                        latest.NH3NDaily.Where(v => v.HasValue).Select(v => v!.Value).DefaultIfEmpty(0m).Average(),
-                        latest.NO2N,
-                        latest.NO3N);
+                        tknFromTemplate ?? latest.TKNN,
+                        nh3Average,
+                        0m,
+                        no3FromTemplate ?? latest.NO3N);
                 });
     }
 

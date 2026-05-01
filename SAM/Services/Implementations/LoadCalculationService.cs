@@ -5,6 +5,7 @@ using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
 using SAM.Utilities;
+using SAM.Services.Helpers;
 
 namespace SAM.Services.Implementations;
 
@@ -44,21 +45,44 @@ public class LoadCalculationService : ILoadCalculationService
                 $"Cannot calculate load because WWChar record is missing for {application.ApplicationDate:yyyy-MM}.");
         }
 
-        // Use WWChar chemistry directly now that MonthlyApplication no longer stores NitrogenMgL.
-        // Prefer TKNN; otherwise fallback to available NO2/NO3/NH3 components.
+        var templateValues = await _context.WWCharTemplateValues
+            .AsNoTracking()
+            .Where(v => v.WWCharId == wwChar.Id)
+            .ToListAsync();
+        var templateParameterIds = templateValues.Select(v => v.FacilityPermitTemplateParameterId).Distinct().ToList();
+        var pcsByTemplateParameterId = templateParameterIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.FacilityPermitTemplateParameters
+                .AsNoTracking()
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => templateParameterIds.Contains(x.Id))
+                .ToDictionaryAsync(
+                    x => x.Id,
+                    x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty);
+
+        // Use template chemistry first (00625/00620); fallback to legacy WWChar fields.
         var avgNh3 = wwChar.NH3NDaily.Where(v => v.HasValue).Select(v => v!.Value).DefaultIfEmpty(0m).Average();
         var hasNh3 = wwChar.NH3NDaily.Any(v => v.HasValue);
-        var hasNo2 = wwChar.NO2N.HasValue;
-        var hasNo3 = wwChar.NO3N.HasValue;
+        var tknFromTemplate = WWCharChemistryResolver.AverageTemplateValueForPcs(
+            wwChar.Id,
+            WWCharChemistryResolver.TknPcsCode,
+            templateValues,
+            pcsByTemplateParameterId);
+        var no3FromTemplate = WWCharChemistryResolver.AverageTemplateValueForPcs(
+            wwChar.Id,
+            WWCharChemistryResolver.No3PcsCode,
+            templateValues,
+            pcsByTemplateParameterId);
+        var hasNo3 = no3FromTemplate.HasValue || wwChar.NO3N.HasValue;
 
         decimal nitrogenMgL;
-        if (wwChar.TKNN.HasValue)
+        if (tknFromTemplate.HasValue || wwChar.TKNN.HasValue)
         {
-            nitrogenMgL = wwChar.TKNN.Value;
+            nitrogenMgL = tknFromTemplate ?? wwChar.TKNN!.Value;
         }
-        else if (hasNh3 || hasNo2 || hasNo3)
+        else if (hasNh3 || hasNo3)
         {
-            nitrogenMgL = avgNh3 + (wwChar.NO2N ?? 0m) + (wwChar.NO3N ?? 0m);
+            nitrogenMgL = avgNh3 + (no3FromTemplate ?? wwChar.NO3N ?? 0m);
         }
         else
         {
