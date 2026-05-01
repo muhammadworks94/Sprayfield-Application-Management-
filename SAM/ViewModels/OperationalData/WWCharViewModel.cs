@@ -312,6 +312,9 @@ public class WWCharTemplateParameterInputViewModel
     public string MeasurementFrequency { get; set; } = string.Empty;
     public string SampleType { get; set; } = string.Empty;
     public string? ScheduledMonthsCsv { get; set; }
+    public decimal? MonthlyAverageLimit { get; set; }
+    public decimal? MonthlyGeometricMeanLimit { get; set; }
+    public decimal? DailyMinimumLimit { get; set; }
     public decimal? DailyMaximumLimit { get; set; }
     public List<decimal?> DailyValues { get; set; } = new();
 }

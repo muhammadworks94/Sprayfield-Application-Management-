@@ -17,6 +17,7 @@ public class ProjectKnowledgeService : IProjectKnowledgeService
 
         model.Sections.Add(BuildSystemOverview());
         model.Sections.Add(BuildDataModelMap());
+        model.Sections.Add(BuildPermitTemplateGlossary());
         model.Sections.Add(BuildOperationalFlows());
         model.Sections.Add(BuildReportLogic());
         model.Sections.Add(BuildTraceability());
@@ -161,6 +162,93 @@ flowchart TD
                         "Most entities use soft-delete via IsDeleted and global query filters.",
                         "FacilityPermit also uses IsActive for permit resolution by date.",
                         "Archived permit = IsActive false (still retained). Deleted permit = IsDeleted true."
+                    }
+                }
+            }
+        };
+    }
+
+    private static ProjectSectionViewModel BuildPermitTemplateGlossary()
+    {
+        return new ProjectSectionViewModel
+        {
+            Id = "permit-template-glossary",
+            Title = "Permit Template and Attachment A Guide",
+            Intro = "This quick guide explains key terms, what each permit template field means, and how the values are used in daily entry and reporting.",
+            Cards =
+            {
+                new ProjectInfoCardViewModel
+                {
+                    Heading = "Plain-Language Definitions",
+                    Bullets =
+                    {
+                        "PCS Catalog: Master list of regulatory parameter codes (for example 00310 BOD5, 50050 Flow) with names and units. Admin selects rows from this catalog when building a permit template.",
+                        "Permit Number: The regulatory permit identifier issued by the authority (for example WQ0004332).",
+                        "Permit Version: Revision/reissue label of the same permit number (for example 4.1). Versions let us keep history when limits or requirements change.",
+                        "Permit Effective Dates: Date range that determines which permit version applies to a given report month.",
+                        "Attachment A (Limitations and Monitoring Requirements): Section of permit defining limits, monitoring frequency, and sample type for each parameter."
+                    }
+                },
+                new ProjectInfoCardViewModel
+                {
+                    Heading = "How It Works in SAM",
+                    Bullets =
+                    {
+                        "Admin creates a permit version and adds permit template parameter rows from PCS catalog.",
+                        "Each row stores limits and monitoring requirements from Attachment A.",
+                        "When WWChar is opened for a facility/month, system resolves active permit by date and loads that version's template rows.",
+                        "Operator enters daily values under those rows; SAM stores values tied to the exact permit template row.",
+                        "NDMR export uses the same permit/template context so report output matches configured permit requirements."
+                    }
+                }
+            },
+            Tables =
+            {
+                new ProjectTableViewModel
+                {
+                    Caption = "Permit Template Property Dictionary (Attachment A fields)",
+                    Headers = { "Property", "Definition", "How SAM Uses It" },
+                    Rows =
+                    {
+                        new List<string> { "PcsParameterCatalogId", "Selected PCS parameter from master catalog.", "Determines which parameter row appears (code/name/units baseline)." },
+                        new List<string> { "ParameterDisplayOverride", "Optional custom label for parameter.", "Overrides catalog name in UI/report context where template rows are shown." },
+                        new List<string> { "UnitsOverride", "Optional custom units text.", "Overrides catalog units for display and user clarity." },
+                        new List<string> { "MonthlyAverageLimit", "Maximum/target monthly average limit from permit.", "Displayed to operators as reference during WWChar entry; supports permit-context review." },
+                        new List<string> { "MonthlyGeometricMeanLimit", "Monthly geometric mean limit from permit.", "Displayed in WWChar template grid to guide entry and compliance awareness." },
+                        new List<string> { "DailyMinimumLimit", "Permit-required daily minimum threshold.", "Displayed in WWChar template grid as lower-bound reference." },
+                        new List<string> { "DailyMaximumLimit", "Permit-required daily maximum threshold.", "Displayed in admin + WWChar grid; commonly used quick compliance reference." },
+                        new List<string> { "MeasurementFrequency", "How often sampling/measurement must occur (Daily/Weekly/Monthly/ThreeTimesPerYear/etc.).", "Shown in WWChar template rows; helps operators follow monitoring schedule." },
+                        new List<string> { "SampleType", "Required sampling method (Grab/Composite/Recorder/Calculated).", "Shown in WWChar template rows so recorded data matches permit method." },
+                        new List<string> { "ScheduledMonthsCsv", "Optional month numbers for periodic sampling (for example 4,8,11 for Apr/Aug/Nov).", "Used with frequencies like ThreeTimesPerYear to communicate exact sampling months." },
+                        new List<string> { "SortOrder", "Display order of rows in template.", "Controls row order in admin and WWChar dynamic grid." },
+                        new List<string> { "IsRequired", "Marks parameter as required for template workflow.", "Highlights required rows and supports rule-driven report readiness checks." },
+                        new List<string> { "ReportTypes", "Flags that indicate which report flows this row applies to (NDMR/NVMR/GW59/GW59A).", "Filters which rows load into each operational/report workflow." }
+                    }
+                },
+                new ProjectTableViewModel
+                {
+                    Caption = "Common Examples",
+                    Headers = { "Attachment A Text", "Stored Value in SAM", "Notes" },
+                    Rows =
+                    {
+                        new List<string> { "3 x Year (Apr, Aug, Nov)", "MeasurementFrequency = ThreeTimesPerYear, ScheduledMonthsCsv = 4,8,11", "Frequency + month list together preserve permit intent." },
+                        new List<string> { "Sample Type: Grab", "SampleType = Grab", "Shown in WWChar row for operator guidance." },
+                        new List<string> { "Daily Max limit provided", "DailyMaximumLimit = [permit value]", "Displayed as read-only reference in WWChar template grid." }
+                    }
+                }
+            },
+            Flows =
+            {
+                new ProjectStepFlowViewModel
+                {
+                    Name = "Quick Setup Checklist",
+                    Steps =
+                    {
+                        "Create/verify permit version with correct permit number, version, and effective dates.",
+                        "Add all Attachment A PCS rows under that permit version.",
+                        "For each row, set limits, frequency, sample type, and months CSV where needed.",
+                        "Confirm required Flow row (PCS 50050) exists for NDMR flow.",
+                        "Open WWChar for target month/year and verify expected rows/limits appear."
                     }
                 }
             }

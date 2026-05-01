@@ -2242,6 +2242,9 @@ namespace SAM.Controllers;
                 MeasurementFrequency = row.MeasurementFrequency.ToString(),
                 SampleType = row.SampleType.ToString(),
                 ScheduledMonthsCsv = row.ScheduledMonthsCsv,
+                MonthlyAverageLimit = row.MonthlyAverageLimit,
+                MonthlyGeometricMeanLimit = row.MonthlyGeometricMeanLimit,
+                DailyMinimumLimit = row.DailyMinimumLimit,
                 DailyMaximumLimit = row.DailyMaximumLimit,
                 DailyValues = Enumerable.Repeat<decimal?>(null, 31).ToList()
             };

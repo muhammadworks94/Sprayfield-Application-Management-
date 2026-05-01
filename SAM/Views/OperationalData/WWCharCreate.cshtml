@@ -251,6 +251,10 @@
                                     <th>Freq</th>
                                     <th>Sample</th>
                                     <th>Months</th>
+                                    <th>Monthly Avg</th>
+                                    <th>Monthly Geo Mean</th>
+                                    <th>Daily Min</th>
+                                    <th>Daily Max</th>
                                     @for (int day = 1; day <= 31; day++)
                                     {
                                         <th>@day</th>
@@ -272,6 +276,10 @@
                                     <td>@Model.TemplateParameters[i].MeasurementFrequency</td>
                                     <td>@Model.TemplateParameters[i].SampleType</td>
                                     <td>@Model.TemplateParameters[i].ScheduledMonthsCsv</td>
+                                    <td>@Model.TemplateParameters[i].MonthlyAverageLimit</td>
+                                    <td>@Model.TemplateParameters[i].MonthlyGeometricMeanLimit</td>
+                                    <td>@Model.TemplateParameters[i].DailyMinimumLimit</td>
+                                    <td>@Model.TemplateParameters[i].DailyMaximumLimit</td>
                                     @for (int d = 0; d < 31; d++)
                                     {
                                         <td><input asp-for="TemplateParameters[i].DailyValues[d]" type="number" step="0.000001" class="form-control form-control-sm" /></td>
