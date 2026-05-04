@@ -55,7 +55,7 @@
 <ul class="nav nav-tabs mb-3" id="permitTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active-pane" type="button" role="tab" aria-controls="active-pane" aria-selected="true">
-            Active Permits <span class="badge bg-primary-subtle text-primary-emphasis ms-1">@activePermits.Count</span>
+            Active Permits <span class="badge bg-secondary ms-1">@activePermits.Count</span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -140,7 +140,7 @@
                                                             <td>@item.Code</td>
                                                             <td>
                                                                 @item.Name
-                                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@NotesTitle(item.Row.Notes)"></i>
+                                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="@NotesTitle(item.Row.Notes)"></i>
                                                             </td>
                                                             <td>@item.Units</td>
                                                             <td>@item.Row.MeasurementFrequency.ToDisplayLabel()</td>
@@ -215,7 +215,7 @@
                                                             <td>@item.Code</td>
                                                             <td>
                                                                 @item.Name
-                                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@NotesTitle(item.Row.Notes)"></i>
+                                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="@NotesTitle(item.Row.Notes)"></i>
                                                             </td>
                                                             <td>@item.Units</td>
                                                             <td>@item.Row.MeasurementFrequency.ToDisplayLabel()</td>
@@ -359,7 +359,7 @@
                                     {
                                         <tr>
                                             <td>@item.Code</td>
-                                            <td>@item.Name <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@NotesTitle(item.Row.Notes)"></i></td>
+                                            <td>@item.Name <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="@NotesTitle(item.Row.Notes)"></i></td>
                                             <td>@item.Units</td>
                                             <td>@item.Row.MeasurementFrequency.ToDisplayLabel()</td>
                                             <td>@item.Row.SampleType</td>
@@ -381,7 +381,12 @@
 @section Scripts {
     <script>
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-            new bootstrap.Tooltip(el);
+            new bootstrap.Tooltip(el, {
+                container: 'body',
+                trigger: 'hover',
+                boundary: 'viewport',
+                placement: 'right'
+            });
         });
 
         function isPeriodicFrequency(value) {
