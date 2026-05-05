@@ -12,7 +12,7 @@ public partial class SystemAdminController
 {
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> FacilityPermits(Guid facilityId)
+    public async Task<IActionResult> FacilityPermits(Guid facilityId, int? month = null, int? year = null, string? source = null, string? returnUrl = null)
     {
         var facility = await _context.Facilities.Include(f => f.Company).FirstOrDefaultAsync(f => f.Id == facilityId);
         if (facility == null) return NotFound();
@@ -38,6 +38,10 @@ public partial class SystemAdminController
         ViewBag.ReportTypes = Enum.GetValues<PermitTemplateReportTypeEnum>()
             .Where(x => x != PermitTemplateReportTypeEnum.None)
             .ToList();
+        ViewBag.SourceContext = source;
+        ViewBag.ContextMonth = month;
+        ViewBag.ContextYear = year;
+        ViewBag.ReturnUrl = returnUrl;
 
         return View();
     }

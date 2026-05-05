@@ -11,6 +11,7 @@ public class WWCharViewModel
     public Guid FacilityId { get; set; }
     public Guid? FacilityPermitId { get; set; }
     public string? FacilityPermitDisplay { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
     public string? FacilityName { get; set; }
     
     [Required]

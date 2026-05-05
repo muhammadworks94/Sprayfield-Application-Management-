@@ -8,6 +8,14 @@
     var activePermits = permits.Where(p => p.IsActive).OrderByDescending(p => p.EffectiveStartDate).ToList();
     var archivedPermits = permits.Where(p => !p.IsActive).OrderByDescending(p => p.EffectiveStartDate).ToList();
     var pcsCatalog = ViewBag.PcsCatalog as List<PcsParameterCatalog> ?? new();
+    var sourceContext = ViewBag.SourceContext as string;
+    var contextMonth = ViewBag.ContextMonth as int?;
+    var contextYear = ViewBag.ContextYear as int?;
+    var contextDate = (contextMonth.HasValue && contextYear.HasValue && contextMonth.Value >= 1 && contextMonth.Value <= 12 && contextYear.Value >= 2000 && contextYear.Value <= 2100)
+        ? new DateTime(contextYear.Value, contextMonth.Value, 1)
+        : (DateTime?)null;
+    var defaultEffectiveStart = contextDate?.ToString("yyyy-MM-dd") ?? string.Empty;
+    var fromWwChar = string.Equals(sourceContext, "wwchar", StringComparison.OrdinalIgnoreCase);
     string Fmt(decimal? value) => value.HasValue ? value.Value.ToString("0.######") : "-";
     string NotesTitle(string? notes) => string.IsNullOrWhiteSpace(notes) ? "No notes." : notes;
 }
@@ -33,6 +41,13 @@
     </div>
 </div>
 
+@if (fromWwChar && contextDate.HasValue)
+{
+    <div class="alert alert-info py-2">
+        Opened from WWChar for <strong>@contextDate.Value.ToString("MMM yyyy")</strong>. Effective Start Date is prefilled for this period.
+    </div>
+}
+
 <div class="card mb-4">
     <div class="card-body">
         <h5 class="mb-3">Add Permit Version</h5>
@@ -42,7 +57,7 @@
             <div class="row g-3">
                 <div class="col-md-3"><input name="permitNumber" class="form-control" placeholder="Permit Number" required /></div>
                 <div class="col-md-2"><input name="permitVersion" class="form-control" placeholder="Version (e.g. 4.1)" required /></div>
-                <div class="col-md-2"><input name="effectiveStartDate" type="date" class="form-control" required /></div>
+                <div class="col-md-2"><input name="effectiveStartDate" type="date" class="form-control" required value="@defaultEffectiveStart" /></div>
                 <div class="col-md-2"><input name="effectiveEndDate" type="date" class="form-control" /></div>
                 <div class="col-md-3"><input name="permitPdf" type="file" class="form-control" accept=".pdf" /></div>
                 <div class="col-12"><textarea name="notes" class="form-control" rows="2" placeholder="Notes (optional)"></textarea></div>

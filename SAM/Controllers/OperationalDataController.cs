@@ -956,6 +956,12 @@ namespace SAM.Controllers;
             wwChar.FacilityPermitId,
             new DateTime(wwChar.Year, (int)wwChar.Month, 1),
             wwChar.Id);
+        viewModel.TemplateParametersStatusMessage = await BuildWwCharTemplateStatusMessageAsync(
+            wwChar.CompanyId,
+            wwChar.FacilityId,
+            wwChar.FacilityPermitId,
+            new DateTime(wwChar.Year, (int)wwChar.Month, 1),
+            viewModel.TemplateParameters.Count);
 
         return View(viewModel);
     }

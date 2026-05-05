@@ -108,12 +108,12 @@
 
             <div class="form-section">
                 <div class="form-section-title">Attachment A Template Daily Data (Days 1-31)</div>
-                <div class="alert alert-info py-2 small">
-                    Updates to <strong>ORC On Site</strong> and <strong>Lagoon Freeboard</strong> are saved to this WWChar monthly record and automatically reflected anywhere this WWChar record is used (including WWChar Details, downstream compliance/report logic, and linked operational views for the same record period).
-                </div>
                 <p class="text-muted small mb-2">Template rows are month-filtered and shown as daily entry columns.</p>
                 @if (Model.TemplateParameters.Any())
                 {
+                    <div class="alert alert-info py-2 small">
+                        Updates to <strong>ORC On Site</strong> and <strong>Lagoon Freeboard</strong> are saved to this WWChar monthly record and automatically reflected anywhere this WWChar record is used (including WWChar Details, downstream compliance/report logic, and linked operational views for the same record period).
+                    </div>
                     @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                     {
                         <input type="hidden" asp-for="TemplateParameters[p].FacilityPermitTemplateParameterId" />
@@ -167,7 +167,23 @@
                 }
                 else
                 {
-                    <div class="alert alert-warning">@(Model.TemplateParametersStatusMessage ?? "No permit template parameters found for the selected facility/month/year.")</div>
+                    <div class="alert alert-warning d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                        <span>@(Model.TemplateParametersStatusMessage ?? "No permit template parameters found for the selected facility/month/year.")</span>
+                        @if (Model.FacilityId != Guid.Empty)
+                        {
+                            <a asp-controller="SystemAdmin"
+                               asp-action="FacilityPermits"
+                               asp-route-facilityId="@Model.FacilityId"
+                               asp-route-source="wwchar"
+                               asp-route-month="@((int)Model.Month)"
+                               asp-route-year="@Model.Year"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="btn btn-sm btn-outline-primary">
+                                Open Permit Versions
+                            </a>
+                        }
+                    </div>
                 }
             </div>
 
