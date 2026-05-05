@@ -74,10 +74,10 @@
                             <td><input class="form-control form-control-sm" data-field="fiveDayUpsetFt" type="number" step="0.01" value="@row.FiveDayUpsetFt" disabled title="Click Edit for this row to modify values." /></td>
                             @foreach (var app in row.Applications)
                             {
-                                <td><input class="form-control form-control-sm" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.VolumeGallons" disabled title="Click Edit for this row to modify values." /></td>
+                                <td><input class="form-control form-control-sm" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.VolumeGallons" disabled title="Calculated field from time irrigated. This value is read-only." /></td>
                                 <td><input class="form-control form-control-sm" data-app="timeIrrigatedMinutes" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.TimeIrrigatedMinutes" disabled title="Click Edit for this row to modify values." /></td>
-                                <td><input class="form-control form-control-sm" data-app="maximumHourlyLoadingInchesPerAcre" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.MaximumHourlyLoadingInchesPerAcre" disabled title="Click Edit for this row to modify values." /></td>
-                                <td><input class="form-control form-control-sm" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.DailyLoadingInches" disabled title="Calculated field (Volume / Acres). This value is read-only." /></td>
+                                <td><input class="form-control form-control-sm" data-app="maximumHourlyLoadingInchesPerAcre" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.MaximumHourlyLoadingInchesPerAcre" disabled title="Static value from Sprayfield Permitted (Max) Hourly Rate. This value is read-only." /></td>
+                                <td><input class="form-control form-control-sm" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.DailyLoadingInches" disabled title="Calculated from time irrigated and permitted max hourly rate. This value is read-only." /></td>
                             }
                             <td class="text-nowrap">
                                 <span class="badge bg-warning text-dark d-none lock-badge"></span>
@@ -213,7 +213,7 @@
             const grid = document.getElementById('ndarLiveGrid');
             if (!grid) return;
             const defaultReadOnlyTitle = 'Click Edit for this row to modify values.';
-            const calculatedReadOnlyTitle = 'Calculated field (Volume / Acres). This value is read-only.';
+            const calculatedReadOnlyTitle = 'Calculated field. This value is read-only.';
             const fieldAcresById = {
                 @for (var i = 0; i < Model.FieldColumns.Count; i++)
                 {
@@ -241,8 +241,8 @@
                         }
 
                         const acres = fieldAcresById[sf];
-                        if (acres && volume != null && !Number.isNaN(volume) && acres > 0) {
-                            loadingTotals[sf] += (volume / (acres * 27152));
+                    if (acres && volume != null && !Number.isNaN(volume) && acres > 0) {
+                            loadingTotals[sf] += (volume / (acres * 27154));
                         }
                     });
                 });
@@ -292,7 +292,9 @@
 
             const setEditable = (tr, editable) => {
                 tr.querySelectorAll('input[data-field], select[data-field], input[data-app]').forEach(i => {
-                    if (i.dataset.app === 'dailyLoadingInches') {
+                    if (i.dataset.app === 'dailyLoadingInches' ||
+                        i.dataset.app === 'volumeGallons' ||
+                        i.dataset.app === 'maximumHourlyLoadingInchesPerAcre') {
                         i.disabled = true;
                         i.title = calculatedReadOnlyTitle;
                         return;

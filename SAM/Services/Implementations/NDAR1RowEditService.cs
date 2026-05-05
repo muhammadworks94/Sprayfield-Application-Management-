@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
+using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
 using SAM.Utilities;
 using SAM.ViewModels.Reports;
@@ -79,10 +80,10 @@ public class NDAR1RowEditService : INDAR1RowEditService
 
             if (field.Acres.HasValue && field.Acres.Value > 0m)
             {
-                field.MonthlyDailyLoadingTotalInches = monthlyForField.Sum(x => x.VolumeGallons / (field.Acres.Value * 27152m));
+                field.MonthlyDailyLoadingTotalInches = monthlyForField.Sum(x => x.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch));
                 field.TwelveMonthFloatingTotalInches = rollingApps
                     .Where(x => x.SprayfieldId == field.SprayfieldId)
-                    .Sum(x => x.VolumeGallons / (field.Acres.Value * 27152m));
+                    .Sum(x => x.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch));
             }
         }
 
@@ -112,7 +113,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
             {
                 var app = monthlyApps.FirstOrDefault(x => x.ApplicationDate.Date == date.Date && x.SprayfieldId == field.SprayfieldId);
                 decimal? dailyLoading = app != null && field.Acres.HasValue && field.Acres.Value > 0m
-                    ? app.VolumeGallons / (field.Acres.Value * 27152m)
+                    ? app.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch)
                     : null;
                 row.Applications.Add(new NDAR1GridApplicationCellViewModel
                 {
@@ -283,9 +284,25 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 var app = await _context.MonthlyApplications
                     .FirstOrDefaultAsync(x => x.FacilityId == report.FacilityId && x.SprayfieldId == cell.SprayfieldId && x.ApplicationDate == dayDate);
 
-                var hasData = cell.VolumeGallons.HasValue
-                    || cell.TimeIrrigatedMinutes.HasValue
-                    || cell.MaximumHourlyLoadingInchesPerAcre.HasValue;
+                var sprayfield = await _context.Sprayfields.FirstOrDefaultAsync(x => x.Id == cell.SprayfieldId && x.FacilityId == report.FacilityId);
+                if (sprayfield == null)
+                {
+                    continue;
+                }
+
+                var acres = MonthlyApplicationCalculationHelper.ResolveAcres(sprayfield);
+                if (acres <= 0m || !sprayfield.HourlyRateInches.HasValue)
+                {
+                    continue;
+                }
+
+                var computedMaxHourly = sprayfield.HourlyRateInches.Value;
+                var computedDailyLoading = MonthlyApplicationCalculationHelper.ComputeDailyLoadingInches(cell.TimeIrrigatedMinutes, computedMaxHourly);
+                var computedVolumeGallons = computedDailyLoading.HasValue
+                    ? MonthlyApplicationCalculationHelper.ComputeVolumeGallons(computedDailyLoading.Value, acres)
+                    : 0m;
+
+                var hasData = cell.TimeIrrigatedMinutes.HasValue;
 
                 if (app == null && hasData)
                 {
@@ -296,9 +313,9 @@ public class NDAR1RowEditService : INDAR1RowEditService
                         FacilityId = report.FacilityId,
                         SprayfieldId = cell.SprayfieldId,
                         ApplicationDate = dayDate,
-                        VolumeGallons = cell.VolumeGallons ?? 0m,
+                        VolumeGallons = computedVolumeGallons,
                         TimeIrrigatedMinutes = cell.TimeIrrigatedMinutes,
-                        MaximumHourlyLoadingInchesPerAcre = cell.MaximumHourlyLoadingInchesPerAcre ?? 0m,
+                        MaximumHourlyLoadingInchesPerAcre = computedMaxHourly,
                         OperatorSnapshotName = "System",
                         Comments = "Updated from NDAR1 row edit",
                         CreatedBy = userId
@@ -307,9 +324,9 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 }
                 else if (app != null)
                 {
-                    app.VolumeGallons = cell.VolumeGallons ?? 0m;
+                    app.VolumeGallons = computedVolumeGallons;
                     app.TimeIrrigatedMinutes = cell.TimeIrrigatedMinutes;
-                    app.MaximumHourlyLoadingInchesPerAcre = cell.MaximumHourlyLoadingInchesPerAcre ?? 0m;
+                    app.MaximumHourlyLoadingInchesPerAcre = computedMaxHourly;
                     app.Comments = "Updated from NDAR1 row edit";
                 }
             }

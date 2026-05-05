@@ -71,15 +71,15 @@
                 </div>
 
                 <div class="col-lg-4 col-md-6">
-                    <label asp-for="DailyLoadingInches" class="form-label required"></label>
-                    <input asp-for="DailyLoadingInches" type="number" step="0.000001" min="0.000001" class="form-control" id="dailyLoadingInput" />
-                    <span asp-validation-for="DailyLoadingInches" class="text-danger"></span>
+                    <label asp-for="TimeIrrigatedMinutes" class="form-label"></label>
+                    <input asp-for="TimeIrrigatedMinutes" type="number" step="any" min="0" class="form-control" id="timeIrrigatedInput" />
+                    <span asp-validation-for="TimeIrrigatedMinutes" class="text-danger"></span>
                 </div>
 
                 <div class="col-lg-4 col-md-6">
-                    <label asp-for="TimeIrrigatedMinutes" class="form-label"></label>
-                    <input asp-for="TimeIrrigatedMinutes" type="number" step="any" min="0" class="form-control" />
-                    <span asp-validation-for="TimeIrrigatedMinutes" class="text-danger"></span>
+                    <label asp-for="DailyLoadingInches" class="form-label"></label>
+                    <input asp-for="DailyLoadingInches" type="number" step="0.000001" min="0" class="form-control" id="dailyLoadingInput" readonly />
+                    <span asp-validation-for="DailyLoadingInches" class="text-danger"></span>
                 </div>
 
                 <div class="col-lg-4 col-md-6">
@@ -120,25 +120,30 @@
             const dailyLoadingInput = document.getElementById('dailyLoadingInput');
             const volumeInput = document.getElementById('volumeInput');
             const maxHourlyInput = document.getElementById('maxHourlyInput');
-            const gallonsPerAcreInch = @SAM.ViewModels.OperationalData.MonthlyApplicationCreateViewModel.MonthlyApplicationGallonsPerAcreInch;
+            const gallonsPerAcreInch = @SAM.Services.Helpers.MonthlyApplicationCalculationHelper.GallonsPerAcreInch;
             let sprayfieldMeta = {};
 
             function recalcCalculatedFields() {
                 const selected = sprayfieldSelect?.value || '';
                 const meta = sprayfieldMeta[selected];
                 const acres = meta && meta.acres != null ? Number(meta.acres) : NaN;
-                const annualRate = meta && meta.annualRateInches != null ? Number(meta.annualRateInches) : NaN;
-                const dailyLoading = Number(dailyLoadingInput?.value || 0);
-                const hasDaily = !Number.isNaN(dailyLoading) && dailyLoading > 0;
+                const hourlyRate = meta && meta.hourlyRateInches != null ? Number(meta.hourlyRateInches) : NaN;
+                const timeIrrigated = Number(document.getElementById('timeIrrigatedInput')?.value || 0);
+                const hasTime = !Number.isNaN(timeIrrigated) && timeIrrigated > 0;
                 const hasAcres = !Number.isNaN(acres) && acres > 0;
+                const computedDaily = (!Number.isNaN(hourlyRate) && hasTime) ? (hourlyRate * (timeIrrigated / 60.0)) : NaN;
+
+                if (dailyLoadingInput) {
+                    dailyLoadingInput.value = !Number.isNaN(computedDaily) ? computedDaily.toFixed(6) : '';
+                }
 
                 if (maxHourlyInput) {
-                    maxHourlyInput.value = !Number.isNaN(annualRate) ? annualRate.toFixed(2) : '';
+                    maxHourlyInput.value = !Number.isNaN(hourlyRate) ? hourlyRate.toFixed(2) : '';
                 }
 
                 if (volumeInput) {
-                    if (hasDaily && hasAcres) {
-                        volumeInput.value = (dailyLoading * acres * gallonsPerAcreInch).toFixed(6);
+                    if (!Number.isNaN(computedDaily) && hasAcres) {
+                        volumeInput.value = (computedDaily * acres * gallonsPerAcreInch).toFixed(6);
                     } else {
                         volumeInput.value = '';
                     }
@@ -161,7 +166,7 @@
                     const option = document.createElement('option');
                     option.value = sf.id;
                     option.textContent = sf.name;
-                    sprayfieldMeta[sf.id] = { acres: sf.acres, annualRateInches: sf.annualRateInches };
+                    sprayfieldMeta[sf.id] = { acres: sf.acres, hourlyRateInches: sf.hourlyRateInches };
                     if (sf.id === selectedSprayfieldId) option.selected = true;
                     sprayfieldSelect.appendChild(option);
                 });
@@ -210,7 +215,7 @@
 
             facilitySelect?.addEventListener('change', () => loadSprayfields(facilitySelect.value));
             sprayfieldSelect?.addEventListener('change', recalcCalculatedFields);
-            dailyLoadingInput?.addEventListener('input', recalcCalculatedFields);
+            document.getElementById('timeIrrigatedInput')?.addEventListener('input', recalcCalculatedFields);
             loadSprayfields(facilitySelect?.value);
             recalcCalculatedFields();
 

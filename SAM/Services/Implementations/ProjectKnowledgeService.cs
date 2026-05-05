@@ -278,9 +278,10 @@ flowchart TD
                     Name = "Monthly Applications",
                     Steps =
                     {
-                        "User selects facility/sprayfield/date and enters Daily Loading (inches).",
+                        "User selects facility/sprayfield/date and enters Time Irrigated (minutes).",
+                        "Maximum Hourly Loading is sourced from System Admin > Sprayfield > Permitted (Max) Hourly Rate.",
+                        "System computes Daily Loading (inches) = MaximumHourlyLoading * (TimeIrrigatedMinutes / 60).",
                         "System computes Volume (gallons) = DailyLoading * SprayfieldArea * 27,154.",
-                        "Maximum Hourly Loading is sourced from sprayfield annual-rate field (current configured behavior).",
                         "Compliance endpoint validates WWChar chemistry dependency for same month/year (TKN/NO3 sourced from template PCS 00625/00620)."
                     }
                 },
@@ -334,10 +335,10 @@ flowchart TD
                     Headers = { "Logic", "Formula", "Notes" },
                     Rows =
                     {
+                        new List<string> { "Maximum Hourly Loading", "MaxHourlyLoading(in/hr) = Sprayfield Permitted (Max) Hourly Rate", "Static source from sprayfield setup." },
+                        new List<string> { "Daily Loading", "DailyLoading(in) = MaxHourlyLoading(in/hr) * (TimeIrrigatedMinutes / 60)", "Time-based operational formula." },
                         new List<string> { "Monthly App Volume", "Volume(gal) = DailyLoading(in) * Area(acres) * 27,154", "Used in monthly application create/edit flow." },
-                        new List<string> { "NDAR Daily Loading", "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,152)", "NDAR service constant currently uses 27,152." },
-                        new List<string> { "Max Hourly (< 60 min)", "MaxHourlyLoading = DailyLoading", "If irrigated time < 60." },
-                        new List<string> { "Max Hourly (>= 60 min)", "MaxHourlyLoading = (DailyLoading / TimeIrrigatedMin) * 60", "If irrigated time >= 60." },
+                        new List<string> { "NDAR Daily Loading", "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,154)", "Derived for NDAR displays/totals from stored volume." },
                         new List<string> { "Monthly Loading", "Sum of daily loading values", "Per field." },
                         new List<string> { "12-Month Floating Total", "Current month monthly loading + previous 11 months monthly loading", "Per field." }
                     }
@@ -375,7 +376,7 @@ flowchart TD
                     Entity = "NDAR1FieldDaily",
                     StorageField = "DailyLoading",
                     UsedInModule = "Reports > NDAR1",
-                    FormulaOrTransformation = "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,152)",
+                    FormulaOrTransformation = "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,154)",
                     ReportOutput = "NDAR1 day rows and monthly totals per sprayfield",
                     FallbackOrValidation = "Requires sprayfield area; monthly totals aggregate daily rows.",
                     Reference = new TraceReferenceViewModel
@@ -396,14 +397,14 @@ flowchart TD
                         new TraceFormulaViewModel
                         {
                             Name = "NDAR Daily Loading",
-                            Expression = "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,152)",
+                            Expression = "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,154)",
                             Notes = "NDAR conversion constant."
                         },
                         new TraceFormulaViewModel
                         {
-                            Name = "Max Hourly split",
-                            Expression = "<60 min => MaxHourly = DailyLoading; >=60 min => (DailyLoading / TimeMin) * 60",
-                            Notes = "Applied by irrigation duration branch."
+                            Name = "Max Hourly source",
+                            Expression = "MaxHourly(in/hr) = Sprayfield Permitted (Max) Hourly Rate",
+                            Notes = "Static source; not a duration branch formula."
                         }
                     },
                     Usages =
@@ -425,7 +426,7 @@ flowchart TD
                     UsedInModule = "Operational Data > Monthly Applications",
                     FormulaOrTransformation = "Volume(gal) = DailyLoading(in) * ReportAcres * 27,154",
                     ReportOutput = "Feeds NDAR1 source records and monthly operational summaries",
-                    FallbackOrValidation = "Save blocked when sprayfield area missing/zero; annual rate required for max hourly assignment.",
+                    FallbackOrValidation = "Save blocked when sprayfield area missing/zero; permitted max hourly rate required for max hourly assignment.",
                     Reference = new TraceReferenceViewModel
                     {
                         Label = "Monthly Application Create/Edit",
@@ -434,7 +435,7 @@ flowchart TD
                     UsedByReports = { "NDAR1", "Irrigation" },
                     Steps =
                     {
-                        new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "User enters Daily Loading in Monthly Application form." },
+                        new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "User enters Time Irrigated in Monthly Application form." },
                         new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "Server computes and stores VolumeGallons; client value is not trusted." },
                         new TraceStepViewModel { Order = 3, Label = "Computation", Detail = "Area uses sprayfield report acres and 27,154 constant." },
                         new TraceStepViewModel { Order = 4, Label = "Report Surface", Detail = "Used as live-source data for NDAR and operational reports." }

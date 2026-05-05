@@ -24,8 +24,6 @@ public class MonthlyApplicationViewModel
 
 public class MonthlyApplicationCreateViewModel
 {
-    public const decimal MonthlyApplicationGallonsPerAcreInch = 27154m;
-
     [Required]
     [Display(Name = "Company")]
     public Guid CompanyId { get; set; }
@@ -43,21 +41,19 @@ public class MonthlyApplicationCreateViewModel
     [DataType(DataType.Date)]
     public DateTime ApplicationDate { get; set; } = DateTime.Today;
 
-    [Range(0.000001, double.MaxValue)]
     [Display(Name = "Daily Loading (inches)")]
-    public decimal DailyLoadingInches { get; set; }
+    public decimal? DailyLoadingInches { get; set; }
 
     [Display(Name = "Volume Applied (gallons)")]
-    public decimal VolumeGallons { get; set; }
+    public decimal? VolumeGallons { get; set; }
 
     [Range(0.0, double.MaxValue)]
     [Display(Name = "Time Irrigated (minutes)")]
     public decimal? TimeIrrigatedMinutes { get; set; }
 
-    [Range(0.0, double.MaxValue)]
     [Display(Name = "Maximum Hourly Loading (inches/acre)")]
     [DisplayFormat(DataFormatString = "{0:0.00}", ApplyFormatInEditMode = true)]
-    public decimal MaximumHourlyLoadingInchesPerAcre { get; set; }
+    public decimal? MaximumHourlyLoadingInchesPerAcre { get; set; }
 
     [Display(Name = "Comments")]
     public string? Comments { get; set; }
