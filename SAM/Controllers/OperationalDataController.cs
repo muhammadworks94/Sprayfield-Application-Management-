@@ -2635,6 +2635,15 @@ namespace SAM.Controllers;
             return $"Resolved permit {permit.PermitNumber} v{permit.PermitVersion} for {reportDate:MMM yyyy}, but it has no NDMR template parameters. Add PCS rows under Permit Versions.";
         }
 
+        var ndmrRows = await _context.FacilityPermitTemplateParameters
+            .Where(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
+            .ToListAsync();
+        var hasMonthApplicableRows = ndmrRows.Any(row => IsTemplateRowApplicableForMonth(row, reportDate.Month));
+        if (!hasMonthApplicableRows)
+        {
+            return $"Resolved permit {permit.PermitNumber} v{permit.PermitVersion} for {reportDate:MMM yyyy}, but none of its NDMR rows are scheduled for this month based on M. Frequency/Months CSV.";
+        }
+
         return "Permit template parameters are not available for this period.";
     }
 

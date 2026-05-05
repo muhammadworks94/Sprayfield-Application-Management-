@@ -111,7 +111,7 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
-                                <h5 class="mb-1">@permit.PermitNumber v@permit.PermitVersion</h5>
+                                <h5 class="mb-1">@permit.PermitNumber v@(permit.PermitVersion)</h5>
                                 <div class="text-muted small">@permit.EffectiveStartDate.ToString("yyyy-MM-dd") to @(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? "open-ended")</div>
                             </div>
                             <div class="d-flex gap-2">
@@ -343,7 +343,7 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
-                                <h5 class="mb-1">@permit.PermitNumber v@permit.PermitVersion</h5>
+                                <h5 class="mb-1">@permit.PermitNumber v@(permit.PermitVersion)</h5>
                                 <div class="text-muted small">@permit.EffectiveStartDate.ToString("yyyy-MM-dd") to @(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? "open-ended")</div>
                             </div>
                             <div class="d-flex gap-2">
