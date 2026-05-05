@@ -507,8 +507,10 @@ namespace SAM.Controllers;
             }
             catch (InvalidOperationException)
             {
-                ModelState.AddModelError(string.Empty, BuildMissingWwCharMessage(viewModel.ApplicationDate));
-                ViewBag.WWCharShortcutUrl = BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
+                var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(viewModel.FacilityId, viewModel.ApplicationDate);
+                ModelState.AddModelError(string.Empty, dependencyGuidance.DependencySummary);
+                ViewBag.WWCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl;
+                ViewBag.MonthlyDependencyGuidance = dependencyGuidance;
             }
 
             if (complianceProjection?.RequiresConfirmation == true && !viewModel.ConfirmComplianceWarnings)
@@ -523,7 +525,6 @@ namespace SAM.Controllers;
             var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
             ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
-            ViewBag.WWCharShortcutUrl ??= BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
             return View(viewModel);
         }
 
@@ -648,8 +649,10 @@ namespace SAM.Controllers;
             }
             catch (InvalidOperationException)
             {
-                ModelState.AddModelError(string.Empty, BuildMissingWwCharMessage(viewModel.ApplicationDate));
-                ViewBag.WWCharShortcutUrl = BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
+                var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(viewModel.FacilityId, viewModel.ApplicationDate);
+                ModelState.AddModelError(string.Empty, dependencyGuidance.DependencySummary);
+                ViewBag.WWCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl;
+                ViewBag.MonthlyDependencyGuidance = dependencyGuidance;
             }
 
             if (complianceProjection?.RequiresConfirmation == true && !viewModel.ConfirmComplianceWarnings)
@@ -664,7 +667,6 @@ namespace SAM.Controllers;
             var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
             ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
-            ViewBag.WWCharShortcutUrl ??= BuildWwCharCreateShortcutUrl(viewModel.FacilityId, viewModel.ApplicationDate);
             return View(viewModel);
         }
 
@@ -818,10 +820,15 @@ namespace SAM.Controllers;
         }
         catch (InvalidOperationException ex)
         {
+            var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(request.FacilityId, request.ApplicationDate);
             return BadRequest(new
             {
-                message = BuildMissingWwCharMessage(request.ApplicationDate),
-                wwCharShortcutUrl = BuildWwCharCreateShortcutUrl(request.FacilityId, request.ApplicationDate),
+                message = dependencyGuidance.DependencySummary,
+                dependencyCode = dependencyGuidance.DependencyCode,
+                dependencySummary = dependencyGuidance.DependencySummary,
+                dependencySteps = dependencyGuidance.DependencySteps,
+                wwCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl,
+                permitVersionsUrl = dependencyGuidance.PermitVersionsUrl,
                 detail = ex.Message
             });
         }
@@ -2352,9 +2359,158 @@ namespace SAM.Controllers;
         }
     }
 
-    private string BuildMissingWwCharMessage(DateTime applicationDate)
+    private sealed class MonthlyDependencyGuidanceDto
     {
-        return $"WWChar chemistry (including TKN) is required for {applicationDate:MMM yyyy} before saving this Monthly Application.";
+        public string DependencyCode { get; init; } = "MissingTknChemistryForMonth";
+        public string DependencySummary { get; init; } = string.Empty;
+        public List<string> DependencySteps { get; init; } = new();
+        public string WwCharShortcutUrl { get; init; } = string.Empty;
+        public string PermitVersionsUrl { get; init; } = string.Empty;
+    }
+
+    private async Task<MonthlyDependencyGuidanceDto> BuildMonthlyAppDependencyGuidanceAsync(Guid facilityId, DateTime applicationDate)
+    {
+        var monthLabel = applicationDate.ToString("MMM yyyy");
+        var wwCharShortcutUrl = BuildWwCharCreateShortcutUrl(facilityId, applicationDate);
+        var permitVersionsUrl = BuildPermitVersionsShortcutUrl(facilityId, applicationDate);
+
+        var wwChar = await _context.WWChars
+            .AsNoTracking()
+            .Where(w => w.FacilityId == facilityId && (int)w.Month == applicationDate.Month && w.Year == applicationDate.Year)
+            .OrderByDescending(w => w.UpdatedDate ?? w.CreatedDate)
+            .FirstOrDefaultAsync();
+
+        if (wwChar == null)
+        {
+            return new MonthlyDependencyGuidanceDto
+            {
+                DependencyCode = "MissingWwCharRecord",
+                DependencySummary = $"Monthly Application for {monthLabel} needs WWChar chemistry before it can be saved.",
+                DependencySteps = new List<string>
+                {
+                    $"Open WWChar for {monthLabel} and create the monthly record.",
+                    "Enter required chemistry rows (including TKN) and save.",
+                    "Return to Monthly Application and save again."
+                },
+                WwCharShortcutUrl = wwCharShortcutUrl,
+                PermitVersionsUrl = permitVersionsUrl
+            };
+        }
+
+        var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(facilityId, applicationDate);
+        if (resolvedPermit == null)
+        {
+            return new MonthlyDependencyGuidanceDto
+            {
+                DependencyCode = "MissingTknTemplateRowForResolvedPermit",
+                DependencySummary = $"WWChar exists for {monthLabel}, but no active permit version is resolved for this period.",
+                DependencySteps = new List<string>
+                {
+                    $"Open Permit Versions and make sure the permit effective dates cover {monthLabel}.",
+                    "Add the TKN (PCS 00625) wastewater template row to the resolved permit version.",
+                    "Re-open WWChar for this month, enter TKN values, save, then retry Monthly Application."
+                },
+                WwCharShortcutUrl = wwCharShortcutUrl,
+                PermitVersionsUrl = permitVersionsUrl
+            };
+        }
+
+        var permitNdmrRows = await _context.FacilityPermitTemplateParameters
+            .AsNoTracking()
+            .Include(x => x.PcsParameterCatalog)
+            .Where(x => x.FacilityPermitId == resolvedPermit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
+            .ToListAsync();
+
+        var tknRows = permitNdmrRows
+            .Where(x => string.Equals(x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty, WWCharChemistryResolver.TknPcsCode, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (tknRows.Count == 0)
+        {
+            return new MonthlyDependencyGuidanceDto
+            {
+                DependencyCode = "MissingTknTemplateRowForResolvedPermit",
+                DependencySummary = $"WWChar exists for {monthLabel}, but the resolved permit template does not include TKN (PCS 00625).",
+                DependencySteps = new List<string>
+                {
+                    $"Open Permit Versions for {monthLabel}.",
+                    $"Add wastewater template row PCS {WWCharChemistryResolver.TknPcsCode} (TKN as N) and save.",
+                    "Re-open WWChar for this month, enter TKN values, save, then retry Monthly Application."
+                },
+                WwCharShortcutUrl = wwCharShortcutUrl,
+                PermitVersionsUrl = permitVersionsUrl
+            };
+        }
+
+        var hasMonthApplicableTknRow = tknRows.Any(x => IsTemplateRowApplicableForMonth(x, applicationDate.Month));
+        if (!hasMonthApplicableTknRow)
+        {
+            return new MonthlyDependencyGuidanceDto
+            {
+                DependencyCode = "MissingTknTemplateRowForResolvedPermit",
+                DependencySummary = $"WWChar exists for {monthLabel}, but TKN (PCS 00625) is not scheduled for this month based on M. Frequency/Months CSV.",
+                DependencySteps = new List<string>
+                {
+                    "Open Permit Versions and edit the TKN template row schedule.",
+                    $"For periodic frequencies (e.g., 3 x Year/Annual), include month {applicationDate.Month} in Months CSV; or use Monthly if it applies every month.",
+                    "Re-open WWChar for this month, enter TKN values, save, then retry Monthly Application."
+                },
+                WwCharShortcutUrl = wwCharShortcutUrl,
+                PermitVersionsUrl = permitVersionsUrl
+            };
+        }
+
+        var wwCharTemplateValues = await _context.WWCharTemplateValues
+            .AsNoTracking()
+            .Where(v => v.WWCharId == wwChar.Id)
+            .ToListAsync();
+        var parameterIds = wwCharTemplateValues.Select(v => v.FacilityPermitTemplateParameterId).Distinct().ToList();
+        var pcsByTemplateParameterId = parameterIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.FacilityPermitTemplateParameters
+                .AsNoTracking()
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => parameterIds.Contains(x.Id))
+                .ToDictionaryAsync(
+                    x => x.Id,
+                    x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty);
+
+        var tknFromTemplate = WWCharChemistryResolver.AverageTemplateValueForPcs(
+            wwChar.Id,
+            WWCharChemistryResolver.TknPcsCode,
+            wwCharTemplateValues,
+            pcsByTemplateParameterId);
+
+        if (tknFromTemplate.HasValue || wwChar.TKNN.HasValue)
+        {
+            return new MonthlyDependencyGuidanceDto
+            {
+                DependencyCode = "MissingTknChemistryForMonth",
+                DependencySummary = $"WWChar chemistry for {monthLabel} is still incomplete for PAN projection.",
+                DependencySteps = new List<string>
+                {
+                    "Review WWChar chemistry values for this month and ensure TKN has valid numeric entries.",
+                    "Save WWChar and retry Monthly Application.",
+                    "If issue persists, review permit row mapping for PCS 00625."
+                },
+                WwCharShortcutUrl = wwCharShortcutUrl,
+                PermitVersionsUrl = permitVersionsUrl
+            };
+        }
+
+        return new MonthlyDependencyGuidanceDto
+        {
+            DependencyCode = "WwCharExistsButNoTknValues",
+            DependencySummary = $"WWChar is available for {monthLabel}, but TKN chemistry is missing so PAN cannot be calculated yet.",
+            DependencySteps = new List<string>
+            {
+                $"Open WWChar for {monthLabel} and enter TKN values (PCS {WWCharChemistryResolver.TknPcsCode}).",
+                "Save the WWChar record for this month.",
+                "Return to Monthly Application and save again."
+            },
+            WwCharShortcutUrl = wwCharShortcutUrl,
+            PermitVersionsUrl = permitVersionsUrl
+        };
     }
 
     private string BuildWwCharCreateShortcutUrl(Guid facilityId, DateTime applicationDate)
@@ -2364,6 +2520,20 @@ namespace SAM.Controllers;
                    new
                    {
                        facilityId,
+                       month = applicationDate.Month,
+                       year = applicationDate.Year
+                   }) ?? string.Empty;
+    }
+
+    private string BuildPermitVersionsShortcutUrl(Guid facilityId, DateTime applicationDate)
+    {
+        return Url.Action(
+                   "FacilityPermits",
+                   "SystemAdmin",
+                   new
+                   {
+                       facilityId,
+                       source = "wwchar",
                        month = applicationDate.Month,
                        year = applicationDate.Year
                    }) ?? string.Empty;
