@@ -200,7 +200,8 @@ flowchart TD
                         "When WWChar is opened for a facility/month, system resolves active permit by date and loads wastewater template rows.",
                         "WWChar now filters periodic rows by selected month (for example 3 x Year / Annual rows only appear when ScheduledMonthsCsv includes that month; blank periodic schedules are hidden).",
                         "When GW Monitoring Create/Edit is opened for a facility/sample date, system resolves active permit and loads groundwater template rows.",
-                        "Operator enters daily values in day-row format under those rows; SAM stores values tied to the exact permit template row.",
+                        "Operator enters groundwater values directly in the template-entry column; SAM stores values tied to the exact permit template row.",
+                        "Rows required for the selected sample month are highlighted and enforced at save with user-friendly unblock guidance.",
                         "PAN chemistry in WWChar workflow is sourced from template PCS rows: 00625 (TKN) and 00620 (NO3). NO2 is treated as 0 for PAN.",
                         "NDMR/GW reporting uses the same permit/template context so output matches configured permit requirements.",
                         "Per-row notes (permit instructions/footnotes) are shown through an info icon tooltip in admin and monitoring dialogs."
@@ -294,7 +295,8 @@ flowchart TD
                         "System resolves active permit version for date.",
                         "System loads permit template PCS rows flagged for NDMR.",
                         "If none found, page shows guided status message describing missing setup.",
-                        "Values save both legacy WWChar context and template value rows."
+                        "Values save both legacy WWChar context and template value rows.",
+                        "ORC On Site and Lagoon Freeboard are persisted on the WWChar record and reflected anywhere that WWChar record is consumed."
                     }
                 },
                 new ProjectStepFlowViewModel
@@ -302,9 +304,10 @@ flowchart TD
                     Name = "GW Monitoring",
                     Steps =
                     {
-                        "User records groundwater measurements tied to facility/well/date.",
-                        "Template foundation exists for PCS-based mapping (v1 hooks in place).",
-                        "Used downstream for report exports and compliance context."
+                        "User records groundwater monitoring tied to facility/well/date.",
+                        "System resolves active permit and shows Attachment C template rows with editable value inputs.",
+                        "Rows required for the selected sample month (from frequency + scheduled months) must be entered before save.",
+                        "Template values are stored and used downstream for reporting/compliance context."
                     }
                 },
                 new ProjectStepFlowViewModel

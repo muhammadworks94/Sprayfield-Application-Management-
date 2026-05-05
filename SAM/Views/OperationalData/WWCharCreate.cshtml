@@ -125,8 +125,8 @@
                         <input type="hidden" asp-for="TemplateParameters[p].Units" />
                         <input type="hidden" asp-for="TemplateParameters[p].Notes" />
                     }
-                    <div class="table-responsive responsive-table wide-data-table fixed-height-table-wrapper mb-3">
-                        <table class="table table-bordered table-sm">
+                    <div class="table-responsive responsive-table wide-data-table wwchar-daily-table-wrapper fixed-height-table-wrapper mb-3">
+                        <table class="table table-bordered table-sm wwchar-daily-table">
                             <thead>
                                 <tr>
                                     <th>Day</th>
@@ -151,7 +151,7 @@
                             @for (int d = 0; d < 31; d++)
                             {
                                 <tr>
-                                    <td><strong>@(d + 1)</strong></td>
+                                    <th scope="row"><strong>@(d + 1)</strong></th>
                                     <td>
                                         <select asp-for="ORCOnSite[d]" asp-items="orcOnSiteOptions" class="form-select form-select-sm">
                                             <option value="">-</option>
@@ -180,21 +180,21 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="LabCertification" class="form-label"></label>
+                            <label asp-for="LabCertification" class="form-label required"></label>
                             <input asp-for="LabCertification" class="form-control" />
                             <span asp-validation-for="LabCertification" class="text-danger"></span>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="CollectedBy" class="form-label"></label>
+                            <label asp-for="CollectedBy" class="form-label required"></label>
                             <input asp-for="CollectedBy" class="form-control" />
                             <span asp-validation-for="CollectedBy" class="text-danger"></span>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="AnalyzedBy" class="form-label"></label>
+                            <label asp-for="AnalyzedBy" class="form-label required"></label>
                             <input asp-for="AnalyzedBy" class="form-control" />
                             <span asp-validation-for="AnalyzedBy" class="text-danger"></span>
                         </div>

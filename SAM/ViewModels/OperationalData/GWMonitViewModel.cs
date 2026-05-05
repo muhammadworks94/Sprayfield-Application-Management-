@@ -397,6 +397,7 @@ public class GWMonitEditViewModel
 
 public class GWMonitTemplateParameterViewModel
 {
+    public Guid FacilityPermitTemplateParameterId { get; set; }
     public string PcsCode { get; set; } = string.Empty;
     public string ParameterName { get; set; } = string.Empty;
     public string Units { get; set; } = string.Empty;
@@ -405,5 +406,7 @@ public class GWMonitTemplateParameterViewModel
     public string? ScheduledMonthsCsv { get; set; }
     public decimal? DailyMaximumLimit { get; set; }
     public string? Notes { get; set; }
+    public decimal? EnteredValue { get; set; }
+    public bool IsRequiredForSelectedMonth { get; set; }
+    public string? RequirementMessage { get; set; }
 }
-

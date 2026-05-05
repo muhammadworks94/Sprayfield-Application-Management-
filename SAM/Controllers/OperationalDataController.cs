@@ -1774,26 +1774,51 @@ namespace SAM.Controllers;
     [Authorize(Policy = Policies.RequireTechnician)]
     public async Task<IActionResult> GWMonitCreate(GWMonitCreateViewModel viewModel)
     {
-        // Derive company from the selected facility to support global admins
         var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
         if (facility == null)
         {
             ModelState.AddModelError("FacilityId", "Selected facility was not found.");
         }
 
+        var resolvedPermit = viewModel.FacilityId == Guid.Empty
+            ? null
+            : await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, viewModel.SampleDate);
+        viewModel.FacilityPermitId = resolvedPermit?.Id;
+        viewModel.FacilityPermitDisplay = resolvedPermit == null
+            ? null
+            : $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}";
+
+        if (viewModel.FacilityId != Guid.Empty)
+        {
+            viewModel.TemplateParameters = await BuildGwMonitTemplateInputsForPostAsync(
+                viewModel.FacilityId,
+                resolvedPermit?.Id,
+                viewModel.SampleDate,
+                viewModel.TemplateParameters);
+        }
+        else
+        {
+            viewModel.TemplateParameters = new List<GWMonitTemplateParameterViewModel>();
+        }
+
+        var missingTemplateRows = ValidateGwTemplateRequirements(viewModel.TemplateParameters);
+        if (missingTemplateRows.Count > 0)
+        {
+            var joinedRows = string.Join(", ", missingTemplateRows);
+            ModelState.AddModelError(
+                string.Empty,
+                $"We could not save this record yet because required permit-template values for {viewModel.SampleDate:MMM yyyy} are missing: {joinedRows}. Enter values for these required rows to unblock save.");
+        }
+
+        if (facility != null)
+        {
+            viewModel.CompanyId = facility.CompanyId;
+            await EnsureCompanyAccessAsync(facility.CompanyId);
+        }
+
         if (!ModelState.IsValid)
         {
             var companyIdForLists = facility?.CompanyId != Guid.Empty ? facility?.CompanyId : viewModel.CompanyId;
-            var resolvedPermit = viewModel.FacilityId == Guid.Empty
-                ? null
-                : await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, viewModel.SampleDate);
-            viewModel.FacilityPermitId = resolvedPermit?.Id;
-            viewModel.FacilityPermitDisplay = resolvedPermit == null
-                ? null
-                : $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}";
-            viewModel.TemplateParameters = viewModel.FacilityId == Guid.Empty
-                ? new List<GWMonitTemplateParameterViewModel>()
-                : await BuildGwMonitTemplateInputsAsync(viewModel.FacilityId, resolvedPermit?.Id, viewModel.SampleDate);
             viewModel.TemplateParametersStatusMessage = await BuildGwMonitTemplateStatusMessageAsync(
                 companyIdForLists ?? Guid.Empty,
                 viewModel.FacilityId,
@@ -1802,31 +1827,6 @@ namespace SAM.Controllers;
                 viewModel.TemplateParameters.Count);
             ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
             ViewBag.MonitoringWells = await GetMonitoringWellSelectListAsync(companyIdForLists, viewModel.FacilityId);
-            return View(viewModel);
-        }
-
-        await EnsureCompanyAccessAsync(facility!.CompanyId);
-
-        if (!ModelState.IsValid)
-        {
-            var resolvedPermit = viewModel.FacilityId == Guid.Empty
-                ? null
-                : await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, viewModel.SampleDate);
-            viewModel.FacilityPermitId = resolvedPermit?.Id;
-            viewModel.FacilityPermitDisplay = resolvedPermit == null
-                ? null
-                : $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}";
-            viewModel.TemplateParameters = viewModel.FacilityId == Guid.Empty
-                ? new List<GWMonitTemplateParameterViewModel>()
-                : await BuildGwMonitTemplateInputsAsync(viewModel.FacilityId, resolvedPermit?.Id, viewModel.SampleDate);
-            viewModel.TemplateParametersStatusMessage = await BuildGwMonitTemplateStatusMessageAsync(
-                viewModel.CompanyId,
-                viewModel.FacilityId,
-                resolvedPermit?.Id,
-                viewModel.SampleDate,
-                viewModel.TemplateParameters.Count);
-            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.MonitoringWells = await GetMonitoringWellSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
             return View(viewModel);
         }
 
@@ -1841,25 +1841,15 @@ namespace SAM.Controllers;
                 SampleDepth = viewModel.SampleDepth,
                 WaterLevel = viewModel.WaterLevel,
                 Temperature = viewModel.Temperature,
-                PH = viewModel.PH,
                 GallonsPumped = viewModel.GallonsPumped,
                 Odor = viewModel.Odor,
                 Appearance = viewModel.Appearance,
                 Conductivity = viewModel.Conductivity,
                 TDS = viewModel.TDS,
                 Turbidity = viewModel.Turbidity,
-                TSS = viewModel.TSS,
-                NH3N = viewModel.NH3N,
-                NO3N = viewModel.NO3N,
-                TKN = viewModel.TKN,
                 TOC = viewModel.TOC,
-                Chloride = viewModel.Chloride,
-                Calcium = viewModel.Calcium,
-                Magnesium = viewModel.Magnesium,
                 MetalsSamplesCollectedUnfiltered = viewModel.MetalsSamplesCollectedUnfiltered,
                 MetalSamplesFieldAcidified = viewModel.MetalSamplesFieldAcidified,
-                FecalColiform = viewModel.FecalColiform,
-                TotalColiform = viewModel.TotalColiform,
                 VOCReportAttached = viewModel.VOCReportAttached,
                 VOCMethodNumber = viewModel.VOCMethodNumber,
                 LabCertification = viewModel.LabCertification,
@@ -1869,22 +1859,13 @@ namespace SAM.Controllers;
             };
 
             await _gwMonitService.CreateAsync(gwMonit);
+            await SaveGwMonitTemplateValuesAsync(gwMonit, viewModel.TemplateParameters);
             TempData["SuccessMessage"] = "Groundwater monitoring record created successfully.";
             return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
-            var resolvedPermit = viewModel.FacilityId == Guid.Empty
-                ? null
-                : await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, viewModel.SampleDate);
-            viewModel.FacilityPermitId = resolvedPermit?.Id;
-            viewModel.FacilityPermitDisplay = resolvedPermit == null
-                ? null
-                : $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}";
-            viewModel.TemplateParameters = viewModel.FacilityId == Guid.Empty
-                ? new List<GWMonitTemplateParameterViewModel>()
-                : await BuildGwMonitTemplateInputsAsync(viewModel.FacilityId, resolvedPermit?.Id, viewModel.SampleDate);
             viewModel.TemplateParametersStatusMessage = await BuildGwMonitTemplateStatusMessageAsync(
                 viewModel.CompanyId,
                 viewModel.FacilityId,
@@ -1949,7 +1930,7 @@ namespace SAM.Controllers;
         viewModel.FacilityPermitDisplay = resolvedEditPermit == null
             ? null
             : $"{resolvedEditPermit.PermitNumber} v{resolvedEditPermit.PermitVersion}";
-        viewModel.TemplateParameters = await BuildGwMonitTemplateInputsAsync(gwMonit.FacilityId, resolvedEditPermit?.Id, gwMonit.SampleDate);
+        viewModel.TemplateParameters = await BuildGwMonitTemplateInputsAsync(gwMonit.FacilityId, resolvedEditPermit?.Id, gwMonit.SampleDate, gwMonit.Id);
         viewModel.TemplateParametersStatusMessage = await BuildGwMonitTemplateStatusMessageAsync(
             gwMonit.CompanyId,
             gwMonit.FacilityId,
@@ -1970,18 +1951,33 @@ namespace SAM.Controllers;
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
+        var resolvedPermit = viewModel.FacilityId == Guid.Empty
+            ? null
+            : await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, viewModel.SampleDate);
+        viewModel.FacilityPermitId = resolvedPermit?.Id;
+        viewModel.FacilityPermitDisplay = resolvedPermit == null
+            ? null
+            : $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}";
+        viewModel.TemplateParameters = viewModel.FacilityId == Guid.Empty
+            ? new List<GWMonitTemplateParameterViewModel>()
+            : await BuildGwMonitTemplateInputsForPostAsync(
+                viewModel.FacilityId,
+                resolvedPermit?.Id,
+                viewModel.SampleDate,
+                viewModel.TemplateParameters,
+                viewModel.Id);
+
+        var missingTemplateRows = ValidateGwTemplateRequirements(viewModel.TemplateParameters);
+        if (missingTemplateRows.Count > 0)
+        {
+            var joinedRows = string.Join(", ", missingTemplateRows);
+            ModelState.AddModelError(
+                string.Empty,
+                $"We could not save this record yet because required permit-template values for {viewModel.SampleDate:MMM yyyy} are missing: {joinedRows}. Enter values for these required rows to unblock save.");
+        }
+
         if (!ModelState.IsValid)
         {
-            var resolvedPermit = viewModel.FacilityId == Guid.Empty
-                ? null
-                : await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, viewModel.SampleDate);
-            viewModel.FacilityPermitId = resolvedPermit?.Id;
-            viewModel.FacilityPermitDisplay = resolvedPermit == null
-                ? null
-                : $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}";
-            viewModel.TemplateParameters = viewModel.FacilityId == Guid.Empty
-                ? new List<GWMonitTemplateParameterViewModel>()
-                : await BuildGwMonitTemplateInputsAsync(viewModel.FacilityId, resolvedPermit?.Id, viewModel.SampleDate);
             viewModel.TemplateParametersStatusMessage = await BuildGwMonitTemplateStatusMessageAsync(
                 viewModel.CompanyId,
                 viewModel.FacilityId,
@@ -2003,25 +1999,15 @@ namespace SAM.Controllers;
             gwMonit.SampleDepth = viewModel.SampleDepth;
             gwMonit.WaterLevel = viewModel.WaterLevel;
             gwMonit.Temperature = viewModel.Temperature;
-            gwMonit.PH = viewModel.PH;
             gwMonit.GallonsPumped = viewModel.GallonsPumped;
             gwMonit.Odor = viewModel.Odor;
             gwMonit.Appearance = viewModel.Appearance;
             gwMonit.Conductivity = viewModel.Conductivity;
             gwMonit.TDS = viewModel.TDS;
             gwMonit.Turbidity = viewModel.Turbidity;
-            gwMonit.TSS = viewModel.TSS;
-            gwMonit.NH3N = viewModel.NH3N;
-            gwMonit.NO3N = viewModel.NO3N;
-            gwMonit.TKN = viewModel.TKN;
             gwMonit.TOC = viewModel.TOC;
-            gwMonit.Chloride = viewModel.Chloride;
-            gwMonit.Calcium = viewModel.Calcium;
-            gwMonit.Magnesium = viewModel.Magnesium;
             gwMonit.MetalsSamplesCollectedUnfiltered = viewModel.MetalsSamplesCollectedUnfiltered;
             gwMonit.MetalSamplesFieldAcidified = viewModel.MetalSamplesFieldAcidified;
-            gwMonit.FecalColiform = viewModel.FecalColiform;
-            gwMonit.TotalColiform = viewModel.TotalColiform;
             gwMonit.VOCReportAttached = viewModel.VOCReportAttached;
             gwMonit.VOCMethodNumber = viewModel.VOCMethodNumber;
             gwMonit.LabCertification = viewModel.LabCertification;
@@ -2030,22 +2016,13 @@ namespace SAM.Controllers;
             gwMonit.Comments = viewModel.Comments;
 
             await _gwMonitService.UpdateAsync(gwMonit);
+            await SaveGwMonitTemplateValuesAsync(gwMonit, viewModel.TemplateParameters);
             TempData["SuccessMessage"] = "Groundwater monitoring record updated successfully.";
             return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
-            var resolvedPermit = viewModel.FacilityId == Guid.Empty
-                ? null
-                : await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, viewModel.SampleDate);
-            viewModel.FacilityPermitId = resolvedPermit?.Id;
-            viewModel.FacilityPermitDisplay = resolvedPermit == null
-                ? null
-                : $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}";
-            viewModel.TemplateParameters = viewModel.FacilityId == Guid.Empty
-                ? new List<GWMonitTemplateParameterViewModel>()
-                : await BuildGwMonitTemplateInputsAsync(viewModel.FacilityId, resolvedPermit?.Id, viewModel.SampleDate);
             viewModel.TemplateParametersStatusMessage = await BuildGwMonitTemplateStatusMessageAsync(
                 viewModel.CompanyId,
                 viewModel.FacilityId,
@@ -2415,6 +2392,69 @@ namespace SAM.Controllers;
         await _context.SaveChangesAsync();
     }
 
+    private List<string> ValidateGwTemplateRequirements(List<GWMonitTemplateParameterViewModel>? templateParameters)
+    {
+        if (templateParameters == null || templateParameters.Count == 0)
+        {
+            return new List<string>();
+        }
+
+        return templateParameters
+            .Where(p => p.IsRequiredForSelectedMonth && !p.EnteredValue.HasValue)
+            .Select(p => $"{p.PcsCode} - {p.ParameterName}")
+            .ToList();
+    }
+
+    private async Task SaveGwMonitTemplateValuesAsync(GWMonit gwMonit, List<GWMonitTemplateParameterViewModel>? templateParameters)
+    {
+        if (templateParameters == null) return;
+
+        var existing = await _context.GWMonitTemplateValues.Where(x => x.GWMonitId == gwMonit.Id).ToListAsync();
+        _context.GWMonitTemplateValues.RemoveRange(existing);
+
+        foreach (var parameter in templateParameters)
+        {
+            if (!parameter.EnteredValue.HasValue) continue;
+
+            _context.GWMonitTemplateValues.Add(new GWMonitTemplateValue
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = gwMonit.CompanyId,
+                GWMonitId = gwMonit.Id,
+                FacilityPermitTemplateParameterId = parameter.FacilityPermitTemplateParameterId,
+                NumericValue = parameter.EnteredValue,
+                CreatedBy = User?.Identity?.Name ?? "System"
+            });
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<List<GWMonitTemplateParameterViewModel>> BuildGwMonitTemplateInputsForPostAsync(
+        Guid facilityId,
+        Guid? resolvedPermitId,
+        DateTime sampleDate,
+        List<GWMonitTemplateParameterViewModel>? postedParameters,
+        Guid? gwMonitId = null)
+    {
+        var rows = await BuildGwMonitTemplateInputsAsync(facilityId, resolvedPermitId, sampleDate, gwMonitId);
+        if (postedParameters == null || postedParameters.Count == 0)
+        {
+            return rows;
+        }
+
+        var postedByTemplateId = postedParameters.ToDictionary(x => x.FacilityPermitTemplateParameterId, x => x.EnteredValue);
+        foreach (var row in rows)
+        {
+            if (postedByTemplateId.TryGetValue(row.FacilityPermitTemplateParameterId, out var enteredValue))
+            {
+                row.EnteredValue = enteredValue;
+            }
+        }
+
+        return rows;
+    }
+
     private static bool IsTemplateRowApplicableForMonth(FacilityPermitTemplateParameter row, int month)
     {
         var alwaysInclude = row.MeasurementFrequency is MeasurementFrequencyEnum.Daily
@@ -2523,7 +2563,8 @@ namespace SAM.Controllers;
     private async Task<List<GWMonitTemplateParameterViewModel>> BuildGwMonitTemplateInputsAsync(
         Guid facilityId,
         Guid? resolvedPermitId,
-        DateTime sampleDate)
+        DateTime sampleDate,
+        Guid? gwMonitId = null)
     {
         var permitId = resolvedPermitId;
         if (!permitId.HasValue)
@@ -2543,8 +2584,13 @@ namespace SAM.Controllers;
             .OrderBy(x => x.SortOrder)
             .ToListAsync();
 
+        var existingValues = gwMonitId.HasValue
+            ? await _context.GWMonitTemplateValues.Where(x => x.GWMonitId == gwMonitId.Value).ToListAsync()
+            : new List<GWMonitTemplateValue>();
+
         return templateRows.Select(row => new GWMonitTemplateParameterViewModel
         {
+            FacilityPermitTemplateParameterId = row.Id,
             PcsCode = row.PcsParameterCatalog?.PcsCode ?? string.Empty,
             ParameterName = row.ParameterDisplayOverride ?? row.PcsParameterCatalog?.UserFriendlyName ?? row.PcsParameterCatalog?.OfficialParameterName ?? string.Empty,
             Units = row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty,
@@ -2552,7 +2598,12 @@ namespace SAM.Controllers;
             SampleType = row.SampleType.ToString(),
             ScheduledMonthsCsv = row.ScheduledMonthsCsv,
             DailyMaximumLimit = row.DailyMaximumLimit,
-            Notes = row.Notes
+            Notes = row.Notes,
+            EnteredValue = existingValues.FirstOrDefault(v => v.FacilityPermitTemplateParameterId == row.Id)?.NumericValue,
+            IsRequiredForSelectedMonth = IsTemplateRowApplicableForMonth(row, sampleDate.Month),
+            RequirementMessage = IsTemplateRowApplicableForMonth(row, sampleDate.Month)
+                ? $"Required for {sampleDate:MMM yyyy} based on permit schedule."
+                : "Not required for this month by permit schedule."
         }).ToList();
     }
 
