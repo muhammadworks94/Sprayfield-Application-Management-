@@ -410,3 +410,15 @@ public class GWMonitTemplateParameterViewModel
     public bool IsRequiredForSelectedMonth { get; set; }
     public string? RequirementMessage { get; set; }
 }
+
+public class GWMonitTemplateSectionViewModel
+{
+    public Guid FacilityId { get; set; }
+    public DateTime SampleDate { get; set; }
+    public Guid? RecordId { get; set; }
+    public bool IsEdit { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
+    public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
+}

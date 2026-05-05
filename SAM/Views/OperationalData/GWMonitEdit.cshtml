@@ -47,81 +47,23 @@
                             <span asp-validation-for="SampleDate" class="text-danger"></span>
                         </div>
                     </div>
-                    <div class="col-md-12">
-                        <div class="mb-3">
-                            <label class="form-label">Resolved Permit Version</label>
-                            <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.FacilityPermitDisplay) ? "No active permit for selected date" : Model.FacilityPermitDisplay)" readonly />
-                        </div>
-                    </div>
                 </div>
             </div>
 
             <div class="form-section">
-                <div class="form-section-title">Groundwater Permit Template Parameters (Attachment C)</div>
-                @if (Model.TemplateParameters.Any())
-                {
-                    @for (int i = 0; i < Model.TemplateParameters.Count; i++)
+                <div id="gwTemplateSectionContainer">
+                    @await Html.PartialAsync("Partials/_GWMonitTemplateSection", new SAM.ViewModels.OperationalData.GWMonitTemplateSectionViewModel
                     {
-                        <input type="hidden" asp-for="TemplateParameters[i].FacilityPermitTemplateParameterId" />
-                        <input type="hidden" asp-for="TemplateParameters[i].PcsCode" />
-                        <input type="hidden" asp-for="TemplateParameters[i].ParameterName" />
-                        <input type="hidden" asp-for="TemplateParameters[i].Units" />
-                        <input type="hidden" asp-for="TemplateParameters[i].MeasurementFrequency" />
-                        <input type="hidden" asp-for="TemplateParameters[i].SampleType" />
-                        <input type="hidden" asp-for="TemplateParameters[i].ScheduledMonthsCsv" />
-                        <input type="hidden" asp-for="TemplateParameters[i].DailyMaximumLimit" />
-                        <input type="hidden" asp-for="TemplateParameters[i].Notes" />
-                        <input type="hidden" asp-for="TemplateParameters[i].IsRequiredForSelectedMonth" />
-                        <input type="hidden" asp-for="TemplateParameters[i].RequirementMessage" />
-                    }
-
-                    <div class="alert alert-secondary py-2 small mb-2">
-                        Enter values in the right-most column. Rows marked <strong>Required This Month</strong> must be filled before save.
-                    </div>
-
-                    <div class="table-responsive fixed-height-table-wrapper mb-3">
-                        <table class="table table-bordered table-sm">
-                            <thead>
-                                <tr>
-                                    <th>PCS</th>
-                                    <th>Parameter</th>
-                                    <th>Units</th>
-                                    <th>M. Frequency</th>
-                                    <th>Sample Type</th>
-                                    <th>Months</th>
-                                    <th>Daily Max</th>
-                                    <th>Entry Value</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            @for (int i = 0; i < Model.TemplateParameters.Count; i++)
-                            {
-                                <tr class="@(Model.TemplateParameters[i].IsRequiredForSelectedMonth ? "table-warning" : string.Empty)">
-                                    <td>@Model.TemplateParameters[i].PcsCode</td>
-                                    <td>
-                                        @Model.TemplateParameters[i].ParameterName
-                                        @if (Model.TemplateParameters[i].IsRequiredForSelectedMonth)
-                                        {
-                                            <span class="badge bg-warning text-dark ms-1">Required This Month</span>
-                                        }
-                                        <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[i].Notes) ? "No notes." : Model.TemplateParameters[i].Notes)"></i>
-                                    </td>
-                                    <td>@Model.TemplateParameters[i].Units</td>
-                                    <td>@Model.TemplateParameters[i].MeasurementFrequency</td>
-                                    <td>@Model.TemplateParameters[i].SampleType</td>
-                                    <td>@(string.IsNullOrWhiteSpace(Model.TemplateParameters[i].ScheduledMonthsCsv) ? "-" : Model.TemplateParameters[i].ScheduledMonthsCsv)</td>
-                                    <td>@(Model.TemplateParameters[i].DailyMaximumLimit?.ToString("0.######") ?? "-")</td>
-                                    <td><input asp-for="TemplateParameters[i].EnteredValue" type="number" step="0.000001" class="form-control form-control-sm" /></td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="alert alert-warning">@(Model.TemplateParametersStatusMessage ?? "No groundwater permit template parameters found for the selected facility/date.")</div>
-                }
+                        FacilityId = Model.FacilityId,
+                        SampleDate = Model.SampleDate,
+                        RecordId = Model.Id,
+                        IsEdit = true,
+                        FacilityPermitId = Model.FacilityPermitId,
+                        FacilityPermitDisplay = Model.FacilityPermitDisplay,
+                        TemplateParametersStatusMessage = Model.TemplateParametersStatusMessage,
+                        TemplateParameters = Model.TemplateParameters
+                    })
+                </div>
             </div>
 
             <div class="form-section">
@@ -180,15 +122,83 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
-        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-            new bootstrap.Tooltip(el);
-        });
+        (function () {
+            const facilitySelect = document.getElementById('facilitySelect');
+            const sampleDateInput = document.getElementById('SampleDate');
+            const container = document.getElementById('gwTemplateSectionContainer');
+            const contextUrl = '@Url.Action("GWMonitTemplateContext", "OperationalData")';
+            const recordId = '@Model.Id';
+            let debounceTimer = null;
+            let requestCounter = 0;
 
-        document.getElementById('facilitySelect')?.addEventListener('change', function() {
-            var facilityId = this.value;
-            if (facilityId) {
-                window.location.href = '@Url.Action("GWMonitEdit", new { id = Model.Id })' + '&facilityId=' + facilityId;
+            function initTooltips(scope) {
+                (scope || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                    bootstrap.Tooltip.getOrCreateInstance(el);
+                });
             }
-        });
+
+            function captureTemplateValues() {
+                const values = {};
+                if (!container) return values;
+                const rowInputs = container.querySelectorAll('input[name^="TemplateParameters["][name$="].EnteredValue"]');
+                rowInputs.forEach(function (input) {
+                    const idxMatch = input.name.match(/^TemplateParameters\[(\d+)\]\.EnteredValue$/);
+                    if (!idxMatch) return;
+                    const idx = idxMatch[1];
+                    const idInput = container.querySelector(`input[name="TemplateParameters[${idx}].FacilityPermitTemplateParameterId"]`);
+                    const key = idInput?.value;
+                    if (key) {
+                        values[key] = input.value;
+                    }
+                });
+                return values;
+            }
+
+            function restoreTemplateValues(values) {
+                if (!container || !values) return;
+                const rowInputs = container.querySelectorAll('input[name^="TemplateParameters["][name$="].EnteredValue"]');
+                rowInputs.forEach(function (input) {
+                    const idxMatch = input.name.match(/^TemplateParameters\[(\d+)\]\.EnteredValue$/);
+                    if (!idxMatch) return;
+                    const idx = idxMatch[1];
+                    const idInput = container.querySelector(`input[name="TemplateParameters[${idx}].FacilityPermitTemplateParameterId"]`);
+                    const key = idInput?.value;
+                    if (key && Object.prototype.hasOwnProperty.call(values, key)) {
+                        input.value = values[key];
+                    }
+                });
+            }
+
+            async function refreshTemplateSection() {
+                const facilityId = facilitySelect?.value;
+                const sampleDate = sampleDateInput?.value;
+                if (!container || !facilityId || !sampleDate) return;
+
+                const snapshot = captureTemplateValues();
+                const currentRequest = ++requestCounter;
+                const url = `${contextUrl}?facilityId=${encodeURIComponent(facilityId)}&sampleDate=${encodeURIComponent(sampleDate)}&recordId=${encodeURIComponent(recordId)}&isEdit=true`;
+
+                try {
+                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!response.ok) return;
+                    const html = await response.text();
+                    if (currentRequest !== requestCounter) return;
+                    container.innerHTML = html;
+                    restoreTemplateValues(snapshot);
+                    initTooltips(container);
+                } catch {
+                    // no-op; keep current UI state on transient failures
+                }
+            }
+
+            function queueRefresh() {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(refreshTemplateSection, 180);
+            }
+
+            facilitySelect?.addEventListener('change', queueRefresh);
+            sampleDateInput?.addEventListener('change', queueRefresh);
+            initTooltips(document);
+        })();
     </script>
 }

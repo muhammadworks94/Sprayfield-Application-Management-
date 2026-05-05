@@ -2023,6 +2023,47 @@ namespace SAM.Controllers;
         return View(viewModel);
     }
 
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireTechnician)]
+    public async Task<IActionResult> GWMonitTemplateContext(Guid facilityId, DateTime sampleDate, Guid? recordId = null, bool isEdit = false)
+    {
+        if (facilityId == Guid.Empty)
+        {
+            return BadRequest("Facility is required.");
+        }
+
+        var facility = await _facilityService.GetByIdAsync(facilityId);
+        if (facility == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(facility.CompanyId);
+
+        var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(facilityId, sampleDate);
+        var templateParameters = await BuildGwMonitTemplateInputsAsync(facilityId, resolvedPermit?.Id, sampleDate, recordId);
+        var statusMessage = await BuildGwMonitTemplateStatusMessageAsync(
+            facility.CompanyId,
+            facilityId,
+            resolvedPermit?.Id,
+            sampleDate,
+            templateParameters.Count);
+
+        var vm = new GWMonitTemplateSectionViewModel
+        {
+            FacilityId = facilityId,
+            SampleDate = sampleDate,
+            RecordId = recordId,
+            IsEdit = isEdit,
+            FacilityPermitId = resolvedPermit?.Id,
+            FacilityPermitDisplay = resolvedPermit == null ? null : $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}",
+            TemplateParametersStatusMessage = statusMessage,
+            TemplateParameters = templateParameters
+        };
+
+        return PartialView("Partials/_GWMonitTemplateSection", vm);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireTechnician)]
