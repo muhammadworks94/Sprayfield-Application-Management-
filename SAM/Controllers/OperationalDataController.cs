@@ -1123,10 +1123,10 @@ namespace SAM.Controllers;
             };
             ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
-            await _wwCharService.CreateAsync(wwChar);
-            await SaveWwCharTemplateValuesAsync(wwChar, viewModel.TemplateParameters);
-            TempData["SuccessMessage"] = $"Wastewater characteristics record created for {wwChar.Month} {wwChar.Year}.";
-            return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
+            var savedWwChar = await _wwCharService.CreateAsync(wwChar);
+            await SaveWwCharTemplateValuesAsync(savedWwChar, viewModel.TemplateParameters);
+            TempData["SuccessMessage"] = $"Wastewater characteristics record saved for {savedWwChar.Month} {savedWwChar.Year}.";
+            return RedirectToAction(nameof(WWChars), new { facilityId = savedWwChar.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1216,6 +1216,72 @@ namespace SAM.Controllers;
         ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
 
         return View(viewModel);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireTechnician)]
+    public async Task<IActionResult> WWCharTemplateContext(Guid facilityId, int month, int year, Guid? recordId = null, bool isEdit = false)
+    {
+        if (facilityId == Guid.Empty || month < 1 || month > 12 || year < 2000 || year > 2100)
+        {
+            return BadRequest("Invalid template context parameters.");
+        }
+
+        var facility = await _facilityService.GetByIdAsync(facilityId);
+        if (facility == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(facility.CompanyId);
+
+        var reportDate = new DateTime(year, month, 1);
+        var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(facilityId, reportDate);
+        var templateParameters = await BuildWwCharTemplateInputsAsync(
+            facility.CompanyId,
+            facilityId,
+            resolvedPermit?.Id,
+            reportDate,
+            recordId);
+        var statusMessage = await BuildWwCharTemplateStatusMessageAsync(
+            facility.CompanyId,
+            facilityId,
+            resolvedPermit?.Id,
+            reportDate,
+            templateParameters.Count);
+
+        List<ORCOnSiteEnum?> orcOnSite = new();
+        List<decimal?> lagoonFreeboard = new();
+        if (recordId.HasValue)
+        {
+            var existingRecord = await _wwCharService.GetByIdAsync(recordId.Value);
+            if (existingRecord != null)
+            {
+                await EnsureCompanyAccessAsync(existingRecord.CompanyId);
+                orcOnSite = existingRecord.ORCOnSite;
+                lagoonFreeboard = existingRecord.LagoonFreeboard;
+            }
+        }
+
+        var vm = new WWCharTemplateSectionViewModel
+        {
+            FacilityId = facilityId,
+            FacilityPermitId = resolvedPermit?.Id,
+            FacilityPermitDisplay = resolvedPermit != null ? $"{resolvedPermit.PermitNumber} v{resolvedPermit.PermitVersion}" : null,
+            Month = (MonthEnum)month,
+            Year = year,
+            RecordId = recordId,
+            IsEdit = isEdit,
+            TemplateParametersStatusMessage = statusMessage,
+            TemplateParameters = templateParameters,
+            ORCOnSite = orcOnSite,
+            LagoonFreeboard = lagoonFreeboard
+        };
+        EnsureTemplateArraysInitialized(vm.TemplateParameters);
+        EnsureDayArraysInitialized(vm);
+
+        ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
+        return PartialView("Partials/_WWCharTemplateSection", vm);
     }
 
     [HttpPost]
@@ -2222,6 +2288,12 @@ namespace SAM.Controllers;
         EnsureArraySize(viewModel.SARDaily, 31);
         EnsureArraySize(viewModel.TNDaily, 31);
         EnsureStringArraySize(viewModel.CompositeTime, 31);
+        EnsureEnumArraySize(viewModel.ORCOnSite, 31);
+        EnsureArraySize(viewModel.LagoonFreeboard, 31);
+    }
+
+    private void EnsureDayArraysInitialized(WWCharTemplateSectionViewModel viewModel)
+    {
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
         EnsureArraySize(viewModel.LagoonFreeboard, 31);
     }

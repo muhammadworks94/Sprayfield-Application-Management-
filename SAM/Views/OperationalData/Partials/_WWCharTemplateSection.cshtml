@@ -1,0 +1,130 @@
+@model SAM.ViewModels.OperationalData.WWCharTemplateSectionViewModel
+@using SAM.Domain.Enums
+@{
+    var orcOnSiteOptions = ViewBag.ORCOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var permitHref = Model.FacilityId != Guid.Empty
+        ? Url.Action("FacilityPermits", "SystemAdmin", new
+        {
+            facilityId = Model.FacilityId,
+            source = "wwchar",
+            month = (int)Model.Month,
+            year = Model.Year
+        })
+        : string.Empty;
+}
+
+<div class="form-section"
+     data-wwchar-template-section="true"
+     data-facility-id="@Model.FacilityId"
+     data-facility-permit-id="@(Model.FacilityPermitId?.ToString() ?? string.Empty)"
+     data-facility-permit-display="@(Model.FacilityPermitDisplay ?? string.Empty)"
+     data-month="@((int)Model.Month)"
+     data-year="@Model.Year">
+    <div class="form-section-title">Attachment A Template Daily Data (Days 1-31)</div>
+    <p class="text-muted small mb-2">Template rows are month-filtered and shown as daily entry columns.</p>
+
+    @if (Model.TemplateParameters.Any())
+    {
+        if (Model.IsEdit)
+        {
+            <div class="alert alert-info py-2 small">
+                Updates to <strong>ORC On Site</strong> and <strong>Lagoon Freeboard</strong> are saved to this WWChar monthly record and automatically reflected anywhere this WWChar record is used (including WWChar Details, downstream compliance/report logic, and linked operational views for the same record period).
+            </div>
+        }
+
+        @for (int p = 0; p < Model.TemplateParameters.Count; p++)
+        {
+            <input type="hidden" name="TemplateParameters[@p].FacilityPermitTemplateParameterId" value="@Model.TemplateParameters[p].FacilityPermitTemplateParameterId" />
+            <input type="hidden" name="TemplateParameters[@p].PcsCode" value="@Model.TemplateParameters[p].PcsCode" />
+            <input type="hidden" name="TemplateParameters[@p].ParameterName" value="@Model.TemplateParameters[p].ParameterName" />
+            <input type="hidden" name="TemplateParameters[@p].Units" value="@Model.TemplateParameters[p].Units" />
+            <input type="hidden" name="TemplateParameters[@p].Notes" value="@Model.TemplateParameters[p].Notes" />
+        }
+
+        <div class="table-responsive responsive-table wide-data-table wwchar-daily-table-wrapper fixed-height-table-wrapper mb-3">
+            <table class="table table-bordered table-sm wwchar-daily-table">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>ORC On Site</th>
+                        <th>Lagoon Freeboard (in)</th>
+                        @for (int p = 0; p < Model.TemplateParameters.Count; p++)
+                        {
+                            <th>
+                                @Model.TemplateParameters[p].PcsCode
+                                <div class="small fw-normal">
+                                    @Model.TemplateParameters[p].ParameterName (@Model.TemplateParameters[p].Units)
+                                    <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[p].Notes) ? "No notes." : Model.TemplateParameters[p].Notes)"></i>
+                                </div>
+                                <div class="small text-muted">
+                                    @Model.TemplateParameters[p].MeasurementFrequency | @Model.TemplateParameters[p].SampleType | Max: @(Model.TemplateParameters[p].DailyMaximumLimit?.ToString() ?? "-")
+                                </div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int d = 0; d < 31; d++)
+                    {
+                        <tr>
+                            <th scope="row"><strong>@(d + 1)</strong></th>
+                            <td>
+                                <select name="ORCOnSite[@d]" class="form-select form-select-sm">
+                                    <option value="">-</option>
+                                    @if (orcOnSiteOptions != null)
+                                    {
+                                        @foreach (var option in orcOnSiteOptions)
+                                        {
+                                            var selected = Model.ORCOnSite != null &&
+                                                           Model.ORCOnSite.Count > d &&
+                                                           Model.ORCOnSite[d].HasValue &&
+                                                           option.Value == Model.ORCOnSite[d]!.Value.ToString();
+                                            <option value="@option.Value" selected="@selected">@option.Text</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
+                            <td><input name="LagoonFreeboard[@d]" type="number" step="0.01" class="form-control form-control-sm" value="@((Model.LagoonFreeboard != null && Model.LagoonFreeboard.Count > d && Model.LagoonFreeboard[d].HasValue) ? Model.LagoonFreeboard[d]!.Value.ToString() : string.Empty)" /></td>
+                            @for (int p = 0; p < Model.TemplateParameters.Count; p++)
+                            {
+                                var key = $"{Model.TemplateParameters[p].FacilityPermitTemplateParameterId}:{d}";
+                                var currentVal = Model.TemplateParameters[p].DailyValues != null && Model.TemplateParameters[p].DailyValues.Count > d
+                                    ? Model.TemplateParameters[p].DailyValues[d]
+                                    : null;
+                                <td>
+                                    <input name="TemplateParameters[@p].DailyValues[@d]"
+                                           type="number"
+                                           step="0.000001"
+                                           class="form-control form-control-sm"
+                                           value="@(currentVal?.ToString() ?? string.Empty)"
+                                           data-template-key="@key" />
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+            <span>@(Model.TemplateParametersStatusMessage ?? "No permit template parameters found for the selected facility/month/year.")</span>
+            @if (Model.FacilityId == Guid.Empty)
+            {
+                <span class="text-danger fw-semibold">Select facility</span>
+            }
+            else
+            {
+                <a href="@permitHref"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="btn btn-sm btn-outline-primary"
+                   id="openPermitVersionsBtn"
+                   data-base-url="@Url.Action("FacilityPermits", "SystemAdmin")">
+                    Open Permit Versions
+                </a>
+            }
+        </div>
+    }
+</div>

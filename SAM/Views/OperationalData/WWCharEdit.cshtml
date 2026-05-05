@@ -81,7 +81,7 @@
                     <div class="col-md-12">
                         <div class="mb-3">
                             <label class="form-label">Resolved Permit Version</label>
-                            <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.FacilityPermitDisplay) ? "No active permit for selected date" : Model.FacilityPermitDisplay)" readonly />
+                            <input id="resolvedPermitDisplay" class="form-control" value="@(string.IsNullOrWhiteSpace(Model.FacilityPermitDisplay) ? "No active permit for selected date" : Model.FacilityPermitDisplay)" readonly />
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -106,85 +106,21 @@
 
             </div>
 
-            <div class="form-section">
-                <div class="form-section-title">Attachment A Template Daily Data (Days 1-31)</div>
-                <p class="text-muted small mb-2">Template rows are month-filtered and shown as daily entry columns.</p>
-                @if (Model.TemplateParameters.Any())
+            <div id="wwcharTemplateSectionContainer">
+                @await Html.PartialAsync("Partials/_WWCharTemplateSection", new WWCharTemplateSectionViewModel
                 {
-                    <div class="alert alert-info py-2 small">
-                        Updates to <strong>ORC On Site</strong> and <strong>Lagoon Freeboard</strong> are saved to this WWChar monthly record and automatically reflected anywhere this WWChar record is used (including WWChar Details, downstream compliance/report logic, and linked operational views for the same record period).
-                    </div>
-                    @for (int p = 0; p < Model.TemplateParameters.Count; p++)
-                    {
-                        <input type="hidden" asp-for="TemplateParameters[p].FacilityPermitTemplateParameterId" />
-                        <input type="hidden" asp-for="TemplateParameters[p].PcsCode" />
-                        <input type="hidden" asp-for="TemplateParameters[p].ParameterName" />
-                        <input type="hidden" asp-for="TemplateParameters[p].Units" />
-                        <input type="hidden" asp-for="TemplateParameters[p].Notes" />
-                    }
-                    <div class="table-responsive responsive-table wide-data-table wwchar-daily-table-wrapper fixed-height-table-wrapper mb-3">
-                        <table class="table table-bordered table-sm wwchar-daily-table">
-                            <thead>
-                                <tr>
-                                    <th>Day</th>
-                                    <th>ORC On Site</th>
-                                    <th>Lagoon Freeboard (in)</th>
-                                    @for (int p = 0; p < Model.TemplateParameters.Count; p++)
-                                    {
-                                        <th>
-                                            @Model.TemplateParameters[p].PcsCode
-                                            <div class="small fw-normal">
-                                                @Model.TemplateParameters[p].ParameterName (@Model.TemplateParameters[p].Units)
-                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[p].Notes) ? "No notes." : Model.TemplateParameters[p].Notes)"></i>
-                                            </div>
-                                            <div class="small text-muted">
-                                                @Model.TemplateParameters[p].MeasurementFrequency | @Model.TemplateParameters[p].SampleType | Max: @(Model.TemplateParameters[p].DailyMaximumLimit?.ToString() ?? "-")
-                                            </div>
-                                        </th>
-                                    }
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int d = 0; d < 31; d++)
-                                {
-                                    <tr>
-                                        <th scope="row"><strong>@(d + 1)</strong></th>
-                                        <td>
-                                            <select asp-for="ORCOnSite[d]" asp-items="orcOnSiteOptions" class="form-select form-select-sm">
-                                                <option value="">-</option>
-                                            </select>
-                                        </td>
-                                        <td><input asp-for="LagoonFreeboard[d]" type="number" step="0.01" class="form-control form-control-sm" /></td>
-                                        @for (int p = 0; p < Model.TemplateParameters.Count; p++)
-                                        {
-                                            <td><input asp-for="TemplateParameters[p].DailyValues[d]" type="number" step="0.000001" class="form-control form-control-sm" /></td>
-                                        }
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="alert alert-warning d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
-                        <span>@(Model.TemplateParametersStatusMessage ?? "No permit template parameters found for the selected facility/month/year.")</span>
-                        @if (Model.FacilityId != Guid.Empty)
-                        {
-                            <a asp-controller="SystemAdmin"
-                               asp-action="FacilityPermits"
-                               asp-route-facilityId="@Model.FacilityId"
-                               asp-route-source="wwchar"
-                               asp-route-month="@((int)Model.Month)"
-                               asp-route-year="@Model.Year"
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               class="btn btn-sm btn-outline-primary">
-                                Open Permit Versions
-                            </a>
-                        }
-                    </div>
-                }
+                    FacilityId = Model.FacilityId,
+                    FacilityPermitId = Model.FacilityPermitId,
+                    FacilityPermitDisplay = Model.FacilityPermitDisplay,
+                    Month = Model.Month,
+                    Year = Model.Year,
+                    RecordId = Model.Id,
+                    IsEdit = true,
+                    TemplateParametersStatusMessage = Model.TemplateParametersStatusMessage,
+                    TemplateParameters = Model.TemplateParameters,
+                    ORCOnSite = Model.ORCOnSite,
+                    LagoonFreeboard = Model.LagoonFreeboard
+                })
             </div>
 
             <div class="form-section">
@@ -229,8 +165,170 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-            new bootstrap.Tooltip(el);
+            var tooltipContainer = el.closest('.wwchar-daily-table-wrapper') || el.closest('.card-body') || document.body;
+            new bootstrap.Tooltip(el, {
+                container: tooltipContainer,
+                trigger: 'hover focus',
+                boundary: 'viewport',
+                fallbackPlacements: ['top', 'bottom', 'right', 'left']
+            });
         });
+
+        (function () {
+            var facilityInput = document.getElementById('FacilityId');
+            var monthInput = document.getElementById('Month');
+            var yearInput = document.getElementById('Year');
+            var resolvedPermitInput = document.getElementById('resolvedPermitDisplay');
+            var facilityPermitIdInput = document.getElementById('FacilityPermitId');
+            var sectionContainer = document.getElementById('wwcharTemplateSectionContainer');
+            var recordIdInput = document.getElementById('Id');
+            var requestSeq = 0;
+            var debounceHandle = null;
+            var noPermitLabel = 'No active permit for selected date';
+            var contextUrl = '@Url.Action("WWCharTemplateContext", "OperationalData")';
+            var permitBaseUrl = '@Url.Action("FacilityPermits", "SystemAdmin")';
+
+            if (!facilityInput || !monthInput || !yearInput || !sectionContainer) return;
+
+            function initTooltips(scope) {
+                (scope || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                    if (!bootstrap.Tooltip.getInstance(el)) {
+                        var tooltipContainer = el.closest('.wwchar-daily-table-wrapper') || el.closest('.card-body') || document.body;
+                        new bootstrap.Tooltip(el, {
+                            container: tooltipContainer,
+                            trigger: 'hover focus',
+                            boundary: 'viewport',
+                            fallbackPlacements: ['top', 'bottom', 'right', 'left']
+                        });
+                    }
+                });
+            }
+
+            function captureTemplateValues() {
+                var result = {
+                    keyedTemplateValues: {},
+                    namedValues: {}
+                };
+
+                sectionContainer.querySelectorAll('input[name], select[name], textarea[name]').forEach(function (el) {
+                    var name = el.name || '';
+                    if (!name) return;
+
+                    if (el.dataset && el.dataset.templateKey) {
+                        result.keyedTemplateValues[el.dataset.templateKey] = el.value;
+                        return;
+                    }
+
+                    if (name.startsWith('ORCOnSite[') || name.startsWith('LagoonFreeboard[')) {
+                        result.namedValues[name] = el.value;
+                    }
+                });
+
+                return result;
+            }
+
+            function applyCapturedValues(snapshot) {
+                if (!snapshot) return;
+
+                sectionContainer.querySelectorAll('input[name], select[name], textarea[name]').forEach(function (el) {
+                    if (el.dataset && el.dataset.templateKey && Object.prototype.hasOwnProperty.call(snapshot.keyedTemplateValues, el.dataset.templateKey)) {
+                        el.value = snapshot.keyedTemplateValues[el.dataset.templateKey];
+                        return;
+                    }
+
+                    if (el.name && Object.prototype.hasOwnProperty.call(snapshot.namedValues, el.name)) {
+                        el.value = snapshot.namedValues[el.name];
+                    }
+                });
+            }
+
+            function updatePermitButtonLink() {
+                var openPermitBtn = document.getElementById('openPermitVersionsBtn');
+                if (!openPermitBtn) return;
+
+                var facilityId = facilityInput.value;
+                var month = monthInput.value;
+                var year = yearInput.value;
+
+                if (!facilityId) return;
+
+                var url = new URL(permitBaseUrl, window.location.origin);
+                url.searchParams.set('facilityId', facilityId);
+                url.searchParams.set('source', 'wwchar');
+                if (month) url.searchParams.set('month', month);
+                if (year) url.searchParams.set('year', year);
+
+                openPermitBtn.href = url.toString();
+            }
+
+            function refreshTemplateSection() {
+                var facilityId = facilityInput.value;
+                var month = monthInput.value;
+                var year = yearInput.value;
+
+                if (!facilityId || !month || !year) {
+                    if (resolvedPermitInput) resolvedPermitInput.value = noPermitLabel;
+                    if (facilityPermitIdInput) facilityPermitIdInput.value = '';
+                    updatePermitButtonLink();
+                    return;
+                }
+
+                var currentSeq = ++requestSeq;
+                var snapshot = captureTemplateValues();
+                var url = new URL(contextUrl, window.location.origin);
+                url.searchParams.set('facilityId', facilityId);
+                url.searchParams.set('month', month);
+                url.searchParams.set('year', year);
+                url.searchParams.set('isEdit', 'true');
+                if (recordIdInput && recordIdInput.value) {
+                    url.searchParams.set('recordId', recordIdInput.value);
+                }
+
+                fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function (response) {
+                        if (!response.ok) throw new Error('Failed to refresh WWChar template context.');
+                        return response.text();
+                    })
+                    .then(function (html) {
+                        if (currentSeq !== requestSeq) return;
+
+                        sectionContainer.innerHTML = html;
+                        applyCapturedValues(snapshot);
+                        initTooltips(sectionContainer);
+                        updatePermitButtonLink();
+
+                        var sectionRoot = sectionContainer.querySelector('[data-wwchar-template-section="true"]');
+                        if (sectionRoot) {
+                            var permitDisplay = sectionRoot.getAttribute('data-facility-permit-display') || '';
+                            var permitId = sectionRoot.getAttribute('data-facility-permit-id') || '';
+
+                            if (resolvedPermitInput) {
+                                resolvedPermitInput.value = permitDisplay || noPermitLabel;
+                            }
+
+                            if (facilityPermitIdInput) {
+                                facilityPermitIdInput.value = permitId;
+                            }
+                        }
+                    })
+                    .catch(function () {
+                        updatePermitButtonLink();
+                    });
+            }
+
+            function scheduleRefresh() {
+                clearTimeout(debounceHandle);
+                debounceHandle = setTimeout(refreshTemplateSection, 220);
+            }
+
+            [facilityInput, monthInput, yearInput].forEach(function (input) {
+                input.addEventListener('change', scheduleRefresh);
+                input.addEventListener('input', scheduleRefresh);
+            });
+
+            initTooltips(document);
+            updatePermitButtonLink();
+        })();
     </script>
 }
 

@@ -321,4 +321,19 @@ public class WWCharTemplateParameterInputViewModel
     public List<decimal?> DailyValues { get; set; } = new();
 }
 
+public class WWCharTemplateSectionViewModel
+{
+    public Guid FacilityId { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public MonthEnum Month { get; set; }
+    public int Year { get; set; }
+    public Guid? RecordId { get; set; }
+    public bool IsEdit { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
+    public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
+    public List<decimal?> LagoonFreeboard { get; set; } = new();
+    public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+}
+
 

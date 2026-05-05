@@ -211,6 +211,14 @@ small {
   color: var(--text-muted);
 }
 
+/* Keep tooltip/info icons visually consistent and discoverable */
+i.bi-info-circle[data-bs-toggle="tooltip"],
+i.bi-question-circle[data-bs-toggle="tooltip"],
+i.bi-info-circle,
+i.bi-question-circle {
+  color: var(--primary) !important;
+}
+
 .text-secondary {
   color: var(--text-secondary);
 }

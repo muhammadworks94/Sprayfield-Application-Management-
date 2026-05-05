@@ -172,7 +172,13 @@
 @section Scripts {
     <script>
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-            new bootstrap.Tooltip(el);
+            var tooltipContainer = el.closest('.wwchar-daily-table-wrapper') || el.closest('.card-body') || document.body;
+            new bootstrap.Tooltip(el, {
+                container: tooltipContainer,
+                trigger: 'hover focus',
+                boundary: 'viewport',
+                fallbackPlacements: ['top', 'bottom', 'right', 'left']
+            });
         });
     </script>
 }
