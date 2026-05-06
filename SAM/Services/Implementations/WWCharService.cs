@@ -86,8 +86,6 @@ public class WWCharService : IWWCharService
         ValidateDailyArray(wwChar.SARDaily, "SARDaily");
         ValidateDailyArray(wwChar.TNDaily, "TNDaily");
         ValidateDailyArray(wwChar.CompositeTime, "CompositeTime");
-        ValidateDailyArray(wwChar.ORCOnSite, "ORCOnSite");
-        ValidateDailyArray(wwChar.LagoonFreeboard, "LagoonFreeboard");
 
         // Query including soft-deleted rows because the unique index also includes them.
         var existingAnyState = await _context.WWChars
@@ -120,8 +118,6 @@ public class WWCharService : IWWCharService
             existingAnyState.SARDaily = wwChar.SARDaily;
             existingAnyState.TNDaily = wwChar.TNDaily;
             existingAnyState.CompositeTime = wwChar.CompositeTime;
-            existingAnyState.ORCOnSite = wwChar.ORCOnSite;
-            existingAnyState.LagoonFreeboard = wwChar.LagoonFreeboard;
             existingAnyState.LabCertification = wwChar.LabCertification;
             existingAnyState.CollectedBy = wwChar.CollectedBy;
             existingAnyState.AnalyzedBy = wwChar.AnalyzedBy;
@@ -194,8 +190,6 @@ public class WWCharService : IWWCharService
         ValidateDailyArray(wwChar.SARDaily, "SARDaily");
         ValidateDailyArray(wwChar.TNDaily, "TNDaily");
         ValidateDailyArray(wwChar.CompositeTime, "CompositeTime");
-        ValidateDailyArray(wwChar.ORCOnSite, "ORCOnSite");
-        ValidateDailyArray(wwChar.LagoonFreeboard, "LagoonFreeboard");
 
         existing.Month = wwChar.Month;
         existing.Year = wwChar.Year;
@@ -212,8 +206,6 @@ public class WWCharService : IWWCharService
         existing.SARDaily = wwChar.SARDaily;
         existing.TNDaily = wwChar.TNDaily;
         existing.CompositeTime = wwChar.CompositeTime;
-        existing.ORCOnSite = wwChar.ORCOnSite;
-        existing.LagoonFreeboard = wwChar.LagoonFreeboard;
         existing.LabCertification = wwChar.LabCertification;
         existing.CollectedBy = wwChar.CollectedBy;
         existing.AnalyzedBy = wwChar.AnalyzedBy;

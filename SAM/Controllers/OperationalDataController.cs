@@ -904,8 +904,8 @@ namespace SAM.Controllers;
             SARDaily = w.SARDaily,
             TNDaily = w.TNDaily,
             CompositeTime = w.CompositeTime,
-            ORCOnSite = w.ORCOnSite,
-            LagoonFreeboard = w.LagoonFreeboard,
+            ORCOnSite = new List<ORCOnSiteEnum?>(),
+            LagoonFreeboard = new List<decimal?>(),
             LabCertification = w.LabCertification,
             CollectedBy = w.CollectedBy,
             AnalyzedBy = w.AnalyzedBy,
@@ -954,8 +954,8 @@ namespace SAM.Controllers;
             SARDaily = wwChar.SARDaily,
             TNDaily = wwChar.TNDaily,
             CompositeTime = wwChar.CompositeTime,
-            ORCOnSite = wwChar.ORCOnSite,
-            LagoonFreeboard = wwChar.LagoonFreeboard,
+            ORCOnSite = new List<ORCOnSiteEnum?>(),
+            LagoonFreeboard = new List<decimal?>(),
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
             AnalyzedBy = wwChar.AnalyzedBy,
@@ -1144,8 +1144,6 @@ namespace SAM.Controllers;
                 SARDaily = viewModel.SARDaily,
                 TNDaily = viewModel.TNDaily,
                 CompositeTime = viewModel.CompositeTime,
-                ORCOnSite = viewModel.ORCOnSite,
-                LagoonFreeboard = viewModel.LagoonFreeboard,
                 LabCertification = viewModel.LabCertification,
                 CollectedBy = viewModel.CollectedBy,
                 AnalyzedBy = viewModel.AnalyzedBy,
@@ -1220,8 +1218,8 @@ namespace SAM.Controllers;
             SARDaily = wwChar.SARDaily,
             TNDaily = wwChar.TNDaily,
             CompositeTime = wwChar.CompositeTime,
-            ORCOnSite = wwChar.ORCOnSite,
-            LagoonFreeboard = wwChar.LagoonFreeboard,
+            ORCOnSite = new List<ORCOnSiteEnum?>(),
+            LagoonFreeboard = new List<decimal?>(),
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
             AnalyzedBy = wwChar.AnalyzedBy,
@@ -1302,16 +1300,6 @@ namespace SAM.Controllers;
         var canonicalTemplateValues = await LoadCanonicalOperatorLogDailyValuesAsync(facilityId, year, month);
         orcOnSite = canonicalTemplateValues.ORCOnSite;
         lagoonFreeboard = canonicalTemplateValues.StorageLagoonFreeboardFt;
-        if (!orcOnSite.Any(x => x.HasValue) && !lagoonFreeboard.Any(x => x.HasValue) && recordId.HasValue)
-        {
-            var existingRecord = await _wwCharService.GetByIdAsync(recordId.Value);
-            if (existingRecord != null)
-            {
-                await EnsureCompanyAccessAsync(existingRecord.CompanyId);
-                orcOnSite = existingRecord.ORCOnSite;
-                lagoonFreeboard = existingRecord.LagoonFreeboard;
-            }
-        }
 
         var vm = new WWCharTemplateSectionViewModel
         {
@@ -1392,8 +1380,6 @@ namespace SAM.Controllers;
             wwChar.SARDaily = viewModel.SARDaily;
             wwChar.TNDaily = viewModel.TNDaily;
             wwChar.CompositeTime = viewModel.CompositeTime;
-            wwChar.ORCOnSite = viewModel.ORCOnSite;
-            wwChar.LagoonFreeboard = viewModel.LagoonFreeboard;
             wwChar.LabCertification = viewModel.LabCertification;
             wwChar.CollectedBy = viewModel.CollectedBy;
             wwChar.AnalyzedBy = viewModel.AnalyzedBy;

@@ -83,9 +83,6 @@ public class NDAR1EditViewModel
     [Display(Name = "Precipitation Daily (in)")]
     public List<decimal?> PrecipitationDaily { get; set; } = new List<decimal?>();
     
-    [Display(Name = "Storage Daily (ft)")]
-    public List<decimal?> StorageDaily { get; set; } = new List<decimal?>();
-    
     [Display(Name = "5-Day Upset Daily (ft)")]
     public List<decimal?> FiveDayUpsetDaily { get; set; } = new List<decimal?>();
     

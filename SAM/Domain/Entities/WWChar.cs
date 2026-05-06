@@ -116,16 +116,6 @@ public class WWChar : CompanyScopedEntity
     public List<string?> CompositeTime { get; set; } = new List<string?>();
 
     /// <summary>
-    /// Array indicating if ORC was on site daily (max 31 items, stored as JSON).
-    /// </summary>
-    public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new List<ORCOnSiteEnum?>();
-
-    /// <summary>
-    /// Array of daily lagoon freeboard values (max 31 items, stored as JSON).
-    /// </summary>
-    public List<decimal?> LagoonFreeboard { get; set; } = new List<decimal?>();
-
-    /// <summary>
     /// Lab certification details.
     /// </summary>
     public string LabCertification { get; set; } = string.Empty;

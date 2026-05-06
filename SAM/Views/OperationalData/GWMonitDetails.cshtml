@@ -42,6 +42,27 @@
     </div>
 </div>
 
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                var tooltipContainer = el.closest('.fixed-height-table-wrapper') || el.closest('.card-body') || document.body;
+                var existing = bootstrap.Tooltip.getInstance(el);
+                if (existing) {
+                    existing.dispose();
+                }
+
+                new bootstrap.Tooltip(el, {
+                    container: tooltipContainer,
+                    trigger: 'hover focus',
+                    boundary: 'viewport',
+                    fallbackPlacements: ['top', 'bottom', 'right', 'left']
+                });
+            });
+        });
+    </script>
+}
+
 <div class="card">
     <div class="card-body">
         <h4 class="mb-4"><i class="bi bi-water me-2"></i>@(Model.FacilityName ?? "Facility") – @(Model.MonitoringWellName ?? "Well") – @Model.SampleDate.ToString("MM/dd/yyyy")</h4>

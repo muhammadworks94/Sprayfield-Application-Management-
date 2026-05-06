@@ -1,8 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SAM.Domain.Entities;
-using SAM.Domain.Enums;
 using System.Text.Json;
 
 namespace SAM.Data.Configurations;
@@ -147,18 +145,6 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
                 v => string.IsNullOrWhiteSpace(v)
                     ? new List<string?>()
                     : JsonSerializer.Deserialize<List<string?>>(v, jsonOptions) ?? new List<string?>())
-            .HasColumnType("nvarchar(max)");
-
-        builder.Property(w => w.ORCOnSite)
-            .HasConversion(new ORCOnSiteConverter())
-            .HasColumnType("nvarchar(max)");
-
-        builder.Property(w => w.LagoonFreeboard)
-            .HasConversion(
-                v => JsonSerializer.Serialize(v, jsonOptions),
-                v => string.IsNullOrWhiteSpace(v)
-                    ? new List<decimal?>()
-                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.LabCertification)

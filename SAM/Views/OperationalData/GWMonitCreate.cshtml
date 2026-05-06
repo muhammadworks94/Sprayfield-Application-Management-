@@ -229,7 +229,18 @@
 
             function initTooltips(scope) {
                 (scope || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-                    bootstrap.Tooltip.getOrCreateInstance(el);
+                    var tooltipContainer = el.closest('.fixed-height-table-wrapper') || el.closest('.card-body') || document.body;
+                    var existing = bootstrap.Tooltip.getInstance(el);
+                    if (existing) {
+                        existing.dispose();
+                    }
+
+                    new bootstrap.Tooltip(el, {
+                        container: tooltipContainer,
+                        trigger: 'hover focus',
+                        boundary: 'viewport',
+                        fallbackPlacements: ['top', 'bottom', 'right', 'left']
+                    });
                 });
             }
 

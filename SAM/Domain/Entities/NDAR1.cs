@@ -45,11 +45,6 @@ public class NDAR1 : CompanyScopedEntity
     public List<decimal?> PrecipitationDaily { get; set; } = new List<decimal?>();
 
     /// <summary>
-    /// Array of daily storage values in feet (max 31 items, stored as JSON).
-    /// </summary>
-    public List<decimal?> StorageDaily { get; set; } = new List<decimal?>();
-
-    /// <summary>
     /// Array of daily 5-Day Upset values in feet (max 31 items, stored as JSON).
     /// </summary>
     public List<decimal?> FiveDayUpsetDaily { get; set; } = new List<decimal?>();

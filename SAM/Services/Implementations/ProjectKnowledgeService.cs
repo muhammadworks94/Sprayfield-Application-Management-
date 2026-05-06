@@ -148,7 +148,8 @@ flowchart TD
                         new List<string> { "WWChar", "Monthly wastewater chemistry base record", "Facility, FacilityPermit, WWCharTemplateValue", "Monthly compliance checks, NDMR input" },
                         new List<string> { "GWMonit", "Groundwater monitoring record", "Facility, MonitoringWell, GWMonitTemplateValue", "NDMR/NDMLR related workflows" },
                         new List<string> { "MonthlyApplication", "Sprayfield-level monthly application record", "Facility, Sprayfield", "Compliance + NDAR1 inputs" },
-                        new List<string> { "NDAR1", "Non-discharge report data model", "Facility, Sprayfields, dynamic field rows", "NDAR1 report screens/exports" }
+                        new List<string> { "NDAR1", "Non-discharge report data model", "Facility, Sprayfields, dynamic field rows", "NDAR1 report screens/exports" },
+                        new List<string> { "OperatorLog", "Canonical per-day operations record", "Facility, date-level ORC On Site + Storage Lagoon Freeboard (ft)", "WWChar + NDAR proxy read/write source" }
                     }
                 }
             },
@@ -295,8 +296,9 @@ flowchart TD
                         "System resolves active permit version for date.",
                         "System loads permit template PCS rows flagged for NDMR.",
                         "If none found, page shows guided status message describing missing setup.",
-                        "Values save both legacy WWChar context and template value rows.",
-                        "ORC On Site and Lagoon Freeboard are persisted on the WWChar record and reflected anywhere that WWChar record is consumed."
+                        "Chemistry/template entry values are saved on WWChar + WWCharTemplateValue rows.",
+                        "ORC On Site and Storage Lagoon Freeboard (ft) are proxy fields: WWChar reads/writes these values through Operator Logs for each exact date.",
+                        "If a day value is edited in WWChar and no Operator Log exists for that date, SAM creates a log record and saves canonical values there."
                     }
                 },
                 new ProjectStepFlowViewModel
@@ -316,7 +318,9 @@ flowchart TD
                     Steps =
                     {
                         "Daily/period operational observations are captured.",
-                        "These records support operational traceability and analytics."
+                        "Operator Logs are the single source of truth for ORC On Site and Storage Lagoon Freeboard (ft).",
+                        "WWChar and NDAR edit experiences act as proxies that read/write those date-level values through Operator Logs.",
+                        "These records support operational traceability, cross-module consistency, and analytics."
                     }
                 }
             }
@@ -353,9 +357,10 @@ flowchart TD
                     Rows =
                     {
                         new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Facility permit context influences setup and source values", "Area/time/value handling follows per-field formula rules." },
-                        new List<string> { "NDMR", "WWChar + GWMonit + permit template PCS rows", "Permit number/version resolved by facility + date when available", "If no template rows, service falls back to legacy defaults in current implementation path." },
+                        new List<string> { "NDMR", "WWChar + GWMonit + permit template PCS rows", "Permit number/version resolved by facility + date when available", "If no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
-                        new List<string> { "GW report outputs", "GWMonit (+ template hooks)", "Facility/well context", "Template-driven extension path in progress." }
+                        new List<string> { "GW report outputs", "GWMonit (+ template hooks)", "Facility/well context", "Template-driven extension path in progress." },
+                        new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
                     }
                 }
             }
@@ -460,7 +465,37 @@ flowchart TD
                     FallbackRules =
                     {
                         new TraceFallbackRuleViewModel { Condition = "Acres missing/zero", Behavior = "Save blocked with validation message." },
-                        new TraceFallbackRuleViewModel { Condition = "Annual rate missing", Behavior = "Save blocked; configure sprayfield annual rate first." }
+                        new TraceFallbackRuleViewModel { Condition = "Permitted max hourly rate missing", Behavior = "Save blocked; configure sprayfield permitted max hourly rate first." }
+                    }
+                },
+                new TraceabilityItemViewModel
+                {
+                    Id = "trace-orc-storage-canonical",
+                    KeywordOrProperty = "ORC On Site / Storage Lagoon Freeboard",
+                    Aliases = { "ORC", "Lagoon Freeboard", "Storage Lagoon Freeboard (ft)" },
+                    Entity = "OperatorLog",
+                    StorageField = "ORCOnSite + StorageFt",
+                    UsedInModule = "Operational Data > Operator Logs / WWChar / NDAR",
+                    FormulaOrTransformation = "Date-level canonical lookup by facility + date; WWChar/NDAR writes are proxied into OperatorLog records.",
+                    ReportOutput = "WWChar daily display and NDAR day-level storage surfaces",
+                    FallbackOrValidation = "If no OperatorLog exists for a date during proxy write, SAM creates one and stores the values.",
+                    Reference = new TraceReferenceViewModel
+                    {
+                        Label = "Canonical ORC/Storage Flow",
+                        Location = "Controllers/OperationalDataController.cs + Services/Implementations/NDAR1RowEditService.cs"
+                    },
+                    UsedByReports = { "WWChar", "NDAR1" },
+                    Steps =
+                    {
+                        new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "User can update values directly in Operator Logs or via WWChar/NDAR proxy edit surfaces." },
+                        new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "Canonical values persist only on OperatorLog.ORCOnSite and OperatorLog.StorageFt." },
+                        new TraceStepViewModel { Order = 3, Label = "Resolution", Detail = "Readers resolve values per exact facility/date from canonical OperatorLog data." },
+                        new TraceStepViewModel { Order = 4, Label = "Surface", Detail = "Changes appear across WWChar, NDAR, and operator log screens for the same date." }
+                    },
+                    Usages =
+                    {
+                        new TraceUsageViewModel { Module = "Operational Data", Report = "WWChar", Destination = "Attachment A daily ORC/storage columns." },
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDAR1", Destination = "Day-row storage views/exports via canonical lookup." }
                     }
                 },
                 new TraceabilityItemViewModel

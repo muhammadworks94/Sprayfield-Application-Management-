@@ -357,6 +357,8 @@ public class NDMRService : INDMRService
             .Where(o => o.FacilityId == facility.Id &&
                         o.LogDate >= startDate &&
                         o.LogDate <= endDate)
+            .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+            .ThenByDescending(o => o.CreatedDate)
             .ToListAsync();
 
         var irrigationReport = await _context.IrrRprts
@@ -378,7 +380,7 @@ public class NDMRService : INDMRService
             // Column A: Day number
             flowWorksheet.Cell($"A{row}").Value = day;
 
-            // Column B/C: ORC arrival time and time-on-site (hours)
+            // Column B/C: ORC arrival time and ORC on-site status (Y/N)
             var dayOperatorLogs = operatorLogs
                 .Where(o => o.LogDate.Date == currentDate.Date)
                 .ToList();
@@ -388,13 +390,16 @@ public class NDMRService : INDMRService
                 var firstLog = dayOperatorLogs
                     .OrderBy(o => o.ArrivalTime)
                     .First();
+                var canonicalLog = dayOperatorLogs
+                    .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+                    .ThenByDescending(o => o.CreatedDate)
+                    .First();
 
                 flowWorksheet.Cell($"B{row}").Value = firstLog.ArrivalTime;
                 flowWorksheet.Cell($"B{row}").Style.NumberFormat.Format = "hh:mm";
 
-                var avgHours = dayOperatorLogs.Average(o => o.TimeOnSiteHours);
-                flowWorksheet.Cell($"C{row}").Value = avgHours;
-                flowWorksheet.Cell($"C{row}").Style.NumberFormat.Format = "0.##";
+                flowWorksheet.Cell($"C{row}").Value = FormatOrcOnSiteForReport(canonicalLog.ORCOnSite);
+                flowWorksheet.Cell($"C{row}").Style.NumberFormat.Format = "@";
             }
             else
             {
@@ -557,6 +562,16 @@ public class NDMRService : INDMRService
             ndar1Id);
 
         return stream.ToArray();
+    }
+
+    private static string FormatOrcOnSiteForReport(ORCOnSiteEnum? value)
+    {
+        return value switch
+        {
+            ORCOnSiteEnum.Y => "Y",
+            ORCOnSiteEnum.N => "N",
+            _ => string.Empty
+        };
     }
 
     private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility, ComplianceStatusEnum? complianceStatus)

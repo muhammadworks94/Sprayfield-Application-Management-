@@ -160,7 +160,6 @@ public class NDAR1Service : INDAR1Service
         existing.WeatherCodeDaily = ndar1.WeatherCodeDaily;
         existing.TemperatureDaily = ndar1.TemperatureDaily;
         existing.PrecipitationDaily = ndar1.PrecipitationDaily;
-        existing.StorageDaily = ndar1.StorageDaily;
         existing.FiveDayUpsetDaily = ndar1.FiveDayUpsetDaily;
 
         // Field 1
@@ -351,7 +350,6 @@ public class NDAR1Service : INDAR1Service
             }
             report.TemperatureDaily[dayIndex] = logForDay?.TemperatureF;
             report.PrecipitationDaily[dayIndex] = logForDay?.PrecipitationIn;
-            report.StorageDaily[dayIndex] = logForDay?.StorageFt;
             report.FiveDayUpsetDaily[dayIndex] = logForDay?.FiveDayUpsetFt;
         }
 
@@ -619,7 +617,6 @@ public class NDAR1Service : INDAR1Service
         while (ndar1.WeatherCodeDaily.Count < 31) ndar1.WeatherCodeDaily.Add(null);
         while (ndar1.TemperatureDaily.Count < 31) ndar1.TemperatureDaily.Add(null);
         while (ndar1.PrecipitationDaily.Count < 31) ndar1.PrecipitationDaily.Add(null);
-        while (ndar1.StorageDaily.Count < 31) ndar1.StorageDaily.Add(null);
         while (ndar1.FiveDayUpsetDaily.Count < 31) ndar1.FiveDayUpsetDaily.Add(null);
 
         while (ndar1.Field1VolumeAppliedDaily.Count < 31) ndar1.Field1VolumeAppliedDaily.Add(null);
@@ -662,6 +659,8 @@ public class NDAR1Service : INDAR1Service
                         i.Year == report.Year)
             .OrderByDescending(i => i.UpdatedDate)
             .FirstOrDefaultAsync();
+
+        var operatorLogStorageByDate = await LoadOperatorLogStorageByDateAsync(facility.Id, report.Year, (int)report.Month);
 
         // Load template file
         var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Application Report (NDAR-1).xlsx");
@@ -727,7 +726,9 @@ public class NDAR1Service : INDAR1Service
             worksheet.Cell($"B{row}").Value = report.WeatherCodeDaily[dayIndex];
             worksheet.Cell($"C{row}").Value = report.TemperatureDaily[dayIndex];
             worksheet.Cell($"D{row}").Value = report.PrecipitationDaily[dayIndex];
-            worksheet.Cell($"E{row}").Value = report.StorageDaily[dayIndex];
+            worksheet.Cell($"E{row}").Value = operatorLogStorageByDate.TryGetValue(new DateTime(report.Year, (int)report.Month, day), out var storageFt)
+                ? storageFt
+                : null;
             worksheet.Cell($"F{row}").Value = report.FiveDayUpsetDaily[dayIndex];
 
             // Field 1 data (Columns G-J: Volume, Time, Daily Loading, Max Hourly)
@@ -833,7 +834,7 @@ public class NDAR1Service : INDAR1Service
                 var chunk = exportFields.Skip(offset).Take(4).ToList();
                 var extraSheetName = $"NDAR-1 ({chunkIndex + 1})";
                 var extraSheet = worksheet.CopyTo(extraSheetName);
-                WriteNdarSheetChunk(extraSheet, facility, report, chunk);
+                WriteNdarSheetChunk(extraSheet, facility, report, chunk, operatorLogStorageByDate);
                 chunkIndex++;
             }
         }
@@ -927,7 +928,12 @@ public class NDAR1Service : INDAR1Service
             : null;
     }
 
-    private static void WriteNdarSheetChunk(IXLWorksheet worksheet, Facility facility, NDAR1 report, List<NdarExportField> chunk)
+    private static void WriteNdarSheetChunk(
+        IXLWorksheet worksheet,
+        Facility facility,
+        NDAR1 report,
+        List<NdarExportField> chunk,
+        IReadOnlyDictionary<DateTime, decimal?> operatorLogStorageByDate)
     {
         worksheet.Cell("D1").Value = facility.PermitNumber;
         worksheet.Cell("I1").Value = facility.Name;
@@ -974,7 +980,9 @@ public class NDAR1Service : INDAR1Service
             worksheet.Cell($"B{row}").Value = report.WeatherCodeDaily[dayIndex];
             worksheet.Cell($"C{row}").Value = report.TemperatureDaily[dayIndex];
             worksheet.Cell($"D{row}").Value = report.PrecipitationDaily[dayIndex];
-            worksheet.Cell($"E{row}").Value = report.StorageDaily[dayIndex];
+            worksheet.Cell($"E{row}").Value = operatorLogStorageByDate.TryGetValue(new DateTime(report.Year, (int)report.Month, day), out var storageFt)
+                ? storageFt
+                : null;
             worksheet.Cell($"F{row}").Value = report.FiveDayUpsetDaily[dayIndex];
 
             for (int i = 0; i < 4; i++)
@@ -1000,6 +1008,36 @@ public class NDAR1Service : INDAR1Service
             worksheet.Cell($"{maxCols[i]}{monthlyRow}").Value = chunk[i].MaxHourlyLoading;
             worksheet.Cell($"{monthlyCols[i]}{floatingRow}").Value = chunk[i].FloatingTotal;
         }
+    }
+
+    private async Task<Dictionary<DateTime, decimal?>> LoadOperatorLogStorageByDateAsync(Guid facilityId, int year, int month)
+    {
+        var startDate = new DateTime(year, month, 1);
+        var endDate = startDate.AddMonths(1);
+
+        var logs = await _context.OperatorLogs
+            .AsNoTracking()
+            .Where(o => o.FacilityId == facilityId
+                        && !o.IsDeleted
+                        && o.LogDate >= startDate
+                        && o.LogDate < endDate)
+            .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+            .ThenByDescending(o => o.CreatedDate)
+            .ToListAsync();
+
+        var dailyStorage = new Dictionary<DateTime, decimal?>();
+        foreach (var log in logs)
+        {
+            var date = log.LogDate.Date;
+            if (dailyStorage.ContainsKey(date))
+            {
+                continue;
+            }
+
+            dailyStorage[date] = log.StorageFt;
+        }
+
+        return dailyStorage;
     }
 
     private sealed class NdarExportField
