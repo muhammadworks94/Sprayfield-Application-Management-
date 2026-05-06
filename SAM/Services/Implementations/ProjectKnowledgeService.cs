@@ -357,7 +357,7 @@ flowchart TD
                     Rows =
                     {
                         new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Facility permit context influences setup and source values", "Area/time/value handling follows per-field formula rules." },
-                        new List<string> { "NDMR", "WWChar + GWMonit + permit template PCS rows", "Permit number/version resolved by facility + date when available", "If no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
+                        new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version resolved by facility + date when available", "ORC day cells are exported as canonical Y/N from Operator Logs; if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
                         new List<string> { "GW report outputs", "GWMonit (+ template hooks)", "Facility/well context", "Template-driven extension path in progress." },
                         new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
@@ -484,18 +484,19 @@ flowchart TD
                         Label = "Canonical ORC/Storage Flow",
                         Location = "Controllers/OperationalDataController.cs + Services/Implementations/NDAR1RowEditService.cs"
                     },
-                    UsedByReports = { "WWChar", "NDAR1" },
+                    UsedByReports = { "WWChar", "NDAR1", "NDMR" },
                     Steps =
                     {
                         new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "User can update values directly in Operator Logs or via WWChar/NDAR proxy edit surfaces." },
                         new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "Canonical values persist only on OperatorLog.ORCOnSite and OperatorLog.StorageFt." },
                         new TraceStepViewModel { Order = 3, Label = "Resolution", Detail = "Readers resolve values per exact facility/date from canonical OperatorLog data." },
-                        new TraceStepViewModel { Order = 4, Label = "Surface", Detail = "Changes appear across WWChar, NDAR, and operator log screens for the same date." }
+                        new TraceStepViewModel { Order = 4, Label = "Surface", Detail = "Changes appear across WWChar, NDAR, NDMR exports, and operator log screens for the same date." }
                     },
                     Usages =
                     {
                         new TraceUsageViewModel { Module = "Operational Data", Report = "WWChar", Destination = "Attachment A daily ORC/storage columns." },
-                        new TraceUsageViewModel { Module = "Reports", Report = "NDAR1", Destination = "Day-row storage views/exports via canonical lookup." }
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDAR1", Destination = "Day-row storage views/exports via canonical lookup." },
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDMR", Destination = "ORC day column exports as Y/N from canonical Operator Logs." }
                     }
                 },
                 new TraceabilityItemViewModel
