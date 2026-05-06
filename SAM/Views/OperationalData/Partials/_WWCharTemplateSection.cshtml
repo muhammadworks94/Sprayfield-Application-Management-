@@ -28,7 +28,7 @@
         if (Model.IsEdit)
         {
             <div class="alert alert-info py-2 small">
-                Updates to <strong>ORC On Site</strong> and <strong>Lagoon Freeboard</strong> are saved to this WWChar monthly record and automatically reflected anywhere this WWChar record is used (including WWChar Details, downstream compliance/report logic, and linked operational views for the same record period).
+                Updates to <strong>ORC On Site</strong> and <strong>Storage Lagoon Freeboard (ft)</strong> are synced through Operator Logs for the exact day and automatically reflected anywhere this date is used.
             </div>
         }
 
@@ -47,7 +47,7 @@
                     <tr>
                         <th>Day</th>
                         <th>ORC On Site</th>
-                        <th>Lagoon Freeboard (in)</th>
+                        <th>Storage Lagoon Freeboard (ft)</th>
                         @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                         {
                             <th>

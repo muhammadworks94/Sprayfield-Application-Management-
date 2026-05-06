@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SAM.Domain.Enums;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -30,7 +31,10 @@ public class OperatorLogViewModel
     [Display(Name = "Precipitation (in)")]
     public decimal? PrecipitationIn { get; set; }
 
-    [Display(Name = "Storage (ft)")]
+    [Display(Name = "ORC On Site")]
+    public ORCOnSiteEnum? ORCOnSite { get; set; }
+
+    [Display(Name = "Storage Lagoon Freeboard (ft)")]
     public decimal? StorageFt { get; set; }
 
     [Display(Name = "5-Day Upset (ft)")]
@@ -94,7 +98,10 @@ public class OperatorLogCreateViewModel
     [Display(Name = "Precipitation (in)")]
     public decimal? PrecipitationIn { get; set; }
 
-    [Display(Name = "Storage (ft)")]
+    [Display(Name = "ORC On Site")]
+    public ORCOnSiteEnum? ORCOnSite { get; set; }
+
+    [Display(Name = "Storage Lagoon Freeboard (ft)")]
     public decimal? StorageFt { get; set; }
 
     [Display(Name = "5-Day Upset (ft)")]
@@ -161,7 +168,10 @@ public class OperatorLogEditViewModel
     [Display(Name = "Precipitation (in)")]
     public decimal? PrecipitationIn { get; set; }
 
-    [Display(Name = "Storage (ft)")]
+    [Display(Name = "ORC On Site")]
+    public ORCOnSiteEnum? ORCOnSite { get; set; }
+
+    [Display(Name = "Storage Lagoon Freeboard (ft)")]
     public decimal? StorageFt { get; set; }
 
     [Display(Name = "5-Day Upset (ft)")]

@@ -104,6 +104,11 @@ public class OperatorLogService : IOperatorLogService
         existing.LogDate = operatorLog.LogDate;
         existing.OperatorName = operatorLog.OperatorName;
         existing.WeatherConditions = operatorLog.WeatherConditions;
+        existing.TemperatureF = operatorLog.TemperatureF;
+        existing.PrecipitationIn = operatorLog.PrecipitationIn;
+        existing.ORCOnSite = operatorLog.ORCOnSite;
+        existing.StorageFt = operatorLog.StorageFt;
+        existing.FiveDayUpsetFt = operatorLog.FiveDayUpsetFt;
         existing.ArrivalTime = operatorLog.ArrivalTime;
         existing.TimeOnSiteHours = operatorLog.TimeOnSiteHours;
         existing.MaintenancePerformed = operatorLog.MaintenancePerformed;

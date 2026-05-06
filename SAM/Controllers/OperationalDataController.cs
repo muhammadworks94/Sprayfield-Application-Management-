@@ -104,6 +104,7 @@ namespace SAM.Controllers;
             WeatherConditions = l.WeatherConditions,
             TemperatureF = l.TemperatureF,
             PrecipitationIn = l.PrecipitationIn,
+            ORCOnSite = l.ORCOnSite,
             StorageFt = l.StorageFt,
             FiveDayUpsetFt = l.FiveDayUpsetFt,
             ArrivalTime = l.ArrivalTime.ToString(@"hh\:mm"),
@@ -144,6 +145,7 @@ namespace SAM.Controllers;
             WeatherConditions = log.WeatherConditions,
             TemperatureF = log.TemperatureF,
             PrecipitationIn = log.PrecipitationIn,
+            ORCOnSite = log.ORCOnSite,
             StorageFt = log.StorageFt,
             FiveDayUpsetFt = log.FiveDayUpsetFt,
             ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
@@ -193,6 +195,7 @@ namespace SAM.Controllers;
         };
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
+        ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
 
         return View(viewModel);
     }
@@ -227,6 +230,7 @@ namespace SAM.Controllers;
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
+            ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
             return View(viewModel);
         }
 
@@ -246,6 +250,7 @@ namespace SAM.Controllers;
                 WeatherConditions = viewModel.WeatherConditions ?? string.Empty,
                 TemperatureF = viewModel.TemperatureF,
                 PrecipitationIn = viewModel.PrecipitationIn,
+                ORCOnSite = viewModel.ORCOnSite,
                 StorageFt = viewModel.StorageFt,
                 FiveDayUpsetFt = viewModel.FiveDayUpsetFt,
                 ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime),
@@ -265,6 +270,7 @@ namespace SAM.Controllers;
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
+            ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
             return View(viewModel);
         }
     }
@@ -293,6 +299,7 @@ namespace SAM.Controllers;
             WeatherConditions = log.WeatherConditions,
             TemperatureF = log.TemperatureF,
             PrecipitationIn = log.PrecipitationIn,
+            ORCOnSite = log.ORCOnSite,
             StorageFt = log.StorageFt,
             FiveDayUpsetFt = log.FiveDayUpsetFt,
             ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
@@ -305,6 +312,7 @@ namespace SAM.Controllers;
         };
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(log.CompanyId);
+        ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
 
         return View(viewModel);
     }
@@ -318,6 +326,7 @@ namespace SAM.Controllers;
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
+            ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
             return View(viewModel);
         }
 
@@ -331,6 +340,7 @@ namespace SAM.Controllers;
             operatorLog.WeatherConditions = viewModel.WeatherConditions ?? string.Empty;
             operatorLog.TemperatureF = viewModel.TemperatureF;
             operatorLog.PrecipitationIn = viewModel.PrecipitationIn;
+            operatorLog.ORCOnSite = viewModel.ORCOnSite;
             operatorLog.StorageFt = viewModel.StorageFt;
             operatorLog.FiveDayUpsetFt = viewModel.FiveDayUpsetFt;
             operatorLog.ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime);
@@ -349,6 +359,7 @@ namespace SAM.Controllers;
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
+            ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
             return View(viewModel);
         }
     }
@@ -957,6 +968,13 @@ namespace SAM.Controllers;
             ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint
         };
 
+        var canonicalDetailsValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
+        if (canonicalDetailsValues.ORCOnSite.Any(x => x.HasValue) || canonicalDetailsValues.StorageLagoonFreeboardFt.Any(x => x.HasValue))
+        {
+            viewModel.ORCOnSite = canonicalDetailsValues.ORCOnSite;
+            viewModel.LagoonFreeboard = canonicalDetailsValues.StorageLagoonFreeboardFt;
+        }
+
         viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(
             wwChar.CompanyId,
             wwChar.FacilityId,
@@ -1020,6 +1038,13 @@ namespace SAM.Controllers;
 
         // Initialize daily arrays with 31 empty entries
         InitializeDailyArrays(viewModel);
+
+        if (viewModel.FacilityId != Guid.Empty)
+        {
+            var canonicalDailyValues = await LoadCanonicalOperatorLogDailyValuesAsync(viewModel.FacilityId, viewModel.Year, (int)viewModel.Month);
+            viewModel.ORCOnSite = canonicalDailyValues.ORCOnSite;
+            viewModel.LagoonFreeboard = canonicalDailyValues.StorageLagoonFreeboardFt;
+        }
 
         if (viewModel.FacilityId != Guid.Empty)
         {
@@ -1128,6 +1153,14 @@ namespace SAM.Controllers;
                 FlowMeasuringPoint = viewModel.FlowMeasuringPoint,
                 ParameterMonitoringPoint = viewModel.ParameterMonitoringPoint
             };
+            await UpsertCanonicalOperatorLogDailyValuesAsync(
+                wwChar.CompanyId,
+                wwChar.FacilityId,
+                wwChar.Year,
+                (int)wwChar.Month,
+                viewModel.ORCOnSite,
+                viewModel.LagoonFreeboard,
+                CurrentUserId ?? "system");
             ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
             var savedWwChar = await _wwCharService.CreateAsync(wwChar);
@@ -1201,6 +1234,13 @@ namespace SAM.Controllers;
             ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint
         };
 
+        var canonicalEditValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
+        if (canonicalEditValues.ORCOnSite.Any(x => x.HasValue) || canonicalEditValues.StorageLagoonFreeboardFt.Any(x => x.HasValue))
+        {
+            viewModel.ORCOnSite = canonicalEditValues.ORCOnSite;
+            viewModel.LagoonFreeboard = canonicalEditValues.StorageLagoonFreeboardFt;
+        }
+
         // Ensure arrays are initialized with 31 entries
         EnsureDailyArraysInitialized(viewModel);
         viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(
@@ -1259,7 +1299,10 @@ namespace SAM.Controllers;
 
         List<ORCOnSiteEnum?> orcOnSite = new();
         List<decimal?> lagoonFreeboard = new();
-        if (recordId.HasValue)
+        var canonicalTemplateValues = await LoadCanonicalOperatorLogDailyValuesAsync(facilityId, year, month);
+        orcOnSite = canonicalTemplateValues.ORCOnSite;
+        lagoonFreeboard = canonicalTemplateValues.StorageLagoonFreeboardFt;
+        if (!orcOnSite.Any(x => x.HasValue) && !lagoonFreeboard.Any(x => x.HasValue) && recordId.HasValue)
         {
             var existingRecord = await _wwCharService.GetByIdAsync(recordId.Value);
             if (existingRecord != null)
@@ -1357,6 +1400,14 @@ namespace SAM.Controllers;
             wwChar.FacilityPermitId = viewModel.FacilityPermitId;
             wwChar.FlowMeasuringPoint = viewModel.FlowMeasuringPoint;
             wwChar.ParameterMonitoringPoint = viewModel.ParameterMonitoringPoint;
+            await UpsertCanonicalOperatorLogDailyValuesAsync(
+                wwChar.CompanyId,
+                wwChar.FacilityId,
+                wwChar.Year,
+                (int)wwChar.Month,
+                viewModel.ORCOnSite,
+                viewModel.LagoonFreeboard,
+                CurrentUserId ?? "system");
             ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
             await _wwCharService.UpdateAsync(wwChar);
@@ -2248,6 +2299,111 @@ namespace SAM.Controllers;
         return new SelectList(monitoringWells, "Id", "WellId");
     }
 
+    private async Task<(List<ORCOnSiteEnum?> ORCOnSite, List<decimal?> StorageLagoonFreeboardFt)> LoadCanonicalOperatorLogDailyValuesAsync(
+        Guid facilityId,
+        int year,
+        int month)
+    {
+        var orc = Enumerable.Repeat<ORCOnSiteEnum?>(null, 31).ToList();
+        var storage = Enumerable.Repeat<decimal?>(null, 31).ToList();
+
+        if (facilityId == Guid.Empty || month < 1 || month > 12 || year < 2000 || year > 2100)
+        {
+            return (orc, storage);
+        }
+
+        var start = new DateTime(year, month, 1);
+        var end = start.AddMonths(1);
+        var logs = await _context.OperatorLogs
+            .Where(x => x.FacilityId == facilityId && x.LogDate >= start && x.LogDate < end)
+            .OrderByDescending(x => x.UpdatedDate ?? x.CreatedDate)
+            .ToListAsync();
+
+        foreach (var dayGroup in logs.GroupBy(x => x.LogDate.Date))
+        {
+            var day = dayGroup.Key.Day;
+            if (day < 1 || day > 31)
+            {
+                continue;
+            }
+
+            var canonical = dayGroup.First();
+            orc[day - 1] = canonical.ORCOnSite;
+            storage[day - 1] = canonical.StorageFt;
+        }
+
+        return (orc, storage);
+    }
+
+    private async Task UpsertCanonicalOperatorLogDailyValuesAsync(
+        Guid companyId,
+        Guid facilityId,
+        int year,
+        int month,
+        List<ORCOnSiteEnum?>? orcOnSite,
+        List<decimal?>? storageLagoonFreeboardFt,
+        string actor)
+    {
+        if (facilityId == Guid.Empty || month < 1 || month > 12 || year < 2000 || year > 2100)
+        {
+            return;
+        }
+
+        var start = new DateTime(year, month, 1);
+        var end = start.AddMonths(1);
+        var daysInMonth = DateTime.DaysInMonth(year, month);
+        var existingLogs = await _context.OperatorLogs
+            .Where(x => x.FacilityId == facilityId && x.LogDate >= start && x.LogDate < end)
+            .ToListAsync();
+
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var dayIndex = day - 1;
+            var dayOrc = orcOnSite != null && orcOnSite.Count > dayIndex ? orcOnSite[dayIndex] : null;
+            var dayStorage = storageLagoonFreeboardFt != null && storageLagoonFreeboardFt.Count > dayIndex ? storageLagoonFreeboardFt[dayIndex] : null;
+            if (!dayOrc.HasValue && !dayStorage.HasValue)
+            {
+                continue;
+            }
+
+            var date = new DateTime(year, month, day);
+            var logsForDay = existingLogs.Where(x => x.LogDate.Date == date.Date).ToList();
+            if (!logsForDay.Any())
+            {
+                var newLog = new OperatorLog
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyId = companyId,
+                    FacilityId = facilityId,
+                    LogDate = date,
+                    OperatorName = "System",
+                    ORCOnSite = dayOrc,
+                    StorageFt = dayStorage,
+                    WeatherConditions = string.Empty,
+                    ArrivalTime = TimeSpan.Zero,
+                    TimeOnSiteHours = 0m,
+                    MaintenancePerformed = string.Empty,
+                    EquipmentInspected = string.Empty,
+                    IssuesNoted = string.Empty,
+                    CorrectiveActions = string.Empty,
+                    NextShiftNotes = string.Empty,
+                    CreatedBy = actor
+                };
+                _context.OperatorLogs.Add(newLog);
+                existingLogs.Add(newLog);
+                continue;
+            }
+
+            foreach (var log in logsForDay)
+            {
+                log.ORCOnSite = dayOrc;
+                log.StorageFt = dayStorage;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
     private SelectList GetMonthSelectList()
     {
         return new SelectList(Enum.GetValues(typeof(MonthEnum)).Cast<MonthEnum>()
@@ -2266,6 +2422,15 @@ namespace SAM.Controllers;
                 Value = e.ToString(),
                 Text = e.ToString()
             }), "Value", "Text");
+    }
+
+    private SelectList GetOperatorLogORCOnSiteSelectList()
+    {
+        return new SelectList(new[]
+        {
+            new SelectListItem { Value = ORCOnSiteEnum.Y.ToString(), Text = "Yes" },
+            new SelectListItem { Value = ORCOnSiteEnum.N.ToString(), Text = "No" }
+        }, "Value", "Text");
     }
 
     private SelectList GetFlowMeasuringPointSelectList()

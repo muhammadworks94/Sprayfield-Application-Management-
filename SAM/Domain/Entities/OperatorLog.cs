@@ -39,6 +39,11 @@ public class OperatorLog : CompanyScopedEntity
     public decimal? PrecipitationIn { get; set; }
 
     /// <summary>
+    /// ORC on-site status for this date.
+    /// </summary>
+    public ORCOnSiteEnum? ORCOnSite { get; set; }
+
+    /// <summary>
     /// Daily storage/freeboard value in feet.
     /// </summary>
     public decimal? StorageFt { get; set; }

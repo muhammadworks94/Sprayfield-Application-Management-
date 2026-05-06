@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "Create Operator Log";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var orcOnSiteOptions = ViewBag.OperatorLogOrcOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
     var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
@@ -50,6 +51,15 @@
                                     <label asp-for="ArrivalTime" class="form-label required"></label>
                                     <input asp-for="ArrivalTime" type="time" class="form-control" />
                                     <span asp-validation-for="ArrivalTime" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ORCOnSite" class="form-label"></label>
+                                    <select asp-for="ORCOnSite" asp-items="orcOnSiteOptions" class="form-select">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                    <span asp-validation-for="ORCOnSite" class="text-danger"></span>
                                 </div>
                             </div>
                         </div>
