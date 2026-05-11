@@ -11,7 +11,7 @@
 
 <div class="card">
     <div class="card-body">
-        <form asp-action="GWMonitCreate" method="post">
+        <form asp-action="GWMonitCreate" method="post" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="CompanyId" />
             <input type="hidden" asp-for="FacilityPermitId" />
@@ -161,6 +161,13 @@
                         </div>
                     </div>
                     <div class="col-md-8">
+                        <div class="mb-3">
+                            <label asp-for="VOCReportFile" class="form-label"></label>
+                            <input asp-for="VOCReportFile" type="file" class="form-control" accept=".pdf,application/pdf" />
+                            <span asp-validation-for="VOCReportFile" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
                         <div class="mb-3">
                             <label asp-for="VOCMethodNumber" class="form-label"></label>
                             <input asp-for="VOCMethodNumber" class="form-control" />

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -1503,6 +1504,7 @@ namespace SAM.Controllers;
             FecalColiform = g.FecalColiform,
             TotalColiform = g.TotalColiform,
             VOCReportAttached = g.VOCReportAttached ?? false,
+            VOCReportFileName = g.VOCReportFileName,
             VOCMethodNumber = g.VOCMethodNumber,
             LabCertification = g.LabCertification,
             CollectedBy = g.CollectedBy,
@@ -1562,6 +1564,7 @@ namespace SAM.Controllers;
             FecalColiform = gwMonit.FecalColiform,
             TotalColiform = gwMonit.TotalColiform,
             VOCReportAttached = gwMonit.VOCReportAttached ?? false,
+            VOCReportFileName = gwMonit.VOCReportFileName,
             VOCMethodNumber = gwMonit.VOCMethodNumber,
             LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
@@ -1585,6 +1588,11 @@ namespace SAM.Controllers;
     public async Task<IActionResult> GWMonitReportPdf(Guid id)
     {
         var reportModel = await BuildGW59ReportAsync(id);
+        var gwMonit = await _gwMonitService.GetByIdAsync(id);
+        if (gwMonit == null)
+        {
+            return NotFound();
+        }
 
         var templatePath = Path.Combine(
             _environment.WebRootPath,
@@ -1736,6 +1744,54 @@ namespace SAM.Controllers;
         }
 
         outputStream.Position = 0;
+        if (gwMonit.VOCReportAttached == true)
+        {
+            if (string.IsNullOrWhiteSpace(gwMonit.VOCReportFileStoragePath))
+            {
+                return BadRequest("VOC report is marked attached, but no VOC file is stored on this groundwater record.");
+            }
+
+            var vocAbsolutePath = Path.Combine(_environment.WebRootPath, gwMonit.VOCReportFileStoragePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+            if (!System.IO.File.Exists(vocAbsolutePath))
+            {
+                return BadRequest("VOC report file is missing from storage for this groundwater record.");
+            }
+
+            try
+            {
+                using var mergedOutput = new MemoryStream();
+                using var mergedDoc = new PdfDocument();
+                using (var baseDoc = PdfReader.Open(outputStream, PdfDocumentOpenMode.Import))
+                {
+                    foreach (var page in baseDoc.Pages)
+                    {
+                        mergedDoc.AddPage(page);
+                    }
+                }
+
+                using (var vocDoc = PdfReader.Open(vocAbsolutePath, PdfDocumentOpenMode.Import))
+                {
+                    foreach (var page in vocDoc.Pages)
+                    {
+                        mergedDoc.AddPage(page);
+                    }
+                }
+
+                mergedDoc.Save(mergedOutput, false);
+                mergedOutput.Position = 0;
+                var safeFacilityMerged = string.IsNullOrWhiteSpace(reportModel.FacilityName)
+                    ? "Facility"
+                    : reportModel.FacilityName.Replace(' ', '_');
+                var mergedName = $"GW59_{safeFacilityMerged}_{reportModel.SampleDate:yyyyMMdd}_WithVOC.pdf";
+                return File(mergedOutput.ToArray(), "application/pdf", mergedName);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to merge VOC report PDF for GWMonit {GWMonitId}", id);
+                return BadRequest("VOC report file could not be merged. Ensure the attached VOC report is a valid PDF.");
+            }
+        }
+
         var safeFacility = string.IsNullOrWhiteSpace(reportModel.FacilityName)
             ? "Facility"
             : reportModel.FacilityName.Replace(' ', '_');
@@ -1925,6 +1981,25 @@ namespace SAM.Controllers;
                 string.Empty,
                 $"We could not save this record yet because required permit-template values for {viewModel.SampleDate:MMM yyyy} are missing: {joinedRows}. Enter values for these required rows to unblock save.");
         }
+        var badTemplateRows = await ValidateGwTemplateRowScopeAsync(resolvedPermit?.Id, viewModel.TemplateParameters);
+        if (badTemplateRows.Count > 0)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                $"Invalid groundwater template row mapping detected. These rows are not valid GW59/GW59A rows for the resolved permit: {string.Join(", ", badTemplateRows)}.");
+        }
+
+        if (viewModel.VOCReportAttached)
+        {
+            if (viewModel.VOCReportFile == null || viewModel.VOCReportFile.Length == 0)
+            {
+                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "VOC Report (PDF) is required when 'VOC Report Attached' is selected.");
+            }
+            else if (!IsPdfUpload(viewModel.VOCReportFile))
+            {
+                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "Only PDF files are allowed for VOC Report.");
+            }
+        }
 
         if (facility != null)
         {
@@ -1950,22 +2025,32 @@ namespace SAM.Controllers;
         {
             var gwMonit = new GWMonit
             {
-                CompanyId = facility.CompanyId,
+                CompanyId = facility!.CompanyId,
                 FacilityId = viewModel.FacilityId,
                 MonitoringWellId = viewModel.MonitoringWellId,
                 SampleDate = viewModel.SampleDate,
                 SampleDepth = viewModel.SampleDepth,
                 WaterLevel = viewModel.WaterLevel,
                 Temperature = viewModel.Temperature,
+                PH = viewModel.PH,
                 GallonsPumped = viewModel.GallonsPumped,
                 Odor = viewModel.Odor,
                 Appearance = viewModel.Appearance,
                 Conductivity = viewModel.Conductivity,
                 TDS = viewModel.TDS,
                 Turbidity = viewModel.Turbidity,
+                TSS = viewModel.TSS,
+                NH3N = viewModel.NH3N,
+                NO3N = viewModel.NO3N,
+                TKN = viewModel.TKN,
                 TOC = viewModel.TOC,
+                Chloride = viewModel.Chloride,
+                Calcium = viewModel.Calcium,
+                Magnesium = viewModel.Magnesium,
                 MetalsSamplesCollectedUnfiltered = viewModel.MetalsSamplesCollectedUnfiltered,
                 MetalSamplesFieldAcidified = viewModel.MetalSamplesFieldAcidified,
+                FecalColiform = viewModel.FecalColiform,
+                TotalColiform = viewModel.TotalColiform,
                 VOCReportAttached = viewModel.VOCReportAttached,
                 VOCMethodNumber = viewModel.VOCMethodNumber,
                 LabCertification = viewModel.LabCertification,
@@ -1975,6 +2060,11 @@ namespace SAM.Controllers;
             };
 
             await _gwMonitService.CreateAsync(gwMonit);
+            if (viewModel.VOCReportAttached && viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0)
+            {
+                await SaveGwVocFileAsync(gwMonit, viewModel.VOCReportFile);
+                await _gwMonitService.UpdateAsync(gwMonit);
+            }
             await SaveGwMonitTemplateValuesAsync(gwMonit, viewModel.TemplateParameters);
             TempData["SuccessMessage"] = "Groundwater monitoring record created successfully.";
             return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
@@ -2034,6 +2124,7 @@ namespace SAM.Controllers;
             FecalColiform = gwMonit.FecalColiform,
             TotalColiform = gwMonit.TotalColiform,
             VOCReportAttached = gwMonit.VOCReportAttached ?? false,
+            VOCReportFileName = gwMonit.VOCReportFileName,
             VOCMethodNumber = gwMonit.VOCMethodNumber,
             LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
@@ -2107,6 +2198,12 @@ namespace SAM.Controllers;
     public async Task<IActionResult> GWMonitEdit(GWMonitEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
+        var existingGwMonit = await _gwMonitService.GetByIdAsync(viewModel.Id);
+        if (existingGwMonit == null)
+        {
+            return NotFound();
+        }
+        viewModel.VOCReportFileName = existingGwMonit.VOCReportFileName;
 
         var resolvedPermit = viewModel.FacilityId == Guid.Empty
             ? null
@@ -2132,6 +2229,28 @@ namespace SAM.Controllers;
                 string.Empty,
                 $"We could not save this record yet because required permit-template values for {viewModel.SampleDate:MMM yyyy} are missing: {joinedRows}. Enter values for these required rows to unblock save.");
         }
+        var badTemplateRows = await ValidateGwTemplateRowScopeAsync(resolvedPermit?.Id, viewModel.TemplateParameters);
+        if (badTemplateRows.Count > 0)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                $"Invalid groundwater template row mapping detected. These rows are not valid GW59/GW59A rows for the resolved permit: {string.Join(", ", badTemplateRows)}.");
+        }
+
+        if (viewModel.VOCReportAttached)
+        {
+            var hasExistingFile = !string.IsNullOrWhiteSpace(viewModel.VOCReportFileName);
+            var hasNewUpload = viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0;
+            if (!hasExistingFile && !hasNewUpload)
+            {
+                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "VOC Report (PDF) is required when 'VOC Report Attached' is selected.");
+            }
+
+            if (hasNewUpload && !IsPdfUpload(viewModel.VOCReportFile!))
+            {
+                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "Only PDF files are allowed for VOC Report.");
+            }
+        }
 
         if (!ModelState.IsValid)
         {
@@ -2148,29 +2267,47 @@ namespace SAM.Controllers;
 
         try
         {
-            var gwMonit = await _gwMonitService.GetByIdAsync(viewModel.Id);
-            if (gwMonit == null)
-                return NotFound();
+            var gwMonit = existingGwMonit;
 
             gwMonit.SampleDate = viewModel.SampleDate;
             gwMonit.SampleDepth = viewModel.SampleDepth;
             gwMonit.WaterLevel = viewModel.WaterLevel;
             gwMonit.Temperature = viewModel.Temperature;
+            gwMonit.PH = viewModel.PH;
             gwMonit.GallonsPumped = viewModel.GallonsPumped;
             gwMonit.Odor = viewModel.Odor;
             gwMonit.Appearance = viewModel.Appearance;
             gwMonit.Conductivity = viewModel.Conductivity;
             gwMonit.TDS = viewModel.TDS;
             gwMonit.Turbidity = viewModel.Turbidity;
+            gwMonit.TSS = viewModel.TSS;
+            gwMonit.NH3N = viewModel.NH3N;
+            gwMonit.NO3N = viewModel.NO3N;
+            gwMonit.TKN = viewModel.TKN;
             gwMonit.TOC = viewModel.TOC;
+            gwMonit.Chloride = viewModel.Chloride;
+            gwMonit.Calcium = viewModel.Calcium;
+            gwMonit.Magnesium = viewModel.Magnesium;
             gwMonit.MetalsSamplesCollectedUnfiltered = viewModel.MetalsSamplesCollectedUnfiltered;
             gwMonit.MetalSamplesFieldAcidified = viewModel.MetalSamplesFieldAcidified;
+            gwMonit.FecalColiform = viewModel.FecalColiform;
+            gwMonit.TotalColiform = viewModel.TotalColiform;
             gwMonit.VOCReportAttached = viewModel.VOCReportAttached;
             gwMonit.VOCMethodNumber = viewModel.VOCMethodNumber;
             gwMonit.LabCertification = viewModel.LabCertification;
             gwMonit.CollectedBy = viewModel.CollectedBy;
             gwMonit.AnalyzedBy = viewModel.AnalyzedBy;
             gwMonit.Comments = viewModel.Comments;
+            if (!gwMonit.VOCReportAttached.GetValueOrDefault())
+            {
+                gwMonit.VOCReportFileStoragePath = null;
+                gwMonit.VOCReportFileName = null;
+                gwMonit.VOCReportContentType = null;
+            }
+            else if (viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0)
+            {
+                await SaveGwVocFileAsync(gwMonit, viewModel.VOCReportFile);
+            }
 
             await _gwMonitService.UpdateAsync(gwMonit);
             await SaveGwMonitTemplateValuesAsync(gwMonit, viewModel.TemplateParameters);
@@ -2848,6 +2985,14 @@ namespace SAM.Controllers;
     private async Task SaveGwMonitTemplateValuesAsync(GWMonit gwMonit, List<GWMonitTemplateParameterViewModel>? templateParameters)
     {
         if (templateParameters == null) return;
+        var badTemplateRows = await ValidateGwTemplateRowScopeAsync(
+            (await _facilityPermitResolver.ResolveForDateAsync(gwMonit.FacilityId, gwMonit.SampleDate))?.Id,
+            templateParameters);
+        if (badTemplateRows.Count > 0)
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException(
+                $"GW template values include non-groundwater rows: {string.Join(", ", badTemplateRows)}.");
+        }
 
         var existing = await _context.GWMonitTemplateValues.Where(x => x.GWMonitId == gwMonit.Id).ToListAsync();
         _context.GWMonitTemplateValues.RemoveRange(existing);
@@ -3101,6 +3246,78 @@ namespace SAM.Controllers;
         }
 
         return "Permit template parameters are not available for this period.";
+    }
+
+    private static bool IsPdfUpload(IFormFile file)
+    {
+        var fileName = file.FileName ?? string.Empty;
+        return file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
+            || fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task SaveGwVocFileAsync(GWMonit gwMonit, IFormFile file)
+    {
+        var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "gwmonit", gwMonit.Id.ToString("N"));
+        Directory.CreateDirectory(uploadsDir);
+
+        if (!string.IsNullOrWhiteSpace(gwMonit.VOCReportFileStoragePath))
+        {
+            var existingPath = Path.Combine(_environment.WebRootPath, gwMonit.VOCReportFileStoragePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+            if (System.IO.File.Exists(existingPath))
+            {
+                System.IO.File.Delete(existingPath);
+            }
+        }
+
+        var originalName = Path.GetFileName(file.FileName);
+        var storedFileName = $"{Guid.NewGuid():N}_{originalName}";
+        var absolutePath = Path.Combine(uploadsDir, storedFileName);
+
+        await using (var stream = System.IO.File.Create(absolutePath))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        gwMonit.VOCReportFileName = originalName;
+        gwMonit.VOCReportContentType = "application/pdf";
+        gwMonit.VOCReportFileStoragePath = Path.Combine("uploads", "gwmonit", gwMonit.Id.ToString("N"), storedFileName).Replace("\\", "/");
+    }
+
+    private async Task<List<string>> ValidateGwTemplateRowScopeAsync(
+        Guid? resolvedPermitId,
+        List<GWMonitTemplateParameterViewModel>? templateParameters)
+    {
+        if (!resolvedPermitId.HasValue || templateParameters == null || templateParameters.Count == 0)
+        {
+            return new List<string>();
+        }
+
+        var templateIds = templateParameters
+            .Select(x => x.FacilityPermitTemplateParameterId)
+            .Where(x => x != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (templateIds.Count == 0)
+        {
+            return new List<string>();
+        }
+
+        var allowedIds = await _context.FacilityPermitTemplateParameters
+            .AsNoTracking()
+            .Where(x =>
+                x.FacilityPermitId == resolvedPermitId.Value &&
+                ((x.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0 ||
+                 (x.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0))
+            .Select(x => x.Id)
+            .ToListAsync();
+
+        var allowedIdSet = allowedIds.ToHashSet();
+        return templateParameters
+            .Where(x => !allowedIdSet.Contains(x.FacilityPermitTemplateParameterId))
+            .Select(x => $"{x.PcsCode} - {x.ParameterName}")
+            .Distinct()
+            .ToList();
     }
 
     private static decimal? ComputeDailyLoadingFromVolume(decimal volumeGallons, decimal acres)

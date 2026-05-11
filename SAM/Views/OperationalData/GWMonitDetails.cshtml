@@ -172,6 +172,9 @@
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-upc me-1"></i>VOC Method #:</dt>
                     <dd class="col-sm-7 mb-2">@(!string.IsNullOrWhiteSpace(Model.VOCMethodNumber) ? Model.VOCMethodNumber : "N/A")</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-paperclip me-1"></i>VOC File:</dt>
+                    <dd class="col-sm-7 mb-2">@(!string.IsNullOrWhiteSpace(Model.VOCReportFileName) ? Model.VOCReportFileName : "N/A")</dd>
                 </dl>
             </div>
             <div class="col-md-6">

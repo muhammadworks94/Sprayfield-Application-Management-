@@ -143,6 +143,21 @@ public class GWMonit : CompanyScopedEntity
     public string VOCMethodNumber { get; set; } = string.Empty;
 
     /// <summary>
+    /// Stored relative path for uploaded VOC report (PDF).
+    /// </summary>
+    public string? VOCReportFileStoragePath { get; set; }
+
+    /// <summary>
+    /// Original uploaded VOC report file name.
+    /// </summary>
+    public string? VOCReportFileName { get; set; }
+
+    /// <summary>
+    /// Uploaded VOC report content type.
+    /// </summary>
+    public string? VOCReportContentType { get; set; }
+
+    /// <summary>
     /// Lab certification details.
     /// </summary>
     public string LabCertification { get; set; } = string.Empty;
@@ -167,4 +182,3 @@ public class GWMonit : CompanyScopedEntity
     public MonitoringWell? MonitoringWell { get; set; }
     public ICollection<GWMonitTemplateValue> TemplateValues { get; set; } = new List<GWMonitTemplateValue>();
 }
-

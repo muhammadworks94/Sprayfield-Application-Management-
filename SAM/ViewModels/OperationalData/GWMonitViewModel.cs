@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -105,6 +106,8 @@ public class GWMonitViewModel
 
     [Display(Name = "VOC Report Attached")]
     public bool VOCReportAttached { get; set; }
+
+    public string? VOCReportFileName { get; set; }
 
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
@@ -233,6 +236,11 @@ public class GWMonitCreateViewModel
 
     [Display(Name = "VOC Report Attached")]
     public bool VOCReportAttached { get; set; }
+
+    [Display(Name = "VOC Report (PDF)")]
+    public IFormFile? VOCReportFile { get; set; }
+
+    public string? VOCReportFileName { get; set; }
 
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
@@ -368,6 +376,11 @@ public class GWMonitEditViewModel
 
     [Display(Name = "VOC Report Attached")]
     public bool VOCReportAttached { get; set; }
+
+    [Display(Name = "VOC Report (PDF)")]
+    public IFormFile? VOCReportFile { get; set; }
+
+    public string? VOCReportFileName { get; set; }
 
     [StringLength(200)]
     [Display(Name = "VOC Method #")]

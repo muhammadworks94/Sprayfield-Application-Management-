@@ -11,11 +11,12 @@
 
 <div class="card">
     <div class="card-body">
-        <form asp-action="GWMonitEdit" method="post">
+        <form asp-action="GWMonitEdit" method="post" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="CompanyId" />
             <input type="hidden" asp-for="FacilityPermitId" />
+            <input type="hidden" asp-for="VOCReportFileName" />
 
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
@@ -93,7 +94,18 @@
                 <div class="form-section-title">Organics</div>
                 <div class="row">
                     <div class="col-md-4"><div class="mb-3 form-check"><input class="form-check-input" asp-for="VOCReportAttached" type="checkbox" /><label class="form-check-label" asp-for="VOCReportAttached"></label></div></div>
-                    <div class="col-md-8"><div class="mb-3"><label asp-for="VOCMethodNumber" class="form-label"></label><input asp-for="VOCMethodNumber" class="form-control" /><span asp-validation-for="VOCMethodNumber" class="text-danger"></span></div></div>
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label asp-for="VOCReportFile" class="form-label"></label>
+                            <input asp-for="VOCReportFile" type="file" class="form-control" accept=".pdf,application/pdf" />
+                            <span asp-validation-for="VOCReportFile" class="text-danger"></span>
+                            @if (!string.IsNullOrWhiteSpace(Model.VOCReportFileName))
+                            {
+                                <small class="text-muted d-block mt-1">Current file: @Model.VOCReportFileName</small>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-md-12"><div class="mb-3"><label asp-for="VOCMethodNumber" class="form-label"></label><input asp-for="VOCMethodNumber" class="form-control" /><span asp-validation-for="VOCMethodNumber" class="text-danger"></span></div></div>
                 </div>
             </div>
 

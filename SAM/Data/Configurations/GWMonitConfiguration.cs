@@ -77,6 +77,15 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
 
         builder.Property(g => g.VOCMethodNumber)
             .HasMaxLength(200);
+        
+        builder.Property(g => g.VOCReportFileStoragePath)
+            .HasMaxLength(500);
+
+        builder.Property(g => g.VOCReportFileName)
+            .HasMaxLength(260);
+
+        builder.Property(g => g.VOCReportContentType)
+            .HasMaxLength(120);
 
         builder.Property(g => g.LabCertification)
             .HasMaxLength(500);

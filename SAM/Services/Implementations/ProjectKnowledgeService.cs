@@ -202,10 +202,12 @@ flowchart TD
                         "WWChar now filters periodic rows by selected month (for example 3 x Year / Annual rows only appear when ScheduledMonthsCsv includes that month; blank periodic schedules are hidden).",
                         "When GW Monitoring Create/Edit is opened for a facility/sample date, system resolves active permit and loads groundwater template rows.",
                         "Operator enters groundwater values directly in the template-entry column; SAM stores values tied to the exact permit template row.",
+                        "Groundwater and wastewater template values are stored separately (GWMonitTemplateValues vs WWCharTemplateValues) even when sharing the same PCS catalog entry (for example pH).",
                         "Rows required for the selected sample month are highlighted and enforced at save with user-friendly unblock guidance.",
                         "PAN chemistry in WWChar workflow is sourced from template PCS rows: 00625 (TKN) and 00620 (NO3). NO2 is treated as 0 for PAN.",
                         "NDMR/GW reporting uses the same permit/template context so output matches configured permit requirements.",
-                        "Per-row notes (permit instructions/footnotes) are shown through an info icon tooltip in admin and monitoring dialogs."
+                        "Per-row notes (permit instructions/footnotes) are shown through an info icon tooltip in admin and monitoring dialogs.",
+                        "GW VOC report attachment is PDF-only and is merged into GW-59 PDF output when present."
                     }
                 }
             },
@@ -308,7 +310,10 @@ flowchart TD
                     {
                         "User records groundwater monitoring tied to facility/well/date.",
                         "System resolves active permit and shows Attachment C template rows with editable value inputs.",
+                        "GW saves reject template rows outside GW59/GW59A for the resolved permit to prevent cross-report contamination.",
                         "Rows required for the selected sample month (from frequency + scheduled months) must be entered before save.",
+                        "If VOC Report Attached is selected, a VOC PDF upload is required and saved with the groundwater record.",
+                        "GW-59 PDF export appends VOC PDF pages after the generated GW-59 form pages.",
                         "Template values are stored and used downstream for reporting/compliance context."
                     }
                 },

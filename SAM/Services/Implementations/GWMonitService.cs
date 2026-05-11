@@ -146,6 +146,9 @@ public class GWMonitService : IGWMonitService
         existing.TotalColiform = gwMonit.TotalColiform;
         existing.VOCReportAttached = gwMonit.VOCReportAttached;
         existing.VOCMethodNumber = gwMonit.VOCMethodNumber;
+        existing.VOCReportFileStoragePath = gwMonit.VOCReportFileStoragePath;
+        existing.VOCReportFileName = gwMonit.VOCReportFileName;
+        existing.VOCReportContentType = gwMonit.VOCReportContentType;
         existing.LabCertification = gwMonit.LabCertification;
         existing.CollectedBy = gwMonit.CollectedBy;
         existing.AnalyzedBy = gwMonit.AnalyzedBy;
@@ -203,4 +206,3 @@ public class GWMonitService : IGWMonitService
             .ToListAsync();
     }
 }
-
