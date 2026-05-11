@@ -319,6 +319,18 @@ flowchart TD
                 },
                 new ProjectStepFlowViewModel
                 {
+                    Name = "Groundwater Quality Reports",
+                    Steps =
+                    {
+                        "Company Admin opens Reports > Groundwater Quality Reports.",
+                        "System lists groundwater monitoring records with facility, well, sample date, and resolved permit context.",
+                        "GW-59 export uses form template GW-59 GW-QualityMonitoringReportForm.pdf with mapped SAM fields.",
+                        "GW-59A export uses form template GW-59A.pdf and Attachment C template-backed parameter values.",
+                        "Exports fail with actionable messages when template files or required source data are missing."
+                    }
+                },
+                new ProjectStepFlowViewModel
+                {
                     Name = "Operator Logs",
                     Steps =
                     {

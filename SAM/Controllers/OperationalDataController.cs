@@ -1974,6 +1974,14 @@ namespace SAM.Controllers;
         }
 
         var missingTemplateRows = ValidateGwTemplateRequirements(viewModel.TemplateParameters);
+        for (var i = 0; i < viewModel.TemplateParameters.Count; i++)
+        {
+            var row = viewModel.TemplateParameters[i];
+            if (row.IsRequiredForSelectedMonth && !row.EnteredValue.HasValue)
+            {
+                ModelState.AddModelError($"TemplateParameters[{i}].EnteredValue", "Required for this month.");
+            }
+        }
         if (missingTemplateRows.Count > 0)
         {
             var joinedRows = string.Join(", ", missingTemplateRows);

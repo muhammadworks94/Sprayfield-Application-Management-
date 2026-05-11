@@ -19,6 +19,12 @@
             <input type="hidden" asp-for="VOCReportFileName" />
 
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="alert alert-danger">
+                    <strong>Unable to save.</strong> Please fix the highlighted fields and try again.
+                </div>
+            }
 
             <div class="form-section">
                 <div class="form-section-title">Basic Information</div>
