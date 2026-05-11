@@ -222,15 +222,48 @@
 
                     const response = await fetch(url, {
                         method: 'GET',
-                        credentials: 'same-origin'
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
+                        }
                     });
 
                     if (!response.ok) {
-                        throw new Error('Download failed');
+                        let message = 'Download failed';
+                        const responseType = (response.headers.get('Content-Type') || '').toLowerCase();
+                        if (responseType.includes('application/json') || responseType.includes('application/problem+json')) {
+                            const payload = await response.json().catch(() => null);
+                            message = payload?.detail || payload?.message || payload?.title || message;
+                        } else {
+                            const text = await response.text().catch(() => '');
+                            if (text && text.trim().length > 0) {
+                                message = text.trim().slice(0, 300);
+                            }
+                        }
+                        throw new Error(message);
+                    }
+
+                    const responseType = (response.headers.get('Content-Type') || '').toLowerCase();
+                    const disposition = response.headers.get('Content-Disposition') || '';
+                    const isExcelType = responseType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    const hasAttachmentDisposition = disposition.toLowerCase().includes('attachment');
+
+                    if (responseType.includes('application/json') || responseType.includes('application/problem+json')) {
+                        const payload = await response.json().catch(() => null);
+                        const message = payload?.detail || payload?.message || payload?.title || 'Export failed.';
+                        throw new Error(message);
+                    }
+
+                    if (responseType.includes('text/html') || responseType.includes('text/plain')) {
+                        throw new Error('Export failed and returned non-report content.');
+                    }
+
+                    if (!isExcelType && !hasAttachmentDisposition) {
+                        throw new Error('Unexpected export response type.');
                     }
 
                     const blob = await response.blob();
-                    const disposition = response.headers.get('Content-Disposition');
                     const filename = getFilenameFromDisposition(disposition) || 'download';
 
                     const objectUrl = window.URL.createObjectURL(blob);
@@ -268,6 +301,12 @@
                                 await downloadUsingFetch(link);
                             } catch (error) {
                                 console.error(error);
+                                const message = error && error.message ? error.message : 'Export failed.';
+                                if (window.toastr) {
+                                    window.toastr.error(message);
+                                } else {
+                                    alert(message);
+                                }
                             } finally {
                                 hide();
                                 enableLinks();

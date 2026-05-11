@@ -122,7 +122,7 @@
                                 <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field: @(field.Sprayfield?.FieldId ?? "N/A")</h6>
                                 <dl class="row small">
                                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
-                                    <dd class="col-sm-7 mb-2">@((field.Sprayfield?.SizeAcres ?? 0m).ToString("F2")) acres</dd>
+                                    <dd class="col-sm-7 mb-2">@((field.Sprayfield != null ? SprayfieldReportHelper.GetReportAcres(field.Sprayfield) : 0m).ToString("F2")) acres</dd>
                                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
                                     <dd class="col-sm-7 mb-2">@(field.Sprayfield != null ? SprayfieldZoneSummaryHelper.GetCropSummary(field.Sprayfield) ?? "N/A" : "N/A")</dd>
                                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-speedometer2 me-1"></i>Permitted (Max) Hourly Rate:</dt>

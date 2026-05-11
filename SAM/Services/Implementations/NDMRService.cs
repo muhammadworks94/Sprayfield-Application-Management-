@@ -315,10 +315,11 @@ public class NDMRService : INDMRService
 
         if (permitTemplateRows.Any())
         {
-            var hasFlow = permitTemplateRows.Any(x => string.Equals(x.PcsParameterCatalog!.PcsCode, "50050", StringComparison.OrdinalIgnoreCase) && x.IsRequired);
+            // Accept Flow (50050) whether the permit row is marked Required or Optional.
+            var hasFlow = permitTemplateRows.Any(x => string.Equals(x.PcsParameterCatalog!.PcsCode, "50050", StringComparison.OrdinalIgnoreCase));
             if (!hasFlow)
             {
-                throw new BusinessRuleException("Permit template must include required PCS code 50050 (Flow) for NDMR export.");
+                throw new BusinessRuleException("Permit template must include PCS code 50050 (Flow) for NDMR export.");
             }
         }
 

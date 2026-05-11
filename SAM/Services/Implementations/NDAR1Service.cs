@@ -678,9 +678,7 @@ public class NDAR1Service : INDAR1Service
         worksheet.Cell("S1").Value = report.Month.ToString();
         worksheet.Cell("V1").Value = report.Year;
 
-        // Did irrigation occur checkbox (Row 5, approximate location)
-        // Note: Excel checkboxes are complex, this is a simplified approach
-        // You may need to adjust based on actual template structure
+        WriteFacilityIrrigationCheckbox(worksheet, report.DidIrrigationOccur);
 
         // Field information (Rows 2-7)
         // Field 1: Headers at G2-G7, Data at G-J (Volume, Time, Daily Loading, Max Hourly)
@@ -776,52 +774,47 @@ public class NDAR1Service : INDAR1Service
             }
         }
 
-        // Monthly totals (Row 41)
+        // Monthly totals (Row 41) and 12-month floating totals (Row 42)
         var monthlyRow = 41;
-        var dataStartRow = startRow; // Data starts at row 10 (day 1)
-        var dataEndRow = startRow + daysInMonth - 1; // Data ends at the last day of the month
-        
-        if (report.Field1Id.HasValue)
-        {
-            // Monthly Loading: Sum of daily loading from row 10 to row 40
-            worksheet.Cell($"I{monthlyRow}").FormulaA1 = $"=SUM(I{dataStartRow}:I{dataEndRow})";
-            // Maximum Hourly Loading: Keep as calculated value (MAX of daily values)
-            worksheet.Cell($"J{monthlyRow}").Value = report.Field1MaxHourlyLoading;
-        }
-        if (report.Field2Id.HasValue)
-        {
-            worksheet.Cell($"M{monthlyRow}").FormulaA1 = $"=SUM(M{dataStartRow}:M{dataEndRow})";
-            worksheet.Cell($"N{monthlyRow}").Value = report.Field2MaxHourlyLoading;
-        }
-        if (report.Field3Id.HasValue)
-        {
-            worksheet.Cell($"Q{monthlyRow}").FormulaA1 = $"=SUM(Q{dataStartRow}:Q{dataEndRow})";
-            worksheet.Cell($"R{monthlyRow}").Value = report.Field3MaxHourlyLoading;
-        }
-        if (report.Field4Id.HasValue)
-        {
-            worksheet.Cell($"U{monthlyRow}").FormulaA1 = $"=SUM(U{dataStartRow}:U{dataEndRow})";
-            worksheet.Cell($"V{monthlyRow}").Value = report.Field4MaxHourlyLoading;
-        }
-
-        // 12-month floating totals (Row 42)
         var floatingRow = 42;
-        if (report.Field1Id.HasValue)
+        WriteFooterForLegacyFourFields(worksheet, monthlyRow, floatingRow, new[]
         {
-            worksheet.Cell($"I{floatingRow}").Value = report.Field1TwelveMonthFloatingTotal;
-        }
-        if (report.Field2Id.HasValue)
+            report.Field1Id.HasValue ? report.Field1VolumeAppliedDaily : null,
+            report.Field2Id.HasValue ? report.Field2VolumeAppliedDaily : null,
+            report.Field3Id.HasValue ? report.Field3VolumeAppliedDaily : null,
+            report.Field4Id.HasValue ? report.Field4VolumeAppliedDaily : null
+        },
+        new[]
         {
-            worksheet.Cell($"M{floatingRow}").Value = report.Field2TwelveMonthFloatingTotal;
-        }
-        if (report.Field3Id.HasValue)
+            report.Field1Id.HasValue ? report.Field1TimeIrrigatedDaily : null,
+            report.Field2Id.HasValue ? report.Field2TimeIrrigatedDaily : null,
+            report.Field3Id.HasValue ? report.Field3TimeIrrigatedDaily : null,
+            report.Field4Id.HasValue ? report.Field4TimeIrrigatedDaily : null
+        },
+        new[]
         {
-            worksheet.Cell($"Q{floatingRow}").Value = report.Field3TwelveMonthFloatingTotal;
-        }
-        if (report.Field4Id.HasValue)
+            report.Field1Id.HasValue ? report.Field1MonthlyLoading : (decimal?)null,
+            report.Field2Id.HasValue ? report.Field2MonthlyLoading : (decimal?)null,
+            report.Field3Id.HasValue ? report.Field3MonthlyLoading : (decimal?)null,
+            report.Field4Id.HasValue ? report.Field4MonthlyLoading : (decimal?)null
+        },
+        new[]
         {
-            worksheet.Cell($"U{floatingRow}").Value = report.Field4TwelveMonthFloatingTotal;
-        }
+            report.Field1Id.HasValue ? report.Field1MaxHourlyLoading : (decimal?)null,
+            report.Field2Id.HasValue ? report.Field2MaxHourlyLoading : (decimal?)null,
+            report.Field3Id.HasValue ? report.Field3MaxHourlyLoading : (decimal?)null,
+            report.Field4Id.HasValue ? report.Field4MaxHourlyLoading : (decimal?)null
+        },
+        new[]
+        {
+            report.Field1Id.HasValue ? report.Field1TwelveMonthFloatingTotal : (decimal?)null,
+            report.Field2Id.HasValue ? report.Field2TwelveMonthFloatingTotal : (decimal?)null,
+            report.Field3Id.HasValue ? report.Field3TwelveMonthFloatingTotal : (decimal?)null,
+            report.Field4Id.HasValue ? report.Field4TwelveMonthFloatingTotal : (decimal?)null
+        });
+
+        WriteFieldIrrigatedCheckboxes(worksheet, BuildFieldIrrigatedFlagsFromLegacy(report));
+        RemoveInstructionalHighlights(worksheet);
 
         RemovePreExistingDynamicNdarSheets(workbook);
 
@@ -940,6 +933,7 @@ public class NDAR1Service : INDAR1Service
         worksheet.Cell("P1").Value = facility.County;
         worksheet.Cell("S1").Value = report.Month.ToString();
         worksheet.Cell("V1").Value = report.Year;
+        WriteFacilityIrrigationCheckbox(worksheet, report.DidIrrigationOccur);
 
         var fieldValueColumns = new[] { "I", "M", "Q", "U" };
         var dataColumnSets = new[] { ("G","H","I","J"), ("K","L","M","N"), ("O","P","Q","R"), ("S","T","U","V") };
@@ -999,16 +993,155 @@ public class NDAR1Service : INDAR1Service
 
         var monthlyRow = 41;
         var floatingRow = 42;
-        var monthlyCols = new[] { "I", "M", "Q", "U" };
-        var maxCols = new[] { "J", "N", "R", "V" };
-        for (int i = 0; i < 4; i++)
+        WriteFooterForChunk(worksheet, monthlyRow, floatingRow, chunk);
+        WriteFieldIrrigatedCheckboxes(worksheet, BuildFieldIrrigatedFlagsFromChunk(chunk));
+        RemoveInstructionalHighlights(worksheet);
+    }
+
+    private static void WriteFacilityIrrigationCheckbox(IXLWorksheet worksheet, bool didIrrigate)
+    {
+        worksheet.Cell("A5").Value = didIrrigate ? "\u2611 Yes" : "\u2610 Yes";
+        worksheet.Cell("D5").Value = didIrrigate ? "\u2610 No" : "\u2611 No";
+    }
+
+    private static void WriteFieldIrrigatedCheckboxes(IXLWorksheet worksheet, IReadOnlyList<bool> fieldIrrigatedFlags)
+    {
+        var yesNoPairs = new[] { ("I7", "J7"), ("M7", "N7"), ("Q7", "R7"), ("U7", "V7") };
+        for (var i = 0; i < yesNoPairs.Length; i++)
         {
-            if (i >= chunk.Count) continue;
-            worksheet.Cell($"{monthlyCols[i]}{monthlyRow}").Value = chunk[i].MonthlyLoading;
-            worksheet.Cell($"{maxCols[i]}{monthlyRow}").Value = chunk[i].MaxHourlyLoading;
-            worksheet.Cell($"{monthlyCols[i]}{floatingRow}").Value = chunk[i].FloatingTotal;
+            var (yesCell, noCell) = yesNoPairs[i];
+            var didIrrigate = i < fieldIrrigatedFlags.Count && fieldIrrigatedFlags[i];
+            worksheet.Cell(yesCell).Value = didIrrigate ? "\u2611 Yes" : "\u2610 Yes";
+            worksheet.Cell(noCell).Value = didIrrigate ? "\u2610 No" : "\u2611 No";
         }
     }
+
+    private static bool[] BuildFieldIrrigatedFlagsFromLegacy(NDAR1 report)
+    {
+        return new[]
+        {
+            HasAnyDayData(report.Field1VolumeAppliedDaily, report.Field1TimeIrrigatedDaily),
+            HasAnyDayData(report.Field2VolumeAppliedDaily, report.Field2TimeIrrigatedDaily),
+            HasAnyDayData(report.Field3VolumeAppliedDaily, report.Field3TimeIrrigatedDaily),
+            HasAnyDayData(report.Field4VolumeAppliedDaily, report.Field4TimeIrrigatedDaily)
+        };
+    }
+
+    private static bool[] BuildFieldIrrigatedFlagsFromChunk(List<NdarExportField> chunk)
+    {
+        var flags = new bool[4];
+        for (var i = 0; i < chunk.Count && i < 4; i++)
+        {
+            flags[i] = HasAnyDayData(chunk[i].Volume, chunk[i].Time);
+        }
+
+        return flags;
+    }
+
+    private static bool HasAnyDayData(List<decimal?>? volumeDaily, List<decimal?>? timeDaily)
+    {
+        var hasVolume = volumeDaily?.Any(v => v.HasValue && v.Value > 0m) == true;
+        var hasTime = timeDaily?.Any(v => v.HasValue && v.Value > 0m) == true;
+        return hasVolume || hasTime;
+    }
+
+    private static void WriteFooterForLegacyFourFields(
+        IXLWorksheet worksheet,
+        int monthlyRow,
+        int floatingRow,
+        List<decimal?>?[] volumeDailyByField,
+        List<decimal?>?[] timeDailyByField,
+        decimal?[] monthlyLoadingByField,
+        decimal?[] monthlyMaxByField,
+        decimal?[] floatingTotalByField)
+    {
+        var fieldColumns = new[]
+        {
+            ("G", "H", "I", "J"),
+            ("K", "L", "M", "N"),
+            ("O", "P", "Q", "R"),
+            ("S", "T", "U", "V")
+        };
+
+        for (var i = 0; i < 4; i++)
+        {
+            var hasField = monthlyLoadingByField[i].HasValue || monthlyMaxByField[i].HasValue || floatingTotalByField[i].HasValue;
+            if (!hasField)
+            {
+                continue;
+            }
+
+            var (volumeCol, timeCol, dailyCol, maxCol) = fieldColumns[i];
+            worksheet.Cell($"{volumeCol}{monthlyRow}").Value = SumWhole(volumeDailyByField[i]);
+            worksheet.Cell($"{timeCol}{monthlyRow}").Value = SumWhole(timeDailyByField[i]);
+            worksheet.Cell($"{dailyCol}{monthlyRow}").Value = monthlyLoadingByField[i].Value;
+            worksheet.Cell($"{maxCol}{monthlyRow}").Value = monthlyMaxByField[i].Value;
+
+            worksheet.Cell($"{volumeCol}{floatingRow}").Value = floatingTotalByField[i].Value;
+            worksheet.Cell($"{timeCol}{floatingRow}").Value = floatingTotalByField[i].Value;
+            worksheet.Cell($"{dailyCol}{floatingRow}").Value = floatingTotalByField[i].Value;
+            worksheet.Cell($"{maxCol}{floatingRow}").Value = floatingTotalByField[i].Value;
+        }
+
+        ApplyFooterNumberFormatting(worksheet, monthlyRow, floatingRow);
+    }
+
+    private static void WriteFooterForChunk(IXLWorksheet worksheet, int monthlyRow, int floatingRow, List<NdarExportField> chunk)
+    {
+        var fieldColumns = new[]
+        {
+            ("G", "H", "I", "J"),
+            ("K", "L", "M", "N"),
+            ("O", "P", "Q", "R"),
+            ("S", "T", "U", "V")
+        };
+
+        for (var i = 0; i < chunk.Count && i < 4; i++)
+        {
+            var (volumeCol, timeCol, dailyCol, maxCol) = fieldColumns[i];
+            worksheet.Cell($"{volumeCol}{monthlyRow}").Value = SumWhole(chunk[i].Volume);
+            worksheet.Cell($"{timeCol}{monthlyRow}").Value = SumWhole(chunk[i].Time);
+            worksheet.Cell($"{dailyCol}{monthlyRow}").Value = chunk[i].MonthlyLoading;
+            worksheet.Cell($"{maxCol}{monthlyRow}").Value = chunk[i].MaxHourlyLoading;
+
+            worksheet.Cell($"{volumeCol}{floatingRow}").Value = chunk[i].FloatingTotal;
+            worksheet.Cell($"{timeCol}{floatingRow}").Value = chunk[i].FloatingTotal;
+            worksheet.Cell($"{dailyCol}{floatingRow}").Value = chunk[i].FloatingTotal;
+            worksheet.Cell($"{maxCol}{floatingRow}").Value = chunk[i].FloatingTotal;
+        }
+
+        ApplyFooterNumberFormatting(worksheet, monthlyRow, floatingRow);
+    }
+
+    private static decimal SumWhole(List<decimal?>? values)
+    {
+        if (values == null)
+        {
+            return 0m;
+        }
+
+        return values.Where(v => v.HasValue).Sum(v => Math.Round(v!.Value, 0, MidpointRounding.AwayFromZero));
+    }
+
+    private static void RemoveInstructionalHighlights(IXLWorksheet worksheet)
+    {
+        foreach (var rangeAddress in new[] { "A5:F6", "A41:V42" })
+        {
+            var range = worksheet.Range(rangeAddress);
+            range.Style.Fill.BackgroundColor = XLColor.NoColor;
+            range.Style.Fill.PatternType = XLFillPatternValues.None;
+        }
+    }
+
+    private static void ApplyFooterNumberFormatting(IXLWorksheet worksheet, int monthlyRow, int floatingRow)
+    {
+        var range = worksheet.Range($"G{monthlyRow}:V{floatingRow}");
+        range.Style.NumberFormat.Format = "0.00";
+        range.Style.Alignment.ShrinkToFit = true;
+        worksheet.Cell("G41").Style.NumberFormat.Format = "0.00";
+        worksheet.Cell("G42").Style.NumberFormat.Format = "0.00";
+    }
+
 
     private async Task<Dictionary<DateTime, decimal?>> LoadOperatorLogStorageByDateAsync(Guid facilityId, int year, int month)
     {

@@ -356,7 +356,7 @@ flowchart TD
                     Headers = { "Report", "Primary Source Models", "Header/Permit Logic", "Fallback Notes" },
                     Rows =
                     {
-                        new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Facility permit context influences setup and source values", "Area/time/value handling follows per-field formula rules." },
+                        new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Facility permit context influences setup and source values", "Area/time/value handling follows per-field formula rules; export layout includes facility/field checkboxes and footer columns through V." },
                         new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version resolved by facility + date when available", "ORC day cells are exported as canonical Y/N from Operator Logs; if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
                         new List<string> { "GW report outputs", "GWMonit (+ template hooks)", "Facility/well context", "Template-driven extension path in progress." },

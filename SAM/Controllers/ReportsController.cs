@@ -690,6 +690,16 @@ public class ReportsController : BaseController
         }
         catch (Exception ex)
         {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDAR-1 export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
             TempData["ErrorMessage"] = $"Error exporting report: {ex.Message}";
             return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
         }
@@ -712,6 +722,16 @@ public class ReportsController : BaseController
         }
         catch (Exception ex)
         {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMR export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
             TempData["ErrorMessage"] = $"Error exporting NDMR report: {ex.Message}";
             return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
         }
@@ -734,6 +754,16 @@ public class ReportsController : BaseController
         }
         catch (Exception ex)
         {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMLR export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
             TempData["ErrorMessage"] = $"Error exporting NDMLR report: {ex.Message}";
             return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
         }
@@ -790,6 +820,23 @@ public class ReportsController : BaseController
     private static string BuildNaturalSortKey(string? input)
     {
         return Regex.Replace(input ?? string.Empty, @"\d+", match => match.Value.PadLeft(10, '0'));
+    }
+
+    private bool IsFetchRequest()
+    {
+        if (Request.Headers.TryGetValue("X-Requested-With", out var requestedWith) &&
+            string.Equals(requestedWith.ToString(), "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (Request.Headers.TryGetValue("Accept", out var acceptHeader) &&
+            acceptHeader.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     #endregion
