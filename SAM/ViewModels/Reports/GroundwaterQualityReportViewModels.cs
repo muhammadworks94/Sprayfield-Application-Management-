@@ -88,4 +88,20 @@ public sealed class Gw59ExportModel
     public string? VOCReportFileStoragePath { get; set; }
     public bool HasGw59APermitTemplateRows { get; set; }
     public List<Gw59ParameterSnapshot> ParameterSnapshots { get; set; } = new();
+
+    public bool? GW59AQuestion1Response { get; set; }
+    public bool? GW59AQuestion2Response { get; set; }
+    public bool? GW59AQuestion3Response { get; set; }
+    public bool? GW59AQuestion4Response { get; set; }
+    public bool? GW59AQuestion5Response { get; set; }
+    public bool? GW59AQuestion6Response { get; set; }
+    public bool? GW59AQuestion7Response { get; set; }
+    public DateTime? GW59ADueDate { get; set; }
+    public string GW59AQuestion2Details { get; set; } = string.Empty;
+    public string GW59AQuestion4Details { get; set; } = string.Empty;
+    public string GW59AQuestion5Details { get; set; } = string.Empty;
+    public string GW59AQuestion7Details { get; set; } = string.Empty;
+    public string GW59ASignerName { get; set; } = string.Empty;
+    public string GW59ASignerTitle { get; set; } = string.Empty;
+    public DateTime? GW59ASignedDate { get; set; }
 }

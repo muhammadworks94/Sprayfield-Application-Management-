@@ -213,6 +213,39 @@
                 </div>
             </div>
 
+            <div class="form-section">
+                <div class="form-section-title">GW-59A Compliance</div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="GW59ADueDate" class="form-label"></label>
+                            <input asp-for="GW59ADueDate" type="date" class="form-control" />
+                            <span asp-validation-for="GW59ADueDate" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 1 Response</label><select asp-for="GW59AQuestion1Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
+                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 2 Response</label><select asp-for="GW59AQuestion2Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
+                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 3 Response</label><select asp-for="GW59AQuestion3Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
+                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 4 Response</label><select asp-for="GW59AQuestion4Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
+                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 5 Response</label><select asp-for="GW59AQuestion5Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
+                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 6 Response</label><select asp-for="GW59AQuestion6Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
+                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 7 Response</label><select asp-for="GW59AQuestion7Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6"><div class="mb-3"><label asp-for="GW59AQuestion2Details" class="form-label"></label><textarea asp-for="GW59AQuestion2Details" class="form-control" rows="3"></textarea></div></div>
+                    <div class="col-md-6"><div class="mb-3"><label asp-for="GW59AQuestion4Details" class="form-label"></label><textarea asp-for="GW59AQuestion4Details" class="form-control" rows="3"></textarea></div></div>
+                    <div class="col-md-6"><div class="mb-3"><label asp-for="GW59AQuestion5Details" class="form-label"></label><textarea asp-for="GW59AQuestion5Details" class="form-control" rows="3"></textarea></div></div>
+                    <div class="col-md-6"><div class="mb-3"><label asp-for="GW59AQuestion7Details" class="form-label"></label><textarea asp-for="GW59AQuestion7Details" class="form-control" rows="3"></textarea></div></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4"><div class="mb-3"><label asp-for="GW59ASignerName" class="form-label"></label><input asp-for="GW59ASignerName" class="form-control" /></div></div>
+                    <div class="col-md-4"><div class="mb-3"><label asp-for="GW59ASignerTitle" class="form-label"></label><input asp-for="GW59ASignerTitle" class="form-control" /></div></div>
+                    <div class="col-md-4"><div class="mb-3"><label asp-for="GW59ASignedDate" class="form-label"></label><input asp-for="GW59ASignedDate" type="date" class="form-control" /></div></div>
+                </div>
+            </div>
+
             <div class="d-flex justify-content-end gap-2">
                 <a asp-action="GWMonits" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">

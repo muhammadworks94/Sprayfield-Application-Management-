@@ -312,6 +312,7 @@ flowchart TD
                         "System resolves active permit and shows Attachment C template rows with editable value inputs.",
                         "GW saves reject template rows outside GW59/GW59A for the resolved permit to prevent cross-report contamination.",
                         "Rows required for the selected sample month (from frequency + scheduled months) must be entered before save.",
+                        "GW-59A compliance answers (Q1-Q7, detail text, due date, signer/date) are captured on GWMonit create/edit as a separate questionnaire workflow.",
                         "If VOC Report Attached is selected, a VOC PDF upload is required and saved with the groundwater record.",
                         "GW-59 PDF export appends VOC PDF pages after the generated GW-59 form pages.",
                         "Template values are stored and used downstream for reporting/compliance context."
@@ -325,7 +326,8 @@ flowchart TD
                         "Company Admin opens Reports > Groundwater Quality Reports.",
                         "System lists groundwater monitoring records with facility, well, sample date, and resolved permit context.",
                         "GW-59 export uses form template GW-59 GW-QualityMonitoringReportForm.pdf with mapped SAM fields.",
-                        "GW-59A export uses form template GW-59A.pdf and Attachment C template-backed parameter values.",
+                        "GW-59A export uses form template GW-59A.pdf and maps the dedicated GW-59A questionnaire fields on the groundwater record (questions, detail notes, and signature/date).",
+                        "GW-59A unanswered questions are exported as blank yes/no boxes (no forced default).",
                         "Exports fail with actionable messages when template files or required source data are missing."
                     }
                 },

@@ -99,6 +99,24 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
         builder.Property(g => g.Comments)
             .HasMaxLength(2000);
 
+        builder.Property(g => g.GW59AQuestion2Details)
+            .HasMaxLength(4000);
+
+        builder.Property(g => g.GW59AQuestion4Details)
+            .HasMaxLength(4000);
+
+        builder.Property(g => g.GW59AQuestion5Details)
+            .HasMaxLength(4000);
+
+        builder.Property(g => g.GW59AQuestion7Details)
+            .HasMaxLength(4000);
+
+        builder.Property(g => g.GW59ASignerName)
+            .HasMaxLength(200);
+
+        builder.Property(g => g.GW59ASignerTitle)
+            .HasMaxLength(200);
+
         builder.HasIndex(g => g.CompanyId);
         builder.HasIndex(g => g.FacilityId);
         builder.HasIndex(g => g.MonitoringWellId);

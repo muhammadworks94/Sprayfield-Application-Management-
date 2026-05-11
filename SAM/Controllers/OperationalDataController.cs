@@ -1509,7 +1509,22 @@ namespace SAM.Controllers;
             LabCertification = g.LabCertification,
             CollectedBy = g.CollectedBy,
             AnalyzedBy = g.AnalyzedBy,
-            Comments = g.Comments
+            Comments = g.Comments,
+            GW59AQuestion1Response = g.GW59AQuestion1Response,
+            GW59AQuestion2Response = g.GW59AQuestion2Response,
+            GW59AQuestion3Response = g.GW59AQuestion3Response,
+            GW59AQuestion4Response = g.GW59AQuestion4Response,
+            GW59AQuestion5Response = g.GW59AQuestion5Response,
+            GW59AQuestion6Response = g.GW59AQuestion6Response,
+            GW59AQuestion7Response = g.GW59AQuestion7Response,
+            GW59ADueDate = g.GW59ADueDate,
+            GW59AQuestion2Details = g.GW59AQuestion2Details,
+            GW59AQuestion4Details = g.GW59AQuestion4Details,
+            GW59AQuestion5Details = g.GW59AQuestion5Details,
+            GW59AQuestion7Details = g.GW59AQuestion7Details,
+            GW59ASignerName = g.GW59ASignerName,
+            GW59ASignerTitle = g.GW59ASignerTitle,
+            GW59ASignedDate = g.GW59ASignedDate
         });
 
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
@@ -1569,7 +1584,22 @@ namespace SAM.Controllers;
             LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
             AnalyzedBy = gwMonit.AnalyzedBy,
-            Comments = gwMonit.Comments
+            Comments = gwMonit.Comments,
+            GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
+            GW59AQuestion2Response = gwMonit.GW59AQuestion2Response,
+            GW59AQuestion3Response = gwMonit.GW59AQuestion3Response,
+            GW59AQuestion4Response = gwMonit.GW59AQuestion4Response,
+            GW59AQuestion5Response = gwMonit.GW59AQuestion5Response,
+            GW59AQuestion6Response = gwMonit.GW59AQuestion6Response,
+            GW59AQuestion7Response = gwMonit.GW59AQuestion7Response,
+            GW59ADueDate = gwMonit.GW59ADueDate,
+            GW59AQuestion2Details = gwMonit.GW59AQuestion2Details,
+            GW59AQuestion4Details = gwMonit.GW59AQuestion4Details,
+            GW59AQuestion5Details = gwMonit.GW59AQuestion5Details,
+            GW59AQuestion7Details = gwMonit.GW59AQuestion7Details,
+            GW59ASignerName = gwMonit.GW59ASignerName,
+            GW59ASignerTitle = gwMonit.GW59ASignerTitle,
+            GW59ASignedDate = gwMonit.GW59ASignedDate
         };
 
         return View(viewModel);
@@ -2064,7 +2094,22 @@ namespace SAM.Controllers;
                 LabCertification = viewModel.LabCertification,
                 CollectedBy = viewModel.CollectedBy,
                 AnalyzedBy = viewModel.AnalyzedBy,
-                Comments = viewModel.Comments
+                Comments = viewModel.Comments,
+                GW59AQuestion1Response = viewModel.GW59AQuestion1Response,
+                GW59AQuestion2Response = viewModel.GW59AQuestion2Response,
+                GW59AQuestion3Response = viewModel.GW59AQuestion3Response,
+                GW59AQuestion4Response = viewModel.GW59AQuestion4Response,
+                GW59AQuestion5Response = viewModel.GW59AQuestion5Response,
+                GW59AQuestion6Response = viewModel.GW59AQuestion6Response,
+                GW59AQuestion7Response = viewModel.GW59AQuestion7Response,
+                GW59ADueDate = viewModel.GW59ADueDate,
+                GW59AQuestion2Details = viewModel.GW59AQuestion2Details,
+                GW59AQuestion4Details = viewModel.GW59AQuestion4Details,
+                GW59AQuestion5Details = viewModel.GW59AQuestion5Details,
+                GW59AQuestion7Details = viewModel.GW59AQuestion7Details,
+                GW59ASignerName = viewModel.GW59ASignerName,
+                GW59ASignerTitle = viewModel.GW59ASignerTitle,
+                GW59ASignedDate = viewModel.GW59ASignedDate
             };
 
             await _gwMonitService.CreateAsync(gwMonit);
@@ -2137,7 +2182,22 @@ namespace SAM.Controllers;
             LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
             AnalyzedBy = gwMonit.AnalyzedBy,
-            Comments = gwMonit.Comments
+            Comments = gwMonit.Comments,
+            GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
+            GW59AQuestion2Response = gwMonit.GW59AQuestion2Response,
+            GW59AQuestion3Response = gwMonit.GW59AQuestion3Response,
+            GW59AQuestion4Response = gwMonit.GW59AQuestion4Response,
+            GW59AQuestion5Response = gwMonit.GW59AQuestion5Response,
+            GW59AQuestion6Response = gwMonit.GW59AQuestion6Response,
+            GW59AQuestion7Response = gwMonit.GW59AQuestion7Response,
+            GW59ADueDate = gwMonit.GW59ADueDate,
+            GW59AQuestion2Details = gwMonit.GW59AQuestion2Details,
+            GW59AQuestion4Details = gwMonit.GW59AQuestion4Details,
+            GW59AQuestion5Details = gwMonit.GW59AQuestion5Details,
+            GW59AQuestion7Details = gwMonit.GW59AQuestion7Details,
+            GW59ASignerName = gwMonit.GW59ASignerName,
+            GW59ASignerTitle = gwMonit.GW59ASignerTitle,
+            GW59ASignedDate = gwMonit.GW59ASignedDate
         };
 
         var resolvedEditPermit = await _facilityPermitResolver.ResolveForDateAsync(gwMonit.FacilityId, gwMonit.SampleDate);
@@ -2306,6 +2366,21 @@ namespace SAM.Controllers;
             gwMonit.CollectedBy = viewModel.CollectedBy;
             gwMonit.AnalyzedBy = viewModel.AnalyzedBy;
             gwMonit.Comments = viewModel.Comments;
+            gwMonit.GW59AQuestion1Response = viewModel.GW59AQuestion1Response;
+            gwMonit.GW59AQuestion2Response = viewModel.GW59AQuestion2Response;
+            gwMonit.GW59AQuestion3Response = viewModel.GW59AQuestion3Response;
+            gwMonit.GW59AQuestion4Response = viewModel.GW59AQuestion4Response;
+            gwMonit.GW59AQuestion5Response = viewModel.GW59AQuestion5Response;
+            gwMonit.GW59AQuestion6Response = viewModel.GW59AQuestion6Response;
+            gwMonit.GW59AQuestion7Response = viewModel.GW59AQuestion7Response;
+            gwMonit.GW59ADueDate = viewModel.GW59ADueDate;
+            gwMonit.GW59AQuestion2Details = viewModel.GW59AQuestion2Details;
+            gwMonit.GW59AQuestion4Details = viewModel.GW59AQuestion4Details;
+            gwMonit.GW59AQuestion5Details = viewModel.GW59AQuestion5Details;
+            gwMonit.GW59AQuestion7Details = viewModel.GW59AQuestion7Details;
+            gwMonit.GW59ASignerName = viewModel.GW59ASignerName;
+            gwMonit.GW59ASignerTitle = viewModel.GW59ASignerTitle;
+            gwMonit.GW59ASignedDate = viewModel.GW59ASignedDate;
             if (!gwMonit.VOCReportAttached.GetValueOrDefault())
             {
                 gwMonit.VOCReportFileStoragePath = null;

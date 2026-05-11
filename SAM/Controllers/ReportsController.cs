@@ -953,12 +953,17 @@ public class ReportsController : BaseController
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> ExportGW59AReport(Guid id)
+    public async Task<IActionResult> ExportGW59AReport(Guid id, bool showGrid = false)
     {
         var model = await BuildGw59ExportModelAsync(id);
-        var bytes = await RenderGw59APdfAsync(model);
+        if (IsGw59AQuestionnaireEmpty(model))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException(
+                "GW-59A has no compliance questionnaire data for this record. Fill the 'GW-59A Compliance' section on the Groundwater Monitoring create/edit page, save, then export again.");
+        }
+        var bytes = await RenderGw59APdfAsync(model, showGrid);
         var safeFacility = string.IsNullOrWhiteSpace(model.FacilityName) ? "Facility" : model.FacilityName.Replace(' ', '_');
-        return File(bytes, "application/pdf", $"GW59A_{safeFacility}_{model.SampleDate:yyyyMMdd}.pdf");
+        return File(bytes, "application/pdf", $"GW59A_{safeFacility}_{model.SampleDate:yyyyMMdd}_{DateTime.UtcNow:HHmmss}.pdf");
     }
 
     #endregion
@@ -1147,7 +1152,22 @@ public class ReportsController : BaseController
             CertificationDate = DateTime.UtcNow.Date,
             VOCReportFileStoragePath = gwMonit.VOCReportFileStoragePath,
             HasGw59APermitTemplateRows = hasGw59APermitTemplateRows,
-            ParameterSnapshots = snapshots
+            ParameterSnapshots = snapshots,
+            GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
+            GW59AQuestion2Response = gwMonit.GW59AQuestion2Response,
+            GW59AQuestion3Response = gwMonit.GW59AQuestion3Response,
+            GW59AQuestion4Response = gwMonit.GW59AQuestion4Response,
+            GW59AQuestion5Response = gwMonit.GW59AQuestion5Response,
+            GW59AQuestion6Response = gwMonit.GW59AQuestion6Response,
+            GW59AQuestion7Response = gwMonit.GW59AQuestion7Response,
+            GW59ADueDate = gwMonit.GW59ADueDate,
+            GW59AQuestion2Details = gwMonit.GW59AQuestion2Details,
+            GW59AQuestion4Details = gwMonit.GW59AQuestion4Details,
+            GW59AQuestion5Details = gwMonit.GW59AQuestion5Details,
+            GW59AQuestion7Details = gwMonit.GW59AQuestion7Details,
+            GW59ASignerName = gwMonit.GW59ASignerName,
+            GW59ASignerTitle = gwMonit.GW59ASignerTitle,
+            GW59ASignedDate = gwMonit.GW59ASignedDate
         };
     }
 
@@ -1245,7 +1265,7 @@ public class ReportsController : BaseController
         return outputStream.ToArray();
     }
 
-    private async Task<byte[]> RenderGw59APdfAsync(Gw59ExportModel model)
+    private async Task<byte[]> RenderGw59APdfAsync(Gw59ExportModel model, bool showGrid = false)
     {
         var templatePath = Path.Combine(_environment.WebRootPath, "forms", "GW-59A.pdf");
         if (!System.IO.File.Exists(templatePath))
@@ -1254,69 +1274,61 @@ public class ReportsController : BaseController
         }
 
         using var output = new MemoryStream();
-        using (var document = PdfReader.Open(templatePath, PdfDocumentOpenMode.Modify))
+        using (var document = new PdfDocument())
         {
-            var page = document.Pages[0];
+            var templateForm = XPdfForm.FromFile(templatePath);
+            templateForm.PageNumber = 1;
+
+            var page = document.AddPage();
+            page.Width = templateForm.PointWidth;
+            page.Height = templateForm.PointHeight;
+
             var gfx = XGraphics.FromPdfPage(page);
+            gfx.DrawImage(templateForm, 0, 0, page.Width, page.Height);
             var font = new XFont("Arial", 8, XFontStyle.Regular);
             var bold = new XFont("Arial", 8, XFontStyle.Bold);
+            var map = BuildGw59ACalibrationMap();
             void Draw(string? text, double x, double y, bool isBold = false) =>
                 gfx.DrawString(text ?? string.Empty, isBold ? bold : font, XBrushes.Black, new XRect(x, y, 320, 11), XStringFormats.TopLeft);
-
-            Draw(model.FacilityName, 95, 58);
-            Draw(model.PermitNumber, 620, 58);
-            Draw(model.Permittee, 160, 75);
-            Draw(model.Address, 105, 91);
-            Draw($"{model.City}, {model.State} {model.ZipCode}", 105, 106);
-            Draw(model.County, 365, 106);
-            Draw(model.WellId, 170, 138);
-            Draw(model.WellLocation, 380, 138);
-            Draw(model.SampleDate.ToString("MM/dd/yyyy"), 655, 138);
-            Draw(model.WaterLevel?.ToString("F2"), 170, 154);
-            Draw(model.WellDepthFeet?.ToString("F2"), 380, 154);
-            Draw(model.DiameterInches?.ToString("F2"), 548, 154);
-            Draw(model.PHField?.ToString("F2"), 700, 154);
-            Draw(model.TemperatureField?.ToString("F1"), 760, 154);
-            Draw(model.SpecificConductance?.ToString("F2"), 640, 171);
-            Draw(model.Odor, 640, 188);
-            Draw(model.Appearance, 640, 204);
-            Draw(model.LabName, 450, 221);
-            Draw(model.LabCertificationNumber, 735, 221);
-            Draw(model.CollectedBy, 108, 238);
-            Draw(model.AnalyzedBy, 395, 238);
-            Draw(model.CertificationName, 125, 720);
-            Draw(model.CertificationTitle, 125, 736);
-            Draw(model.CertificationDate?.ToString("MM/dd/yyyy"), 125, 752);
-
-            var gw59aRows = model.ParameterSnapshots
-                .Where(x => x.IsGw59A && !string.IsNullOrWhiteSpace(x.PcsCode))
-                .OrderBy(x => x.PcsCode)
-                .Take(28)
-                .ToList();
-
-            if (!gw59aRows.Any())
+            void DrawMark(bool? value, bool yes, double x, double y)
             {
-                if (!model.HasGw59APermitTemplateRows)
+                if (value.HasValue && value.Value == yes)
                 {
-                    throw new Infrastructure.Exceptions.BusinessRuleException(
-                        "No GW59A-tagged permit template rows were found for this record/permit period. " +
-                        "Add Attachment C rows with report type 'Groundwater (GW59A)' under Permit Versions.");
+                    // Draw a tick as vector lines so it renders consistently in all viewers/fonts.
+                    gfx.DrawLine(XPens.Black, x, y + 5, x + 3, y + 8);
+                    gfx.DrawLine(XPens.Black, x + 3, y + 8, x + 9, y + 1);
                 }
-
-                throw new Infrastructure.Exceptions.BusinessRuleException(
-                    "This groundwater record has no saved Attachment C template values to export. " +
-                    "Open the groundwater monitoring record, confirm Template Parameters are loaded, then save the record again.");
             }
 
-            var y = 274d;
-            foreach (var row in gw59aRows)
+            Draw(model.PermitNumber, map.PermitNumber.X, map.PermitNumber.Y, true);
+            Draw(model.GW59ADueDate?.ToString("MM/dd/yyyy"), map.DueDate.X, map.DueDate.Y);
+
+            DrawMark(model.GW59AQuestion1Response, true, map.Q1Yes.X, map.Q1Yes.Y);
+            DrawMark(model.GW59AQuestion1Response, false, map.Q1No.X, map.Q1No.Y);
+            DrawMark(model.GW59AQuestion2Response, true, map.Q2Yes.X, map.Q2Yes.Y);
+            DrawMark(model.GW59AQuestion2Response, false, map.Q2No.X, map.Q2No.Y);
+            DrawMark(model.GW59AQuestion3Response, true, map.Q3Yes.X, map.Q3Yes.Y);
+            DrawMark(model.GW59AQuestion3Response, false, map.Q3No.X, map.Q3No.Y);
+            DrawMark(model.GW59AQuestion4Response, true, map.Q4Yes.X, map.Q4Yes.Y);
+            DrawMark(model.GW59AQuestion4Response, false, map.Q4No.X, map.Q4No.Y);
+            DrawMark(model.GW59AQuestion5Response, true, map.Q5Yes.X, map.Q5Yes.Y);
+            DrawMark(model.GW59AQuestion5Response, false, map.Q5No.X, map.Q5No.Y);
+            DrawMark(model.GW59AQuestion6Response, true, map.Q6Yes.X, map.Q6Yes.Y);
+            DrawMark(model.GW59AQuestion6Response, false, map.Q6No.X, map.Q6No.Y);
+            DrawMark(model.GW59AQuestion7Response, true, map.Q7Yes.X, map.Q7Yes.Y);
+            DrawMark(model.GW59AQuestion7Response, false, map.Q7No.X, map.Q7No.Y);
+
+            Draw(model.GW59AQuestion2Details, map.Q2Details.X, map.Q2Details.Y);
+            Draw(model.GW59AQuestion4Details, map.Q4Details.X, map.Q4Details.Y);
+            Draw(model.GW59AQuestion5Details, map.Q5Details.X, map.Q5Details.Y);
+            Draw(model.GW59AQuestion7Details, map.Q7Details.X, map.Q7Details.Y);
+
+            Draw(model.GW59ASignerName, map.SignerName.X, map.SignerName.Y);
+            Draw(model.GW59ASignedDate?.ToString("MM/dd/yyyy"), map.SignedDate.X, map.SignedDate.Y);
+
+            if (showGrid)
             {
-                Draw(row.PcsCode, 52, y);
-                Draw(row.ParameterName, 98, y);
-                Draw(row.Units, 390, y);
-                Draw(row.Value?.ToString("0.##"), 520, y);
-                Draw(row.DailyMaximumLimit?.ToString("0.##"), 660, y);
-                y += 14;
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
             }
 
             document.Save(output, false);
@@ -1324,6 +1336,122 @@ public class ReportsController : BaseController
 
         await Task.CompletedTask;
         return output.ToArray();
+    }
+
+    private static Gw59ACalibrationMap BuildGw59ACalibrationMap()
+    {
+        // Temporary calibration map sourced from the grid screenshot. Keep all coordinates centralized here.
+        return new Gw59ACalibrationMap
+        {
+            PermitNumber = new Point2D(450, 30),
+            DueDate = new Point2D(192, 78),
+
+            Q1Yes = new Point2D(530, 80),
+            Q1No = new Point2D(560, 80),
+            Q2Yes = new Point2D(530, 112),
+            Q2No = new Point2D(560, 113),
+            Q3Yes = new Point2D(530, 190),
+            Q3No = new Point2D(570, 190),
+            Q4Yes = new Point2D(530, 220),
+            Q4No = new Point2D(560, 220),
+            Q5Yes = new Point2D(520, 310),
+            Q5No = new Point2D(560, 310),
+            Q6Yes = new Point2D(530, 429),
+            Q6No = new Point2D(560, 429),
+            Q7Yes = new Point2D(530, 510),
+            Q7No = new Point2D(560, 510),
+
+            Q2Details = new Point2D(70, 146),
+            Q4Details = new Point2D(70, 265),
+            Q5Details = new Point2D(70, 370),
+            Q7Details = new Point2D(70, 586),
+
+            SignerName = new Point2D(100, 710),
+            SignedDate = new Point2D(410, 710)
+        };
+    }
+
+    private sealed class Gw59ACalibrationMap
+    {
+        public Point2D PermitNumber { get; set; }
+        public Point2D DueDate { get; set; }
+        public Point2D Q1Yes { get; set; }
+        public Point2D Q1No { get; set; }
+        public Point2D Q2Yes { get; set; }
+        public Point2D Q2No { get; set; }
+        public Point2D Q3Yes { get; set; }
+        public Point2D Q3No { get; set; }
+        public Point2D Q4Yes { get; set; }
+        public Point2D Q4No { get; set; }
+        public Point2D Q5Yes { get; set; }
+        public Point2D Q5No { get; set; }
+        public Point2D Q6Yes { get; set; }
+        public Point2D Q6No { get; set; }
+        public Point2D Q7Yes { get; set; }
+        public Point2D Q7No { get; set; }
+        public Point2D Q2Details { get; set; }
+        public Point2D Q4Details { get; set; }
+        public Point2D Q5Details { get; set; }
+        public Point2D Q7Details { get; set; }
+        public Point2D SignerName { get; set; }
+        public Point2D SignedDate { get; set; }
+    }
+
+    private readonly record struct Point2D(double X, double Y);
+
+    private static void DrawCoordinateGrid(XGraphics gfx, double pageWidth, double pageHeight)
+    {
+        var gridPen = new XPen(XColor.FromArgb(220, 0, 102, 204), 0.5);
+        var majorPen = new XPen(XColor.FromArgb(240, 220, 0, 0), 1.0);
+        var labelFont = new XFont("Arial", 7, XFontStyle.Bold);
+        var majorLabelFont = new XFont("Arial", 8, XFontStyle.Bold);
+
+        for (int x = 0; x <= (int)pageWidth; x += 10)
+        {
+            var pen = x % 50 == 0 ? majorPen : gridPen;
+            gfx.DrawLine(pen, x, 0, x, pageHeight);
+            if (x % 50 == 0)
+            {
+                gfx.DrawString(x.ToString(), majorLabelFont, XBrushes.Red, new XRect(x + 1, 1, 24, 8), XStringFormats.TopLeft);
+            }
+            else if (x % 10 == 0 && x % 20 == 0)
+            {
+                gfx.DrawString(x.ToString(), labelFont, XBrushes.SteelBlue, new XRect(x + 1, 1, 20, 7), XStringFormats.TopLeft);
+            }
+        }
+
+        for (int y = 0; y <= (int)pageHeight; y += 10)
+        {
+            var pen = y % 50 == 0 ? majorPen : gridPen;
+            gfx.DrawLine(pen, 0, y, pageWidth, y);
+            if (y % 50 == 0)
+            {
+                gfx.DrawString(y.ToString(), majorLabelFont, XBrushes.Red, new XRect(1, y + 1, 24, 8), XStringFormats.TopLeft);
+            }
+            else if (y % 10 == 0 && y % 20 == 0)
+            {
+                gfx.DrawString(y.ToString(), labelFont, XBrushes.SteelBlue, new XRect(1, y + 1, 20, 7), XStringFormats.TopLeft);
+            }
+        }
+    }
+
+    private static bool IsGw59AQuestionnaireEmpty(Gw59ExportModel model)
+    {
+        return !model.GW59ADueDate.HasValue
+               && !model.GW59AQuestion1Response.HasValue
+               && !model.GW59AQuestion2Response.HasValue
+               && !model.GW59AQuestion3Response.HasValue
+               && !model.GW59AQuestion4Response.HasValue
+               && !model.GW59AQuestion5Response.HasValue
+               && !model.GW59AQuestion6Response.HasValue
+               && !model.GW59AQuestion7Response.HasValue
+               && string.IsNullOrWhiteSpace(model.GW59AQuestion2Details)
+               && string.IsNullOrWhiteSpace(model.GW59AQuestion4Details)
+               && string.IsNullOrWhiteSpace(model.GW59AQuestion5Details)
+               && string.IsNullOrWhiteSpace(model.GW59AQuestion7Details)
+               && string.IsNullOrWhiteSpace(model.GW59ASignerName)
+               && string.IsNullOrWhiteSpace(model.GW59ASignerTitle)
+               && !model.GW59ASignedDate.HasValue;
     }
 
     #endregion

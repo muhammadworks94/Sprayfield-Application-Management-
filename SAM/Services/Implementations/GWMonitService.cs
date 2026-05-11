@@ -153,6 +153,21 @@ public class GWMonitService : IGWMonitService
         existing.CollectedBy = gwMonit.CollectedBy;
         existing.AnalyzedBy = gwMonit.AnalyzedBy;
         existing.Comments = gwMonit.Comments;
+        existing.GW59AQuestion1Response = gwMonit.GW59AQuestion1Response;
+        existing.GW59AQuestion2Response = gwMonit.GW59AQuestion2Response;
+        existing.GW59AQuestion3Response = gwMonit.GW59AQuestion3Response;
+        existing.GW59AQuestion4Response = gwMonit.GW59AQuestion4Response;
+        existing.GW59AQuestion5Response = gwMonit.GW59AQuestion5Response;
+        existing.GW59AQuestion6Response = gwMonit.GW59AQuestion6Response;
+        existing.GW59AQuestion7Response = gwMonit.GW59AQuestion7Response;
+        existing.GW59ADueDate = gwMonit.GW59ADueDate;
+        existing.GW59AQuestion2Details = gwMonit.GW59AQuestion2Details;
+        existing.GW59AQuestion4Details = gwMonit.GW59AQuestion4Details;
+        existing.GW59AQuestion5Details = gwMonit.GW59AQuestion5Details;
+        existing.GW59AQuestion7Details = gwMonit.GW59AQuestion7Details;
+        existing.GW59ASignerName = gwMonit.GW59ASignerName;
+        existing.GW59ASignerTitle = gwMonit.GW59ASignerTitle;
+        existing.GW59ASignedDate = gwMonit.GW59ASignedDate;
 
         await _context.SaveChangesAsync();
 

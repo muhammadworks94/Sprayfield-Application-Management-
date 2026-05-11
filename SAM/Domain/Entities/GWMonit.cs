@@ -177,6 +177,81 @@ public class GWMonit : CompanyScopedEntity
     /// </summary>
     public string Comments { get; set; } = string.Empty;
 
+    /// <summary>
+    /// GW-59A questionnaire response for question 1 (true=Yes, false=No, null=unanswered).
+    /// </summary>
+    public bool? GW59AQuestion1Response { get; set; }
+
+    /// <summary>
+    /// GW-59A questionnaire response for question 2 (true=Yes, false=No, null=unanswered).
+    /// </summary>
+    public bool? GW59AQuestion2Response { get; set; }
+
+    /// <summary>
+    /// GW-59A questionnaire response for question 3 (true=Yes, false=No, null=unanswered).
+    /// </summary>
+    public bool? GW59AQuestion3Response { get; set; }
+
+    /// <summary>
+    /// GW-59A questionnaire response for question 4 (true=Yes, false=No, null=unanswered).
+    /// </summary>
+    public bool? GW59AQuestion4Response { get; set; }
+
+    /// <summary>
+    /// GW-59A questionnaire response for question 5 (true=Yes, false=No, null=unanswered).
+    /// </summary>
+    public bool? GW59AQuestion5Response { get; set; }
+
+    /// <summary>
+    /// GW-59A questionnaire response for question 6 (true=Yes, false=No, null=unanswered).
+    /// </summary>
+    public bool? GW59AQuestion6Response { get; set; }
+
+    /// <summary>
+    /// GW-59A questionnaire response for question 7 (true=Yes, false=No, null=unanswered).
+    /// </summary>
+    public bool? GW59AQuestion7Response { get; set; }
+
+    /// <summary>
+    /// Date monitoring results were due (GW-59A question 1).
+    /// </summary>
+    public DateTime? GW59ADueDate { get; set; }
+
+    /// <summary>
+    /// Details for GW-59A question 2.
+    /// </summary>
+    public string GW59AQuestion2Details { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Details for GW-59A question 4.
+    /// </summary>
+    public string GW59AQuestion4Details { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Details for GW-59A question 5.
+    /// </summary>
+    public string GW59AQuestion5Details { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Details for GW-59A question 7.
+    /// </summary>
+    public string GW59AQuestion7Details { get; set; } = string.Empty;
+
+    /// <summary>
+    /// GW-59A section 8 signer name.
+    /// </summary>
+    public string GW59ASignerName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// GW-59A section 8 signer title.
+    /// </summary>
+    public string GW59ASignerTitle { get; set; } = string.Empty;
+
+    /// <summary>
+    /// GW-59A section 8 signed date.
+    /// </summary>
+    public DateTime? GW59ASignedDate { get; set; }
+
     // Navigation properties
     public Facility? Facility { get; set; }
     public MonitoringWell? MonitoringWell { get; set; }
