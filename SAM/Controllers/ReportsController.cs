@@ -63,10 +63,10 @@ public class ReportsController : BaseController
         _environment = environment;
     }
 
-    #region Irrigation Reports
+    #region NDMR Reports
 
     [HttpGet]
-    public async Task<IActionResult> IrrigationReports(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> NDMRReports(Guid? companyId = null, Guid? facilityId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -110,11 +110,11 @@ public class ReportsController : BaseController
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.SelectedFacilityId = facilityId;
 
-        return View(viewModels);
+        return View("IrrigationReports", viewModels);
     }
 
     [HttpGet]
-    public async Task<IActionResult> IrrigationReportDetails(Guid id)
+    public async Task<IActionResult> NDMRReportDetails(Guid id)
     {
         var report = await _irrRprtService.GetByIdAsync(id);
         if (report == null)
@@ -144,12 +144,12 @@ public class ReportsController : BaseController
             UpdatedDate = report.UpdatedDate
         };
 
-        return View(viewModel);
+        return View("IrrigationReportDetails", viewModel);
     }
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> GenerateIrrigationReport(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> GenerateNDMRReport(Guid? companyId = null, Guid? facilityId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -174,13 +174,13 @@ public class ReportsController : BaseController
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Months = GetMonthSelectList();
 
-        return View(viewModel);
+        return View("GenerateIrrigationReport", viewModel);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> GenerateIrrigationReport(IrrRprtCreateViewModel viewModel)
+    public async Task<IActionResult> GenerateNDMRReport(IrrRprtCreateViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
@@ -188,7 +188,7 @@ public class ReportsController : BaseController
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
-            return View(viewModel);
+            return View("GenerateIrrigationReport", viewModel);
         }
 
         try
@@ -202,21 +202,21 @@ public class ReportsController : BaseController
             // Save the generated report
             var savedReport = await _irrRprtService.CreateAsync(report);
 
-            TempData["SuccessMessage"] = $"Monthly irrigation report generated successfully for {viewModel.Month} {viewModel.Year}.";
-            return RedirectToAction(nameof(IrrigationReportDetails), new { id = savedReport.Id });
+            TempData["SuccessMessage"] = $"Monthly NDMR report generated successfully for {viewModel.Month} {viewModel.Year}.";
+            return RedirectToAction(nameof(NDMRReportDetails), new { id = savedReport.Id });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
-            return View(viewModel);
+            return View("GenerateIrrigationReport", viewModel);
         }
     }
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> IrrigationReportEdit(Guid id)
+    public async Task<IActionResult> NDMRReportEdit(Guid id)
     {
         var report = await _irrRprtService.GetByIdAsync(id);
         if (report == null)
@@ -246,13 +246,13 @@ public class ReportsController : BaseController
         ViewBag.Months = GetMonthSelectList();
         ViewBag.ComplianceStatuses = GetComplianceStatusSelectList();
 
-        return View(viewModel);
+        return View("IrrigationReportEdit", viewModel);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> IrrigationReportEdit(IrrRprtEditViewModel viewModel)
+    public async Task<IActionResult> NDMRReportEdit(IrrRprtEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
@@ -261,7 +261,7 @@ public class ReportsController : BaseController
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ComplianceStatuses = GetComplianceStatusSelectList();
-            return View(viewModel);
+            return View("IrrigationReportEdit", viewModel);
         }
 
         try
@@ -283,8 +283,8 @@ public class ReportsController : BaseController
             report.ComplianceStatus = viewModel.ComplianceStatus;
 
             await _irrRprtService.UpdateAsync(report);
-            TempData["SuccessMessage"] = $"Monthly irrigation report updated successfully.";
-            return RedirectToAction(nameof(IrrigationReportDetails), new { id = report.Id });
+            TempData["SuccessMessage"] = "Monthly NDMR report updated successfully.";
+            return RedirectToAction(nameof(NDMRReportDetails), new { id = report.Id });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -292,14 +292,14 @@ public class ReportsController : BaseController
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ComplianceStatuses = GetComplianceStatusSelectList();
-            return View(viewModel);
+            return View("IrrigationReportEdit", viewModel);
         }
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> IrrigationReportDelete(Guid id)
+    public async Task<IActionResult> NDMRReportDelete(Guid id)
     {
         IrrRprt? report = null;
         try
@@ -311,20 +311,60 @@ public class ReportsController : BaseController
             await EnsureCompanyAccessAsync(report.CompanyId);
 
             await _irrRprtService.DeleteAsync(id);
-            TempData["SuccessMessage"] = "Irrigation report deleted successfully.";
-            return RedirectToAction(nameof(IrrigationReports), new {  facilityId = report.FacilityId });
+            TempData["SuccessMessage"] = "NDMR report deleted successfully.";
+            return RedirectToAction(nameof(NDMRReports), new {  facilityId = report.FacilityId });
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
-            TempData["ErrorMessage"] = "Irrigation report not found.";
+            TempData["ErrorMessage"] = "NDMR report not found.";
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(IrrigationReports), new { facilityId = report?.FacilityId });
+        return RedirectToAction(nameof(NDMRReports), new { facilityId = report?.FacilityId });
     }
+
+    #endregion
+
+    #region Legacy Irrigation Routes
+
+    [HttpGet]
+    public IActionResult IrrigationReports(Guid? companyId = null, Guid? facilityId = null)
+        => RedirectToActionPermanent(nameof(NDMRReports), new { companyId, facilityId });
+
+    [HttpGet]
+    public IActionResult IrrigationReportDetails(Guid id)
+        => RedirectToActionPermanent(nameof(NDMRReportDetails), new { id });
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public IActionResult GenerateIrrigationReport(Guid? companyId = null, Guid? facilityId = null)
+        => RedirectToActionPermanent(nameof(GenerateNDMRReport), new { companyId, facilityId });
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> GenerateIrrigationReport(IrrRprtCreateViewModel viewModel)
+        => await GenerateNDMRReport(viewModel);
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public IActionResult IrrigationReportEdit(Guid id)
+        => RedirectToActionPermanent(nameof(NDMRReportEdit), new { id });
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> IrrigationReportEdit(IrrRprtEditViewModel viewModel)
+        => await NDMRReportEdit(viewModel);
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> IrrigationReportDelete(Guid id)
+        => await NDMRReportDelete(id);
 
     #endregion
 

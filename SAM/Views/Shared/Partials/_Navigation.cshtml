@@ -36,6 +36,21 @@
                 <span class="nav-link-text">Analytics</span>
             </a>
         </li>
+        @if (isOperator)
+        {
+            <li class="nav-item" role="none">
+                <a class="nav-link" asp-controller="OperationalData" asp-action="MonthlyApplications" role="menuitem" data-tooltip="Application Logs">
+                    <i class="bi bi-cloud-rain"></i>
+                    <span class="nav-link-text">Application Logs</span>
+                </a>
+            </li>
+            <li class="nav-item" role="none">
+                <a class="nav-link" asp-controller="OperationalData" asp-action="OperatorLogs" role="menuitem" data-tooltip="Operator Logs">
+                    <i class="bi bi-journal-text"></i>
+                    <span class="nav-link-text">Operator Logs</span>
+                </a>
+            </li>
+        }
         @if (isTechnician)
         {
             <li class="nav-item" role="none">
@@ -52,32 +67,6 @@
             </li>
         }
 
-
-        @if (isOperator)
-        {
-            <li class="nav-item nav-dropdown-item" role="none">
-                <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-operations" data-dropdown="operations" data-tooltip="Operations">
-                    <i class="bi bi-tools"></i>
-                    <span class="nav-link-text">Operations</span>
-                    <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
-                </button>
-                <ul class="nav-dropdown" id="dropdown-operations" role="menu">
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="OperationalData" asp-action="MonthlyApplications" role="menuitem" data-tooltip="Monthly Applications">
-                            <i class="bi bi-cloud-rain"></i>
-                            <span class="nav-link-text">Monthly Applications</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="OperationalData" asp-action="OperatorLogs" role="menuitem" data-tooltip="Operator Logs">
-                            <i class="bi bi-journal-text"></i>
-                            <span class="nav-link-text">Operator Logs</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-        }
-
         @if (isCompanyAdmin)
         {
             <li class="nav-item nav-dropdown-item pb-1" role="none">
@@ -88,21 +77,21 @@
                 </button>
                 <ul class="nav-dropdown" id="dropdown-reports" role="menu">
                     <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="Reports" asp-action="IrrigationReports" role="menuitem" data-tooltip="Irrigation Reports">
+                        <a class="nav-link" asp-controller="Reports" asp-action="NDAR1Reports" role="menuitem" data-tooltip="NDAR-1">
                             <i class="bi bi-file-earmark-text"></i>
-                            <span class="nav-link-text">Irrigation Reports</span>
+                            <span class="nav-link-text">NDAR-1</span>
                         </a>
                     </li>
                     <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="Reports" asp-action="NDAR1Reports" role="menuitem" data-tooltip="Non-Discharge Reports">
+                        <a class="nav-link" asp-controller="Reports" asp-action="NDMRReports" role="menuitem" data-tooltip="NDMR">
                             <i class="bi bi-file-earmark-text"></i>
-                            <span class="nav-link-text">Non-Discharge Reports</span>
+                            <span class="nav-link-text">NDMR</span>
                         </a>
                     </li>
                     <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="Reports" asp-action="GroundwaterQualityReports" role="menuitem" data-tooltip="Groundwater Quality Reports">
+                        <a class="nav-link" asp-controller="Reports" asp-action="GroundwaterQualityReports" role="menuitem" data-tooltip="GW-59">
                             <i class="bi bi-water"></i>
-                            <span class="nav-link-text">Groundwater Quality Reports</span>
+                            <span class="nav-link-text">GW-59</span>
                         </a>
                     </li>
                 </ul>
@@ -163,7 +152,7 @@
                     </a>
                 </li>
                 <li class="nav-item" role="none">
-                    <a class="nav-link" asp-controller="UserManagement" asp-action="ManageAdmins" role="menuitem" data-tooltip="Manage Admins">
+                    <a class="nav-link" asp-controller="UserManagement" asp-action="ManageAdmins" role="menuitem" data-tooltip="Global Admins">
                         <i class="bi bi-shield-check"></i>
                         <span class="nav-link-text">Global Admins</span>
                     </a>
@@ -180,4 +169,5 @@
 </nav>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 

@@ -3,7 +3,7 @@
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Non-Discharge Reports";
+    ViewData["Title"] = "Non-Discharge Application Reports";
     var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
@@ -43,7 +43,7 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
-            <h4 class="mb-0">Non-Discharge Reports</h4>
+            <h4 class="mb-0">Non-Discharge Application Report List</h4>
             <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
@@ -200,7 +200,7 @@
         {
             <div class="text-center py-5">
                 <i class="bi bi-inbox ui-empty-icon"></i>
-                <p class="text-muted mt-3">No Non-Discharge Reports found.</p>
+                <p class="text-muted mt-3">No Non-Discharge Application Reports found.</p>
                 @if (canEdit)
                 {
                     <a asp-action="GenerateNDAR1Report" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
@@ -308,6 +308,7 @@
         });
     </script>
 }
+
 
 
 

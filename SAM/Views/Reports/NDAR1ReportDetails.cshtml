@@ -4,7 +4,7 @@
 @using SAM.Utilities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Non-Discharge Reports";
+    ViewData["Title"] = "Non-Discharge Application Report Details";
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
     var report = ViewBag.Report as SAM.Domain.Entities.NDAR1;
@@ -12,7 +12,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <p class="text-muted mb-0">View NDAR-1 and NDMR reports for @Model.Month @Model.Year</p>
+        <p class="text-muted mb-0">View NDAR-1 report details for @Model.Month @Model.Year</p>
     </div>
     <div class="d-flex align-items-center gap-2">
         <div class="dropdown">
@@ -161,3 +161,4 @@
         }
     </div>
 </div>
+

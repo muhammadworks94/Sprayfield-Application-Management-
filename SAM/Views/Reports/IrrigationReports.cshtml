@@ -3,7 +3,7 @@
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Irrigation Reports";
+    ViewData["Title"] = "Non-Discharge Monitoring Reports";
     var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
@@ -14,7 +14,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">Generate and view irrigation compliance reports</p>
+        <p class="text-muted mb-0">Generate and view Non-Discharge Monitoring Reports</p>
     </div>
    
 </div>
@@ -44,7 +44,7 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
-            <h4 class="mb-0">Irrigation Report List</h4>
+            <h4 class="mb-0">Non-Discharge Monitoring Report List</h4>
             <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
@@ -60,7 +60,7 @@
                 </div>
                 @if (canEdit)
                 {
-                    <a asp-action="GenerateIrrigationReport" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-sm btn-primary">
+                    <a asp-action="GenerateNDMRReport" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-sm btn-primary">
                         <i class="bi bi-plus-circle"></i> Generate New Report
                     </a>
                 }
@@ -84,7 +84,7 @@
                         {
                             <tr>
                                 <td>
-                                    <a asp-action="IrrigationReportDetails" asp-route-id="@report.Id">
+                                    <a asp-action="NDMRReportDetails" asp-route-id="@report.Id">
                                         @report.Month @report.Year
                                     </a>
                                 </td>
@@ -98,7 +98,7 @@
                                 <td class="table-actions">
                                     @if (canEdit)
                                     {
-                                        <a asp-action="IrrigationReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
+                                        <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
                                         <button type="button"
@@ -125,7 +125,7 @@
                             <div class="card-header-light d-flex justify-content-between">
                                 <div>
                                     <h6 class="mb-0">
-                                        <a asp-action="IrrigationReportDetails" asp-route-id="@report.Id">
+                                        <a asp-action="NDMRReportDetails" asp-route-id="@report.Id">
                                             @report.Month @report.Year
                                         </a>
                                     </h6>
@@ -160,13 +160,13 @@
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-between">
-                                    <a asp-action="IrrigationReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary">
+                                    <a asp-action="NDMRReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i> View
                                     </a>
                                     @if (canEdit)
                                     {
                                         <div class="btn-group" role="group">
-                                            <a asp-action="IrrigationReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
+                                            <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
                                                 <i class="bi bi-pencil"></i> Edit
                                             </a>
                                             <button type="button"
@@ -190,10 +190,10 @@
         {
             <div class="text-center py-5">
                 <i class="bi bi-inbox ui-empty-icon"></i>
-                <p class="text-muted mt-3">No irrigation reports found.</p>
+                <p class="text-muted mt-3">No Non-Discharge Monitoring Reports found.</p>
                 @if (canEdit)
                 {
-                    <a asp-action="GenerateIrrigationReport" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
+                    <a asp-action="GenerateNDMRReport" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
                         <i class="bi bi-plus-circle"></i> Generate First Report
                     </a>
                 }
@@ -211,7 +211,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                Are you sure you want to delete irrigation report for <strong id="deleteIrrigationReportPeriod"></strong>? This action cannot be undone.
+                Are you sure you want to delete NDMR report for <strong id="deleteIrrigationReportPeriod"></strong>? This action cannot be undone.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -283,7 +283,7 @@
 
                     const form = deleteModal.querySelector('#deleteIrrigationReportForm');
                     if (form) {
-                        const baseUrl = '@Url.Action("IrrigationReportDelete", "Reports")';
+                        const baseUrl = '@Url.Action("NDMRReportDelete", "Reports")';
                         form.action = baseUrl + '/' + reportId;
                     }
                 });
@@ -291,5 +291,6 @@
         });
     </script>
 }
+
 
 
