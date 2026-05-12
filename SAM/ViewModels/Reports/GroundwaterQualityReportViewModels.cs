@@ -1,15 +1,35 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.Reports;
 
 public class GroundwaterQualityReportsPageViewModel
 {
     public Guid? SelectedCompanyId { get; set; }
-    public Guid? SelectedFacilityId { get; set; }
-    public Guid? SelectedMonitoringWellId { get; set; }
-    public int? SelectedMonth { get; set; }
-    public int? SelectedYear { get; set; }
-    public List<GroundwaterQualityReportRowViewModel> Rows { get; set; } = new();
+    public SelectList? Facilities { get; set; }
+    public SelectList? MonitoringWells { get; set; }
+    public SelectList? Months { get; set; }
+    public List<SelectListItem> Years { get; set; } = new();
+    public GroundwaterQualityFilterViewModel Filter { get; set; } = new();
+    public GroundwaterQualitySortViewModel Sort { get; set; } = new();
+    public PagedResult<GroundwaterQualityReportRowViewModel> Reports { get; set; } = new();
+}
+
+public class GroundwaterQualityFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public Guid? MonitoringWellId { get; set; }
+    public int? Month { get; set; }
+    public int? Year { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class GroundwaterQualitySortViewModel
+{
+    public string SortBy { get; set; } = "sampledate";
+    public string SortDir { get; set; } = "desc";
 }
 
 public class GroundwaterQualityReportRowViewModel

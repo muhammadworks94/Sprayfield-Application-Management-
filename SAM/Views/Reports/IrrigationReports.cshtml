@@ -1,43 +1,90 @@
-@model IEnumerable<SAM.ViewModels.Reports.IrrRprtViewModel>
+@model SAM.ViewModels.Reports.IrrRprtReportsIndexViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Non-Discharge Monitoring Reports";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
-    var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
+
+    string NextSortDir(string col) => Model.Sort.SortBy == col && Model.Sort.SortDir == "asc" ? "desc" : "asc";
+    string SortIcon(string col)
+    {
+        if (Model.Sort.SortBy != col) return "bi-arrow-down-up text-muted";
+        return Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down";
+    }
+
+    string monthText = Model.Filter.Month.HasValue
+        ? System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Model.Filter.Month.Value)
+        : "All Months";
+}
+
+@section PageTitleExtra {
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleIrrFilters" data-bs-toggle="collapse" data-bs-target="#irrFiltersCollapse" aria-expanded="false" aria-controls="irrFiltersCollapse">
+        <i class="bi bi-funnel"></i> Show Filters
+    </button>
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">Generate and view Non-Discharge Monitoring Reports</p>
     </div>
-   
 </div>
 
-<div class="card mb-3">
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
-                <select name="facilityId" id="facilityId" class="form-select" data-auto-submit="true">
-                    <option value="">All Facilities</option>
-                    @if (facilities != null)
-                    {
-                        @foreach (var facility in facilities)
+<div class="collapse mb-3" id="irrFiltersCollapse">
+    <div class="card">
+        <div class="card-body">
+            <form method="get" asp-action="NDMRReports" class="row g-3 align-items-end">
+                <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
+                <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
+                <input type="hidden" name="page" value="1" />
+
+                <div class="col-md-4">
+                    <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
+                    <select name="facilityId" id="facilityId" class="form-select">
+                        <option value="">All Facilities</option>
+                        @if (Model.Facilities != null)
                         {
-                            <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
-                                @facility.Text
-                            </option>
+                            @foreach (var facility in Model.Facilities)
+                            {
+                                <option value="@facility.Value" selected="@(Model.Filter.FacilityId.HasValue && Model.Filter.FacilityId.Value.ToString() == facility.Value)">@facility.Text</option>
+                            }
                         }
-                    }
-                </select>
-            </div>
-        </form>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="month" class="form-label"><i class="bi bi-calendar-event me-1"></i>Month:</label>
+                    <select name="month" id="month" class="form-select">
+                        <option value="">All Months</option>
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            <option value="@m" selected="@(Model.Filter.Month == m)">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="year" class="form-label"><i class="bi bi-calendar-range me-1"></i>Year:</label>
+                    <input type="number" min="2000" max="2100" name="year" id="year" class="form-control" value="@Model.Filter.Year" placeholder="Year" />
+                </div>
+
+                <div class="col-md-1">
+                    <label for="pageSize" class="form-label">Size:</label>
+                    <select name="pageSize" id="pageSize" class="form-select">
+                        <option value="25" selected="@(Model.Filter.PageSize == 25)">25</option>
+                        <option value="50" selected="@(Model.Filter.PageSize == 50)">50</option>
+                        <option value="100" selected="@(Model.Filter.PageSize == 100)">100</option>
+                        <option value="200" selected="@(Model.Filter.PageSize == 200)">200</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2 d-flex gap-2 justify-content-end">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Apply</button>
+                    <a asp-action="NDMRReports" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Reset</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -47,47 +94,52 @@
             <h4 class="mb-0">Non-Discharge Monitoring Report List</h4>
             <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-                    <button type="button"
-                            class="btn btn-outline-secondary btn-sm active"
-                            id="irrReportsTableViewBtn">
-                        <i class="bi bi-table"></i> Table
-                    </button>
-                    <button type="button"
-                            class="btn btn-outline-secondary btn-sm"
-                            id="irrReportsCardViewBtn">
-                        <i class="bi bi-grid-3x3-gap"></i> Cards
-                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm active" id="irrReportsTableViewBtn"><i class="bi bi-table"></i> Table</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="irrReportsCardViewBtn"><i class="bi bi-grid-3x3-gap"></i> Cards</button>
                 </div>
                 @if (canEdit)
                 {
-                    <a asp-action="GenerateNDMRReport" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-sm btn-primary">
+                    <a asp-action="GenerateNDMRReport" asp-route-companyId="@Model.SelectedCompanyId" asp-route-facilityId="@Model.Filter.FacilityId" class="btn btn-sm btn-primary">
                         <i class="bi bi-plus-circle"></i> Generate New Report
                     </a>
                 }
             </div>
         </div>
-        @if (Model.Any())
+
+        @if (Model.Reports.Items.Any())
         {
             <div id="irrReportsTableView" class="table-responsive responsive-table wide-data-table irr-reports-table-wrapper">
                 <table class="table table-hover irrigates-table">
                     <thead>
                         <tr>
-                            <th><i class="bi bi-calendar"></i> Period</th>
-                            <th><i class="bi bi-building"></i> Facility</th>
-                            <th><i class="bi bi-water"></i> Total Volume (gallons)</th>
-                            <th><i class="bi bi-shield-check"></i> Compliance Status</th>
+                            <th>
+                                <a asp-action="NDMRReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="period" asp-route-sortDir="@NextSortDir("period")" class="text-decoration-none">
+                                    <i class="bi bi-calendar"></i> Period <i class="bi @SortIcon("period")"></i>
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="NDMRReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="facility" asp-route-sortDir="@NextSortDir("facility")" class="text-decoration-none">
+                                    <i class="bi bi-building"></i> Facility <i class="bi @SortIcon("facility")"></i>
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="NDMRReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="totalvolume" asp-route-sortDir="@NextSortDir("totalvolume")" class="text-decoration-none">
+                                    <i class="bi bi-water"></i> Total Volume (gallons) <i class="bi @SortIcon("totalvolume")"></i>
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="NDMRReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="compliance" asp-route-sortDir="@NextSortDir("compliance")" class="text-decoration-none">
+                                    <i class="bi bi-shield-check"></i> Compliance Status <i class="bi @SortIcon("compliance")"></i>
+                                </a>
+                            </th>
                             <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var report in Model)
+                        @foreach (var report in Model.Reports.Items)
                         {
                             <tr>
-                                <td>
-                                    <a asp-action="NDMRReportDetails" asp-route-id="@report.Id">
-                                        @report.Month @report.Year
-                                    </a>
-                                </td>
+                                <td><a asp-action="NDMRReportDetails" asp-route-id="@report.Id">@report.Month @report.Year</a></td>
                                 <td>@report.FacilityName</td>
                                 <td>@report.TotalVolumeApplied.ToString("N0")</td>
                                 <td>
@@ -98,17 +150,8 @@
                                 <td class="table-actions">
                                     @if (canEdit)
                                     {
-                                        <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteIrrigationReportModal"
-                                                data-report-id="@report.Id"
-                                                data-report-period="@($"{report.Month} {report.Year}")">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
+                                        <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteIrrigationReportModal" data-report-id="@report.Id" data-report-period="@($"{report.Month} {report.Year}")"><i class="bi bi-trash"></i> Delete</button>
                                     }
                                 </td>
                             </tr>
@@ -118,65 +161,37 @@
             </div>
 
             <div id="irrReportsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
-                @foreach (var report in Model)
+                @foreach (var report in Model.Reports.Items)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
                             <div class="card-header-light d-flex justify-content-between">
-                                <div>
-                                    <h6 class="mb-0">
-                                        <a asp-action="NDMRReportDetails" asp-route-id="@report.Id">
-                                            @report.Month @report.Year
-                                        </a>
-                                    </h6>
-
-                                </div>
-                                <span class="badge badge-@(report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant ? "compliant" : report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant ? "non-compliant" : "under-review")">
-                                    @report.ComplianceStatus
-                                </span>
+                                <h6 class="mb-0"><a asp-action="NDMRReportDetails" asp-route-id="@report.Id">@report.Month @report.Year</a></h6>
+                                <span class="badge badge-@(report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant ? "compliant" : report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant ? "non-compliant" : "under-review")">@report.ComplianceStatus</span>
                             </div>
                             <div class="card-body d-flex flex-column">
-
                                 <dl class="row small mb-3 responsive-detail-list">
-                                    @if (isGlobalAdmin)
+                                    @if (Model.IsGlobalAdmin)
                                     {
                                         <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
                                         <dd class="col-6 mb-1">@report.CompanyName</dd>
                                     }
                                     <dt class="col-6"><i class="bi bi-building me-1"></i>Facility</dt>
                                     <dd class="col-6 mb-1">@report.FacilityName</dd>
-
                                     <dt class="col-6"><i class="bi bi-water me-1"></i>Total Volume</dt>
                                     <dd class="col-6 mb-1">@report.TotalVolumeApplied.ToString("N0") gal</dd>
-
                                     <dt class="col-6"><i class="bi bi-speedometer2 me-1"></i>App. Rate</dt>
                                     <dd class="col-6 mb-1">@report.TotalApplicationRate.ToString("F2") in</dd>
-
                                     <dt class="col-6"><i class="bi bi-graph-up me-1"></i>Hydraulic Load</dt>
                                     <dd class="col-6 mb-1">@report.HydraulicLoadingRate.ToString("F2") in/yr</dd>
-
-                                    <dt class="col-6"><i class="bi bi-percent me-1"></i>Efficiency</dt>
-                                    <dd class="col-6 mb-1">@report.ApplicationEfficiency.ToString("F1") %</dd>
                                 </dl>
-
                                 <div class="mt-auto d-flex justify-content-between">
-                                    <a asp-action="NDMRReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
+                                    <a asp-action="NDMRReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> View</a>
                                     @if (canEdit)
                                     {
                                         <div class="btn-group" role="group">
-                                            <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-pencil"></i> Edit
-                                            </a>
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-danger"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#deleteIrrigationReportModal"
-                                                    data-report-id="@report.Id"
-                                                    data-report-period="@($"{report.Month} {report.Year}")">
-                                                <i class="bi bi-trash"></i> Delete
-                                            </button>
+                                            <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteIrrigationReportModal" data-report-id="@report.Id" data-report-period="@($"{report.Month} {report.Year}")"><i class="bi bi-trash"></i> Delete</button>
                                         </div>
                                     }
                                 </div>
@@ -185,24 +200,41 @@
                     </div>
                 }
             </div>
+
+            @if (Model.Reports.TotalPages > 1)
+            {
+                <nav aria-label="NDMR reports pagination" class="mt-4">
+                    <ul class="pagination justify-content-end mb-0">
+                        <li class="page-item @(Model.Reports.Page <= 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="NDMRReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-sortBy="@Model.Sort.SortBy" asp-route-sortDir="@Model.Sort.SortDir" asp-route-page="@(Model.Reports.Page - 1)" asp-route-pageSize="@Model.Filter.PageSize">Previous</a>
+                        </li>
+                        @for (var p = 1; p <= Model.Reports.TotalPages; p++)
+                        {
+                            <li class="page-item @(p == Model.Reports.Page ? "active" : "")">
+                                <a class="page-link" asp-action="NDMRReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-sortBy="@Model.Sort.SortBy" asp-route-sortDir="@Model.Sort.SortDir" asp-route-page="@p" asp-route-pageSize="@Model.Filter.PageSize">@p</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.Reports.Page >= Model.Reports.TotalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="NDMRReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-sortBy="@Model.Sort.SortBy" asp-route-sortDir="@Model.Sort.SortDir" asp-route-page="@(Model.Reports.Page + 1)" asp-route-pageSize="@Model.Filter.PageSize">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
         }
         else
         {
             <div class="text-center py-5">
                 <i class="bi bi-inbox ui-empty-icon"></i>
-                <p class="text-muted mt-3">No Non-Discharge Monitoring Reports found.</p>
+                <p class="text-muted mt-3">No Non-Discharge Monitoring Reports found for @monthText@(Model.Filter.Year.HasValue ? $" {Model.Filter.Year}" : string.Empty).</p>
                 @if (canEdit)
                 {
-                    <a asp-action="GenerateNDMRReport" asp-route-companyId="@selectedCompanyId" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary mt-2">
-                        <i class="bi bi-plus-circle"></i> Generate First Report
-                    </a>
+                    <a asp-action="GenerateNDMRReport" asp-route-companyId="@Model.SelectedCompanyId" asp-route-facilityId="@Model.Filter.FacilityId" class="btn btn-primary mt-2"><i class="bi bi-plus-circle"></i> Generate First Report</a>
                 }
             </div>
         }
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteIrrigationReportModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -231,11 +263,10 @@
             const cardBtn = document.getElementById('irrReportsCardViewBtn');
             const tableView = document.getElementById('irrReportsTableView');
             const cardView = document.getElementById('irrReportsCardView');
-            const storageKey = 'viewMode';
+            const storageKey = 'ndmrReportsViewMode';
 
             function setViewMode(mode) {
                 const isTable = mode === 'table';
-
                 if (isTable) {
                     tableView?.classList.remove('d-none');
                     cardView?.classList.add('d-none');
@@ -247,7 +278,6 @@
                     tableBtn?.classList.remove('active');
                     cardBtn?.classList.add('active');
                 }
-
                 if (window.localStorage) {
                     localStorage.setItem(storageKey, mode);
                 }
@@ -255,32 +285,18 @@
 
             const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
             setViewMode(savedMode === 'card' ? 'card' : 'table');
-
-            tableBtn?.addEventListener('click', function () {
-                setViewMode('table');
-            });
-
-            cardBtn?.addEventListener('click', function () {
-                setViewMode('card');
-            });
+            tableBtn?.addEventListener('click', function () { setViewMode('table'); });
+            cardBtn?.addEventListener('click', function () { setViewMode('card'); });
 
             const deleteModal = document.getElementById('deleteIrrigationReportModal');
-
             if (deleteModal) {
                 deleteModal.addEventListener('show.bs.modal', function (event) {
                     const button = event.relatedTarget;
-                    if (!button) {
-                        return;
-                    }
-
+                    if (!button) return;
                     const reportId = button.getAttribute('data-report-id');
                     const reportPeriod = button.getAttribute('data-report-period');
-
                     const periodElement = deleteModal.querySelector('#deleteIrrigationReportPeriod');
-                    if (periodElement) {
-                        periodElement.textContent = reportPeriod;
-                    }
-
+                    if (periodElement) periodElement.textContent = reportPeriod;
                     const form = deleteModal.querySelector('#deleteIrrigationReportForm');
                     if (form) {
                         const baseUrl = '@Url.Action("NDMRReportDelete", "Reports")';
@@ -288,9 +304,21 @@
                     }
                 });
             }
+
+            const filterCollapseEl = document.getElementById('irrFiltersCollapse');
+            const filterToggleBtn = document.getElementById('toggleIrrFilters');
+            if (filterCollapseEl && filterToggleBtn) {
+                const updateFilterButton = (shown) => {
+                    filterToggleBtn.innerHTML = shown
+                        ? '<i class="bi bi-funnel-fill"></i> Hide Filters'
+                        : '<i class="bi bi-funnel"></i> Show Filters';
+                    filterToggleBtn.setAttribute('aria-expanded', shown ? 'true' : 'false');
+                };
+
+                updateFilterButton(false);
+                filterCollapseEl.addEventListener('shown.bs.collapse', () => updateFilterButton(true));
+                filterCollapseEl.addEventListener('hidden.bs.collapse', () => updateFilterButton(false));
+            }
         });
     </script>
 }
-
-
-

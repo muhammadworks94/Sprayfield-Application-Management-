@@ -14,6 +14,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 using SAM.ViewModels.OperationalData;
 using SAM.ViewModels.Reports;
 
@@ -66,7 +67,15 @@ public class ReportsController : BaseController
     #region NDMR Reports
 
     [HttpGet]
-    public async Task<IActionResult> NDMRReports(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> NDMRReports(
+        Guid? companyId = null,
+        Guid? facilityId = null,
+        int? month = null,
+        int? year = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -82,9 +91,63 @@ public class ReportsController : BaseController
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var reports = await _irrRprtService.GetAllAsync(companyId, facilityId);
-        
-        var viewModels = reports.Select(r => new IrrRprtViewModel
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "period" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+        var normalizedMonth = month.HasValue && month.Value >= 1 && month.Value <= 12 ? month : null;
+        var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
+
+        var query = _context.IrrRprts
+            .Include(r => r.Company)
+            .Include(r => r.Facility)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(r => r.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(r => r.FacilityId == facilityId.Value);
+        }
+
+        if (normalizedMonth.HasValue)
+        {
+            var monthValue = (MonthEnum)normalizedMonth.Value;
+            query = query.Where(r => r.Month == monthValue);
+        }
+
+        if (normalizedYear.HasValue)
+        {
+            query = query.Where(r => r.Year == normalizedYear.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Facility!.Name).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Facility!.Name).ThenByDescending(r => r.CreatedDate),
+            "totalvolume" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.TotalVolumeApplied).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.TotalVolumeApplied).ThenByDescending(r => r.CreatedDate),
+            "compliance" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.ComplianceStatus).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.ComplianceStatus).ThenByDescending(r => r.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Year).ThenBy(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Year).ThenByDescending(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var viewModels = items.Select(r => new IrrRprtViewModel
         {
             Id = r.Id,
             CompanyId = r.CompanyId,
@@ -104,13 +167,36 @@ public class ReportsController : BaseController
             ComplianceStatus = r.ComplianceStatus,
             CreatedDate = r.CreatedDate,
             UpdatedDate = r.UpdatedDate
-        });
+        }).ToList();
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.SelectedFacilityId = facilityId;
+        var model = new IrrRprtReportsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Filter = new IrrRprtFilterViewModel
+            {
+                FacilityId = facilityId,
+                Month = normalizedMonth,
+                Year = normalizedYear,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new IrrRprtSortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Reports = new PagedResult<IrrRprtViewModel>
+            {
+                Items = viewModels,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
 
-        return View("IrrigationReports", viewModels);
+        return View("IrrigationReports", model);
     }
 
     [HttpGet]
@@ -371,7 +457,14 @@ public class ReportsController : BaseController
     #region NDAR-1 Reports
 
     [HttpGet]
-    public async Task<IActionResult> NDAR1Reports( Guid? facilityId = null)
+    public async Task<IActionResult> NDAR1Reports(
+        Guid? facilityId = null,
+        string? operatorName = null,
+        DateTime? logDate = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         Guid? companyId = null;
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -388,9 +481,66 @@ public class ReportsController : BaseController
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var reports = await _ndar1Service.GetAllAsync(companyId, facilityId);
-        
-        var viewModels = reports.Select(r => new NDAR1ViewModel
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "period" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+        var normalizedOperatorName = string.IsNullOrWhiteSpace(operatorName) ? null : operatorName.Trim();
+
+        var query = _context.NDAR1s
+            .Include(r => r.Company)
+            .Include(r => r.Facility)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(r => r.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(r => r.FacilityId == facilityId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedOperatorName))
+        {
+            var normalizedOperatorLower = normalizedOperatorName.ToLowerInvariant();
+            query = query.Where(r =>
+                !string.IsNullOrWhiteSpace(r.CreatedBy) &&
+                r.CreatedBy.Trim().ToLower() == normalizedOperatorLower);
+        }
+
+        if (logDate.HasValue)
+        {
+            var date = logDate.Value.Date;
+            var nextDate = date.AddDays(1);
+            query = query.Where(r => r.CreatedDate >= date && r.CreatedDate < nextDate);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate),
+            "operator" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.CreatedBy).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.CreatedBy).ThenByDescending(r => r.CreatedDate),
+            "logdate" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.CreatedDate).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.CreatedDate).ThenByDescending(r => r.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Year).ThenBy(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Year).ThenByDescending(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var reports = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var items = reports.Select(r => new NDAR1ViewModel
         {
             Id = r.Id,
             CompanyId = r.CompanyId,
@@ -401,15 +551,52 @@ public class ReportsController : BaseController
             Year = r.Year,
             DidIrrigationOccur = r.DidIrrigationOccur,
             CreatedDate = r.CreatedDate,
-            UpdatedDate = r.UpdatedDate
-        });
+            UpdatedDate = r.UpdatedDate,
+            CreatedBy = r.CreatedBy
+        }).ToList();
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.SelectedFacilityId = facilityId;
+        var operators = await _context.NDAR1s
+            .AsNoTracking()
+            .Where(r =>
+                (!companyId.HasValue || r.CompanyId == companyId.Value) &&
+                (!facilityId.HasValue || r.FacilityId == facilityId.Value) &&
+                !string.IsNullOrWhiteSpace(r.CreatedBy))
+            .Select(r => r.CreatedBy.Trim())
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
 
-        return View(viewModels);
+        var operatorItems = operators.Select(o => new SelectListItem { Value = o, Text = o }).ToList();
+
+        var model = new NDAR1ReportsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Operators = new SelectList(operatorItems, "Value", "Text", normalizedOperatorName),
+            Filter = new NDAR1FilterViewModel
+            {
+                FacilityId = facilityId,
+                OperatorName = normalizedOperatorName,
+                LogDate = logDate,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new NDAR1SortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Reports = new PagedResult<NDAR1ViewModel>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
+
+        return View(model);
     }
 
     [HttpGet]
@@ -836,7 +1023,11 @@ public class ReportsController : BaseController
         Guid? facilityId = null,
         Guid? monitoringWellId = null,
         int? month = null,
-        int? year = null)
+        int? year = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
         if (!companyId.HasValue && effectiveCompanyId.HasValue)
@@ -849,19 +1040,71 @@ public class ReportsController : BaseController
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var gwRecords = await _gwMonitService.GetAllAsync(companyId, facilityId, monitoringWellId);
-        if (month.HasValue)
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "sampledate" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+        var normalizedMonth = month.HasValue && month.Value >= 1 && month.Value <= 12 ? month : null;
+        var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
+
+        var query = _context.GWMonits
+            .Include(x => x.Facility)
+            .Include(x => x.MonitoringWell)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
         {
-            gwRecords = gwRecords.Where(x => x.SampleDate.Month == month.Value);
+            query = query.Where(x => x.CompanyId == companyId.Value);
         }
 
-        if (year.HasValue)
+        if (facilityId.HasValue)
         {
-            gwRecords = gwRecords.Where(x => x.SampleDate.Year == year.Value);
+            query = query.Where(x => x.FacilityId == facilityId.Value);
         }
+
+        if (monitoringWellId.HasValue)
+        {
+            query = query.Where(x => x.MonitoringWellId == monitoringWellId.Value);
+        }
+
+        if (normalizedMonth.HasValue)
+        {
+            query = query.Where(x => x.SampleDate.Month == normalizedMonth.Value);
+        }
+
+        if (normalizedYear.HasValue)
+        {
+            query = query.Where(x => x.SampleDate.Year == normalizedYear.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.Facility!.Name).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.Facility!.Name).ThenByDescending(x => x.CreatedDate),
+            "well" => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.MonitoringWell!.WellId).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.MonitoringWell!.WellId).ThenByDescending(x => x.CreatedDate),
+            "collectedby" => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.CollectedBy).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.CollectedBy).ThenByDescending(x => x.CreatedDate),
+            "analyzedby" => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.AnalyzedBy).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.AnalyzedBy).ThenByDescending(x => x.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.SampleDate).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.SampleDate).ThenByDescending(x => x.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var pagedRecords = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
 
         var rows = new List<GroundwaterQualityReportRowViewModel>();
-        foreach (var record in gwRecords.OrderByDescending(x => x.SampleDate))
+        foreach (var record in pagedRecords)
         {
             var permit = await ResolvePermitForDateAsync(record.FacilityId, record.SampleDate);
             var permitDisplay = permit == null
@@ -885,15 +1128,31 @@ public class ReportsController : BaseController
         var model = new GroundwaterQualityReportsPageViewModel
         {
             SelectedCompanyId = companyId,
-            SelectedFacilityId = facilityId,
-            SelectedMonitoringWellId = monitoringWellId,
-            SelectedMonth = month,
-            SelectedYear = year,
-            Rows = rows
+            Filter = new GroundwaterQualityFilterViewModel
+            {
+                FacilityId = facilityId,
+                MonitoringWellId = monitoringWellId,
+                Month = normalizedMonth,
+                Year = normalizedYear,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new GroundwaterQualitySortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Reports = new PagedResult<GroundwaterQualityReportRowViewModel>
+            {
+                Items = rows,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
         };
 
         var facilities = await _facilityService.GetAllAsync(companyId);
-        ViewBag.Facilities = new SelectList(facilities, "Id", "Name", facilityId);
+        model.Facilities = new SelectList(facilities, "Id", "Name", facilityId);
         var wells = companyId.HasValue
             ? await _context.MonitoringWells.AsNoTracking()
                 .Where(x => x.CompanyId == companyId.Value)
@@ -909,14 +1168,14 @@ public class ReportsController : BaseController
                 .ToListAsync();
             wells = wells.Where(x => wellIdsForFacility.Contains(x.Id)).ToList();
         }
-        ViewBag.MonitoringWells = new SelectList(wells, "Id", "WellId", monitoringWellId);
-        ViewBag.Months = new SelectList(
+        model.MonitoringWells = new SelectList(wells, "Id", "WellId", monitoringWellId);
+        model.Months = new SelectList(
             Enum.GetValues(typeof(MonthEnum)).Cast<MonthEnum>()
                 .Select(e => new SelectListItem { Value = ((int)e).ToString(), Text = e.ToString() }),
             "Value",
             "Text",
-            month?.ToString());
-        ViewBag.Years = Enumerable.Range(DateTime.UtcNow.Year - 10, 21)
+            normalizedMonth?.ToString());
+        model.Years = Enumerable.Range(DateTime.UtcNow.Year - 10, 21)
             .Select(y => new SelectListItem(y.ToString(), y.ToString()))
             .ToList();
 

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using SAM.Domain.Enums;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -205,6 +207,34 @@ public class OperatorLogEditViewModel
     [StringLength(2000)]
     [Display(Name = "Next Shift Notes")]
     public string? NextShiftNotes { get; set; }
+}
+
+public class OperatorLogFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public string? OperatorName { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class OperatorLogSortViewModel
+{
+    public string SortBy { get; set; } = "logDate";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class OperatorLogsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public Guid? SelectedFacilityId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public SelectList? Operators { get; set; }
+    public OperatorLogFilterViewModel Filter { get; set; } = new();
+    public OperatorLogSortViewModel Sort { get; set; } = new();
+    public PagedResult<OperatorLogViewModel> Logs { get; set; } = new();
 }
 
 

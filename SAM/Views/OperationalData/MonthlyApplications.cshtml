@@ -1,12 +1,29 @@
-@model IEnumerable<SAM.ViewModels.OperationalData.MonthlyApplicationViewModel>
+@model SAM.ViewModels.OperationalData.MonthlyApplicationsIndexViewModel
 @{
     ViewData["Title"] = "Monthly Applications";
-    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
-    var selectedSprayfieldId = ViewBag.SelectedSprayfieldId as Guid?;
-    var selectedMonth = ViewBag.SelectedMonth as int?;
-    var selectedYear = ViewBag.SelectedYear as int?;
+    var facilities = Model.Facilities;
+    var sprayfields = Model.Sprayfields;
+    var selectedFacilityId = Model.Filter.FacilityId;
+    var selectedSprayfieldId = Model.Filter.SprayfieldId;
+    var selectedMonth = Model.Filter.Month;
+    var selectedYear = Model.Filter.Year;
+    var items = Model.Applications.Items;
+    var totalPages = Model.Applications.TotalPages;
+    var currentPage = Model.Applications.Page;
+
+    string NextSortDir(string column) =>
+        string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(Model.Sort.SortDir, "asc", StringComparison.OrdinalIgnoreCase)
+            ? "desc"
+            : "asc";
+
+    bool IsActiveSort(string column) => string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase);
+
+    var dateNextSortDir = NextSortDir("applicationDate");
+    var sprayfieldNextSortDir = NextSortDir("sprayfield");
+    var dailyLoadingNextSortDir = NextSortDir("dailyLoading");
+    var volumeNextSortDir = NextSortDir("volume");
+    var maxHourlyNextSortDir = NextSortDir("maxHourlyLoading");
 }
 
 @section PageTitleInline {
@@ -21,70 +38,102 @@
     </span>
 }
 
+@section PageTitleExtra {
+    <button class="btn btn-sm btn-outline-secondary"
+            type="button"
+            id="toggleMonthlyApplicationFilters"
+            data-bs-toggle="collapse"
+            data-bs-target="#monthlyApplicationFiltersCollapse"
+            aria-expanded="false"
+            aria-controls="monthlyApplicationFiltersCollapse">
+        <i class="bi bi-funnel me-1"></i><span>Show Filters</span>
+    </button>
+}
+
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">Track and manage monthly spray application records.</p>
     </div>
 </div>
 
+<div class="collapse mb-3" id="monthlyApplicationFiltersCollapse">
+    <div class="card">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <select name="facilityId" id="facilityId" class="form-select">
+                        <option value="">All Facilities</option>
+                        @if (facilities != null)
+                        {
+                            @foreach (var facility in facilities)
+                            {
+                                <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
+                                    @facility.Text
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="sprayfieldId" id="sprayfieldId" class="form-select">
+                        <option value="">All Sprayfields</option>
+                        @if (sprayfields != null)
+                        {
+                            @foreach (var sprayfield in sprayfields)
+                            {
+                                <option value="@sprayfield.Value" selected="@(selectedSprayfieldId.HasValue && selectedSprayfieldId.Value.ToString() == sprayfield.Value)">
+                                    @sprayfield.Text
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="month" id="month" class="form-select">
+                        <option value="">All Months</option>
+                        @for (var m = 1; m <= 12; m++)
+                        {
+                            var monthName = new DateTime(2000, m, 1).ToString("MMMM");
+                            <option value="@m" selected="@(selectedMonth.HasValue && selectedMonth.Value == m)">@monthName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" placeholder="Year" id="year" name="year" min="2000" max="2100" class="form-control" value="@(selectedYear?.ToString() ?? string.Empty)" />
+                </div>
+                <div class="col-md-1">
+                    <select name="pageSize" id="pageSize" class="form-select">
+                        @foreach (var size in new[] { 25, 50, 100, 200 })
+                        {
+                            if (Model.Filter.PageSize == size)
+                            {
+                                <option value="@size" selected>@size</option>
+                            }
+                            else
+                            {
+                                <option value="@size">@size</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
+                    <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
+                    <input type="hidden" name="page" value="1" />
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-funnel"></i> Apply
+                    </button>
+                    <a asp-action="MonthlyApplications" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
-        <form method="get" class="row g-3 mb-4">
-            <div class="col-md-3">
-                @* <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility</label> *@
-                <select name="facilityId" id="facilityId" class="form-select">
-                    <option value="">All Facilities</option>
-                    @if (facilities != null)
-                    {
-                        @foreach (var facility in facilities)
-                        {
-                            <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
-                                @facility.Text
-                            </option>
-                        }
-                    }
-                </select>
-            </div>
-            <div class="col-md-3">
-                @* <label for="sprayfieldId" class="form-label"><i class="bi bi-diagram-3 me-1"></i>Sprayfield</label> *@
-                <select name="sprayfieldId" id="sprayfieldId" class="form-select">
-                    <option value="">All Sprayfields</option>
-                    @if (sprayfields != null)
-                    {
-                        @foreach (var sprayfield in sprayfields)
-                        {
-                            <option value="@sprayfield.Value" selected="@(selectedSprayfieldId.HasValue && selectedSprayfieldId.Value.ToString() == sprayfield.Value)">
-                                @sprayfield.Text
-                            </option>
-                        }
-                    }
-                </select>
-            </div>
-            <div class="col-md-2">
-                @* <label for="month" class="form-label"><i class="bi bi-calendar-month me-1"></i>Month</label> *@
-                <select name="month" id="month" class="form-select">
-                    <option value="">All Months</option>
-                    @for (var m = 1; m <= 12; m++)
-                    {
-                        var monthName = new DateTime(2000, m, 1).ToString("MMMM");
-                        <option value="@m" selected="@(selectedMonth.HasValue && selectedMonth.Value == m)">@monthName</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-2">
-                @* <label for="year" class="form-label"><i class="bi bi-calendar3 me-1"></i>Year</label> *@
-                <input type="number" placeholder="Year" id="year" name="year" min="2000" max="2100" class="form-control" value="@(selectedYear?.ToString() ?? string.Empty)" />
-            </div>
-            <div class="col-md-2 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-funnel"></i> 
-                </button>
-                <a asp-action="MonthlyApplications" class="btn btn-outline-secondary w-100">
-                    <i class="bi bi-x-circle"></i> 
-                </a>
-            </div>
-        </form>
-
         <div class="d-flex align-items-center justify-content-between mb-4 page-section-header">
             <div class="btn-group" role="group" aria-label="View mode toggle">
                 <button type="button" class="btn btn-outline-secondary btn-sm active" id="monthlyAppsTableViewBtn">
@@ -99,22 +148,102 @@
             </a>
         </div>
 
-        @if (Model.Any())
+        @if (items.Any())
         {
             <div id="monthlyAppsTableView" class="table-responsive responsive-table monthly-apps-table-wrapper fixed-height-table-wrapper">
                 <table class="table table-hover monthly-apps-table">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Sprayfield</th>
-                            <th>Daily Loading (in)</th>
-                            <th>Volume (gal)</th>
-                            <th>Maximum Hourly Loading (inches/acre)</th>
+                            <th>
+                                <a asp-action="MonthlyApplications"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-sprayfieldId="@Model.Filter.SprayfieldId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="applicationDate"
+                                   asp-route-sortDir="@dateNextSortDir">
+                                    Date
+                                    @if (IsActiveSort("applicationDate"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="MonthlyApplications"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-sprayfieldId="@Model.Filter.SprayfieldId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="sprayfield"
+                                   asp-route-sortDir="@sprayfieldNextSortDir">
+                                    Sprayfield
+                                    @if (IsActiveSort("sprayfield"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="MonthlyApplications"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-sprayfieldId="@Model.Filter.SprayfieldId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="dailyLoading"
+                                   asp-route-sortDir="@dailyLoadingNextSortDir">
+                                    Daily Loading (in)
+                                    @if (IsActiveSort("dailyLoading"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="MonthlyApplications"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-sprayfieldId="@Model.Filter.SprayfieldId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="volume"
+                                   asp-route-sortDir="@volumeNextSortDir">
+                                    Volume (gal)
+                                    @if (IsActiveSort("volume"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="MonthlyApplications"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-sprayfieldId="@Model.Filter.SprayfieldId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="maxHourlyLoading"
+                                   asp-route-sortDir="@maxHourlyNextSortDir">
+                                    Maximum Hourly Loading (inches/acre)
+                                    @if (IsActiveSort("maxHourlyLoading"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
                             <th class="table-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach (var item in Model)
+                    @foreach (var item in items)
                     {
                         <tr>
                             <td>
@@ -163,7 +292,7 @@
             </div>
 
             <div id="monthlyAppsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
-                @foreach (var item in Model)
+                @foreach (var item in items)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
@@ -234,6 +363,29 @@
                     </div>
                 }
             </div>
+
+            @if (totalPages > 1)
+            {
+                <nav class="mt-3">
+                    <ul class="pagination">
+                        @for (var pageNumber = 1; pageNumber <= totalPages; pageNumber++)
+                        {
+                            <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                                <a class="page-link"
+                                   asp-action="MonthlyApplications"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-sprayfieldId="@Model.Filter.SprayfieldId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="@pageNumber"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="@Model.Sort.SortBy"
+                                   asp-route-sortDir="@Model.Sort.SortDir">@pageNumber</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
         }
         else
         {
@@ -241,7 +393,7 @@
                 <i class="bi bi-inbox ui-empty-icon"></i>
                 <p class="text-muted mt-3 mb-1">No monthly applications found.</p>
                 <p class="text-muted small mb-3">Create your first monthly application record to get started.</p>
-                <a asp-action="MonthlyApplicationCreate" class="btn btn-primary mt-2">
+                <a asp-action="MonthlyApplicationCreate" asp-route-facilityId="@selectedFacilityId" asp-route-sprayfieldId="@selectedSprayfieldId" class="btn btn-primary mt-2">
                     <i class="bi bi-plus-circle"></i> Create First Application
                 </a>
             </div>
@@ -284,11 +436,34 @@
             tableBtn?.addEventListener('click', function () { setViewMode('table'); });
             cardBtn?.addEventListener('click', function () { setViewMode('card'); });
 
+            const filterToggleBtn = document.getElementById('toggleMonthlyApplicationFilters');
+            const filterCollapseElement = document.getElementById('monthlyApplicationFiltersCollapse');
+            if (filterToggleBtn && filterCollapseElement && typeof bootstrap !== 'undefined') {
+                const filterCollapse = bootstrap.Collapse.getOrCreateInstance(filterCollapseElement, { toggle: false });
+                const label = filterToggleBtn.querySelector('span');
+
+                function setFilterToggleState(isExpanded) {
+                    filterToggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                    if (label) {
+                        label.textContent = isExpanded ? 'Hide Filters' : 'Show Filters';
+                    }
+                }
+
+                filterCollapse.hide();
+                setFilterToggleState(false);
+
+                filterCollapseElement.addEventListener('shown.bs.collapse', function () {
+                    setFilterToggleState(true);
+                });
+
+                filterCollapseElement.addEventListener('hidden.bs.collapse', function () {
+                    setFilterToggleState(false);
+                });
+            }
+
             document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
                 bootstrap.Tooltip.getOrCreateInstance(element);
             });
         })();
     </script>
 }
-
-

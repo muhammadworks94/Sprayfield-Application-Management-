@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -551,4 +553,29 @@ public class GWMonitTemplateSectionViewModel
     public string? FacilityPermitDisplay { get; set; }
     public string? TemplateParametersStatusMessage { get; set; }
     public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
+}
+
+public class GWMonitFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public Guid? MonitoringWellId { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class GWMonitSortViewModel
+{
+    public string SortBy { get; set; } = "sampleDate";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class GWMonitsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public SelectList? MonitoringWells { get; set; }
+    public GWMonitFilterViewModel Filter { get; set; } = new();
+    public GWMonitSortViewModel Sort { get; set; } = new();
+    public PagedResult<GWMonitViewModel> GWMonits { get; set; } = new();
 }

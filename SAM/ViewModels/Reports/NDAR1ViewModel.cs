@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using SAM.Domain.Enums;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.Reports;
 
@@ -27,6 +29,35 @@ public class NDAR1ViewModel
     
     [Display(Name = "Updated Date")]
     public DateTime? UpdatedDate { get; set; }
+
+    [Display(Name = "Operator")]
+    public string? CreatedBy { get; set; }
+}
+
+public class NDAR1FilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public string? OperatorName { get; set; }
+    public DateTime? LogDate { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class NDAR1SortViewModel
+{
+    public string SortBy { get; set; } = "period";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class NDAR1ReportsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public SelectList? Operators { get; set; }
+    public NDAR1FilterViewModel Filter { get; set; } = new();
+    public NDAR1SortViewModel Sort { get; set; } = new();
+    public PagedResult<NDAR1ViewModel> Reports { get; set; } = new();
 }
 
 public class NDAR1CreateViewModel

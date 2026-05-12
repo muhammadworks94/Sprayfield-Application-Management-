@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using SAM.Domain.Enums;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -334,6 +336,31 @@ public class WWCharTemplateSectionViewModel
     public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
     public List<decimal?> LagoonFreeboard { get; set; } = new();
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+}
+
+public class WWCharFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public int? Month { get; set; }
+    public int? Year { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class WWCharSortViewModel
+{
+    public string SortBy { get; set; } = "period";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class WWCharsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public WWCharFilterViewModel Filter { get; set; } = new();
+    public WWCharSortViewModel Sort { get; set; } = new();
+    public PagedResult<WWCharViewModel> WWChars { get; set; } = new();
 }
 
 

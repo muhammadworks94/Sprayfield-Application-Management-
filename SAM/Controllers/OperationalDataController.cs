@@ -76,7 +76,16 @@ namespace SAM.Controllers;
     #region Operator Logs
 
     [HttpGet]
-    public async Task<IActionResult> OperatorLogs(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> OperatorLogs(
+        Guid? companyId = null,
+        Guid? facilityId = null,
+        string? operatorName = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -92,9 +101,71 @@ namespace SAM.Controllers;
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var logs = await _operatorLogService.GetAllAsync(companyId, facilityId);
-        
-        var viewModels = logs.Select(l => new OperatorLogViewModel
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "logDate" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+
+        var query = _context.OperatorLogs
+            .Include(o => o.Company)
+            .Include(o => o.Facility)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(o => o.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(o => o.FacilityId == facilityId.Value);
+        }
+
+        var normalizedOperatorName = string.IsNullOrWhiteSpace(operatorName) ? null : operatorName.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedOperatorName))
+        {
+            var normalizedOperatorNameLower = normalizedOperatorName.ToLowerInvariant();
+            query = query.Where(o =>
+                !string.IsNullOrWhiteSpace(o.OperatorName) &&
+                o.OperatorName.Trim().ToLower() == normalizedOperatorNameLower);
+        }
+
+        if (fromDate.HasValue)
+        {
+            var from = fromDate.Value.Date;
+            query = query.Where(o => o.LogDate >= from);
+        }
+
+        if (toDate.HasValue)
+        {
+            var to = toDate.Value.Date;
+            query = query.Where(o => o.LogDate <= to);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "operator" => normalizedSortDir == "asc"
+                ? query.OrderBy(o => o.OperatorName).ThenByDescending(o => o.CreatedDate)
+                : query.OrderByDescending(o => o.OperatorName).ThenByDescending(o => o.CreatedDate),
+            "arrivaltime" => normalizedSortDir == "asc"
+                ? query.OrderBy(o => o.ArrivalTime).ThenByDescending(o => o.CreatedDate)
+                : query.OrderByDescending(o => o.ArrivalTime).ThenByDescending(o => o.CreatedDate),
+            "timeonsitehours" => normalizedSortDir == "asc"
+                ? query.OrderBy(o => o.TimeOnSiteHours).ThenByDescending(o => o.CreatedDate)
+                : query.OrderByDescending(o => o.TimeOnSiteHours).ThenByDescending(o => o.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(o => o.LogDate).ThenByDescending(o => o.CreatedDate)
+                : query.OrderByDescending(o => o.LogDate).ThenByDescending(o => o.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var logs = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var items = logs.Select(l => new OperatorLogViewModel
         {
             Id = l.Id,
             CompanyId = l.CompanyId,
@@ -116,14 +187,63 @@ namespace SAM.Controllers;
             IssuesNoted = l.IssuesNoted,
             CorrectiveActions = l.CorrectiveActions,
             NextShiftNotes = l.NextShiftNotes
-        });
+        }).ToList();
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.SelectedFacilityId = facilityId;
+        var operatorOptionsQuery = _context.OperatorLogs
+            .AsNoTracking()
+            .AsQueryable();
+        if (companyId.HasValue)
+        {
+            operatorOptionsQuery = operatorOptionsQuery.Where(o => o.CompanyId == companyId.Value);
+        }
 
-        return View(viewModels);
+        if (facilityId.HasValue)
+        {
+            operatorOptionsQuery = operatorOptionsQuery.Where(o => o.FacilityId == facilityId.Value);
+        }
+
+        var operators = await operatorOptionsQuery
+            .Where(o => !string.IsNullOrWhiteSpace(o.OperatorName))
+            .Select(o => o.OperatorName.Trim())
+            .Distinct()
+            .OrderBy(o => o)
+            .ToListAsync();
+
+        var operatorSelectItems = operators
+            .Select(o => new SelectListItem { Value = o, Text = o })
+            .ToList();
+
+        var model = new OperatorLogsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            SelectedFacilityId = facilityId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Operators = new SelectList(operatorSelectItems, "Value", "Text", normalizedOperatorName),
+            Filter = new OperatorLogFilterViewModel
+            {
+                FacilityId = facilityId,
+                OperatorName = normalizedOperatorName,
+                FromDate = fromDate,
+                ToDate = toDate,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new OperatorLogSortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Logs = new PagedResult<OperatorLogViewModel>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
+
+        return View(model);
     }
 
     [HttpGet]
@@ -398,7 +518,11 @@ namespace SAM.Controllers;
         Guid? facilityId = null,
         Guid? sprayfieldId = null,
         int? month = null,
-        int? year = null)
+        int? year = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         var companyId = await GetEffectiveCompanyIdAsync();
         if (companyId.HasValue)
@@ -406,7 +530,72 @@ namespace SAM.Controllers;
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var applications = await _monthlyApplicationService.GetAllAsync(companyId, facilityId, sprayfieldId);
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "applicationdate" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+
+        var query = _context.MonthlyApplications
+            .Include(a => a.Company)
+            .Include(a => a.Facility)
+            .Include(a => a.Sprayfield)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(a => a.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(a => a.FacilityId == facilityId.Value);
+        }
+
+        if (sprayfieldId.HasValue)
+        {
+            query = query.Where(a => a.SprayfieldId == sprayfieldId.Value);
+        }
+
+        if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+        {
+            query = query.Where(a => a.ApplicationDate.Month == month.Value);
+        }
+
+        if (year.HasValue && year.Value >= 2000 && year.Value <= 2100)
+        {
+            query = query.Where(a => a.ApplicationDate.Year == year.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "sprayfield" => normalizedSortDir == "asc"
+                ? query.OrderBy(a => a.Sprayfield != null ? (a.Sprayfield.PermitFieldName ?? a.Sprayfield.FieldId) : string.Empty).ThenByDescending(a => a.CreatedDate)
+                : query.OrderByDescending(a => a.Sprayfield != null ? (a.Sprayfield.PermitFieldName ?? a.Sprayfield.FieldId) : string.Empty).ThenByDescending(a => a.CreatedDate),
+            "dailyloading" => normalizedSortDir == "asc"
+                ? query.OrderBy(a => a.TimeIrrigatedMinutes.HasValue
+                    ? (decimal?)(a.MaximumHourlyLoadingInchesPerAcre * (a.TimeIrrigatedMinutes.Value / 60m))
+                    : null).ThenByDescending(a => a.CreatedDate)
+                : query.OrderByDescending(a => a.TimeIrrigatedMinutes.HasValue
+                    ? (decimal?)(a.MaximumHourlyLoadingInchesPerAcre * (a.TimeIrrigatedMinutes.Value / 60m))
+                    : null).ThenByDescending(a => a.CreatedDate),
+            "volume" => normalizedSortDir == "asc"
+                ? query.OrderBy(a => a.VolumeGallons).ThenByDescending(a => a.CreatedDate)
+                : query.OrderByDescending(a => a.VolumeGallons).ThenByDescending(a => a.CreatedDate),
+            "maxhourlyloading" => normalizedSortDir == "asc"
+                ? query.OrderBy(a => a.MaximumHourlyLoadingInchesPerAcre).ThenByDescending(a => a.CreatedDate)
+                : query.OrderByDescending(a => a.MaximumHourlyLoadingInchesPerAcre).ThenByDescending(a => a.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(a => a.ApplicationDate).ThenByDescending(a => a.CreatedDate)
+                : query.OrderByDescending(a => a.ApplicationDate).ThenByDescending(a => a.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var applications = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
         var items = applications.Select(a => new MonthlyApplicationViewModel
         {
             Id = a.Id,
@@ -424,25 +613,36 @@ namespace SAM.Controllers;
             MaximumHourlyLoadingInchesPerAcre = a.MaximumHourlyLoadingInchesPerAcre,
             OperatorSnapshotName = a.OperatorSnapshotName,
             Comments = a.Comments
-        });
+        }).ToList();
 
-        if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+        var model = new MonthlyApplicationsIndexViewModel
         {
-            items = items.Where(x => x.ApplicationDate.Month == month.Value);
-        }
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Sprayfields = await GetSprayfieldSelectListAsync(companyId, facilityId),
+            Filter = new MonthlyApplicationFilterViewModel
+            {
+                FacilityId = facilityId,
+                SprayfieldId = sprayfieldId,
+                Month = month,
+                Year = year,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new MonthlyApplicationSortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Applications = new PagedResult<MonthlyApplicationViewModel>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
 
-        if (year.HasValue && year.Value >= 2000 && year.Value <= 2100)
-        {
-            items = items.Where(x => x.ApplicationDate.Year == year.Value);
-        }
-
-        ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyId, facilityId);
-        ViewBag.SelectedFacilityId = facilityId;
-        ViewBag.SelectedSprayfieldId = sprayfieldId;
-        ViewBag.SelectedMonth = month;
-        ViewBag.SelectedYear = year;
-        return View(items);
+        return View(model);
     }
 
     [HttpGet]
@@ -935,7 +1135,14 @@ namespace SAM.Controllers;
     #region Wastewater Characteristics (WWChar)
 
     [HttpGet]
-    public async Task<IActionResult> WWChars(Guid? facilityId = null)
+    public async Task<IActionResult> WWChars(
+        Guid? facilityId = null,
+        int? month = null,
+        int? year = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -948,9 +1155,61 @@ namespace SAM.Controllers;
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var wwChars = await _wwCharService.GetAllAsync(companyId, facilityId);
-        
-        var viewModels = wwChars.Select(w => new WWCharViewModel
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "period" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+
+        var query = _context.WWChars
+            .Include(w => w.Company)
+            .Include(w => w.Facility)
+            .Include(w => w.FacilityPermit)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(w => w.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(w => w.FacilityId == facilityId.Value);
+        }
+
+        if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+        {
+            query = query.Where(w => (int)w.Month == month.Value);
+        }
+
+        if (year.HasValue && year.Value >= 2000 && year.Value <= 2100)
+        {
+            query = query.Where(w => w.Year == year.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(w => w.Facility != null ? w.Facility.Name : string.Empty).ThenByDescending(w => w.CreatedDate)
+                : query.OrderByDescending(w => w.Facility != null ? w.Facility.Name : string.Empty).ThenByDescending(w => w.CreatedDate),
+            "month" => normalizedSortDir == "asc"
+                ? query.OrderBy(w => (int)w.Month).ThenByDescending(w => w.CreatedDate)
+                : query.OrderByDescending(w => (int)w.Month).ThenByDescending(w => w.CreatedDate),
+            "year" => normalizedSortDir == "asc"
+                ? query.OrderBy(w => w.Year).ThenByDescending(w => w.CreatedDate)
+                : query.OrderByDescending(w => w.Year).ThenByDescending(w => w.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(w => w.Year).ThenBy(w => (int)w.Month).ThenByDescending(w => w.CreatedDate)
+                : query.OrderByDescending(w => w.Year).ThenByDescending(w => (int)w.Month).ThenByDescending(w => w.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var wwChars = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var items = wwChars.Select(w => new WWCharViewModel
         {
             Id = w.Id,
             CompanyId = w.CompanyId,
@@ -981,14 +1240,36 @@ namespace SAM.Controllers;
             FacilityPermitDisplay = w.FacilityPermit != null ? $"{w.FacilityPermit.PermitNumber} v{w.FacilityPermit.PermitVersion}" : null,
             FlowMeasuringPoint = w.FlowMeasuringPoint,
             ParameterMonitoringPoint = w.ParameterMonitoringPoint
-        });
+        }).ToList();
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.SelectedFacilityId = facilityId;
+        var model = new WWCharsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Filter = new WWCharFilterViewModel
+            {
+                FacilityId = facilityId,
+                Month = month,
+                Year = year,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new WWCharSortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            WWChars = new PagedResult<WWCharViewModel>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
 
-        return View(viewModels);
+        return View(model);
     }
 
     [HttpGet]
@@ -1520,7 +1801,14 @@ namespace SAM.Controllers;
     #region Groundwater Monitoring (GWMonit)
 
     [HttpGet]
-    public async Task<IActionResult> GWMonits(Guid? companyId = null, Guid? facilityId = null, Guid? monitoringWellId = null)
+    public async Task<IActionResult> GWMonits(
+        Guid? companyId = null,
+        Guid? facilityId = null,
+        Guid? monitoringWellId = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -1536,9 +1824,56 @@ namespace SAM.Controllers;
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var gwMonits = await _gwMonitService.GetAllAsync(companyId, facilityId, monitoringWellId);
-        
-        var viewModels = gwMonits.Select(g => new GWMonitViewModel
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "sampledate" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+
+        var query = _context.GWMonits
+            .Include(g => g.Company)
+            .Include(g => g.Facility)
+            .Include(g => g.MonitoringWell)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(g => g.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(g => g.FacilityId == facilityId.Value);
+        }
+
+        if (monitoringWellId.HasValue)
+        {
+            query = query.Where(g => g.MonitoringWellId == monitoringWellId.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(g => g.Facility != null ? g.Facility.Name : string.Empty).ThenByDescending(g => g.CreatedDate)
+                : query.OrderByDescending(g => g.Facility != null ? g.Facility.Name : string.Empty).ThenByDescending(g => g.CreatedDate),
+            "wellid" => normalizedSortDir == "asc"
+                ? query.OrderBy(g => g.MonitoringWell != null ? g.MonitoringWell.WellId : string.Empty).ThenByDescending(g => g.CreatedDate)
+                : query.OrderByDescending(g => g.MonitoringWell != null ? g.MonitoringWell.WellId : string.Empty).ThenByDescending(g => g.CreatedDate),
+            "conductivity" => normalizedSortDir == "asc"
+                ? query.OrderBy(g => g.Conductivity).ThenByDescending(g => g.CreatedDate)
+                : query.OrderByDescending(g => g.Conductivity).ThenByDescending(g => g.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(g => g.SampleDate).ThenByDescending(g => g.CreatedDate)
+                : query.OrderByDescending(g => g.SampleDate).ThenByDescending(g => g.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var gwMonits = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var items = gwMonits.Select(g => new GWMonitViewModel
         {
             Id = g.Id,
             CompanyId = g.CompanyId,
@@ -1592,16 +1927,36 @@ namespace SAM.Controllers;
             GW59ASignerName = g.GW59ASignerName,
             GW59ASignerTitle = g.GW59ASignerTitle,
             GW59ASignedDate = g.GW59ASignedDate
-        });
+        }).ToList();
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.MonitoringWells = await GetMonitoringWellSelectListAsync(companyId, facilityId);
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.SelectedFacilityId = facilityId;
-        ViewBag.SelectedMonitoringWellId = monitoringWellId;
+        var model = new GWMonitsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            MonitoringWells = await GetMonitoringWellSelectListAsync(companyId, facilityId),
+            Filter = new GWMonitFilterViewModel
+            {
+                FacilityId = facilityId,
+                MonitoringWellId = monitoringWellId,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new GWMonitSortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            GWMonits = new PagedResult<GWMonitViewModel>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
 
-        return View(viewModels);
+        return View(model);
     }
 
     [HttpGet]
