@@ -949,6 +949,39 @@ public class ReportsController : BaseController
     }
 
     [HttpGet]
+    public async Task<IActionResult> ExportNDAR1ReportPdf(Guid id, bool showGrid = false)
+    {
+        var report = await _ndar1Service.GetByIdAsync(id);
+        if (report == null)
+            return NotFound();
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        try
+        {
+            var pdfBytes = await RenderNdar1PdfAsync(report, showGrid);
+            var safeFacility = Regex.Replace(report.Facility?.Name ?? "Facility", @"[^\w\-]+", "_");
+            var fileName = $"NDAR-1_{safeFacility}_{report.Month}_{report.Year}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDAR-1 PDF export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = $"Error exporting NDAR-1 PDF: {ex.Message}";
+            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+        }
+    }
+
+    [HttpGet]
     public async Task<IActionResult> ExportNDMRReport(Guid id)
     {
         var report = await _ndar1Service.GetByIdAsync(id);
@@ -1563,6 +1596,341 @@ public class ReportsController : BaseController
 
         return outputStream.ToArray();
     }
+
+    private async Task<byte[]> RenderNdar1PdfAsync(NDAR1 report, bool showGrid = false)
+    {
+        var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Application Report (NDAR-1) Form 131014.pdf");
+        if (!System.IO.File.Exists(templatePath))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("NDAR-1 template PDF not found in wwwroot/forms.");
+        }
+
+        var irrigationReport = await _context.IrrRprts
+            .Where(i => i.FacilityId == report.FacilityId &&
+                        i.Month == report.Month &&
+                        i.Year == report.Year)
+            .OrderByDescending(i => i.UpdatedDate)
+            .FirstOrDefaultAsync();
+
+        var map = BuildNdar1PdfMap();
+        var allFields = report.Fields.OrderBy(f => f.FieldOrder).ToList();
+        if (allFields.Count == 0)
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("No NDAR-1 dynamic fields found for PDF export.");
+        }
+
+        var chunks = allFields
+            .Select((field, idx) => new { field, idx })
+            .GroupBy(x => x.idx / 4)
+            .Select(g => g.Select(x => x.field).ToList())
+            .ToList();
+
+        using var output = new MemoryStream();
+        using var document = new PdfDocument();
+        var templateForm = XPdfForm.FromFile(templatePath);
+        templateForm.PageNumber = 1;
+        var pageCount = chunks.Count;
+
+        for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
+        {
+            var chunk = chunks[pageIndex];
+            var page = document.AddPage();
+            page.Width = templateForm.PointWidth;
+            page.Height = templateForm.PointHeight;
+
+            var gfx = XGraphics.FromPdfPage(page);
+            gfx.DrawImage(templateForm, 0, 0, page.Width, page.Height);
+
+            var font = new XFont("Arial", 8, XFontStyle.Regular);
+            var bold = new XFont("Arial", 8, XFontStyle.Bold);
+            Draw(gfx, report.Facility?.PermitNumber, font, map.Header.PermitValue);
+            Draw(gfx, report.Facility?.Name, font, map.Header.FacilityValue);
+            Draw(gfx, report.Facility?.County, font, map.Header.CountyValue);
+            Draw(gfx, ((int)report.Month).ToString(), font, map.Header.MonthValue);
+            Draw(gfx, report.Year.ToString(), font, map.Header.YearValue);
+            Draw(gfx, report.DidIrrigationOccur ? "X" : string.Empty, font, map.Header.IrrigationYes);
+            Draw(gfx, report.DidIrrigationOccur ? string.Empty : "X", font, map.Header.IrrigationNo);
+            Draw(gfx, (pageIndex + 1).ToString(), font, map.Header.PageNumber);
+            Draw(gfx, pageCount.ToString(), font, map.Header.TotalPages);
+
+            for (var i = 0; i < chunk.Count; i++)
+            {
+                var field = chunk[i];
+                var x = map.FieldBlocks[i];
+                Draw(gfx, field.Sprayfield?.FieldId ?? $"Field {field.FieldOrder}", bold, new NdarPdfPoint(x.FieldNameX, map.FieldMetaY.FieldNameY));
+                Draw(gfx, (field.Sprayfield != null ? SAM.Utilities.SprayfieldReportHelper.GetReportAcres(field.Sprayfield).ToString("F2") : string.Empty), font, new NdarPdfPoint(x.AreaX, map.FieldMetaY.AreaY));
+                Draw(gfx, field.Sprayfield != null ? SAM.Utilities.SprayfieldZoneSummaryHelper.GetCropSummary(field.Sprayfield) ?? string.Empty : string.Empty, font, new NdarPdfPoint(x.CoverCropX, map.FieldMetaY.CoverCropY));
+                Draw(gfx, field.Sprayfield?.HourlyRateInches?.ToString("F2"), font, new NdarPdfPoint(x.HourlyRateX, map.FieldMetaY.HourlyRateY));
+                Draw(gfx, (field.Sprayfield?.AnnualRateInches ?? field.Sprayfield?.HydraulicLoadingLimitInPerYr)?.ToString("F2"), font, new NdarPdfPoint(x.AnnualRateX, map.FieldMetaY.AnnualRateY));
+                var irrigated = field.DailyValues.Any(d => (d.TimeIrrigated ?? 0m) > 0m || (d.VolumeApplied ?? 0m) > 0m);
+                Draw(gfx, irrigated ? "X" : string.Empty, font, new NdarPdfPoint(x.FieldIrrigatedYesX, map.FieldMetaY.FieldIrrigatedY));
+                Draw(gfx, irrigated ? string.Empty : "X", font, new NdarPdfPoint(x.FieldIrrigatedNoX, map.FieldMetaY.FieldIrrigatedY));
+            }
+
+            var daysInMonth = Math.Min(DateTime.DaysInMonth(report.Year, (int)report.Month), map.Table.MaxRows);
+            for (var day = 1; day <= daysInMonth; day++)
+            {
+                var dayIndex = day - 1;
+                var rowY = map.Table.FirstRowY + (dayIndex * map.Table.RowHeight);
+                Draw(gfx, SafeAt(report.WeatherCodeDaily, dayIndex), font, new NdarPdfPoint(map.Table.WeatherCodeX, rowY));
+                Draw(gfx, FormatNumber(SafeAt(report.TemperatureDaily, dayIndex), "F0"), font, new NdarPdfPoint(map.Table.TemperatureX, rowY));
+                Draw(gfx, FormatNumber(SafeAt(report.PrecipitationDaily, dayIndex), "F1"), font, new NdarPdfPoint(map.Table.PrecipitationX, rowY));
+                Draw(gfx, FormatNumber(SafeAt(report.FiveDayUpsetDaily, dayIndex), "F2"), font, new NdarPdfPoint(map.Table.FiveDayUpsetX, rowY));
+
+                for (var fieldIndex = 0; fieldIndex < chunk.Count; fieldIndex++)
+                {
+                    var field = chunk[fieldIndex];
+                    var daily = field.DailyValues.FirstOrDefault(d => d.DayNo == day);
+                    var col = map.FieldBlocks[fieldIndex];
+                    Draw(gfx, FormatNumber(daily?.VolumeApplied, "F0"), font, new NdarPdfPoint(col.VolumeX, rowY));
+                    Draw(gfx, FormatNumber(daily?.TimeIrrigated, "F0"), font, new NdarPdfPoint(col.TimeX, rowY));
+                    Draw(gfx, FormatNumber(daily?.DailyLoading, "F2"), font, new NdarPdfPoint(col.DailyLoadingX, rowY));
+                    Draw(gfx, FormatNumber(daily?.MaxHourlyLoading, "F2"), font, new NdarPdfPoint(col.MaxHourlyLoadingX, rowY));
+                }
+            }
+
+            var monthlyY = map.Table.MonthlyY;
+            var floatingY = map.Table.FloatingY;
+            for (var fieldIndex = 0; fieldIndex < chunk.Count; fieldIndex++)
+            {
+                var field = chunk[fieldIndex];
+                var col = map.FieldBlocks[fieldIndex];
+                Draw(gfx, FormatNumber(field.MonthlyLoading, "F2"), font, new NdarPdfPoint(col.DailyLoadingX, monthlyY));
+                Draw(gfx, FormatNumber(field.MaxHourlyLoading, "F2"), font, new NdarPdfPoint(col.MaxHourlyLoadingX, monthlyY));
+                Draw(gfx, FormatNumber(field.TwelveMonthFloatingTotal, "F2"), font, new NdarPdfPoint(col.DailyLoadingX, floatingY));
+            }
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+            }
+        }
+
+        // Append template page 2 (Certification) and page 3 (Formulas) from the
+        // original NDAR template so exports always include all 3 report sections.
+        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
+        if (templateDoc.PageCount >= 2)
+        {
+            document.AddPage(templateDoc.Pages[1]);
+            var certPage = document.Pages[document.PageCount - 1];
+            var certGfx = XGraphics.FromPdfPage(certPage);
+            var certFont = new XFont("Arial", 10, XFontStyle.Regular);
+            Draw(certGfx, (chunks.Count + 1).ToString(), certFont, map.Certification.CertPageNumber);
+            Draw(certGfx, (chunks.Count + 2).ToString(), certFont, map.Certification.CertTotalPages);
+
+            var markCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant;
+            var markNonCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant;
+
+            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q1Compliant);
+            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q2Compliant);
+            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q3Compliant);
+            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q4Compliant);
+            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q5Compliant);
+
+            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q1NonCompliant);
+            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q2NonCompliant);
+            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q3NonCompliant);
+            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q4NonCompliant);
+            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q5NonCompliant);
+
+            Draw(certGfx, string.Empty, certFont, map.Certification.NonComplianceReasonStart);
+            Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.OrcName);
+            Draw(certGfx, string.Empty, certFont, map.Certification.OrcCertificationNo);
+            Draw(certGfx, string.Empty, certFont, map.Certification.OrcGrade);
+            Draw(certGfx, string.Empty, certFont, map.Certification.OrcPhone);
+            Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedYes);
+            Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedNo);
+            Draw(certGfx, string.Empty, certFont, map.Certification.OrcSignature);
+            Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.OrcDate);
+
+            Draw(certGfx, report.Facility?.Permittee, certFont, map.Certification.PermitteeName);
+            Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.SigningOfficial);
+            Draw(certGfx, "Authorized Agent", certFont, map.Certification.SigningOfficialTitle);
+            Draw(certGfx, string.Empty, certFont, map.Certification.PermitteePhone);
+            Draw(certGfx, report.Facility?.PermitExpirationDate?.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitExp);
+            Draw(certGfx, string.Empty, certFont, map.Certification.PermitteeSignature);
+            Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitteeDate);
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(certGfx, certPage.Width.Point, certPage.Height.Point);
+            }
+        }
+
+        if (templateDoc.PageCount >= 3)
+        {
+            document.AddPage(templateDoc.Pages[2]);
+            var formulaPage = document.Pages[document.PageCount - 1];
+            var formulaGfx = XGraphics.FromPdfPage(formulaPage);
+            if (showGrid)
+            {
+                DrawCoordinateGrid(formulaGfx, formulaPage.Width.Point, formulaPage.Height.Point);
+            }
+        }
+
+        document.Save(output, false);
+        return output.ToArray();
+    }
+
+
+    private static string SafeAt(IReadOnlyList<string?> values, int index)
+        => index >= 0 && index < values.Count ? values[index] ?? string.Empty : string.Empty;
+
+    private static decimal? SafeAt(IReadOnlyList<decimal?> values, int index)
+        => index >= 0 && index < values.Count ? values[index] : null;
+
+    private static string FormatNumber(decimal? value, string format)
+        => value.HasValue ? value.Value.ToString(format) : string.Empty;
+
+    private static void Draw(XGraphics gfx, string? text, XFont font, NdarPdfPoint point)
+    {
+        gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(point.X, point.Y, 220, font.Height + 2), XStringFormats.TopLeft);
+    }
+
+    private static Ndar1PdfMap BuildNdar1PdfMap()
+    {
+        return new Ndar1PdfMap(
+            Header: new NdarHeaderMap(
+                PermitValue: new NdarPdfPoint(80, 40),
+                FacilityValue: new NdarPdfPoint(230, 40),
+                CountyValue: new NdarPdfPoint(510, 40),
+                MonthValue: new NdarPdfPoint(620, 40),
+                YearValue: new NdarPdfPoint(730, 40),
+                IrrigationYes: new NdarPdfPoint(43, 100),
+                IrrigationNo: new NdarPdfPoint(90, 101),
+                PageNumber: new NdarPdfPoint(683, 16),
+                TotalPages: new NdarPdfPoint(720, 16)),
+            FieldMetaY: new NdarFieldMetaYMap(
+                FieldNameY: 58,
+                AreaY: 72,
+                CoverCropY: 85,
+                HourlyRateY: 100,
+                AnnualRateY: 113,
+                FieldIrrigatedY: 122),
+            Table: new NdarTableMap(
+                MaxRows: 31,
+                FirstRowY: 206,
+                RowHeight: 11.18,
+                WeatherCodeX: 40,
+                TemperatureX: 69,
+                PrecipitationX: 94,
+                FiveDayUpsetX: 139,
+                MonthlyY: 554,
+                FloatingY: 563),
+            FieldBlocks: new[]
+            {
+                new NdarFieldColumnMap(241, 241, 241, 241, 241, 170, 210, 250, 290, 242, 281),
+                new NdarFieldColumnMap(395, 395, 395, 395, 395, 320, 360, 400, 440, 395, 433),
+                new NdarFieldColumnMap(548, 548, 548, 548, 548, 470, 510, 550, 590, 546, 585),
+                new NdarFieldColumnMap(695, 695, 695, 695, 695, 621, 661, 701, 741, 699, 738)
+            },
+            Certification: new NdarCertificationMap(
+                CertPageNumber: new NdarPdfPoint(683, 18),
+                CertTotalPages: new NdarPdfPoint(720, 18),
+                Q1Compliant: new NdarPdfPoint(625, 46),
+                Q2Compliant: new NdarPdfPoint(625, 69),
+                Q3Compliant: new NdarPdfPoint(625, 91),
+                Q4Compliant: new NdarPdfPoint(625, 113),
+                Q5Compliant: new NdarPdfPoint(625, 135),
+                Q1NonCompliant: new NdarPdfPoint(679, 46),
+                Q2NonCompliant: new NdarPdfPoint(679, 69),
+                Q3NonCompliant: new NdarPdfPoint(679, 91),
+                Q4NonCompliant: new NdarPdfPoint(679, 113),
+                Q5NonCompliant: new NdarPdfPoint(679, 135),
+                NonComplianceReasonStart: new NdarPdfPoint(30, 180),
+                OrcName: new NdarPdfPoint(50, 317),
+                OrcCertificationNo: new NdarPdfPoint(100, 340),
+                OrcGrade: new NdarPdfPoint(60, 360),
+                OrcPhone: new NdarPdfPoint(200, 362),
+                OrcChangedYes: new NdarPdfPoint(251, 386),
+                OrcChangedNo: new NdarPdfPoint(287, 388),
+                OrcSignature: new NdarPdfPoint(100, 410),
+                OrcDate: new NdarPdfPoint(320, 420),
+                PermitteeName: new NdarPdfPoint(448, 316),
+                SigningOfficial: new NdarPdfPoint(460, 339),
+                SigningOfficialTitle: new NdarPdfPoint(490, 360),
+                PermitteePhone: new NdarPdfPoint(460, 385),
+                PermitExp: new NdarPdfPoint(630, 384),
+                PermitteeSignature: new NdarPdfPoint(490, 411),
+                PermitteeDate: new NdarPdfPoint(700, 420)));
+    }
+
+    private sealed record NdarPdfPoint(double X, double Y);
+    private sealed record Ndar1PdfMap(
+        NdarHeaderMap Header,
+        NdarFieldMetaYMap FieldMetaY,
+        NdarTableMap Table,
+        NdarFieldColumnMap[] FieldBlocks,
+        NdarCertificationMap Certification);
+    private sealed record NdarHeaderMap(
+        NdarPdfPoint PermitValue,
+        NdarPdfPoint FacilityValue,
+        NdarPdfPoint CountyValue,
+        NdarPdfPoint MonthValue,
+        NdarPdfPoint YearValue,
+        NdarPdfPoint IrrigationYes,
+        NdarPdfPoint IrrigationNo,
+        NdarPdfPoint PageNumber,
+        NdarPdfPoint TotalPages);
+    private sealed record NdarFieldMetaYMap(
+        double FieldNameY,
+        double AreaY,
+        double CoverCropY,
+        double HourlyRateY,
+        double AnnualRateY,
+        double FieldIrrigatedY);
+    private sealed record NdarTableMap(
+        int MaxRows,
+        double FirstRowY,
+        double RowHeight,
+        double WeatherCodeX,
+        double TemperatureX,
+        double PrecipitationX,
+        double FiveDayUpsetX,
+        double MonthlyY,
+        double FloatingY);
+    private sealed record NdarFieldColumnMap(
+        double FieldNameX,
+        double AreaX,
+        double CoverCropX,
+        double HourlyRateX,
+        double AnnualRateX,
+        double VolumeX,
+        double TimeX,
+        double DailyLoadingX,
+        double MaxHourlyLoadingX,
+        double FieldIrrigatedYesX,
+        double FieldIrrigatedNoX);
+
+    private sealed record NdarCertificationMap(
+        NdarPdfPoint CertPageNumber,
+        NdarPdfPoint CertTotalPages,
+        NdarPdfPoint Q1Compliant,
+        NdarPdfPoint Q2Compliant,
+        NdarPdfPoint Q3Compliant,
+        NdarPdfPoint Q4Compliant,
+        NdarPdfPoint Q5Compliant,
+        NdarPdfPoint Q1NonCompliant,
+        NdarPdfPoint Q2NonCompliant,
+        NdarPdfPoint Q3NonCompliant,
+        NdarPdfPoint Q4NonCompliant,
+        NdarPdfPoint Q5NonCompliant,
+        NdarPdfPoint NonComplianceReasonStart,
+        NdarPdfPoint OrcName,
+        NdarPdfPoint OrcCertificationNo,
+        NdarPdfPoint OrcGrade,
+        NdarPdfPoint OrcPhone,
+        NdarPdfPoint OrcChangedYes,
+        NdarPdfPoint OrcChangedNo,
+        NdarPdfPoint OrcSignature,
+        NdarPdfPoint OrcDate,
+        NdarPdfPoint PermitteeName,
+        NdarPdfPoint SigningOfficial,
+        NdarPdfPoint SigningOfficialTitle,
+        NdarPdfPoint PermitteePhone,
+        NdarPdfPoint PermitExp,
+        NdarPdfPoint PermitteeSignature,
+        NdarPdfPoint PermitteeDate);
 
     private async Task<byte[]> RenderGw59APdfAsync(Gw59ExportModel model, bool showGrid = false)
     {

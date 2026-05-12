@@ -281,9 +281,14 @@
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-between">
-                                    <a asp-action="ExportNDAR1Report" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success js-report-export-link">
-                                        <i class="bi bi-download"></i> Export
-                                    </a>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="ExportNDAR1Report" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success js-report-export-link">
+                                            <i class="bi bi-file-earmark-spreadsheet"></i> Excel
+                                        </a>
+                                        <a asp-action="ExportNDAR1ReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-danger js-report-export-link">
+                                            <i class="bi bi-file-earmark-pdf"></i> PDF
+                                        </a>
+                                    </div>
                                     @if (canEdit)
                                     {
                                         <div class="btn-group" role="group">
