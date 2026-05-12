@@ -1,6 +1,12 @@
 @model IEnumerable<SAM.ViewModels.OperationalData.MonthlyApplicationViewModel>
 @{
     ViewData["Title"] = "Monthly Applications";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
+    var selectedSprayfieldId = ViewBag.SelectedSprayfieldId as Guid?;
+    var selectedMonth = ViewBag.SelectedMonth as int?;
+    var selectedYear = ViewBag.SelectedYear as int?;
 }
 
 @section PageTitleInline {
@@ -23,6 +29,62 @@
 
 <div class="card">
     <div class="card-body">
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-md-3">
+                @* <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility</label> *@
+                <select name="facilityId" id="facilityId" class="form-select">
+                    <option value="">All Facilities</option>
+                    @if (facilities != null)
+                    {
+                        @foreach (var facility in facilities)
+                        {
+                            <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
+                                @facility.Text
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                @* <label for="sprayfieldId" class="form-label"><i class="bi bi-diagram-3 me-1"></i>Sprayfield</label> *@
+                <select name="sprayfieldId" id="sprayfieldId" class="form-select">
+                    <option value="">All Sprayfields</option>
+                    @if (sprayfields != null)
+                    {
+                        @foreach (var sprayfield in sprayfields)
+                        {
+                            <option value="@sprayfield.Value" selected="@(selectedSprayfieldId.HasValue && selectedSprayfieldId.Value.ToString() == sprayfield.Value)">
+                                @sprayfield.Text
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                @* <label for="month" class="form-label"><i class="bi bi-calendar-month me-1"></i>Month</label> *@
+                <select name="month" id="month" class="form-select">
+                    <option value="">All Months</option>
+                    @for (var m = 1; m <= 12; m++)
+                    {
+                        var monthName = new DateTime(2000, m, 1).ToString("MMMM");
+                        <option value="@m" selected="@(selectedMonth.HasValue && selectedMonth.Value == m)">@monthName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                @* <label for="year" class="form-label"><i class="bi bi-calendar3 me-1"></i>Year</label> *@
+                <input type="number" placeholder="Year" id="year" name="year" min="2000" max="2100" class="form-control" value="@(selectedYear?.ToString() ?? string.Empty)" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-funnel"></i> 
+                </button>
+                <a asp-action="MonthlyApplications" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-x-circle"></i> 
+                </a>
+            </div>
+        </form>
+
         <div class="d-flex align-items-center justify-content-between mb-4 page-section-header">
             <div class="btn-group" role="group" aria-label="View mode toggle">
                 <button type="button" class="btn btn-outline-secondary btn-sm active" id="monthlyAppsTableViewBtn">
@@ -32,7 +94,7 @@
                     <i class="bi bi-grid-3x3-gap"></i> Cards
                 </button>
             </div>
-            <a asp-action="MonthlyApplicationCreate" class="btn btn-primary btn-sm">
+            <a asp-action="MonthlyApplicationCreate" asp-route-facilityId="@selectedFacilityId" asp-route-sprayfieldId="@selectedSprayfieldId" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-circle"></i> Add Application
             </a>
         </div>

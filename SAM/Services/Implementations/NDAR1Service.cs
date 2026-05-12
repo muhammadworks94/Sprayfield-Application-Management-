@@ -65,15 +65,18 @@ public class NDAR1Service : INDAR1Service
             query = query.Where(n => n.FacilityId == facilityId.Value);
         }
 
-        return await query
+        var reports = await query
             .OrderByDescending(n => n.Year)
             .ThenByDescending(n => n.Month)
             .ToListAsync();
+
+        await ApplyDidIrrigationOccurFromApplicationsAsync(reports);
+        return reports;
     }
 
     public async Task<NDAR1?> GetByIdAsync(Guid id)
     {
-        return await _context.NDAR1s
+        var report = await _context.NDAR1s
             .Include(n => n.Company)
             .Include(n => n.Facility)
             .Include(n => n.Field1)
@@ -90,6 +93,13 @@ public class NDAR1Service : INDAR1Service
             .Include(n => n.Fields)
                 .ThenInclude(f => f.DailyValues)
             .FirstOrDefaultAsync(n => n.Id == id);
+
+        if (report != null)
+        {
+            await ApplyDidIrrigationOccurFromApplicationsAsync(new List<NDAR1> { report });
+        }
+
+        return report;
     }
 
     public async Task<NDAR1> CreateAsync(NDAR1 ndar1)
@@ -117,6 +127,10 @@ public class NDAR1Service : INDAR1Service
         // Initialize daily arrays if empty
         InitializeDailyArrays(ndar1);
         SyncDynamicFieldsFromLegacy(ndar1);
+        ndar1.DidIrrigationOccur = await ComputeDidIrrigationOccurForMonthAsync(
+            ndar1.FacilityId,
+            ndar1.Year,
+            (int)ndar1.Month);
 
         _context.NDAR1s.Add(ndar1);
         await _context.SaveChangesAsync();
@@ -156,7 +170,10 @@ public class NDAR1Service : INDAR1Service
         // Update all properties
         existing.Month = ndar1.Month;
         existing.Year = ndar1.Year;
-        existing.DidIrrigationOccur = ndar1.DidIrrigationOccur;
+        existing.DidIrrigationOccur = await ComputeDidIrrigationOccurForMonthAsync(
+            ndar1.FacilityId,
+            ndar1.Year,
+            (int)ndar1.Month);
         existing.WeatherCodeDaily = ndar1.WeatherCodeDaily;
         existing.TemperatureDaily = ndar1.TemperatureDaily;
         existing.PrecipitationDaily = ndar1.PrecipitationDaily;
@@ -325,7 +342,7 @@ public class NDAR1Service : INDAR1Service
             FacilityId = facilityId,
             Month = (MonthEnum)month,
             Year = year,
-            DidIrrigationOccur = applications.Any()
+            DidIrrigationOccur = applications.Any(a => a.TimeIrrigatedMinutes.HasValue && a.TimeIrrigatedMinutes.Value > 0m)
         };
 
         // Initialize daily arrays
@@ -407,6 +424,56 @@ public class NDAR1Service : INDAR1Service
         BuildDynamicFields(report, sprayfieldList, sprayfieldById, fieldApplications, startDate, daysInMonth, endDate);
 
         return report;
+    }
+
+    private async Task ApplyDidIrrigationOccurFromApplicationsAsync(List<NDAR1> reports)
+    {
+        if (reports.Count == 0)
+        {
+            return;
+        }
+
+        var facilityIds = reports.Select(r => r.FacilityId).Distinct().ToList();
+        var start = reports.Min(r => new DateTime(r.Year, (int)r.Month, 1));
+        var endExclusive = reports
+            .Max(r => new DateTime(r.Year, (int)r.Month, 1).AddMonths(1));
+
+        var irrigatedMonthKeys = await _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(a =>
+                facilityIds.Contains(a.FacilityId) &&
+                a.ApplicationDate >= start &&
+                a.ApplicationDate < endExclusive &&
+                a.TimeIrrigatedMinutes.HasValue &&
+                a.TimeIrrigatedMinutes.Value > 0m)
+            .Select(a => new { a.FacilityId, a.ApplicationDate.Year, a.ApplicationDate.Month })
+            .Distinct()
+            .ToListAsync();
+
+        var irrigatedLookup = irrigatedMonthKeys
+            .Select(x => (x.FacilityId, x.Year, x.Month))
+            .ToHashSet();
+
+        foreach (var report in reports)
+        {
+            report.DidIrrigationOccur = irrigatedLookup.Contains((report.FacilityId, report.Year, (int)report.Month));
+        }
+    }
+
+    private async Task<bool> ComputeDidIrrigationOccurForMonthAsync(Guid facilityId, int year, int month)
+    {
+        var monthStart = new DateTime(year, month, 1);
+        var monthEndExclusive = monthStart.AddMonths(1);
+
+        return await _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(a =>
+                a.FacilityId == facilityId &&
+                a.ApplicationDate >= monthStart &&
+                a.ApplicationDate < monthEndExclusive &&
+                a.TimeIrrigatedMinutes.HasValue &&
+                a.TimeIrrigatedMinutes.Value > 0m)
+            .AnyAsync();
     }
 
     private void BuildDynamicFields(

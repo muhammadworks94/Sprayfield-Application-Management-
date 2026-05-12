@@ -14,6 +14,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Extensions;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
+using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
 using SAM.Services.Helpers;
@@ -393,7 +394,11 @@ namespace SAM.Controllers;
     #region Monthly Applications
 
     [HttpGet]
-    public async Task<IActionResult> MonthlyApplications(Guid? facilityId = null, Guid? sprayfieldId = null)
+    public async Task<IActionResult> MonthlyApplications(
+        Guid? facilityId = null,
+        Guid? sprayfieldId = null,
+        int? month = null,
+        int? year = null)
     {
         var companyId = await GetEffectiveCompanyIdAsync();
         if (companyId.HasValue)
@@ -421,8 +426,22 @@ namespace SAM.Controllers;
             Comments = a.Comments
         });
 
+        if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+        {
+            items = items.Where(x => x.ApplicationDate.Month == month.Value);
+        }
+
+        if (year.HasValue && year.Value >= 2000 && year.Value <= 2100)
+        {
+            items = items.Where(x => x.ApplicationDate.Year == year.Value);
+        }
+
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyId, facilityId);
+        ViewBag.SelectedFacilityId = facilityId;
+        ViewBag.SelectedSprayfieldId = sprayfieldId;
+        ViewBag.SelectedMonth = month;
+        ViewBag.SelectedYear = year;
         return View(items);
     }
 
@@ -520,7 +539,7 @@ namespace SAM.Controllers;
             catch (InvalidOperationException)
             {
                 var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(viewModel.FacilityId, viewModel.ApplicationDate);
-                ModelState.AddModelError(string.Empty, dependencyGuidance.DependencySummary);
+                ModelState.AddModelError(string.Empty, BuildMonthlyDependencyUserMessage(dependencyGuidance));
                 ViewBag.WWCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl;
                 ViewBag.MonthlyDependencyGuidance = dependencyGuidance;
             }
@@ -557,7 +576,32 @@ namespace SAM.Controllers;
             Comments = viewModel.Comments ?? string.Empty
         };
 
-        await _monthlyApplicationService.CreateAsync(application);
+        try
+        {
+            await _monthlyApplicationService.CreateAsync(application);
+        }
+        catch (BusinessRuleException)
+        {
+            var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(viewModel.FacilityId, viewModel.ApplicationDate);
+            ModelState.AddModelError(string.Empty, BuildMonthlyDependencyUserMessage(dependencyGuidance));
+            ViewBag.WWCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl;
+            ViewBag.MonthlyDependencyGuidance = dependencyGuidance;
+            var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
+            ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
+            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
+            return View(viewModel);
+        }
+        catch (InvalidOperationException)
+        {
+            var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(viewModel.FacilityId, viewModel.ApplicationDate);
+            ModelState.AddModelError(string.Empty, BuildMonthlyDependencyUserMessage(dependencyGuidance));
+            ViewBag.WWCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl;
+            ViewBag.MonthlyDependencyGuidance = dependencyGuidance;
+            var companyIdForLists = viewModel.CompanyId == Guid.Empty ? await GetEffectiveCompanyIdAsync() : viewModel.CompanyId;
+            ViewBag.Facilities = await GetFacilitySelectListAsync(companyIdForLists);
+            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
+            return View(viewModel);
+        }
         TempData["SuccessMessage"] = "Monthly application created successfully.";
         return RedirectToAction(nameof(MonthlyApplications), new { facilityId = viewModel.FacilityId });
     }
@@ -662,7 +706,7 @@ namespace SAM.Controllers;
             catch (InvalidOperationException)
             {
                 var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(viewModel.FacilityId, viewModel.ApplicationDate);
-                ModelState.AddModelError(string.Empty, dependencyGuidance.DependencySummary);
+                ModelState.AddModelError(string.Empty, BuildMonthlyDependencyUserMessage(dependencyGuidance));
                 ViewBag.WWCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl;
                 ViewBag.MonthlyDependencyGuidance = dependencyGuidance;
             }
@@ -695,7 +739,30 @@ namespace SAM.Controllers;
         application.MaximumHourlyLoadingInchesPerAcre = sprayfield!.HourlyRateInches!.Value;
         application.Comments = viewModel.Comments ?? string.Empty;
 
-        await _monthlyApplicationService.UpdateAsync(application);
+        try
+        {
+            await _monthlyApplicationService.UpdateAsync(application);
+        }
+        catch (BusinessRuleException)
+        {
+            var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(viewModel.FacilityId, viewModel.ApplicationDate);
+            ModelState.AddModelError(string.Empty, BuildMonthlyDependencyUserMessage(dependencyGuidance));
+            ViewBag.WWCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl;
+            ViewBag.MonthlyDependencyGuidance = dependencyGuidance;
+            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
+            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
+            return View(viewModel);
+        }
+        catch (InvalidOperationException)
+        {
+            var dependencyGuidance = await BuildMonthlyAppDependencyGuidanceAsync(viewModel.FacilityId, viewModel.ApplicationDate);
+            ModelState.AddModelError(string.Empty, BuildMonthlyDependencyUserMessage(dependencyGuidance));
+            ViewBag.WWCharShortcutUrl = dependencyGuidance.WwCharShortcutUrl;
+            ViewBag.MonthlyDependencyGuidance = dependencyGuidance;
+            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
+            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
+            return View(viewModel);
+        }
         TempData["SuccessMessage"] = "Monthly application updated successfully.";
         return RedirectToAction(nameof(MonthlyApplications), new { facilityId = viewModel.FacilityId });
     }
@@ -2780,6 +2847,24 @@ namespace SAM.Controllers;
         public string PermitVersionsUrl { get; init; } = string.Empty;
     }
 
+    private static string BuildMonthlyDependencyUserMessage(MonthlyDependencyGuidanceDto guidance)
+    {
+        if (guidance == null)
+        {
+            return "WWChar chemistry is required before saving this monthly application.";
+        }
+
+        var steps = guidance.DependencySteps
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Take(3)
+            .Select((s, i) => $"{i + 1}. {s.Trim()}");
+
+        var stepsText = string.Join(" ", steps);
+        return string.IsNullOrWhiteSpace(stepsText)
+            ? guidance.DependencySummary
+            : $"{guidance.DependencySummary} Next steps: {stepsText}";
+    }
+
     private async Task<MonthlyDependencyGuidanceDto> BuildMonthlyAppDependencyGuidanceAsync(Guid facilityId, DateTime applicationDate)
     {
         var monthLabel = applicationDate.ToString("MMM yyyy");
@@ -2893,7 +2978,7 @@ namespace SAM.Controllers;
             wwCharTemplateValues,
             pcsByTemplateParameterId);
 
-        if (tknFromTemplate.HasValue || wwChar.TKNN.HasValue)
+        if (!tknFromTemplate.HasValue && !wwChar.TKNN.HasValue)
         {
             return new MonthlyDependencyGuidanceDto
             {

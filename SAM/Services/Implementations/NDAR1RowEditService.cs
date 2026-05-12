@@ -331,6 +331,20 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 }
             }
 
+            var monthStart = new DateTime(report.Year, (int)report.Month, 1);
+            var monthEndExclusive = monthStart.AddMonths(1);
+            var hasOtherIrrigationThisMonth = await _context.MonthlyApplications
+                .Where(x =>
+                    x.FacilityId == report.FacilityId &&
+                    x.ApplicationDate >= monthStart &&
+                    x.ApplicationDate < monthEndExclusive &&
+                    x.ApplicationDate != dayDate &&
+                    x.TimeIrrigatedMinutes.HasValue &&
+                    x.TimeIrrigatedMinutes.Value > 0m)
+                .AnyAsync();
+            var hasIrrigationForEditedDay = request.Applications.Any(x => x.TimeIrrigatedMinutes.HasValue && x.TimeIrrigatedMinutes.Value > 0m);
+            report.DidIrrigationOccur = hasOtherIrrigationThisMonth || hasIrrigationForEditedDay;
+
             lockRow.ReleasedAtUtc = DateTime.UtcNow;
             lockRow.ExpiresAtUtc = DateTime.UtcNow;
 
