@@ -384,8 +384,8 @@ namespace SAM.Controllers;
                 NextShiftNotes = viewModel.NextShiftNotes ?? string.Empty
             };
 
-            await _operatorLogService.CreateAsync(operatorLog);
-            TempData["SuccessMessage"] = "Operator log created successfully.";
+            var saveResult = await _operatorLogService.CreateWithNdarRefreshAsync(operatorLog);
+            SetSaveMessagesWithNdarOutcome("Operator log created successfully.", saveResult.NdarRefreshOutcomes);
             return RedirectToAction(nameof(OperatorLogs));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
@@ -473,8 +473,8 @@ namespace SAM.Controllers;
             operatorLog.CorrectiveActions = viewModel.CorrectiveActions ?? string.Empty;
             operatorLog.NextShiftNotes = viewModel.NextShiftNotes ?? string.Empty;
 
-            await _operatorLogService.UpdateAsync(operatorLog);
-            TempData["SuccessMessage"] = "Operator log updated successfully.";
+            var saveResult = await _operatorLogService.UpdateWithNdarRefreshAsync(operatorLog);
+            SetSaveMessagesWithNdarOutcome("Operator log updated successfully.", saveResult.NdarRefreshOutcomes);
             return RedirectToAction(nameof(OperatorLogs));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
@@ -498,8 +498,11 @@ namespace SAM.Controllers;
                 await EnsureCompanyAccessAsync(log.CompanyId);
             }
 
-            await _operatorLogService.DeleteAsync(id);
-            TempData["SuccessMessage"] = "Operator log deleted successfully.";
+            var deleteResult = await _operatorLogService.DeleteWithNdarRefreshAsync(id);
+            if (deleteResult.Deleted)
+            {
+                SetSaveMessagesWithNdarOutcome("Operator log deleted successfully.", deleteResult.NdarRefreshOutcomes);
+            }
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
@@ -778,7 +781,8 @@ namespace SAM.Controllers;
 
         try
         {
-            await _monthlyApplicationService.CreateAsync(application);
+            var saveResult = await _monthlyApplicationService.CreateWithNdarRefreshAsync(application);
+            SetSaveMessagesWithNdarOutcome("Monthly application created successfully.", saveResult.NdarRefreshOutcomes);
         }
         catch (BusinessRuleException)
         {
@@ -802,7 +806,6 @@ namespace SAM.Controllers;
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
             return View(viewModel);
         }
-        TempData["SuccessMessage"] = "Monthly application created successfully.";
         return RedirectToAction(nameof(MonthlyApplications), new { facilityId = viewModel.FacilityId });
     }
 
@@ -941,7 +944,8 @@ namespace SAM.Controllers;
 
         try
         {
-            await _monthlyApplicationService.UpdateAsync(application);
+            var saveResult = await _monthlyApplicationService.UpdateWithNdarRefreshAsync(application);
+            SetSaveMessagesWithNdarOutcome("Monthly application updated successfully.", saveResult.NdarRefreshOutcomes);
         }
         catch (BusinessRuleException)
         {
@@ -963,7 +967,6 @@ namespace SAM.Controllers;
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
             return View(viewModel);
         }
-        TempData["SuccessMessage"] = "Monthly application updated successfully.";
         return RedirectToAction(nameof(MonthlyApplications), new { facilityId = viewModel.FacilityId });
     }
 
@@ -1015,8 +1018,11 @@ namespace SAM.Controllers;
             await EnsureCompanyAccessAsync(application.CompanyId);
             var facilityId = application.FacilityId;
 
-            await _monthlyApplicationService.DeleteAsync(id);
-            TempData["SuccessMessage"] = "Monthly application deleted successfully.";
+            var deleteResult = await _monthlyApplicationService.DeleteWithNdarRefreshAsync(id);
+            if (deleteResult.Deleted)
+            {
+                SetSaveMessagesWithNdarOutcome("Monthly application deleted successfully.", deleteResult.NdarRefreshOutcomes);
+            }
             return RedirectToAction(nameof(MonthlyApplications), new { facilityId });
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
@@ -3851,6 +3857,51 @@ namespace SAM.Controllers;
         }
 
         return MonthlyApplicationCalculationHelper.ComputeDailyLoadingFromVolume(volumeGallons, acres);
+    }
+
+    private void SetSaveMessagesWithNdarOutcome(string baseSuccessMessage, IReadOnlyCollection<NdarRefreshOutcome> outcomes)
+    {
+        if (outcomes == null || outcomes.Count == 0)
+        {
+            TempData["SuccessMessage"] = baseSuccessMessage;
+            return;
+        }
+
+        var distinctOutcomes = outcomes
+            .GroupBy(x => (x.FacilityId, x.Year, x.Month, x.Status))
+            .Select(g => g.First())
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
+            .ToList();
+
+        var successParts = new List<string>();
+        var warningParts = new List<string>();
+
+        foreach (var outcome in distinctOutcomes)
+        {
+            var period = new DateTime(outcome.Year, outcome.Month, 1).ToString("MMM yyyy");
+            switch (outcome.Status)
+            {
+                case NdarRefreshStatus.Updated:
+                    successParts.Add($"NDAR-1 ({period}) refreshed.");
+                    break;
+                case NdarRefreshStatus.NoReport:
+                    successParts.Add($"No NDAR-1 exists for {period}, so no refresh was needed.");
+                    break;
+                case NdarRefreshStatus.Failed:
+                    warningParts.Add($"NDAR-1 refresh failed for {period}. Please retry.");
+                    break;
+            }
+        }
+
+        TempData["SuccessMessage"] = successParts.Count > 0
+            ? $"{baseSuccessMessage} {string.Join(" ", successParts)}"
+            : baseSuccessMessage;
+
+        if (warningParts.Count > 0)
+        {
+            TempData["WarningMessage"] = string.Join(" ", warningParts);
+        }
     }
 
     #endregion

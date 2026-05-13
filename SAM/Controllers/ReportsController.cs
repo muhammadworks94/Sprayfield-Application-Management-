@@ -680,7 +680,7 @@ public class ReportsController : BaseController
 
             if (existing != null)
             {
-                TempData["SuccessMessage"] = $"NDAR-1 report for {viewModel.Month} {viewModel.Year} already exists. Reusing the existing report.";
+                TempData["SuccessMessage"] = $"NDAR-1 report for {viewModel.Month} {viewModel.Year} already exists. Reusing the existing report. It is automatically synced when related monthly applications or operator logs are updated.";
                 return RedirectToAction(nameof(NDAR1ReportDetails), new { id = existing.Id });
             }
 

@@ -1,4 +1,5 @@
 using SAM.Domain.Entities;
+using SAM.Services.Models;
 
 namespace SAM.Services.Interfaces;
 
@@ -9,4 +10,7 @@ public interface IMonthlyApplicationService
     Task<MonthlyApplication> CreateAsync(MonthlyApplication application);
     Task<MonthlyApplication> UpdateAsync(MonthlyApplication application);
     Task<bool> DeleteAsync(Guid id);
+    Task<MonthlyApplicationMutationResult> CreateWithNdarRefreshAsync(MonthlyApplication application);
+    Task<MonthlyApplicationMutationResult> UpdateWithNdarRefreshAsync(MonthlyApplication application);
+    Task<(bool Deleted, List<NdarRefreshOutcome> NdarRefreshOutcomes)> DeleteWithNdarRefreshAsync(Guid id);
 }

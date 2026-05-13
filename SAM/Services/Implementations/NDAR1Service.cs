@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SAM.Data;
@@ -8,7 +9,9 @@ using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 using SAM.Utilities;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace SAM.Services.Implementations;
@@ -287,6 +290,178 @@ public class NDAR1Service : INDAR1Service
             .FirstOrDefaultAsync(n => n.FacilityId == facilityId && (int)n.Month == month && n.Year == year);
     }
 
+    public async Task<NdarRefreshOutcome> RefreshExistingReportForMonthAsync(Guid facilityId, int month, int year)
+    {
+        var outcome = new NdarRefreshOutcome
+        {
+            FacilityId = facilityId,
+            Month = month,
+            Year = year
+        };
+        var periodText = new DateTime(year, month, 1).ToString("MMM yyyy");
+        var lockResource = $"NDAR1:{facilityId:D}:{year:D4}:{month:D2}";
+        var lockTimeoutMs = 60000;
+        var refreshStopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            Guid? refreshedReportId = null;
+            var noReport = false;
+            const int maxConcurrencyAttempts = 2;
+            var concurrencyAttempt = 0;
+
+            while (true)
+            {
+                try
+                {
+                    var strategy = _context.Database.CreateExecutionStrategy();
+                    await strategy.ExecuteAsync(async () =>
+                    {
+                        await using var tx = await _context.Database.BeginTransactionAsync();
+                        var lockResult = await AcquireNdarRefreshLockAsync(lockResource, lockTimeoutMs);
+
+                        if (lockResult < 0)
+                        {
+                            throw new NdarRefreshLockException(lockResource, lockResult);
+                        }
+
+                        _logger.LogInformation(
+                            "Acquired NDAR-1 refresh lock {LockResource} for facility {FacilityId} month {Month} year {Year}.",
+                            lockResource, facilityId, month, year);
+
+                        var existing = await _context.NDAR1s
+                            .FirstOrDefaultAsync(n => n.FacilityId == facilityId && (int)n.Month == month && n.Year == year);
+
+                        if (existing == null)
+                        {
+                            noReport = true;
+                            await tx.CommitAsync();
+                            _logger.LogInformation(
+                                "Released NDAR-1 refresh lock {LockResource} for facility {FacilityId} month {Month} year {Year} (no report).",
+                                lockResource, facilityId, month, year);
+                            return;
+                        }
+
+                        _logger.LogInformation("Refreshing NDAR-1 report {ReportId} for facility {FacilityId} month {Month} year {Year}.",
+                            existing.Id, facilityId, month, year);
+
+                        var regenerated = await GenerateMonthlyReportAsync(facilityId, month, year);
+                        CopyComputedSnapshotWithoutDynamicFields(existing, regenerated);
+                        await _context.NDAR1FieldDailies
+                            .Where(d => d.NDAR1Field != null && d.NDAR1Field.NDAR1Id == existing.Id)
+                            .ExecuteDeleteAsync();
+                        await _context.NDAR1Fields
+                            .Where(f => f.NDAR1Id == existing.Id)
+                            .ExecuteDeleteAsync();
+
+                        var newFields = BuildDynamicFieldEntities(existing.Id, regenerated);
+                        if (newFields.Count > 0)
+                        {
+                            _context.NDAR1Fields.AddRange(newFields);
+                        }
+
+                        await _context.SaveChangesAsync();
+                        await tx.CommitAsync();
+                        _logger.LogInformation(
+                            "Released NDAR-1 refresh lock {LockResource} for facility {FacilityId} month {Month} year {Year} after update.",
+                            lockResource, facilityId, month, year);
+
+                        refreshedReportId = existing.Id;
+                    });
+
+                    break;
+                }
+                catch (DbUpdateConcurrencyException ex) when (concurrencyAttempt < maxConcurrencyAttempts - 1)
+                {
+                    concurrencyAttempt++;
+                    _logger.LogWarning(ex,
+                        "NDAR-1 refresh concurrency conflict for facility {FacilityId} month {Month} year {Year}. Retrying attempt {Attempt}.",
+                        facilityId, month, year, concurrencyAttempt + 1);
+
+                    _context.ChangeTracker.Clear();
+                    await Task.Delay(200);
+                }
+            }
+
+            if (noReport)
+            {
+                _logger.LogDebug("NDAR-1 refresh skipped: no report for facility {FacilityId} month {Month} year {Year}.",
+                    facilityId, month, year);
+                outcome.Status = NdarRefreshStatus.NoReport;
+                outcome.Message = $"No NDAR-1 report exists for {periodText}.";
+                _logger.LogInformation(
+                    "NDAR-1 refresh finished in {DurationMs} ms with outcome {Outcome} for facility {FacilityId} month {Month} year {Year}.",
+                    refreshStopwatch.ElapsedMilliseconds, outcome.Status, facilityId, month, year);
+                return outcome;
+            }
+
+            _logger.LogInformation("Refreshed NDAR-1 report {ReportId} for facility {FacilityId} month {Month} year {Year}.",
+                refreshedReportId, facilityId, month, year);
+            outcome.Status = NdarRefreshStatus.Updated;
+            outcome.Message = $"NDAR-1 report for {periodText} refreshed successfully.";
+            _logger.LogInformation(
+                "NDAR-1 refresh finished in {DurationMs} ms with outcome {Outcome} for facility {FacilityId} month {Month} year {Year}.",
+                refreshStopwatch.ElapsedMilliseconds, outcome.Status, facilityId, month, year);
+            return outcome;
+        }
+        catch (NdarRefreshLockException lockEx)
+        {
+            _logger.LogWarning(lockEx,
+                "NDAR-1 refresh lock not acquired for facility {FacilityId} month {Month} year {Year}. LockResult={LockResult}.",
+                facilityId, month, year, lockEx.LockResult);
+            outcome.Status = NdarRefreshStatus.Failed;
+            outcome.Message = $"NDAR-1 refresh could not obtain lock for {periodText}; please retry.";
+            _logger.LogInformation(
+                "NDAR-1 refresh finished in {DurationMs} ms with outcome {Outcome} for facility {FacilityId} month {Month} year {Year}.",
+                refreshStopwatch.ElapsedMilliseconds, outcome.Status, facilityId, month, year);
+            return outcome;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "NDAR-1 refresh failed for facility {FacilityId} month {Month} year {Year}.",
+                facilityId, month, year);
+            outcome.Status = NdarRefreshStatus.Failed;
+            outcome.Message = $"NDAR-1 refresh failed for {periodText}. Please retry.";
+            _logger.LogInformation(
+                "NDAR-1 refresh finished in {DurationMs} ms with outcome {Outcome} for facility {FacilityId} month {Month} year {Year}.",
+                refreshStopwatch.ElapsedMilliseconds, outcome.Status, facilityId, month, year);
+            return outcome;
+        }
+    }
+
+    private async Task<int> AcquireNdarRefreshLockAsync(string lockResource, int timeoutMs)
+    {
+        var lockResultParam = new SqlParameter("@LockResult", System.Data.SqlDbType.Int)
+        {
+            Direction = System.Data.ParameterDirection.Output
+        };
+
+        var resourceParam = new SqlParameter("@Resource", lockResource);
+        var lockModeParam = new SqlParameter("@LockMode", "Exclusive");
+        var lockOwnerParam = new SqlParameter("@LockOwner", "Transaction");
+        var timeoutParam = new SqlParameter("@LockTimeout", timeoutMs);
+
+        await _context.Database.ExecuteSqlRawAsync(
+            "EXEC @LockResult = sp_getapplock @Resource = @Resource, @LockMode = @LockMode, @LockOwner = @LockOwner, @LockTimeout = @LockTimeout;",
+            lockResultParam, resourceParam, lockModeParam, lockOwnerParam, timeoutParam);
+
+        return lockResultParam.Value is int val ? val : -999;
+    }
+
+    private sealed class NdarRefreshLockException : Exception
+    {
+        public string Resource { get; }
+        public int LockResult { get; }
+
+        public NdarRefreshLockException(string resource, int lockResult)
+            : base($"Unable to acquire NDAR-1 refresh lock (resource={resource}, result={lockResult}).")
+        {
+            Resource = resource;
+            LockResult = lockResult;
+        }
+    }
+
     public async Task<IEnumerable<NDAR1>> GetByFacilityIdAsync(Guid facilityId)
     {
         return await _context.NDAR1s
@@ -331,6 +506,7 @@ public class NDAR1Service : INDAR1Service
         // Get operator logs for weather data
         var operatorLogs = await _context.OperatorLogs
             .Where(o => o.FacilityId == facilityId &&
+                       !o.IsDeleted &&
                        o.LogDate >= startDate &&
                        o.LogDate <= endDate)
             .ToListAsync();
@@ -424,6 +600,121 @@ public class NDAR1Service : INDAR1Service
         BuildDynamicFields(report, sprayfieldList, sprayfieldById, fieldApplications, startDate, daysInMonth, endDate);
 
         return report;
+    }
+
+    private static void CopyComputedSnapshotWithoutDynamicFields(NDAR1 target, NDAR1 source)
+    {
+        target.Month = source.Month;
+        target.Year = source.Year;
+        target.DidIrrigationOccur = source.DidIrrigationOccur;
+        target.WeatherCodeDaily = source.WeatherCodeDaily;
+        target.TemperatureDaily = source.TemperatureDaily;
+        target.PrecipitationDaily = source.PrecipitationDaily;
+        target.FiveDayUpsetDaily = source.FiveDayUpsetDaily;
+
+        target.Field1Id = source.Field1Id;
+        target.Field1VolumeAppliedDaily = source.Field1VolumeAppliedDaily;
+        target.Field1TimeIrrigatedDaily = source.Field1TimeIrrigatedDaily;
+        target.Field1DailyLoadingDaily = source.Field1DailyLoadingDaily;
+        target.Field1MaxHourlyLoadingDaily = source.Field1MaxHourlyLoadingDaily;
+        target.Field1MonthlyLoading = source.Field1MonthlyLoading;
+        target.Field1MaxHourlyLoading = source.Field1MaxHourlyLoading;
+        target.Field1TwelveMonthFloatingTotal = source.Field1TwelveMonthFloatingTotal;
+
+        target.Field2Id = source.Field2Id;
+        target.Field2VolumeAppliedDaily = source.Field2VolumeAppliedDaily;
+        target.Field2TimeIrrigatedDaily = source.Field2TimeIrrigatedDaily;
+        target.Field2DailyLoadingDaily = source.Field2DailyLoadingDaily;
+        target.Field2MaxHourlyLoadingDaily = source.Field2MaxHourlyLoadingDaily;
+        target.Field2MonthlyLoading = source.Field2MonthlyLoading;
+        target.Field2MaxHourlyLoading = source.Field2MaxHourlyLoading;
+        target.Field2TwelveMonthFloatingTotal = source.Field2TwelveMonthFloatingTotal;
+
+        target.Field3Id = source.Field3Id;
+        target.Field3VolumeAppliedDaily = source.Field3VolumeAppliedDaily;
+        target.Field3TimeIrrigatedDaily = source.Field3TimeIrrigatedDaily;
+        target.Field3DailyLoadingDaily = source.Field3DailyLoadingDaily;
+        target.Field3MaxHourlyLoadingDaily = source.Field3MaxHourlyLoadingDaily;
+        target.Field3MonthlyLoading = source.Field3MonthlyLoading;
+        target.Field3MaxHourlyLoading = source.Field3MaxHourlyLoading;
+        target.Field3TwelveMonthFloatingTotal = source.Field3TwelveMonthFloatingTotal;
+
+        target.Field4Id = source.Field4Id;
+        target.Field4VolumeAppliedDaily = source.Field4VolumeAppliedDaily;
+        target.Field4TimeIrrigatedDaily = source.Field4TimeIrrigatedDaily;
+        target.Field4DailyLoadingDaily = source.Field4DailyLoadingDaily;
+        target.Field4MaxHourlyLoadingDaily = source.Field4MaxHourlyLoadingDaily;
+        target.Field4MonthlyLoading = source.Field4MonthlyLoading;
+        target.Field4MaxHourlyLoading = source.Field4MaxHourlyLoading;
+        target.Field4TwelveMonthFloatingTotal = source.Field4TwelveMonthFloatingTotal;
+    }
+
+    private static void AddDynamicFields(NDAR1 target, NDAR1 source)
+    {
+        foreach (var sourceField in source.Fields.OrderBy(f => f.FieldOrder))
+        {
+            var mappedField = new NDAR1Field
+            {
+                Id = Guid.NewGuid(),
+                NDAR1Id = target.Id,
+                SprayfieldId = sourceField.SprayfieldId,
+                FieldOrder = sourceField.FieldOrder,
+                MonthlyLoading = sourceField.MonthlyLoading,
+                MaxHourlyLoading = sourceField.MaxHourlyLoading,
+                TwelveMonthFloatingTotal = sourceField.TwelveMonthFloatingTotal
+            };
+
+            foreach (var sourceDaily in sourceField.DailyValues.OrderBy(d => d.DayNo))
+            {
+                mappedField.DailyValues.Add(new NDAR1FieldDaily
+                {
+                    Id = Guid.NewGuid(),
+                    DayNo = sourceDaily.DayNo,
+                    VolumeApplied = sourceDaily.VolumeApplied,
+                    TimeIrrigated = sourceDaily.TimeIrrigated,
+                    DailyLoading = sourceDaily.DailyLoading,
+                    MaxHourlyLoading = sourceDaily.MaxHourlyLoading
+                });
+            }
+
+            target.Fields.Add(mappedField);
+        }
+    }
+
+    private static List<NDAR1Field> BuildDynamicFieldEntities(Guid ndar1Id, NDAR1 source)
+    {
+        var fields = new List<NDAR1Field>();
+
+        foreach (var sourceField in source.Fields.OrderBy(f => f.FieldOrder))
+        {
+            var mappedField = new NDAR1Field
+            {
+                Id = Guid.NewGuid(),
+                NDAR1Id = ndar1Id,
+                SprayfieldId = sourceField.SprayfieldId,
+                FieldOrder = sourceField.FieldOrder,
+                MonthlyLoading = sourceField.MonthlyLoading,
+                MaxHourlyLoading = sourceField.MaxHourlyLoading,
+                TwelveMonthFloatingTotal = sourceField.TwelveMonthFloatingTotal
+            };
+
+            foreach (var sourceDaily in sourceField.DailyValues.OrderBy(d => d.DayNo))
+            {
+                mappedField.DailyValues.Add(new NDAR1FieldDaily
+                {
+                    Id = Guid.NewGuid(),
+                    DayNo = sourceDaily.DayNo,
+                    VolumeApplied = sourceDaily.VolumeApplied,
+                    TimeIrrigated = sourceDaily.TimeIrrigated,
+                    DailyLoading = sourceDaily.DailyLoading,
+                    MaxHourlyLoading = sourceDaily.MaxHourlyLoading
+                });
+            }
+
+            fields.Add(mappedField);
+        }
+
+        return fields;
     }
 
     private async Task ApplyDidIrrigationOccurFromApplicationsAsync(List<NDAR1> reports)

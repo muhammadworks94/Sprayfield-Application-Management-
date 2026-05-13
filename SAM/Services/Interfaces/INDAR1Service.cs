@@ -1,4 +1,5 @@
 using SAM.Domain.Entities;
+using SAM.Services.Models;
 
 namespace SAM.Services.Interfaces;
 
@@ -14,6 +15,7 @@ public interface INDAR1Service
     Task<bool> DeleteAsync(Guid id);
     Task<bool> ExistsAsync(Guid id);
     Task<NDAR1?> GetByFacilityMonthYearAsync(Guid facilityId, int month, int year);
+    Task<NdarRefreshOutcome> RefreshExistingReportForMonthAsync(Guid facilityId, int month, int year);
     Task<IEnumerable<NDAR1>> GetByFacilityIdAsync(Guid facilityId);
     Task<NDAR1> GenerateMonthlyReportAsync(Guid facilityId, int month, int year);
     Task<byte[]> ExportToExcelAsync(Guid id);
