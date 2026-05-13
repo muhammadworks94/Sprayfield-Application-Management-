@@ -1249,6 +1249,7 @@ public class NDAR1Service : INDAR1Service
                     MaxHourlyLoading = f.MaxHourlyLoading,
                     FloatingTotal = f.TwelveMonthFloatingTotal
                 })
+                .Where(x => x.Sprayfield != null)
                 .ToList();
         }
 
@@ -1295,6 +1296,8 @@ public class NDAR1Service : INDAR1Service
 
         var fieldValueColumns = new[] { "I", "M", "Q", "U" };
         var dataColumnSets = new[] { ("G","H","I","J"), ("K","L","M","N"), ("O","P","Q","R"), ("S","T","U","V") };
+        var monthlyRow = 41;
+        var floatingRow = 42;
 
         // Always clear all 4 header blocks first so cloned sheets do not keep stale template values (1,2,3,4).
         for (int i = 0; i < 4; i++)
@@ -1305,6 +1308,14 @@ public class NDAR1Service : INDAR1Service
             worksheet.Cell($"{col}4").Value = string.Empty;
             worksheet.Cell($"{col}5").Value = string.Empty;
             worksheet.Cell($"{col}6").Value = string.Empty;
+        }
+
+        // Always clear all 4 data/footer blocks first so leftover template formulas/values don't leak into empty field sections.
+        for (int i = 0; i < 4; i++)
+        {
+            var cols = dataColumnSets[i];
+            worksheet.Range($"{cols.Item1}10:{cols.Item4}40").Clear(XLClearOptions.Contents);
+            worksheet.Range($"{cols.Item1}{monthlyRow}:{cols.Item4}{floatingRow}").Clear(XLClearOptions.Contents);
         }
 
         for (int i = 0; i < 4; i++)
@@ -1349,8 +1360,6 @@ public class NDAR1Service : INDAR1Service
             }
         }
 
-        var monthlyRow = 41;
-        var floatingRow = 42;
         WriteFooterForChunk(worksheet, monthlyRow, floatingRow, chunk);
         WriteFieldIrrigatedCheckboxes(worksheet, BuildFieldIrrigatedFlagsFromChunk(chunk));
         RemoveInstructionalHighlights(worksheet);

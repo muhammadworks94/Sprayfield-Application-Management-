@@ -328,5 +328,27 @@ public class NDAR1RowEditResult
     public string? Message { get; set; }
     public bool IsValidationError { get; set; }
     public NDAR1GridDayRowViewModel? Row { get; set; }
+    public NDAR1RowSaveSummaryViewModel? SaveSummary { get; set; }
+}
+
+public class NDAR1RowSaveSummaryViewModel
+{
+    public int DayNo { get; set; }
+    public DateTime Date { get; set; }
+    public string OperatorLogAction { get; set; } = "None";
+    public List<NDAR1RowEntityChangeViewModel> MonthlyApplicationsCreated { get; set; } = new();
+    public List<NDAR1RowEntityChangeViewModel> MonthlyApplicationsUpdated { get; set; } = new();
+    public List<NDAR1RowEntityChangeViewModel> MonthlyApplicationsBackfilled { get; set; } = new();
+    public List<string> WeatherFieldsChanged { get; set; } = new();
+    public bool IrrigationFlagAfterSave { get; set; }
+    public List<string> Warnings { get; set; } = new();
+    public string NdarRefreshStatus { get; set; } = "None";
+    public string? NdarRefreshMessage { get; set; }
+}
+
+public class NDAR1RowEntityChangeViewModel
+{
+    public Guid SprayfieldId { get; set; }
+    public string SprayfieldCode { get; set; } = string.Empty;
 }
 

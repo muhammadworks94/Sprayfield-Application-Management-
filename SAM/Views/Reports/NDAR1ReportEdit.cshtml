@@ -263,6 +263,46 @@
                 }
                 console.error(safeMessage);
             };
+            const showSuccess = (message) => {
+                const safeMessage = message || 'Row updated successfully.';
+                if (window.toastr) {
+                    window.toastr.success(safeMessage);
+                    return;
+                }
+                console.log(safeMessage);
+            };
+            const formatCappedList = (items, selector, limit = 5) => {
+                if (!Array.isArray(items) || items.length === 0) return 'None';
+                const labels = items
+                    .map(selector)
+                    .filter(x => !!x && x.trim() !== '');
+                if (labels.length === 0) return 'None';
+                const shown = labels.slice(0, limit);
+                const hiddenCount = labels.length - shown.length;
+                return hiddenCount > 0 ? `${shown.join(', ')} +${hiddenCount} more` : shown.join(', ');
+            };
+            const buildSaveSummaryMessage = (summary) => {
+                if (!summary) return 'Row updated successfully.';
+                const parts = [];
+                const period = summary.date ? new Date(summary.date).toLocaleDateString() : `Day ${summary.dayNo}`;
+                parts.push(`NDAR row saved (${period}).`);
+                parts.push(`Operator Log: ${summary.operatorLogAction || 'None'}`);
+                parts.push(`Monthly Apps Created: ${formatCappedList(summary.monthlyApplicationsCreated, x => x.sprayfieldCode ? `Field ${x.sprayfieldCode}` : x.sprayfieldId)}`);
+                parts.push(`Monthly Apps Updated: ${formatCappedList(summary.monthlyApplicationsUpdated, x => x.sprayfieldCode ? `Field ${x.sprayfieldCode}` : x.sprayfieldId)}`);
+                parts.push(`Backfilled: ${formatCappedList(summary.monthlyApplicationsBackfilled, x => x.sprayfieldCode ? `Field ${x.sprayfieldCode}` : x.sprayfieldId)}`);
+                const weatherChanged = Array.isArray(summary.weatherFieldsChanged) && summary.weatherFieldsChanged.length > 0
+                    ? summary.weatherFieldsChanged.join(', ')
+                    : 'None';
+                parts.push(`Weather Changed: ${weatherChanged}`);
+                parts.push(`Irrigation Occurred: ${summary.irrigationFlagAfterSave ? 'YES' : 'NO'}`);
+                const refreshStatus = summary.ndarRefreshStatus || 'None';
+                const refreshMessage = summary.ndarRefreshMessage ? ` - ${summary.ndarRefreshMessage}` : '';
+                parts.push(`NDAR Totals Refresh: ${refreshStatus}${refreshMessage}`);
+                if (Array.isArray(summary.warnings) && summary.warnings.length > 0) {
+                    parts.push(`Warnings: ${summary.warnings.join(' | ')}`);
+                }
+                return parts.join(' ');
+            };
             const setButtonLoading = (button, isLoading, loadingText = '') => {
                 if (!button) return;
                 if (isLoading) {
@@ -456,6 +496,7 @@
                     recalcFooterTotals();
                     tr.querySelector('.lock-token').value = '';
                     setEditable(tr, false);
+                    showSuccess(buildSaveSummaryMessage(result.saveSummary));
                 }
 
                 if (cancelBtnTarget) {
