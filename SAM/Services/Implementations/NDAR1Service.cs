@@ -1432,22 +1432,16 @@ public class NDAR1Service : INDAR1Service
 
         for (var i = 0; i < 4; i++)
         {
-            var hasField = monthlyLoadingByField[i].HasValue || monthlyMaxByField[i].HasValue || floatingTotalByField[i].HasValue;
+            var hasField = monthlyLoadingByField[i].HasValue || floatingTotalByField[i].HasValue;
             if (!hasField)
             {
                 continue;
             }
 
-            var (volumeCol, timeCol, dailyCol, maxCol) = fieldColumns[i];
+            var (volumeCol, _, dailyCol, _) = fieldColumns[i];
             worksheet.Cell($"{volumeCol}{monthlyRow}").Value = SumWhole(volumeDailyByField[i]);
-            worksheet.Cell($"{timeCol}{monthlyRow}").Value = SumWhole(timeDailyByField[i]);
             worksheet.Cell($"{dailyCol}{monthlyRow}").Value = monthlyLoadingByField[i].Value;
-            worksheet.Cell($"{maxCol}{monthlyRow}").Value = monthlyMaxByField[i].Value;
-
-            worksheet.Cell($"{volumeCol}{floatingRow}").Value = floatingTotalByField[i].Value;
-            worksheet.Cell($"{timeCol}{floatingRow}").Value = floatingTotalByField[i].Value;
             worksheet.Cell($"{dailyCol}{floatingRow}").Value = floatingTotalByField[i].Value;
-            worksheet.Cell($"{maxCol}{floatingRow}").Value = floatingTotalByField[i].Value;
         }
 
         ApplyFooterNumberFormatting(worksheet, monthlyRow, floatingRow);
@@ -1465,16 +1459,10 @@ public class NDAR1Service : INDAR1Service
 
         for (var i = 0; i < chunk.Count && i < 4; i++)
         {
-            var (volumeCol, timeCol, dailyCol, maxCol) = fieldColumns[i];
+            var (volumeCol, _, dailyCol, _) = fieldColumns[i];
             worksheet.Cell($"{volumeCol}{monthlyRow}").Value = SumWhole(chunk[i].Volume);
-            worksheet.Cell($"{timeCol}{monthlyRow}").Value = SumWhole(chunk[i].Time);
             worksheet.Cell($"{dailyCol}{monthlyRow}").Value = chunk[i].MonthlyLoading;
-            worksheet.Cell($"{maxCol}{monthlyRow}").Value = chunk[i].MaxHourlyLoading;
-
-            worksheet.Cell($"{volumeCol}{floatingRow}").Value = chunk[i].FloatingTotal;
-            worksheet.Cell($"{timeCol}{floatingRow}").Value = chunk[i].FloatingTotal;
             worksheet.Cell($"{dailyCol}{floatingRow}").Value = chunk[i].FloatingTotal;
-            worksheet.Cell($"{maxCol}{floatingRow}").Value = chunk[i].FloatingTotal;
         }
 
         ApplyFooterNumberFormatting(worksheet, monthlyRow, floatingRow);
@@ -1492,7 +1480,7 @@ public class NDAR1Service : INDAR1Service
 
     private static void RemoveInstructionalHighlights(IXLWorksheet worksheet)
     {
-        foreach (var rangeAddress in new[] { "A5:F6", "A41:V42" })
+        foreach (var rangeAddress in new[] { "A5:F6" })
         {
             var range = worksheet.Range(rangeAddress);
             range.Style.Fill.BackgroundColor = XLColor.NoColor;
@@ -1502,6 +1490,18 @@ public class NDAR1Service : INDAR1Service
 
     private static void ApplyFooterNumberFormatting(IXLWorksheet worksheet, int monthlyRow, int floatingRow)
     {
+        // Keep footer block shading consistent with the NDAR template layout:
+        // field blocks 1 & 3 are gray, 2 & 4 are white.
+        worksheet.Range($"G{monthlyRow}:J{floatingRow}").Style.Fill.BackgroundColor = XLColor.LightGray;
+        worksheet.Range($"G{monthlyRow}:J{floatingRow}").Style.Fill.PatternType = XLFillPatternValues.Solid;
+        worksheet.Range($"O{monthlyRow}:R{floatingRow}").Style.Fill.BackgroundColor = XLColor.LightGray;
+        worksheet.Range($"O{monthlyRow}:R{floatingRow}").Style.Fill.PatternType = XLFillPatternValues.Solid;
+
+        worksheet.Range($"K{monthlyRow}:N{floatingRow}").Style.Fill.BackgroundColor = XLColor.White;
+        worksheet.Range($"K{monthlyRow}:N{floatingRow}").Style.Fill.PatternType = XLFillPatternValues.Solid;
+        worksheet.Range($"S{monthlyRow}:V{floatingRow}").Style.Fill.BackgroundColor = XLColor.White;
+        worksheet.Range($"S{monthlyRow}:V{floatingRow}").Style.Fill.PatternType = XLFillPatternValues.Solid;
+
         var range = worksheet.Range($"G{monthlyRow}:V{floatingRow}");
         range.Style.NumberFormat.Format = "0.00";
         range.Style.Alignment.ShrinkToFit = true;

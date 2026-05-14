@@ -1611,6 +1611,22 @@ public class ReportsController : BaseController
                         i.Year == report.Year)
             .OrderByDescending(i => i.UpdatedDate)
             .FirstOrDefaultAsync();
+        var operatorLogsForMonth = await _context.OperatorLogs
+            .Where(o => o.FacilityId == report.FacilityId &&
+                        o.LogDate.Year == report.Year &&
+                        o.LogDate.Month == (int)report.Month)
+            .OrderBy(o => o.LogDate)
+            .ThenBy(o => o.Id)
+            .ToListAsync();
+        var storageByDate = new Dictionary<DateTime, decimal?>();
+        foreach (var log in operatorLogsForMonth)
+        {
+            var logDate = log.LogDate.Date;
+            if (!storageByDate.ContainsKey(logDate))
+            {
+                storageByDate[logDate] = log.StorageFt;
+            }
+        }
 
         var map = BuildNdar1PdfMap();
         var allFields = report.Fields.OrderBy(f => f.FieldOrder).ToList();
@@ -1646,7 +1662,7 @@ public class ReportsController : BaseController
             Draw(gfx, report.Facility?.PermitNumber, font, map.Header.PermitValue);
             Draw(gfx, report.Facility?.Name, font, map.Header.FacilityValue);
             Draw(gfx, report.Facility?.County, font, map.Header.CountyValue);
-            Draw(gfx, ((int)report.Month).ToString(), font, map.Header.MonthValue);
+            Draw(gfx, new DateTime(report.Year, (int)report.Month, 1).ToString("MMMM"), font, map.Header.MonthValue);
             Draw(gfx, report.Year.ToString(), font, map.Header.YearValue);
             Draw(gfx, report.DidIrrigationOccur ? "X" : string.Empty, font, map.Header.IrrigationYes);
             Draw(gfx, report.DidIrrigationOccur ? string.Empty : "X", font, map.Header.IrrigationNo);
@@ -1657,7 +1673,7 @@ public class ReportsController : BaseController
             {
                 var field = chunk[i];
                 var x = map.FieldBlocks[i];
-                Draw(gfx, field.Sprayfield?.FieldId ?? $"Field {field.FieldOrder}", bold, new NdarPdfPoint(x.FieldNameX, map.FieldMetaY.FieldNameY));
+                Draw(gfx, field.Sprayfield?.FieldId ?? $"Field {field.FieldOrder}", font, new NdarPdfPoint(x.FieldNameX, map.FieldMetaY.FieldNameY));
                 Draw(gfx, (field.Sprayfield != null ? SAM.Utilities.SprayfieldReportHelper.GetReportAcres(field.Sprayfield).ToString("F2") : string.Empty), font, new NdarPdfPoint(x.AreaX, map.FieldMetaY.AreaY));
                 Draw(gfx, field.Sprayfield != null ? SAM.Utilities.SprayfieldZoneSummaryHelper.GetCropSummary(field.Sprayfield) ?? string.Empty : string.Empty, font, new NdarPdfPoint(x.CoverCropX, map.FieldMetaY.CoverCropY));
                 Draw(gfx, field.Sprayfield?.HourlyRateInches?.ToString("F2"), font, new NdarPdfPoint(x.HourlyRateX, map.FieldMetaY.HourlyRateY));
@@ -1674,8 +1690,11 @@ public class ReportsController : BaseController
                 var rowY = map.Table.FirstRowY + (dayIndex * map.Table.RowHeight);
                 Draw(gfx, SafeAt(report.WeatherCodeDaily, dayIndex), font, new NdarPdfPoint(map.Table.WeatherCodeX, rowY));
                 Draw(gfx, FormatNumber(SafeAt(report.TemperatureDaily, dayIndex), "F0"), font, new NdarPdfPoint(map.Table.TemperatureX, rowY));
-                Draw(gfx, FormatNumber(SafeAt(report.PrecipitationDaily, dayIndex), "F1"), font, new NdarPdfPoint(map.Table.PrecipitationX, rowY));
-                Draw(gfx, FormatNumber(SafeAt(report.FiveDayUpsetDaily, dayIndex), "F2"), font, new NdarPdfPoint(map.Table.FiveDayUpsetX, rowY));
+                Draw(gfx, FormatNumber(SafeAt(report.PrecipitationDaily, dayIndex), "0.##"), font, new NdarPdfPoint(map.Table.PrecipitationX, rowY));
+                var date = new DateTime(report.Year, (int)report.Month, day);
+                storageByDate.TryGetValue(date.Date, out var storageFt);
+                Draw(gfx, FormatNumber(storageFt, "0.##"), font, new NdarPdfPoint(map.Table.StorageX, rowY));
+                Draw(gfx, FormatNumber(SafeAt(report.FiveDayUpsetDaily, dayIndex), "0.##"), font, new NdarPdfPoint(map.Table.FiveDayUpsetX, rowY));
 
                 for (var fieldIndex = 0; fieldIndex < chunk.Count; fieldIndex++)
                 {
@@ -1695,10 +1714,16 @@ public class ReportsController : BaseController
             {
                 var field = chunk[fieldIndex];
                 var col = map.FieldBlocks[fieldIndex];
+                var monthlyVolumeSum = field.DailyValues
+                    .Where(d => d.VolumeApplied.HasValue)
+                    .Sum(d => Math.Round(d.VolumeApplied!.Value, 0, MidpointRounding.AwayFromZero));
+                Draw(gfx, monthlyVolumeSum.ToString("F0"), font, new NdarPdfPoint(col.VolumeX, monthlyY));
                 Draw(gfx, FormatNumber(field.MonthlyLoading, "F2"), font, new NdarPdfPoint(col.DailyLoadingX, monthlyY));
-                Draw(gfx, FormatNumber(field.MaxHourlyLoading, "F2"), font, new NdarPdfPoint(col.MaxHourlyLoadingX, monthlyY));
                 Draw(gfx, FormatNumber(field.TwelveMonthFloatingTotal, "F2"), font, new NdarPdfPoint(col.DailyLoadingX, floatingY));
             }
+
+            // Restore missing top border on the second-last footer cell block.
+            gfx.DrawLine(new XPen(XColors.Black, 1.6), 730, 550, 770, 550);
 
             if (showGrid)
             {
@@ -1796,26 +1821,27 @@ public class ReportsController : BaseController
                 CountyValue: new NdarPdfPoint(510, 40),
                 MonthValue: new NdarPdfPoint(620, 40),
                 YearValue: new NdarPdfPoint(730, 40),
-                IrrigationYes: new NdarPdfPoint(43, 100),
+                IrrigationYes: new NdarPdfPoint(43, 98),
                 IrrigationNo: new NdarPdfPoint(90, 101),
-                PageNumber: new NdarPdfPoint(683, 16),
-                TotalPages: new NdarPdfPoint(720, 16)),
+                PageNumber: new NdarPdfPoint(683, 15.5),
+                TotalPages: new NdarPdfPoint(720, 15.5)),
             FieldMetaY: new NdarFieldMetaYMap(
-                FieldNameY: 58,
+                FieldNameY: 56,
                 AreaY: 72,
                 CoverCropY: 85,
                 HourlyRateY: 100,
                 AnnualRateY: 113,
-                FieldIrrigatedY: 122),
+                FieldIrrigatedY: 122.5),
             Table: new NdarTableMap(
                 MaxRows: 31,
-                FirstRowY: 206,
+                FirstRowY: 205,
                 RowHeight: 11.18,
                 WeatherCodeX: 40,
                 TemperatureX: 69,
-                PrecipitationX: 94,
+                PrecipitationX: 90,
+                StorageX: 114,
                 FiveDayUpsetX: 139,
-                MonthlyY: 554,
+                MonthlyY: 552,
                 FloatingY: 563),
             FieldBlocks: new[]
             {
@@ -1825,32 +1851,32 @@ public class ReportsController : BaseController
                 new NdarFieldColumnMap(695, 695, 695, 695, 695, 621, 661, 701, 741, 699, 738)
             },
             Certification: new NdarCertificationMap(
-                CertPageNumber: new NdarPdfPoint(683, 18),
-                CertTotalPages: new NdarPdfPoint(720, 18),
-                Q1Compliant: new NdarPdfPoint(625, 46),
-                Q2Compliant: new NdarPdfPoint(625, 69),
-                Q3Compliant: new NdarPdfPoint(625, 91),
-                Q4Compliant: new NdarPdfPoint(625, 113),
-                Q5Compliant: new NdarPdfPoint(625, 135),
-                Q1NonCompliant: new NdarPdfPoint(679, 46),
-                Q2NonCompliant: new NdarPdfPoint(679, 69),
-                Q3NonCompliant: new NdarPdfPoint(679, 91),
-                Q4NonCompliant: new NdarPdfPoint(679, 113),
-                Q5NonCompliant: new NdarPdfPoint(679, 135),
+                CertPageNumber: new NdarPdfPoint(683, 15.5),
+                CertTotalPages: new NdarPdfPoint(720, 15.5),
+                Q1Compliant: new NdarPdfPoint(625, 44),
+                Q2Compliant: new NdarPdfPoint(625, 67),
+                Q3Compliant: new NdarPdfPoint(625, 89),
+                Q4Compliant: new NdarPdfPoint(625, 111),
+                Q5Compliant: new NdarPdfPoint(625, 133),
+                Q1NonCompliant: new NdarPdfPoint(679, 44),
+                Q2NonCompliant: new NdarPdfPoint(679, 67),
+                Q3NonCompliant: new NdarPdfPoint(679, 89),
+                Q4NonCompliant: new NdarPdfPoint(679, 111),
+                Q5NonCompliant: new NdarPdfPoint(679, 133),
                 NonComplianceReasonStart: new NdarPdfPoint(30, 180),
-                OrcName: new NdarPdfPoint(50, 317),
-                OrcCertificationNo: new NdarPdfPoint(100, 340),
+                OrcName: new NdarPdfPoint(50, 313),
+                OrcCertificationNo: new NdarPdfPoint(100, 338),
                 OrcGrade: new NdarPdfPoint(60, 360),
                 OrcPhone: new NdarPdfPoint(200, 362),
                 OrcChangedYes: new NdarPdfPoint(251, 386),
                 OrcChangedNo: new NdarPdfPoint(287, 388),
                 OrcSignature: new NdarPdfPoint(100, 410),
                 OrcDate: new NdarPdfPoint(320, 420),
-                PermitteeName: new NdarPdfPoint(448, 316),
-                SigningOfficial: new NdarPdfPoint(460, 339),
+                PermitteeName: new NdarPdfPoint(448, 314),
+                SigningOfficial: new NdarPdfPoint(460, 335),
                 SigningOfficialTitle: new NdarPdfPoint(490, 360),
-                PermitteePhone: new NdarPdfPoint(460, 385),
-                PermitExp: new NdarPdfPoint(630, 384),
+                PermitteePhone: new NdarPdfPoint(460, 382),
+                PermitExp: new NdarPdfPoint(630, 382),
                 PermitteeSignature: new NdarPdfPoint(490, 411),
                 PermitteeDate: new NdarPdfPoint(700, 420)));
     }
@@ -1886,6 +1912,7 @@ public class ReportsController : BaseController
         double WeatherCodeX,
         double TemperatureX,
         double PrecipitationX,
+        double StorageX,
         double FiveDayUpsetX,
         double MonthlyY,
         double FloatingY);
