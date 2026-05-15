@@ -1645,7 +1645,12 @@ public class ReportsController : BaseController
         using var document = new PdfDocument();
         var templateForm = XPdfForm.FromFile(templatePath);
         templateForm.PageNumber = 1;
+        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
+        var appendedTemplatePages = 0;
+        if (templateDoc.PageCount >= 2) appendedTemplatePages++;
+        if (templateDoc.PageCount >= 3) appendedTemplatePages++;
         var pageCount = chunks.Count;
+        var totalPages = pageCount + appendedTemplatePages;
 
         for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
         {
@@ -1667,7 +1672,7 @@ public class ReportsController : BaseController
             Draw(gfx, report.DidIrrigationOccur ? "X" : string.Empty, font, map.Header.IrrigationYes);
             Draw(gfx, report.DidIrrigationOccur ? string.Empty : "X", font, map.Header.IrrigationNo);
             Draw(gfx, (pageIndex + 1).ToString(), font, map.Header.PageNumber);
-            Draw(gfx, pageCount.ToString(), font, map.Header.TotalPages);
+            Draw(gfx, totalPages.ToString(), font, map.Header.TotalPages);
 
             for (var i = 0; i < chunk.Count; i++)
             {
@@ -1733,7 +1738,6 @@ public class ReportsController : BaseController
 
         // Append template page 2 (Certification) and page 3 (Formulas) from the
         // original NDAR template so exports always include all 3 report sections.
-        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
         if (templateDoc.PageCount >= 2)
         {
             document.AddPage(templateDoc.Pages[1]);
@@ -1741,7 +1745,7 @@ public class ReportsController : BaseController
             var certGfx = XGraphics.FromPdfPage(certPage);
             var certFont = new XFont("Arial", 10, XFontStyle.Regular);
             Draw(certGfx, (chunks.Count + 1).ToString(), certFont, map.Certification.CertPageNumber);
-            Draw(certGfx, (chunks.Count + 2).ToString(), certFont, map.Certification.CertTotalPages);
+            Draw(certGfx, totalPages.ToString(), certFont, map.Certification.CertTotalPages);
 
             var markCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant;
             var markNonCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant;
