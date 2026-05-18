@@ -240,7 +240,6 @@ public partial class SystemAdminController
         string? scheduledMonthsCsv,
         string? notes,
         bool isRequired,
-        int sortOrder,
         PermitTemplateReportTypeEnum reportType = PermitTemplateReportTypeEnum.Ndmr)
     {
         var permit = await _context.FacilityPermits.Include(p => p.Facility).FirstOrDefaultAsync(p => p.Id == facilityPermitId);
@@ -262,6 +261,12 @@ public partial class SystemAdminController
             return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
         }
 
+        var nextSortOrder = (await _context.FacilityPermitTemplateParameters
+            .Where(x => x.FacilityPermitId == facilityPermitId &&
+                        (x.ReportTypes & selectedReportType) != 0)
+            .Select(x => (int?)x.SortOrder)
+            .MaxAsync() ?? 0) + 1;
+
         _context.FacilityPermitTemplateParameters.Add(new FacilityPermitTemplateParameter
         {
             CompanyId = permit.CompanyId,
@@ -275,7 +280,7 @@ public partial class SystemAdminController
             MeasurementFrequency = measurementFrequency,
             ScheduledMonthsCsv = string.IsNullOrWhiteSpace(scheduledMonthsCsv) ? null : scheduledMonthsCsv,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
-            SortOrder = sortOrder,
+            SortOrder = nextSortOrder,
             IsRequired = isRequired,
             ReportTypes = selectedReportType
         });
@@ -298,7 +303,6 @@ public partial class SystemAdminController
         string? scheduledMonthsCsv,
         string? notes,
         bool isRequired,
-        int sortOrder,
         PermitTemplateReportTypeEnum reportType = PermitTemplateReportTypeEnum.Ndmr)
     {
         var row = await _context.FacilityPermitTemplateParameters
@@ -331,13 +335,70 @@ public partial class SystemAdminController
         row.MeasurementFrequency = measurementFrequency;
         row.ScheduledMonthsCsv = string.IsNullOrWhiteSpace(scheduledMonthsCsv) ? null : scheduledMonthsCsv;
         row.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
-        row.SortOrder = sortOrder;
         row.IsRequired = isRequired;
         row.ReportTypes = selectedReportType;
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Permit template parameter updated.";
         return RedirectToAction(nameof(FacilityPermits), new { facilityId = row.FacilityPermit!.FacilityId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> ReorderPermitTemplateParameters(
+        Guid facilityPermitId,
+        PermitTemplateReportTypeEnum reportType,
+        string orderedIdsCsv)
+    {
+        var permit = await _context.FacilityPermits.FirstOrDefaultAsync(p => p.Id == facilityPermitId);
+        if (permit == null) return NotFound();
+        await EnsureCompanyAccessAsync(permit.CompanyId);
+
+        var selectedReportType = reportType == PermitTemplateReportTypeEnum.None
+            ? PermitTemplateReportTypeEnum.Ndmr
+            : reportType;
+
+        var orderedIds = (orderedIdsCsv ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => Guid.TryParse(x, out var g) ? g : Guid.Empty)
+            .Where(g => g != Guid.Empty)
+            .ToList();
+
+        if (!orderedIds.Any())
+        {
+            TempData["ErrorMessage"] = "No rows were provided for reorder.";
+            return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+        }
+
+        var rows = await _context.FacilityPermitTemplateParameters
+            .Where(x => x.FacilityPermitId == facilityPermitId &&
+                        (x.ReportTypes & selectedReportType) != 0)
+            .ToListAsync();
+
+        if (!rows.Any())
+        {
+            TempData["ErrorMessage"] = "No matching template rows found for reorder.";
+            return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+        }
+
+        var rowLookup = rows.ToDictionary(x => x.Id, x => x);
+        var validOrderedIds = orderedIds.Where(id => rowLookup.ContainsKey(id)).Distinct().ToList();
+        var remainingIds = rows
+            .Where(x => !validOrderedIds.Contains(x.Id))
+            .OrderBy(x => x.SortOrder)
+            .Select(x => x.Id)
+            .ToList();
+        var finalOrder = validOrderedIds.Concat(remainingIds).ToList();
+
+        for (var i = 0; i < finalOrder.Count; i++)
+        {
+            rowLookup[finalOrder[i]].SortOrder = i + 1;
+        }
+
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Template parameter order updated.";
+        return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
     }
 
     [HttpPost]
