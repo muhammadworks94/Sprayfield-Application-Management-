@@ -60,6 +60,31 @@ public class NDAR1ReportsIndexViewModel
     public PagedResult<NDAR1ViewModel> Reports { get; set; } = new();
 }
 
+public class NDMLRFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public int? Month { get; set; }
+    public int? Year { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class NDMLRSortViewModel
+{
+    public string SortBy { get; set; } = "period";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class NDMLRReportsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public NDMLRFilterViewModel Filter { get; set; } = new();
+    public NDMLRSortViewModel Sort { get; set; } = new();
+    public PagedResult<NDAR1ViewModel> Reports { get; set; } = new();
+}
+
 public class NDAR1CreateViewModel
 {
     [Required]

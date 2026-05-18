@@ -412,6 +412,124 @@ public class ReportsController : BaseController
         return RedirectToAction(nameof(NDMRReports), new { facilityId = report?.FacilityId });
     }
 
+    [HttpGet]
+    public async Task<IActionResult> NDMLRReports(
+        Guid? companyId = null,
+        Guid? facilityId = null,
+        int? month = null,
+        int? year = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
+    {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
+        {
+            companyId = effectiveCompanyId.Value;
+        }
+
+        if (companyId.HasValue)
+        {
+            await EnsureCompanyAccessAsync(companyId.Value);
+        }
+
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "period" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+        var normalizedMonth = month.HasValue && month.Value >= 1 && month.Value <= 12 ? month : null;
+        var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
+
+        var query = _context.NDAR1s
+            .Include(r => r.Company)
+            .Include(r => r.Facility)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(r => r.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(r => r.FacilityId == facilityId.Value);
+        }
+
+        if (normalizedMonth.HasValue)
+        {
+            query = query.Where(r => (int)r.Month == normalizedMonth.Value);
+        }
+
+        if (normalizedYear.HasValue)
+        {
+            query = query.Where(r => r.Year == normalizedYear.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Year).ThenBy(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Year).ThenByDescending(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var reports = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var items = reports.Select(r => new NDAR1ViewModel
+        {
+            Id = r.Id,
+            CompanyId = r.CompanyId,
+            CompanyName = r.Company?.Name,
+            FacilityId = r.FacilityId,
+            FacilityName = r.Facility?.Name,
+            Month = r.Month,
+            Year = r.Year,
+            DidIrrigationOccur = r.DidIrrigationOccur,
+            CreatedDate = r.CreatedDate,
+            UpdatedDate = r.UpdatedDate,
+            CreatedBy = r.CreatedBy
+        }).ToList();
+
+        var model = new NDMLRReportsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Filter = new NDMLRFilterViewModel
+            {
+                FacilityId = facilityId,
+                Month = normalizedMonth,
+                Year = normalizedYear,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new NDMLRSortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Reports = new PagedResult<NDAR1ViewModel>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
+
+        return View(model);
+    }
+
     #endregion
 
     #region Legacy Irrigation Routes
@@ -984,15 +1102,48 @@ public class ReportsController : BaseController
     [HttpGet]
     public async Task<IActionResult> ExportNDMRReport(Guid id)
     {
-        var report = await _ndar1Service.GetByIdAsync(id);
+        NDAR1? report;
+        var ndmrReport = await _irrRprtService.GetByIdAsync(id);
+
+        if (ndmrReport != null)
+        {
+            report = await _context.NDAR1s
+                .AsNoTracking()
+                .Include(r => r.Facility)
+                .FirstOrDefaultAsync(r =>
+                    r.CompanyId == ndmrReport.CompanyId &&
+                    r.FacilityId == ndmrReport.FacilityId &&
+                    r.Year == ndmrReport.Year &&
+                    r.Month == ndmrReport.Month);
+        }
+        else
+        {
+            report = await _ndar1Service.GetByIdAsync(id);
+        }
+
         if (report == null)
-            return NotFound();
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMR export failed",
+                    Detail = "No matching NDAR-1 report exists for this NDMR period.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = "No matching NDAR-1 report exists for this NDMR period.";
+            return ndmrReport != null
+                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
+                : RedirectToAction(nameof(NDAR1Reports));
+        }
 
         await EnsureCompanyAccessAsync(report.CompanyId);
 
         try
         {
-            var excelBytes = await _ndmrService.ExportToExcelAsync(id);
+            var excelBytes = await _ndmrService.ExportToExcelAsync(report.Id);
             var fileName = $"NDMR_{report.Facility?.Name}_{report.Month}_{report.Year}.xlsx";
             return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
@@ -1009,7 +1160,9 @@ public class ReportsController : BaseController
             }
 
             TempData["ErrorMessage"] = $"Error exporting NDMR report: {ex.Message}";
-            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+            return ndmrReport != null
+                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
+                : RedirectToAction(nameof(NDAR1ReportDetails), new { id });
         }
     }
 
@@ -1646,11 +1799,10 @@ public class ReportsController : BaseController
         var templateForm = XPdfForm.FromFile(templatePath);
         templateForm.PageNumber = 1;
         using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
-        var appendedTemplatePages = 0;
-        if (templateDoc.PageCount >= 2) appendedTemplatePages++;
-        if (templateDoc.PageCount >= 3) appendedTemplatePages++;
         var pageCount = chunks.Count;
-        var totalPages = pageCount + appendedTemplatePages;
+        var totalPages = pageCount * 2;
+        var currentPageNumber = 1;
+        var hasCertificationTemplate = templateDoc.PageCount >= 2;
 
         for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
         {
@@ -1671,7 +1823,7 @@ public class ReportsController : BaseController
             Draw(gfx, report.Year.ToString(), font, map.Header.YearValue);
             Draw(gfx, report.DidIrrigationOccur ? "X" : string.Empty, font, map.Header.IrrigationYes);
             Draw(gfx, report.DidIrrigationOccur ? string.Empty : "X", font, map.Header.IrrigationNo);
-            Draw(gfx, (pageIndex + 1).ToString(), font, map.Header.PageNumber);
+            Draw(gfx, currentPageNumber.ToString(), font, map.Header.PageNumber);
             Draw(gfx, totalPages.ToString(), font, map.Header.TotalPages);
 
             for (var i = 0; i < chunk.Count; i++)
@@ -1734,67 +1886,57 @@ public class ReportsController : BaseController
             {
                 DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
             }
-        }
+            currentPageNumber++;
 
-        // Append template page 2 (Certification) and page 3 (Formulas) from the
-        // original NDAR template so exports always include all 3 report sections.
-        if (templateDoc.PageCount >= 2)
-        {
-            document.AddPage(templateDoc.Pages[1]);
-            var certPage = document.Pages[document.PageCount - 1];
-            var certGfx = XGraphics.FromPdfPage(certPage);
-            var certFont = new XFont("Arial", 10, XFontStyle.Regular);
-            Draw(certGfx, (chunks.Count + 1).ToString(), certFont, map.Certification.CertPageNumber);
-            Draw(certGfx, totalPages.ToString(), certFont, map.Certification.CertTotalPages);
-
-            var markCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant;
-            var markNonCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant;
-
-            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q1Compliant);
-            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q2Compliant);
-            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q3Compliant);
-            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q4Compliant);
-            Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q5Compliant);
-
-            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q1NonCompliant);
-            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q2NonCompliant);
-            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q3NonCompliant);
-            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q4NonCompliant);
-            Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q5NonCompliant);
-
-            Draw(certGfx, string.Empty, certFont, map.Certification.NonComplianceReasonStart);
-            Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.OrcName);
-            Draw(certGfx, string.Empty, certFont, map.Certification.OrcCertificationNo);
-            Draw(certGfx, string.Empty, certFont, map.Certification.OrcGrade);
-            Draw(certGfx, string.Empty, certFont, map.Certification.OrcPhone);
-            Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedYes);
-            Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedNo);
-            Draw(certGfx, string.Empty, certFont, map.Certification.OrcSignature);
-            Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.OrcDate);
-
-            Draw(certGfx, report.Facility?.Permittee, certFont, map.Certification.PermitteeName);
-            Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.SigningOfficial);
-            Draw(certGfx, "Authorized Agent", certFont, map.Certification.SigningOfficialTitle);
-            Draw(certGfx, string.Empty, certFont, map.Certification.PermitteePhone);
-            Draw(certGfx, report.Facility?.PermitExpirationDate?.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitExp);
-            Draw(certGfx, string.Empty, certFont, map.Certification.PermitteeSignature);
-            Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitteeDate);
-
-            if (showGrid)
+            if (hasCertificationTemplate)
             {
-                DrawCoordinateGrid(certGfx, certPage.Width.Point, certPage.Height.Point);
-            }
-        }
+                document.AddPage(templateDoc.Pages[1]);
+                var certPage = document.Pages[document.PageCount - 1];
+                var certGfx = XGraphics.FromPdfPage(certPage);
+                var certFont = new XFont("Arial", 8, XFontStyle.Regular);
+                Draw(certGfx, currentPageNumber.ToString(), certFont, map.Header.PageNumber);
+                Draw(certGfx, totalPages.ToString(), certFont, map.Header.TotalPages);
 
-        if (templateDoc.PageCount >= 3)
-        {
-            document.AddPage(templateDoc.Pages[2]);
-            var formulaPage = document.Pages[document.PageCount - 1];
-            var formulaGfx = XGraphics.FromPdfPage(formulaPage);
-            if (showGrid)
-            {
-                DrawCoordinateGrid(formulaGfx, formulaPage.Width.Point, formulaPage.Height.Point);
+                var markCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant;
+                var markNonCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant;
+
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q1Compliant);
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q2Compliant);
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q3Compliant);
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q4Compliant);
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q5Compliant);
+
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q1NonCompliant);
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q2NonCompliant);
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q3NonCompliant);
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q4NonCompliant);
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q5NonCompliant);
+
+                Draw(certGfx, string.Empty, certFont, map.Certification.NonComplianceReasonStart);
+                Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.OrcName);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcCertificationNo);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcGrade);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcPhone);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedYes);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedNo);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcSignature);
+                Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.OrcDate);
+
+                Draw(certGfx, report.Facility?.Permittee, certFont, map.Certification.PermitteeName);
+                Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.SigningOfficial);
+                Draw(certGfx, "Authorized Agent", certFont, map.Certification.SigningOfficialTitle);
+                Draw(certGfx, string.Empty, certFont, map.Certification.PermitteePhone);
+                Draw(certGfx, report.Facility?.PermitExpirationDate?.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitExp);
+                Draw(certGfx, string.Empty, certFont, map.Certification.PermitteeSignature);
+                Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitteeDate);
+
+                if (showGrid)
+                {
+                    DrawCoordinateGrid(certGfx, certPage.Width.Point, certPage.Height.Point);
+                }
             }
+
+            currentPageNumber++;
         }
 
         document.Save(output, false);
