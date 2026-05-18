@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Azure.Storage.Blobs;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
@@ -36,6 +37,7 @@ public class ReportsController : BaseController
     private readonly IGWMonitService _gwMonitService;
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
 
     public ReportsController(
         IIrrRprtService irrRprtService,
@@ -48,6 +50,7 @@ public class ReportsController : BaseController
         IGWMonitService gwMonitService,
         ApplicationDbContext context,
         IWebHostEnvironment environment,
+        IConfiguration configuration,
         UserManager<ApplicationUser> userManager,
         ILogger<ReportsController> logger)
         : base(userManager, logger)
@@ -62,6 +65,7 @@ public class ReportsController : BaseController
         _gwMonitService = gwMonitService;
         _context = context;
         _environment = environment;
+        _configuration = configuration;
     }
 
     #region NDMR Reports
@@ -1729,8 +1733,9 @@ public class ReportsController : BaseController
         outputStream.Position = 0;
         if (model.LabReportAttached && !string.IsNullOrWhiteSpace(model.VOCReportFileStoragePath))
         {
-            var vocAbsolutePath = Path.Combine(_environment.WebRootPath, model.VOCReportFileStoragePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
-            if (System.IO.File.Exists(vocAbsolutePath))
+            var container = await GetSamBlobContainerClientAsync();
+            var vocBlobClient = container.GetBlobClient(model.VOCReportFileStoragePath);
+            if (await vocBlobClient.ExistsAsync())
             {
                 using var mergedOutput = new MemoryStream();
                 using var mergedDoc = new PdfDocument();
@@ -1739,7 +1744,8 @@ public class ReportsController : BaseController
                     foreach (var page in baseDoc.Pages) mergedDoc.AddPage(page);
                 }
 
-                using (var vocDoc = PdfReader.Open(vocAbsolutePath, PdfDocumentOpenMode.Import))
+                await using var vocStream = (await vocBlobClient.DownloadStreamingAsync()).Value.Content;
+                using (var vocDoc = PdfReader.Open(vocStream, PdfDocumentOpenMode.Import))
                 {
                     foreach (var page in vocDoc.Pages) mergedDoc.AddPage(page);
                 }
@@ -1750,6 +1756,20 @@ public class ReportsController : BaseController
         }
 
         return outputStream.ToArray();
+    }
+
+    private async Task<BlobContainerClient> GetSamBlobContainerClientAsync()
+    {
+        var connectionString = _configuration.GetConnectionString("StorageConnectionString");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("StorageConnectionString is not configured.");
+        }
+
+        var blobServiceClient = new BlobServiceClient(connectionString);
+        var container = blobServiceClient.GetBlobContainerClient("sam-files");
+        await container.CreateIfNotExistsAsync();
+        return container;
     }
 
     private async Task<byte[]> RenderNdar1PdfAsync(NDAR1 report, bool showGrid = false)

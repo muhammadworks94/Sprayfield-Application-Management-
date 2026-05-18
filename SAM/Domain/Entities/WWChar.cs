@@ -134,6 +134,7 @@ public class WWChar : CompanyScopedEntity
     public Facility? Facility { get; set; }
     public FacilityPermit? FacilityPermit { get; set; }
     public ICollection<WWCharTemplateValue> TemplateValues { get; set; } = new List<WWCharTemplateValue>();
+    public ICollection<WWCharTestResultAttachment> TestResultAttachments { get; set; } = new List<WWCharTestResultAttachment>();
 }
 
 

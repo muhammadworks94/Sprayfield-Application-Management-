@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Azure.Storage.Blobs;
 using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
 using SAM.Data;
@@ -41,6 +42,7 @@ namespace SAM.Controllers;
         private readonly IFacilityPermitResolver _facilityPermitResolver;
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
 
         public OperationalDataController(
             IOperatorLogService operatorLogService,
@@ -55,6 +57,7 @@ namespace SAM.Controllers;
             IFacilityPermitResolver facilityPermitResolver,
             ApplicationDbContext context,
             IWebHostEnvironment environment,
+            IConfiguration configuration,
             UserManager<ApplicationUser> userManager,
             ILogger<OperationalDataController> logger)
             : base(userManager, logger)
@@ -71,6 +74,7 @@ namespace SAM.Controllers;
             _facilityPermitResolver = facilityPermitResolver;
             _context = context;
             _environment = environment;
+            _configuration = configuration;
         }
 
     #region Operator Logs
@@ -1320,7 +1324,8 @@ namespace SAM.Controllers;
             TKNN = wwChar.TKNN,
             NO3N = wwChar.NO3N,
             FlowMeasuringPoint = wwChar.FlowMeasuringPoint,
-            ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint
+            ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint,
+            TestResultAttachments = await BuildWwCharAttachmentViewModelsAsync(wwChar.Id)
         };
 
         var canonicalDetailsValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
@@ -1584,7 +1589,8 @@ namespace SAM.Controllers;
             FacilityPermitId = wwChar.FacilityPermitId,
             FacilityPermitDisplay = wwChar.FacilityPermit != null ? $"{wwChar.FacilityPermit.PermitNumber} v{wwChar.FacilityPermit.PermitVersion}" : null,
             FlowMeasuringPoint = wwChar.FlowMeasuringPoint,
-            ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint
+            ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint,
+            TestResultAttachments = await BuildWwCharAttachmentViewModelsAsync(wwChar.Id)
         };
 
         var canonicalEditValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
@@ -1704,8 +1710,19 @@ namespace SAM.Controllers;
             viewModel.TemplateParameters.Count);
         EnsureTemplateArraysInitialized(viewModel.TemplateParameters);
 
+        if (viewModel.TestResultFile != null && !viewModel.TestResultDate.HasValue)
+        {
+            ModelState.AddModelError(nameof(viewModel.TestResultDate), "Test date is required when uploading a test result.");
+        }
+
+        if (viewModel.TestResultFile != null && viewModel.TestResultFile.Length > 0 && !IsPdfUpload(viewModel.TestResultFile))
+        {
+            ModelState.AddModelError(nameof(viewModel.TestResultFile), "Only PDF files are allowed for test results.");
+        }
+
         if (!ModelState.IsValid)
         {
+            viewModel.TestResultAttachments = await BuildWwCharAttachmentViewModelsAsync(viewModel.Id);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
@@ -1753,12 +1770,32 @@ namespace SAM.Controllers;
 
             await _wwCharService.UpdateAsync(wwChar);
             await SaveWwCharTemplateValuesAsync(wwChar, viewModel.TemplateParameters);
+
+            if (viewModel.TestResultFile != null && viewModel.TestResultFile.Length > 0 && viewModel.TestResultDate.HasValue)
+            {
+                var actor = User?.Identity?.Name ?? "System";
+                var attachment = await SaveWwCharTestResultFileAsync(
+                    wwChar,
+                    viewModel.TestResultDate.Value,
+                    viewModel.TestResultFile,
+                    actor);
+                Logger.LogInformation(
+                    "WWChar test result uploaded. WWCharId={WWCharId}, AttachmentId={AttachmentId}, User={User}, UploadedAtUtc={UploadedAtUtc}, TestDate={TestDate}, FileName={FileName}",
+                    wwChar.Id,
+                    attachment.Id,
+                    actor,
+                    attachment.UploadedAtUtc,
+                    attachment.TestDate,
+                    attachment.OriginalFileName);
+            }
+
             TempData["SuccessMessage"] = $"Wastewater characteristics record updated for {wwChar.Month} {wwChar.Year}.";
             return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
+            viewModel.TestResultAttachments = await BuildWwCharAttachmentViewModelsAsync(viewModel.Id);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
@@ -1800,6 +1837,74 @@ namespace SAM.Controllers;
         }
 
         return RedirectToAction(nameof(WWChars));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> WWCharTestResultFile(Guid attachmentId, bool download = false)
+    {
+        var attachment = await _context.WWCharTestResultAttachments
+            .Include(x => x.WWChar)
+            .FirstOrDefaultAsync(x => x.Id == attachmentId);
+        if (attachment == null || attachment.WWChar == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(attachment.CompanyId);
+
+        var container = await GetSamBlobContainerClientAsync();
+        var blobClient = container.GetBlobClient(attachment.FileStoragePath);
+        if (!await blobClient.ExistsAsync())
+        {
+            return NotFound("Attachment blob is missing from storage.");
+        }
+
+        var downloadStream = await blobClient.DownloadStreamingAsync();
+        var contentType = string.IsNullOrWhiteSpace(attachment.ContentType)
+            ? (downloadStream.Value.Details.ContentType ?? "application/pdf")
+            : attachment.ContentType;
+        if (download)
+        {
+            return File(downloadStream.Value.Content, contentType, attachment.OriginalFileName);
+        }
+
+        return File(downloadStream.Value.Content, contentType);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireTechnician)]
+    public async Task<IActionResult> RemoveWWCharTestResultAttachment(Guid attachmentId)
+    {
+        var attachment = await _context.WWCharTestResultAttachments
+            .Include(x => x.WWChar)
+            .FirstOrDefaultAsync(x => x.Id == attachmentId);
+        if (attachment == null || attachment.WWChar == null)
+        {
+            TempData["ErrorMessage"] = "Attachment not found.";
+            return RedirectToAction(nameof(WWChars));
+        }
+
+        await EnsureCompanyAccessAsync(attachment.CompanyId);
+        var wwCharId = attachment.WWCharId;
+        _context.WWCharTestResultAttachments.Remove(attachment);
+        await _context.SaveChangesAsync();
+
+        var container = await GetSamBlobContainerClientAsync();
+        var blobClient = container.GetBlobClient(attachment.FileStoragePath);
+        await blobClient.DeleteIfExistsAsync();
+
+        var actor = User?.Identity?.Name ?? "System";
+        Logger.LogInformation(
+            "WWChar test result removed. WWCharId={WWCharId}, AttachmentId={AttachmentId}, User={User}, RemovedAtUtc={RemovedAtUtc}, FileName={FileName}",
+            wwCharId,
+            attachmentId,
+            actor,
+            DateTime.UtcNow,
+            attachment.OriginalFileName);
+
+        TempData["SuccessMessage"] = "Test result attachment removed.";
+        return RedirectToAction(nameof(WWCharEdit), new { id = wwCharId });
     }
 
     #endregion
@@ -2209,10 +2314,11 @@ namespace SAM.Controllers;
                 return BadRequest("VOC report is marked attached, but no VOC file is stored on this groundwater record.");
             }
 
-            var vocAbsolutePath = Path.Combine(_environment.WebRootPath, gwMonit.VOCReportFileStoragePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
-            if (!System.IO.File.Exists(vocAbsolutePath))
+            var container = await GetSamBlobContainerClientAsync();
+            var vocBlobClient = container.GetBlobClient(gwMonit.VOCReportFileStoragePath);
+            if (!await vocBlobClient.ExistsAsync())
             {
-                return BadRequest("VOC report file is missing from storage for this groundwater record.");
+                return BadRequest("VOC report file is missing from blob storage for this groundwater record.");
             }
 
             try
@@ -2227,7 +2333,8 @@ namespace SAM.Controllers;
                     }
                 }
 
-                using (var vocDoc = PdfReader.Open(vocAbsolutePath, PdfDocumentOpenMode.Import))
+                await using var vocStream = (await vocBlobClient.DownloadStreamingAsync()).Value.Content;
+                using (var vocDoc = PdfReader.Open(vocStream, PdfDocumentOpenMode.Import))
                 {
                     foreach (var page in vocDoc.Pages)
                     {
@@ -2811,9 +2918,7 @@ namespace SAM.Controllers;
             gwMonit.GW59ASignedDate = viewModel.GW59ASignedDate;
             if (!gwMonit.VOCReportAttached.GetValueOrDefault())
             {
-                gwMonit.VOCReportFileStoragePath = null;
-                gwMonit.VOCReportFileName = null;
-                gwMonit.VOCReportContentType = null;
+                await ClearGwVocFileAsync(gwMonit);
             }
             else if (viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0)
             {
@@ -2851,6 +2956,8 @@ namespace SAM.Controllers;
             if (gwMonit != null)
             {
                 await EnsureCompanyAccessAsync(gwMonit.CompanyId);
+                await ClearGwVocFileAsync(gwMonit);
+                await _gwMonitService.UpdateAsync(gwMonit);
             }
 
             await _gwMonitService.DeleteAsync(id);
@@ -3788,30 +3895,106 @@ namespace SAM.Controllers;
 
     private async Task SaveGwVocFileAsync(GWMonit gwMonit, IFormFile file)
     {
-        var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "gwmonit", gwMonit.Id.ToString("N"));
-        Directory.CreateDirectory(uploadsDir);
-
         if (!string.IsNullOrWhiteSpace(gwMonit.VOCReportFileStoragePath))
         {
-            var existingPath = Path.Combine(_environment.WebRootPath, gwMonit.VOCReportFileStoragePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
-            if (System.IO.File.Exists(existingPath))
-            {
-                System.IO.File.Delete(existingPath);
-            }
+            var existingBlob = (await GetSamBlobContainerClientAsync()).GetBlobClient(gwMonit.VOCReportFileStoragePath);
+            await existingBlob.DeleteIfExistsAsync();
         }
 
         var originalName = Path.GetFileName(file.FileName);
         var storedFileName = $"{Guid.NewGuid():N}_{originalName}";
-        var absolutePath = Path.Combine(uploadsDir, storedFileName);
-
-        await using (var stream = System.IO.File.Create(absolutePath))
+        var blobName = $"SAM/gwmonit/{gwMonit.Id:N}/{storedFileName}";
+        var container = await GetSamBlobContainerClientAsync();
+        var blobClient = container.GetBlobClient(blobName);
+        await using var stream = file.OpenReadStream();
+        await blobClient.UploadAsync(stream, overwrite: false);
+        await blobClient.SetHttpHeadersAsync(new Azure.Storage.Blobs.Models.BlobHttpHeaders
         {
-            await file.CopyToAsync(stream);
-        }
+            ContentType = "application/pdf"
+        });
 
         gwMonit.VOCReportFileName = originalName;
         gwMonit.VOCReportContentType = "application/pdf";
-        gwMonit.VOCReportFileStoragePath = Path.Combine("uploads", "gwmonit", gwMonit.Id.ToString("N"), storedFileName).Replace("\\", "/");
+        gwMonit.VOCReportFileStoragePath = blobName;
+    }
+
+    private async Task ClearGwVocFileAsync(GWMonit gwMonit)
+    {
+        if (!string.IsNullOrWhiteSpace(gwMonit.VOCReportFileStoragePath))
+        {
+            var container = await GetSamBlobContainerClientAsync();
+            var existingBlob = container.GetBlobClient(gwMonit.VOCReportFileStoragePath);
+            await existingBlob.DeleteIfExistsAsync();
+        }
+
+        gwMonit.VOCReportFileStoragePath = null;
+        gwMonit.VOCReportFileName = null;
+        gwMonit.VOCReportContentType = null;
+    }
+
+    private async Task<List<WWCharTestResultAttachmentViewModel>> BuildWwCharAttachmentViewModelsAsync(Guid wwCharId)
+    {
+        return await _context.WWCharTestResultAttachments
+            .AsNoTracking()
+            .Where(x => x.WWCharId == wwCharId)
+            .OrderByDescending(x => x.TestDate)
+            .ThenByDescending(x => x.UploadedAtUtc)
+            .Select(x => new WWCharTestResultAttachmentViewModel
+            {
+                Id = x.Id,
+                TestDate = x.TestDate,
+                OriginalFileName = x.OriginalFileName,
+                UploadedBy = x.UploadedBy,
+                UploadedAtUtc = x.UploadedAtUtc
+            })
+            .ToListAsync();
+    }
+
+    private async Task<WWCharTestResultAttachment> SaveWwCharTestResultFileAsync(
+        WWChar wwChar,
+        DateTime testDate,
+        IFormFile file,
+        string uploadedBy)
+    {
+        var originalName = Path.GetFileName(file.FileName);
+        var storedFileName = $"{Guid.NewGuid():N}_{originalName}";
+        var blobName = $"SAM/wwchar/{wwChar.Id:N}/{storedFileName}";
+        var container = await GetSamBlobContainerClientAsync();
+        var blobClient = container.GetBlobClient(blobName);
+
+        await using var stream = file.OpenReadStream();
+        await blobClient.UploadAsync(stream, overwrite: false);
+
+        var attachment = new WWCharTestResultAttachment
+        {
+            CompanyId = wwChar.CompanyId,
+            WWCharId = wwChar.Id,
+            TestDate = testDate.Date,
+            FileStoragePath = blobName,
+            OriginalFileName = originalName,
+            ContentType = "application/pdf",
+            UploadedBy = uploadedBy,
+            UploadedAtUtc = DateTime.UtcNow
+        };
+
+        _context.WWCharTestResultAttachments.Add(attachment);
+        await _context.SaveChangesAsync();
+
+        return attachment;
+    }
+
+    private async Task<BlobContainerClient> GetSamBlobContainerClientAsync()
+    {
+        var connectionString = _configuration.GetConnectionString("StorageConnectionString");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("StorageConnectionString is not configured.");
+        }
+
+        var blobServiceClient = new BlobServiceClient(connectionString);
+        var container = blobServiceClient.GetBlobContainerClient("sam-files");
+        await container.CreateIfNotExistsAsync();
+        return container;
     }
 
     private async Task<List<string>> ValidateGwTemplateRowScopeAsync(

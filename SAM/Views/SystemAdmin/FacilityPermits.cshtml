@@ -117,6 +117,7 @@
                 var wwRows = rows.Where(r => (r.Row.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0).ToList();
                 var reorderFormId = $"reorder_ww_{permit.Id:N}";
                 var tableBodyId = $"tbody_ww_{permit.Id:N}";
+                var editPermitCollapseId = $"edit_permit_ww_{permit.Id:N}";
 
                 <div class="card mb-4">
                     <div class="card-body">
@@ -128,8 +129,11 @@
                             <div class="d-flex gap-2 align-items-center">
                                 @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
                                 {
-                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="FacilityPermitPdf" asp-route-permitId="@permit.Id"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
                                 }
+                                <button type="button" class="btn btn-sm btn-outline-secondary js-collapse-toggle-state" data-bs-toggle="collapse" data-bs-target="#@editPermitCollapseId" data-open-label="Close" data-closed-label="Edit">
+                                    <i class="bi bi-pencil-square me-1"></i><span>Edit</span>
+                                </button>
                                 <form asp-action="FacilityPermitArchive" method="post">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="permitId" value="@permit.Id" />
@@ -140,6 +144,41 @@
                                     <button type="button" class="btn btn-sm btn-success reorder-save-btn d-none"><i class="bi bi-check2-circle me-1"></i>Save Order</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary reorder-cancel-btn d-none"><i class="bi bi-x-circle me-1"></i>Cancel</button>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="collapse mb-3" id="@editPermitCollapseId">
+                            <div class="card card-body bg-light">
+                                <h6 class="mb-3">Edit Permit</h6>
+                                <form asp-action="FacilityPermitUpdate" method="post" enctype="multipart/form-data" class="row g-3">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="permitId" value="@permit.Id" />
+                                    <div class="col-md-3">
+                                        <label class="form-label">Effective Start Date</label>
+                                        <input name="effectiveStartDate" type="date" class="form-control" value="@permit.EffectiveStartDate.ToString("yyyy-MM-dd")" required />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Effective End Date</label>
+                                        <input name="effectiveEndDate" type="date" class="form-control" value="@(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? string.Empty)" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Replace PDF (optional)</label>
+                                        <input name="permitPdf" type="file" class="form-control" accept=".pdf,application/pdf" />
+                                    </div>
+                                    <div class="col-md-2 d-grid align-self-end">
+                                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save</button>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(permit.PermitPdfFileName))
+                                    {
+                                        <div class="col-md-4 offset-md-6">
+                                            <small class="text-muted d-block mt-1">Current file: @permit.PermitPdfFileName</small>
+                                        </div>
+                                    }
+                                    <div class="col-12">
+                                        <label class="form-label">Notes</label>
+                                        <textarea name="notes" class="form-control" rows="2">@permit.Notes</textarea>
+                                    </div>
+                                </form>
                             </div>
                         </div>
 
@@ -186,7 +225,7 @@
                                                 <td>@Fmt(item.Row.DailyMaximumLimit)</td>
                                                 <td>@(item.Row.IsRequired ? "Required" : "Optional")</td>
                                                 <td class="d-flex gap-1">
-                                                    <button class="btn btn-sm btn-outline-secondary edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#@editId" data-tooltip="true" data-bs-placement="top" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></button>
+                                                    <button class="btn btn-sm btn-outline-secondary edit-btn js-collapse-toggle-state" type="button" data-bs-toggle="collapse" data-bs-target="#@editId" data-tooltip="true" data-bs-placement="top" title="Edit" aria-label="Edit" data-open-label="Close" data-closed-label="Edit"><i class="bi bi-pencil-square"></i></button>
                                                     <form asp-action="DeletePermitTemplateParameter" method="post">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="id" value="@item.Row.Id" />
@@ -274,6 +313,7 @@
                 var gwRows = rows.Where(r => (r.Row.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0).ToList();
                 var reorderFormId = $"reorder_gw59_{permit.Id:N}";
                 var tableBodyId = $"tbody_gw59_{permit.Id:N}";
+                var editPermitCollapseId = $"edit_permit_gw59_{permit.Id:N}";
                 <div class="card mb-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -284,8 +324,11 @@
                             <div class="d-flex gap-2 align-items-center">
                                 @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
                                 {
-                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="FacilityPermitPdf" asp-route-permitId="@permit.Id"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
                                 }
+                                <button type="button" class="btn btn-sm btn-outline-secondary js-collapse-toggle-state" data-bs-toggle="collapse" data-bs-target="#@editPermitCollapseId" data-open-label="Close" data-closed-label="Edit">
+                                    <i class="bi bi-pencil-square me-1"></i><span>Edit</span>
+                                </button>
                                 <form asp-action="FacilityPermitArchive" method="post">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="permitId" value="@permit.Id" />
@@ -296,6 +339,40 @@
                                     <button type="button" class="btn btn-sm btn-success reorder-save-btn d-none"><i class="bi bi-check2-circle me-1"></i>Save Order</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary reorder-cancel-btn d-none"><i class="bi bi-x-circle me-1"></i>Cancel</button>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="collapse mb-3" id="@editPermitCollapseId">
+                            <div class="card card-body bg-light">
+                                <h6 class="mb-3">Edit Permit</h6>
+                                <form asp-action="FacilityPermitUpdate" method="post" enctype="multipart/form-data" class="row g-3">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="permitId" value="@permit.Id" />
+                                    <div class="col-md-3">
+                                        <label class="form-label">Effective Start Date</label>
+                                        <input name="effectiveStartDate" type="date" class="form-control" value="@permit.EffectiveStartDate.ToString("yyyy-MM-dd")" required />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Effective End Date</label>
+                                        <input name="effectiveEndDate" type="date" class="form-control" value="@(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? string.Empty)" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Replace PDF (optional)</label>
+                                        <input name="permitPdf" type="file" class="form-control" accept=".pdf,application/pdf" />
+                                    </div>
+                                    <div class="col-md-2 d-grid align-self-end">
+                                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save</button>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(permit.PermitPdfFileName))
+                                    {
+                                        <div class="col-md-4 offset-md-6">
+                                            <small class="text-muted d-block mt-1">Current file: @permit.PermitPdfFileName</small>
+                                        </div>
+                                    }
+                                    <div class="col-12">
+                                        <label class="form-label">Notes</label>
+                                        <textarea name="notes" class="form-control" rows="2">@permit.Notes</textarea>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                         <div class="template-section mb-3">
@@ -335,7 +412,7 @@
                                                 <td>@Fmt(item.Row.DailyMaximumLimit)</td>
                                                 <td>@(item.Row.IsRequired ? "Required" : "Optional")</td>
                                                 <td class="d-flex gap-1">
-                                                    <button class="btn btn-sm btn-outline-secondary edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#@editId" data-tooltip="true" data-bs-placement="top" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></button>
+                                                    <button class="btn btn-sm btn-outline-secondary edit-btn js-collapse-toggle-state" type="button" data-bs-toggle="collapse" data-bs-target="#@editId" data-tooltip="true" data-bs-placement="top" title="Edit" aria-label="Edit" data-open-label="Close" data-closed-label="Edit"><i class="bi bi-pencil-square"></i></button>
                                                     <form asp-action="DeletePermitTemplateParameter" method="post">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="id" value="@item.Row.Id" />
@@ -413,6 +490,7 @@
                 var gwRows = rows.Where(r => (r.Row.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0).ToList();
                 var reorderFormId = $"reorder_gw59a_{permit.Id:N}";
                 var tableBodyId = $"tbody_gw59a_{permit.Id:N}";
+                var editPermitCollapseId = $"edit_permit_gw59a_{permit.Id:N}";
                 <div class="card mb-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -423,8 +501,11 @@
                             <div class="d-flex gap-2 align-items-center">
                                 @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
                                 {
-                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="FacilityPermitPdf" asp-route-permitId="@permit.Id"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
                                 }
+                                <button type="button" class="btn btn-sm btn-outline-secondary js-collapse-toggle-state" data-bs-toggle="collapse" data-bs-target="#@editPermitCollapseId" data-open-label="Close" data-closed-label="Edit">
+                                    <i class="bi bi-pencil-square me-1"></i><span>Edit</span>
+                                </button>
                                 <form asp-action="FacilityPermitArchive" method="post">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="permitId" value="@permit.Id" />
@@ -435,6 +516,40 @@
                                     <button type="button" class="btn btn-sm btn-success reorder-save-btn d-none"><i class="bi bi-check2-circle me-1"></i>Save Order</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary reorder-cancel-btn d-none"><i class="bi bi-x-circle me-1"></i>Cancel</button>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="collapse mb-3" id="@editPermitCollapseId">
+                            <div class="card card-body bg-light">
+                                <h6 class="mb-3">Edit Permit</h6>
+                                <form asp-action="FacilityPermitUpdate" method="post" enctype="multipart/form-data" class="row g-3">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="permitId" value="@permit.Id" />
+                                    <div class="col-md-3">
+                                        <label class="form-label">Effective Start Date</label>
+                                        <input name="effectiveStartDate" type="date" class="form-control" value="@permit.EffectiveStartDate.ToString("yyyy-MM-dd")" required />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Effective End Date</label>
+                                        <input name="effectiveEndDate" type="date" class="form-control" value="@(permit.EffectiveEndDate?.ToString("yyyy-MM-dd") ?? string.Empty)" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Replace PDF (optional)</label>
+                                        <input name="permitPdf" type="file" class="form-control" accept=".pdf,application/pdf" />
+                                    </div>
+                                    <div class="col-md-2 d-grid align-self-end">
+                                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save</button>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(permit.PermitPdfFileName))
+                                    {
+                                        <div class="col-md-4 offset-md-6">
+                                            <small class="text-muted d-block mt-1">Current file: @permit.PermitPdfFileName</small>
+                                        </div>
+                                    }
+                                    <div class="col-12">
+                                        <label class="form-label">Notes</label>
+                                        <textarea name="notes" class="form-control" rows="2">@permit.Notes</textarea>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                         <div class="template-section mb-3">
@@ -474,7 +589,7 @@
                                                 <td>@Fmt(item.Row.DailyMaximumLimit)</td>
                                                 <td>@(item.Row.IsRequired ? "Required" : "Optional")</td>
                                                 <td class="d-flex gap-1">
-                                                    <button class="btn btn-sm btn-outline-secondary edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#@editId" data-tooltip="true" data-bs-placement="top" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></button>
+                                                    <button class="btn btn-sm btn-outline-secondary edit-btn js-collapse-toggle-state" type="button" data-bs-toggle="collapse" data-bs-target="#@editId" data-tooltip="true" data-bs-placement="top" title="Edit" aria-label="Edit" data-open-label="Close" data-closed-label="Edit"><i class="bi bi-pencil-square"></i></button>
                                                     <form asp-action="DeletePermitTemplateParameter" method="post">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="id" value="@item.Row.Id" />
@@ -560,7 +675,7 @@
                             <div class="d-flex gap-2">
                                 @if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
                                 {
-                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Content("~/" + permit.PermitPdfStoragePath)"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="FacilityPermitPdf" asp-route-permitId="@permit.Id"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
                                 }
                                 <form asp-action="FacilityPermitUnarchive" method="post">
                                     @Html.AntiForgeryToken()
@@ -661,6 +776,37 @@
                     }
                 });
             });
+        });
+
+        function setCollapseToggleVisual(btn, isOpen) {
+            if (!btn) return;
+            var icon = btn.querySelector('i.bi');
+            var label = btn.querySelector('span');
+            var closedLabel = btn.getAttribute('data-closed-label') || 'Edit';
+            var openLabel = btn.getAttribute('data-open-label') || 'Close';
+
+            if (icon) {
+                icon.classList.toggle('bi-pencil-square', !isOpen);
+                icon.classList.toggle('bi-x-circle', isOpen);
+            }
+
+            if (label) {
+                label.textContent = isOpen ? openLabel : closedLabel;
+            } else {
+                btn.setAttribute('title', isOpen ? openLabel : closedLabel);
+                btn.setAttribute('aria-label', isOpen ? openLabel : closedLabel);
+            }
+        }
+
+        document.querySelectorAll('.js-collapse-toggle-state[data-bs-target]').forEach(function (btn) {
+            var targetSelector = btn.getAttribute('data-bs-target');
+            if (!targetSelector) return;
+            var collapseEl = document.querySelector(targetSelector);
+            if (!collapseEl) return;
+
+            setCollapseToggleVisual(btn, collapseEl.classList.contains('show'));
+            collapseEl.addEventListener('show.bs.collapse', function () { setCollapseToggleVisual(btn, true); });
+            collapseEl.addEventListener('hide.bs.collapse', function () { setCollapseToggleVisual(btn, false); });
         });
 
         function getPairedEditRow(mainRow) {

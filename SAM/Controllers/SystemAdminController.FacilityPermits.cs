@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Azure.Storage.Blobs;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using SAM.Domain.Entities;
@@ -71,14 +72,10 @@ public partial class SystemAdminController
         string? originalName = null;
         if (permitPdf is { Length: > 0 })
         {
-            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads", "permits", facilityId.ToString("N"));
-            Directory.CreateDirectory(uploadsDir);
             originalName = Path.GetFileName(permitPdf.FileName);
             var fileName = $"{Guid.NewGuid():N}_{originalName}";
-            var absolutePath = Path.Combine(uploadsDir, fileName);
-            await using var stream = System.IO.File.Create(absolutePath);
-            await permitPdf.CopyToAsync(stream);
-            storedPath = Path.Combine("uploads", "permits", facilityId.ToString("N"), fileName).Replace("\\", "/");
+            storedPath = $"SAM/facility-permits/{facilityId:N}/{fileName}";
+            await UploadBlobAsync(storedPath, permitPdf.OpenReadStream(), "application/pdf");
         }
 
         var existingSameVersion = await _context.FacilityPermits
@@ -116,6 +113,10 @@ public partial class SystemAdminController
             existingSameVersion.PermitVersion = normalizedPermitVersion;
             if (!string.IsNullOrWhiteSpace(storedPath))
             {
+                if (!string.IsNullOrWhiteSpace(existingSameVersion.PermitPdfStoragePath))
+                {
+                    await DeleteBlobIfExistsAsync(existingSameVersion.PermitPdfStoragePath);
+                }
                 existingSameVersion.PermitPdfStoragePath = storedPath;
                 existingSameVersion.PermitPdfFileName = originalName;
             }
@@ -151,6 +152,81 @@ public partial class SystemAdminController
 
         TempData["SuccessMessage"] = "Permit version added.";
         return RedirectToAction(nameof(FacilityPermits), new { facilityId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> FacilityPermitUpdate(
+        Guid permitId,
+        DateTime effectiveStartDate,
+        DateTime? effectiveEndDate,
+        string? notes,
+        IFormFile? permitPdf)
+    {
+        var permit = await _context.FacilityPermits.FirstOrDefaultAsync(x => x.Id == permitId);
+        if (permit == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(permit.CompanyId);
+        if (!permit.IsActive)
+        {
+            TempData["ErrorMessage"] = "Only active permit versions can be edited.";
+            return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+        }
+
+        var startDate = effectiveStartDate.Date;
+        var endDate = effectiveEndDate?.Date;
+        var overlaps = await _context.FacilityPermits
+            .Where(p => p.FacilityId == permit.FacilityId && p.IsActive && p.Id != permitId)
+            .AnyAsync(p => p.EffectiveStartDate <= (endDate ?? DateTime.MaxValue)
+                           && (p.EffectiveEndDate ?? DateTime.MaxValue) >= startDate);
+
+        if (overlaps)
+        {
+            TempData["ErrorMessage"] = "Permit date range overlaps an existing active permit version.";
+            return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+        }
+
+        string? newBlobPath = null;
+        string? newOriginalName = null;
+        if (permitPdf is { Length: > 0 })
+        {
+            if (!IsPdfUpload(permitPdf))
+            {
+                TempData["ErrorMessage"] = "Only PDF files are allowed for permit upload.";
+                return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+            }
+
+            newOriginalName = Path.GetFileName(permitPdf.FileName);
+            var storedName = $"{Guid.NewGuid():N}_{newOriginalName}";
+            newBlobPath = $"SAM/facility-permits/{permit.FacilityId:N}/{storedName}";
+
+            await using var uploadStream = permitPdf.OpenReadStream();
+            await UploadBlobAsync(newBlobPath, uploadStream, "application/pdf");
+        }
+
+        permit.EffectiveStartDate = startDate;
+        permit.EffectiveEndDate = endDate;
+        permit.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+
+        if (!string.IsNullOrWhiteSpace(newBlobPath))
+        {
+            var oldBlobPath = permit.PermitPdfStoragePath;
+            permit.PermitPdfStoragePath = newBlobPath;
+            permit.PermitPdfFileName = newOriginalName;
+
+            if (!string.IsNullOrWhiteSpace(oldBlobPath))
+            {
+                await DeleteBlobIfExistsAsync(oldBlobPath);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Permit version updated.";
+        return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
     }
 
     [HttpPost]
@@ -202,12 +278,57 @@ public partial class SystemAdminController
         if (permit == null) return NotFound();
         await EnsureCompanyAccessAsync(permit.CompanyId);
 
+        if (!string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
+        {
+            await DeleteBlobIfExistsAsync(permit.PermitPdfStoragePath);
+            permit.PermitPdfStoragePath = null;
+            permit.PermitPdfFileName = null;
+        }
+
         permit.IsActive = false;
         permit.IsDeleted = true;
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "Permit version deleted.";
         return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> FacilityPermitPdf(Guid permitId, bool download = false)
+    {
+        var permit = await _context.FacilityPermits.FirstOrDefaultAsync(x => x.Id == permitId);
+        if (permit == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(permit.CompanyId);
+        if (string.IsNullOrWhiteSpace(permit.PermitPdfStoragePath))
+        {
+            return NotFound();
+        }
+
+        var blobClient = (await GetSamBlobContainerClientAsync()).GetBlobClient(permit.PermitPdfStoragePath);
+        if (!await blobClient.ExistsAsync())
+        {
+            return NotFound("Permit PDF blob is missing from storage.");
+        }
+
+        var blob = await blobClient.DownloadStreamingAsync();
+        var contentType = string.IsNullOrWhiteSpace(blob.Value.Details.ContentType)
+            ? "application/pdf"
+            : blob.Value.Details.ContentType;
+
+        if (download)
+        {
+            var fileName = string.IsNullOrWhiteSpace(permit.PermitPdfFileName)
+                ? $"{permit.PermitNumber}_{permit.PermitVersion}.pdf"
+                : permit.PermitPdfFileName;
+            return File(blob.Value.Content, contentType, fileName);
+        }
+
+        return File(blob.Value.Content, contentType);
     }
 
     [HttpPost]
@@ -415,5 +536,44 @@ public partial class SystemAdminController
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Permit template parameter removed.";
         return RedirectToAction(nameof(FacilityPermits), new { facilityId = row.FacilityPermit!.FacilityId });
+    }
+
+    private async Task UploadBlobAsync(string blobName, Stream fileStream, string contentType)
+    {
+        var container = await GetSamBlobContainerClientAsync();
+        var blobClient = container.GetBlobClient(blobName);
+        await blobClient.UploadAsync(fileStream, overwrite: false);
+        await blobClient.SetHttpHeadersAsync(new Azure.Storage.Blobs.Models.BlobHttpHeaders
+        {
+            ContentType = contentType
+        });
+    }
+
+    private async Task DeleteBlobIfExistsAsync(string blobName)
+    {
+        var container = await GetSamBlobContainerClientAsync();
+        var blobClient = container.GetBlobClient(blobName);
+        await blobClient.DeleteIfExistsAsync();
+    }
+
+    private async Task<BlobContainerClient> GetSamBlobContainerClientAsync()
+    {
+        var connectionString = _configuration.GetConnectionString("StorageConnectionString");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("StorageConnectionString is not configured.");
+        }
+
+        var blobServiceClient = new BlobServiceClient(connectionString);
+        var container = blobServiceClient.GetBlobContainerClient("sam-files");
+        await container.CreateIfNotExistsAsync();
+        return container;
+    }
+
+    private static bool IsPdfUpload(IFormFile file)
+    {
+        var fileName = file.FileName ?? string.Empty;
+        return file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
+            || fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
     }
 }

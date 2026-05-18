@@ -38,7 +38,7 @@
             </div>
         </div>
 
-        <form asp-action="WWCharEdit" method="post">
+        <form id="wwCharEditForm" asp-action="WWCharEdit" method="post" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="CompanyId" />
@@ -151,6 +151,75 @@
                 </div>
             </div>
 
+            <div class="form-section">
+                <div class="form-section-title">Upload Test Result</div>
+                <div class="row align-items-end g-3">
+                    <div class="col-md-3">
+                        <label asp-for="TestResultDate" class="form-label required"></label>
+                        <input asp-for="TestResultDate" type="date" class="form-control" />
+                        <span asp-validation-for="TestResultDate" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="TestResultFile" class="form-label"></label>
+                        <input asp-for="TestResultFile" type="file" class="form-control" accept=".pdf,application/pdf" />
+                        <span asp-validation-for="TestResultFile" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-upload me-1"></i> Upload Test Result
+                        </button>
+                    </div>
+                </div>
+
+                @if (Model.TestResultAttachments.Any())
+                {
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Test Date</th>
+                                    <th>File</th>
+                                    <th>Uploaded By</th>
+                                    <th>Uploaded At (UTC)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var attachment in Model.TestResultAttachments)
+                                {
+                                    <tr>
+                                        <td>@attachment.TestDate.ToString("MM/dd/yyyy")</td>
+                                        <td>@attachment.OriginalFileName</td>
+                                        <td>@attachment.UploadedBy</td>
+                                        <td>@attachment.UploadedAtUtc.ToString("MM/dd/yyyy HH:mm")</td>
+                                        <td class="d-flex gap-1">
+                                            <a class="btn btn-sm btn-outline-primary" asp-action="WWCharTestResultFile" asp-route-attachmentId="@attachment.Id">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a class="btn btn-sm btn-outline-secondary" asp-action="WWCharTestResultFile" asp-route-attachmentId="@attachment.Id" asp-route-download="true">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger js-remove-attachment-btn"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#removeAttachmentModal"
+                                                    data-remove-url="@Url.Action("RemoveWWCharTestResultAttachment", "OperationalData", new { attachmentId = attachment.Id })"
+                                                    data-file-name="@attachment.OriginalFileName">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted small mt-3">No test result attachments uploaded yet.</div>
+                }
+            </div>
+
             <div class="d-flex justify-content-end gap-2 responsive-form-actions">
                 <a asp-action="WWCharDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
@@ -158,12 +227,58 @@
                 </button>
             </div>
         </form>
+
+        <div class="modal fade" id="removeAttachmentModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Remove</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Remove this test result attachment?</p>
+                        <p class="text-muted small mb-0 text-break" id="removeAttachmentFileName"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit"
+                                id="confirmRemoveAttachmentBtn"
+                                class="btn btn-danger"
+                                form="wwCharEditForm"
+                                formmethod="post"
+                                formnovalidate>
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
+        (function () {
+            var removeButtons = document.querySelectorAll('.js-remove-attachment-btn');
+            var confirmBtn = document.getElementById('confirmRemoveAttachmentBtn');
+            var fileNameTarget = document.getElementById('removeAttachmentFileName');
+            if (!removeButtons.length || !confirmBtn) return;
+
+            removeButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var removeUrl = btn.getAttribute('data-remove-url');
+                    var fileName = btn.getAttribute('data-file-name') || '';
+                    if (removeUrl) {
+                        confirmBtn.setAttribute('formaction', removeUrl);
+                    }
+                    if (fileNameTarget) {
+                        fileNameTarget.textContent = fileName ? ('File: ' + fileName) : '';
+                    }
+                });
+            });
+        })();
+
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
             var tooltipContainer = el.closest('.wwchar-daily-table-wrapper') || el.closest('.card-body') || document.body;
             new bootstrap.Tooltip(el, {

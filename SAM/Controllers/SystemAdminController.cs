@@ -31,6 +31,7 @@ public partial class SystemAdminController : BaseController
     private readonly ApplicationDbContext _context;
     private readonly IPcsCatalogService _pcsCatalogService;
     private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
 
     public SystemAdminController(
         IFacilityService facilityService,
@@ -44,6 +45,7 @@ public partial class SystemAdminController : BaseController
         ApplicationDbContext context,
         IPcsCatalogService pcsCatalogService,
         IWebHostEnvironment environment,
+        IConfiguration configuration,
         UserManager<ApplicationUser> userManager,
         ILogger<SystemAdminController> logger)
         : base(userManager, logger)
@@ -59,6 +61,7 @@ public partial class SystemAdminController : BaseController
         _context = context;
         _pcsCatalogService = pcsCatalogService;
         _environment = environment;
+        _configuration = configuration;
     }
 
 

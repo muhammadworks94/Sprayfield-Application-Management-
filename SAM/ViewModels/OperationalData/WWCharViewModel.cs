@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 using SAM.Domain.Enums;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using SAM.Services.Models;
@@ -101,6 +102,7 @@ public class WWCharViewModel
     public string AnalyzedBy { get; set; } = string.Empty;
 
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+    public List<WWCharTestResultAttachmentViewModel> TestResultAttachments { get; set; } = new();
 }
 
 public class WWCharCreateViewModel
@@ -302,7 +304,15 @@ public class WWCharEditViewModel
     [Display(Name = "Analyzed By")]
     public string AnalyzedBy { get; set; } = string.Empty;
 
+    [Display(Name = "Test Date")]
+    [DataType(DataType.Date)]
+    public DateTime? TestResultDate { get; set; }
+
+    [Display(Name = "Upload Test Result (PDF)")]
+    public IFormFile? TestResultFile { get; set; }
+
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+    public List<WWCharTestResultAttachmentViewModel> TestResultAttachments { get; set; } = new();
 }
 
 public class WWCharTemplateParameterInputViewModel
@@ -336,6 +346,15 @@ public class WWCharTemplateSectionViewModel
     public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
     public List<decimal?> LagoonFreeboard { get; set; } = new();
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+}
+
+public class WWCharTestResultAttachmentViewModel
+{
+    public Guid Id { get; set; }
+    public DateTime TestDate { get; set; }
+    public string OriginalFileName { get; set; } = string.Empty;
+    public string UploadedBy { get; set; } = string.Empty;
+    public DateTime UploadedAtUtc { get; set; }
 }
 
 public class WWCharFilterViewModel

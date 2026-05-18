@@ -102,6 +102,51 @@
 
 <div class="card mt-3">
     <div class="card-body">
+        <h4 class="mb-0">Test Result Attachments</h4>
+        @if (Model.TestResultAttachments.Any())
+        {
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead>
+                        <tr>
+                            <th>Test Date</th>
+                            <th>File</th>
+                            <th>Uploaded By</th>
+                            <th>Uploaded At (UTC)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var attachment in Model.TestResultAttachments)
+                        {
+                            <tr>
+                                <td>@attachment.TestDate.ToString("MM/dd/yyyy")</td>
+                                <td>@attachment.OriginalFileName</td>
+                                <td>@attachment.UploadedBy</td>
+                                <td>@attachment.UploadedAtUtc.ToString("MM/dd/yyyy HH:mm")</td>
+                                <td class="d-flex gap-1">
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="WWCharTestResultFile" asp-route-attachmentId="@attachment.Id">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a class="btn btn-sm btn-outline-secondary" asp-action="WWCharTestResultFile" asp-route-attachmentId="@attachment.Id" asp-route-download="true">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-muted small mt-2">No test result attachments uploaded for this month.</div>
+        }
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-body">
         <h4 class="mb-0">Attachment A Template Daily Data</h4>
         <p class="text-muted small mb-2 mt-1">Days 1-31</p>
 

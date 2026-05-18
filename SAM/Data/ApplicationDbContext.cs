@@ -37,6 +37,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PcsParameterCatalog> PcsParameterCatalogs => Set<PcsParameterCatalog>();
     public DbSet<FacilityPermitTemplateParameter> FacilityPermitTemplateParameters => Set<FacilityPermitTemplateParameter>();
     public DbSet<WWCharTemplateValue> WWCharTemplateValues => Set<WWCharTemplateValue>();
+    public DbSet<WWCharTestResultAttachment> WWCharTestResultAttachments => Set<WWCharTestResultAttachment>();
     public DbSet<GWMonitTemplateValue> GWMonitTemplateValues => Set<GWMonitTemplateValue>();
     public DbSet<GWMonit> GWMonits => Set<GWMonit>();
     public DbSet<IrrRprt> IrrRprts => Set<IrrRprt>();
@@ -98,6 +99,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new PcsParameterCatalogConfiguration());
         builder.ApplyConfiguration(new FacilityPermitTemplateParameterConfiguration());
         builder.ApplyConfiguration(new WWCharTemplateValueConfiguration());
+        builder.ApplyConfiguration(new WWCharTestResultAttachmentConfiguration());
         builder.ApplyConfiguration(new GWMonitTemplateValueConfiguration());
         builder.ApplyConfiguration(new GWMonitConfiguration());
         builder.ApplyConfiguration(new IrrRprtConfiguration());
