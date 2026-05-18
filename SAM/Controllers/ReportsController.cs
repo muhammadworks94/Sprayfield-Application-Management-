@@ -1561,6 +1561,7 @@ public class ReportsController : BaseController
             .Where(x => x.FacilityPermitTemplateParameter != null)
             .Select(x => new Gw59ParameterSnapshot
             {
+                SortOrder = x.FacilityPermitTemplateParameter!.SortOrder,
                 PcsCode = x.FacilityPermitTemplateParameter!.PcsParameterCatalog?.PcsCode ?? string.Empty,
                 ParameterName = x.FacilityPermitTemplateParameter.ParameterDisplayOverride
                     ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.UserFriendlyName
@@ -1573,7 +1574,8 @@ public class ReportsController : BaseController
                 DailyMaximumLimit = x.FacilityPermitTemplateParameter.DailyMaximumLimit,
                 IsGw59A = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0
             })
-            .OrderBy(x => x.PcsCode)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.PcsCode)
             .ToList();
 
         var hasGw59APermitTemplateRows = permit != null && await _context.FacilityPermitTemplateParameters

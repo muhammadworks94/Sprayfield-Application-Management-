@@ -47,6 +47,7 @@ public class GroundwaterQualityReportRowViewModel
 
 public sealed class Gw59ParameterSnapshot
 {
+    public int SortOrder { get; set; }
     public string PcsCode { get; set; } = string.Empty;
     public string ParameterName { get; set; } = string.Empty;
     public string Units { get; set; } = string.Empty;

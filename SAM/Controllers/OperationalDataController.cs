@@ -3427,6 +3427,7 @@ namespace SAM.Controllers;
             .Include(x => x.PcsParameterCatalog)
             .Where(x => x.FacilityPermitId == permitId.Value && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
             .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty)
             .ToListAsync();
         templateRows = templateRows
             .Where(row => IsTemplateRowApplicableForMonth(row, reportDate.Month))
@@ -3705,6 +3706,7 @@ namespace SAM.Controllers;
                 ((x.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0 ||
                  (x.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0))
             .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty)
             .ToListAsync();
 
         var existingValues = gwMonitId.HasValue
