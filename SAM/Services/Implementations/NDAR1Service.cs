@@ -1175,24 +1175,55 @@ public class NDAR1Service : INDAR1Service
         RemoveInstructionalHighlights(worksheet);
 
         RemovePreExistingDynamicNdarSheets(workbook);
+        RemovePreExistingDynamicCertificationSheets(workbook);
 
         var exportFields = BuildExportFields(report);
-        if (exportFields.Count > 4)
+        var chunks = exportFields
+            .Select((field, idx) => new { field, idx })
+            .GroupBy(x => x.idx / 4)
+            .Select(g => g.Select(x => x.field).ToList())
+            .ToList();
+
+        if (chunks.Count > 0)
         {
-            var chunkIndex = 1;
-            for (var offset = 4; offset < exportFields.Count; offset += 4)
+            // Make sheet 1 deterministic and ensure it represents chunk 1.
+            worksheet.Name = "NDAR-1 (1)";
+            WriteNdarSheetChunk(worksheet, facility, report, chunks[0], operatorLogStorageByDate);
+
+            // Create additional NDAR chunk sheets for chunk 2..N.
+            for (var chunkIndex = 1; chunkIndex < chunks.Count; chunkIndex++)
             {
-                var chunk = exportFields.Skip(offset).Take(4).ToList();
                 var extraSheetName = $"NDAR-1 ({chunkIndex + 1})";
                 var extraSheet = worksheet.CopyTo(extraSheetName);
-                WriteNdarSheetChunk(extraSheet, facility, report, chunk, operatorLogStorageByDate);
-                chunkIndex++;
+                WriteNdarSheetChunk(extraSheet, facility, report, chunks[chunkIndex], operatorLogStorageByDate);
             }
         }
 
-        WriteCertificationPage(workbook, facility, irrigationReport?.ComplianceStatus);
-        MoveSheetToEndByName(workbook, "Certification Page");
-        MoveSheetToEndByName(workbook, "Formulas & Weather Codes");
+        var certificationTemplate = GetCertificationTemplateSheet(workbook);
+        if (certificationTemplate != null && chunks.Count > 0)
+        {
+            // Insert certification page immediately after each NDAR chunk page.
+            for (var chunkIndex = 0; chunkIndex < chunks.Count; chunkIndex++)
+            {
+                var ndarSheetName = $"NDAR-1 ({chunkIndex + 1})";
+                var ndarSheet = workbook.Worksheets.FirstOrDefault(ws =>
+                    string.Equals(ws.Name, ndarSheetName, StringComparison.OrdinalIgnoreCase));
+
+                if (ndarSheet == null)
+                {
+                    continue;
+                }
+
+                var certSheetName = $"Certification ({chunkIndex + 1})";
+                var certSheet = certificationTemplate.CopyTo(certSheetName);
+                WriteCertificationPage(certSheet, facility, irrigationReport?.ComplianceStatus);
+                certSheet.Position = ndarSheet.Position + 1;
+            }
+        }
+
+        // Remove static template helper sheets from export output.
+        DeleteSheetByName(workbook, "Certification Page");
+        DeleteSheetByName(workbook, "Formulas & Weather Codes");
 
         // Convert to byte array
         using var stream = new MemoryStream();
@@ -1552,21 +1583,8 @@ public class NDAR1Service : INDAR1Service
         public decimal FloatingTotal { get; set; }
     }
 
-    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility, ComplianceStatusEnum? complianceStatus)
+    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility, ComplianceStatusEnum? complianceStatus)
     {
-        var certificationWorksheet = workbook.Worksheets
-            .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
-
-        if (certificationWorksheet == null && workbook.Worksheets.Count >= 2)
-        {
-            certificationWorksheet = workbook.Worksheet(2);
-        }
-
-        if (certificationWorksheet == null)
-        {
-            return;
-        }
-
         WriteFacilityStatusComplianceRows(certificationWorksheet, complianceStatus);
 
         certificationWorksheet.Cell("C10").Value = facility.OrcName ?? string.Empty;
@@ -1585,6 +1603,18 @@ public class NDAR1Service : INDAR1Service
         certificationWorksheet.Cell("U14").Value = DateTime.Today.ToString("MM/dd/yyyy");
     }
 
+    private static IXLWorksheet? GetCertificationTemplateSheet(IXLWorkbook workbook)
+    {
+        var byName = workbook.Worksheets
+            .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
+        if (byName != null)
+        {
+            return byName;
+        }
+
+        return workbook.Worksheets.Count >= 2 ? workbook.Worksheet(2) : null;
+    }
+
     private static void RemovePreExistingDynamicNdarSheets(IXLWorkbook workbook)
     {
         var staleSheets = workbook.Worksheets
@@ -1597,17 +1627,22 @@ public class NDAR1Service : INDAR1Service
         }
     }
 
-    private static void MoveSheetToEndByName(IXLWorkbook workbook, string sheetName)
+    private static void RemovePreExistingDynamicCertificationSheets(IXLWorkbook workbook)
+    {
+        var staleSheets = workbook.Worksheets
+            .Where(ws => Regex.IsMatch(ws.Name, @"^Certification \(\d+\)$", RegexOptions.IgnoreCase))
+            .ToList();
+        foreach (var sheet in staleSheets)
+        {
+            sheet.Delete();
+        }
+    }
+
+    private static void DeleteSheetByName(IXLWorkbook workbook, string sheetName)
     {
         var sheet = workbook.Worksheets
             .FirstOrDefault(ws => string.Equals(ws.Name, sheetName, StringComparison.OrdinalIgnoreCase));
-
-        if (sheet == null)
-        {
-            return;
-        }
-
-        sheet.Position = workbook.Worksheets.Count;
+        sheet?.Delete();
     }
 
     private static void WriteFacilityStatusComplianceRows(IXLWorksheet certificationWorksheet, ComplianceStatusEnum? complianceStatus)
