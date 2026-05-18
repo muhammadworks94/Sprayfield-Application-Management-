@@ -14,6 +14,9 @@
     var contextDate = (contextMonth.HasValue && contextYear.HasValue && contextMonth.Value >= 1 && contextMonth.Value <= 12 && contextYear.Value >= 2000 && contextYear.Value <= 2100)
         ? new DateTime(contextYear.Value, contextMonth.Value, 1)
         : (DateTime?)null;
+    var addPermitError = TempData.Peek("ErrorMessage") as string;
+    var addPermitExpanded = !ViewData.ModelState.IsValid
+        || (!string.IsNullOrWhiteSpace(addPermitError) && addPermitError.Contains("permit", StringComparison.OrdinalIgnoreCase));
     var defaultEffectiveStart = contextDate?.ToString("yyyy-MM-dd") ?? string.Empty;
     var fromWwChar = string.Equals(sourceContext, "wwchar", StringComparison.OrdinalIgnoreCase);
     string Fmt(decimal? value) => value.HasValue ? value.Value.ToString("0.######") : "-";
@@ -36,6 +39,16 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div><p class="text-muted mb-0">@facility?.Name</p></div>
     <div class="d-flex gap-2">
+        <button type="button"
+                class="btn btn-outline-primary js-collapse-toggle-state"
+                data-bs-toggle="collapse"
+                data-bs-target="#addPermitCollapse"
+                data-open-label="Cancel"
+                data-closed-label="Add Permit"
+                data-open-icon="bi-x-circle"
+                data-closed-icon="bi-plus-circle">
+            <i class="bi bi-plus-circle me-1"></i><span>Add Permit</span>
+        </button>
         <form asp-action="ImportPcsCatalogFromTsv" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" name="facilityId" value="@facility?.Id" />
@@ -52,22 +65,24 @@
     </div>
 }
 
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="mb-3">Add Permit Version</h5>
-        <form asp-action="FacilityPermitCreate" method="post" enctype="multipart/form-data">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="facilityId" value="@facility?.Id" />
-            <div class="row g-3">
-                <div class="col-md-3"><input name="permitNumber" class="form-control" placeholder="Permit Number" required /></div>
-                <div class="col-md-2"><input name="permitVersion" class="form-control" placeholder="Version (e.g. 4.1)" required /></div>
-                <div class="col-md-2"><input name="effectiveStartDate" type="date" class="form-control" required value="@defaultEffectiveStart" /></div>
-                <div class="col-md-2"><input name="effectiveEndDate" type="date" class="form-control" /></div>
-                <div class="col-md-3"><input name="permitPdf" type="file" class="form-control" accept=".pdf" /></div>
-                <div class="col-12"><textarea name="notes" class="form-control" rows="2" placeholder="Notes (optional)"></textarea></div>
-                <div class="col-12"><button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Add Permit</button></div>
-            </div>
-        </form>
+<div id="addPermitCollapse" class="collapse @(addPermitExpanded ? "show" : "")">
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="mb-3">Add Permit Version</h5>
+            <form asp-action="FacilityPermitCreate" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="facilityId" value="@facility?.Id" />
+                <div class="row g-3">
+                    <div class="col-md-3"><input name="permitNumber" class="form-control" placeholder="Permit Number" required /></div>
+                    <div class="col-md-2"><input name="permitVersion" class="form-control" placeholder="Version (e.g. 4.1)" required /></div>
+                    <div class="col-md-2"><input name="effectiveStartDate" type="date" class="form-control" required value="@defaultEffectiveStart" /></div>
+                    <div class="col-md-2"><input name="effectiveEndDate" type="date" class="form-control" /></div>
+                    <div class="col-md-3"><input name="permitPdf" type="file" class="form-control" accept=".pdf" /></div>
+                    <div class="col-12"><textarea name="notes" class="form-control" rows="2" placeholder="Notes (optional)"></textarea></div>
+                    <div class="col-12"><button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Add Permit</button></div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -784,10 +799,12 @@
             var label = btn.querySelector('span');
             var closedLabel = btn.getAttribute('data-closed-label') || 'Edit';
             var openLabel = btn.getAttribute('data-open-label') || 'Close';
+            var closedIcon = btn.getAttribute('data-closed-icon') || 'bi-pencil-square';
+            var openIcon = btn.getAttribute('data-open-icon') || 'bi-x-circle';
 
             if (icon) {
-                icon.classList.toggle('bi-pencil-square', !isOpen);
-                icon.classList.toggle('bi-x-circle', isOpen);
+                icon.classList.remove(closedIcon, openIcon);
+                icon.classList.add(isOpen ? openIcon : closedIcon);
             }
 
             if (label) {
