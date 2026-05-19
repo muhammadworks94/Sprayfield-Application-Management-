@@ -18,9 +18,18 @@
         <a class="btn btn-success js-report-export-link" asp-action="ExportNDAR1ReportPdf" asp-route-id="@Model.Id">
             <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
         </a>
-        <a class="btn btn-success js-report-export-link" asp-action="ExportNDAR1Report" asp-route-id="@Model.Id">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
-        </a>
+        <div class="dropdown">
+            <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                More...
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item js-report-export-link" asp-action="ExportNDAR1Report" asp-route-id="@Model.Id">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
+                    </a>
+                </li>
+            </ul>
+        </div>
         @if (canEdit)
         {
             <a asp-action="NDAR1ReportEdit" asp-route-id="@Model.Id" class="btn btn-primary">
