@@ -16,6 +16,12 @@
             : "asc";
 
     bool IsActiveSort(string column) => string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase);
+    var generateForm = Model.GenerateForm ?? new SAM.ViewModels.Reports.NDMLRCreateViewModel
+    {
+        CompanyId = Model.SelectedCompanyId ?? Guid.Empty,
+        FacilityId = Model.Filter.FacilityId ?? Guid.Empty,
+        Year = Model.Filter.Year ?? DateTime.Now.Year
+    };
 }
 
 @section PageTitleExtra {
@@ -32,7 +38,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">View and export Non-Discharge Mass Loading Reports</p>
+        <p class="text-muted mb-0">Generate and view Non-Discharge Mass Loading Reports</p>
     </div>
 </div>
 
@@ -52,18 +58,6 @@
                                     @facility.Text
                                 </option>
                             }
-                        }
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="month" class="form-label"><i class="bi bi-calendar-event me-1"></i>Month:</label>
-                    <select name="month" id="month" class="form-select">
-                        <option value="">All Months</option>
-                        @for (var m = 1; m <= 12; m++)
-                        {
-                            <option value="@m" selected="@(Model.Filter.Month == m)">
-                                @System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)
-                            </option>
                         }
                     </select>
                 </div>
@@ -101,20 +95,42 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-4 page-section-header">
+        <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
             <h4 class="mb-0">Non-Discharge Mass Loading Report List</h4>
+            <div class="d-flex page-section-actions">
+                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary active"
+                            id="ndmlrReportsTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            id="ndmlrReportsCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
+                </div>
+                @if (canEdit)
+                {
+                    <button type="button"
+                            class="btn btn-sm btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#generateNDMLRModal">
+                        <i class="bi bi-plus-circle"></i> Generate New Report
+                    </button>
+                }
+            </div>
         </div>
 
         @if (reports.Any())
         {
-            <div class="table-responsive responsive-table">
+            <div id="ndmlrReportsTableView" class="table-responsive responsive-table">
                 <table class="table table-hover">
                     <thead>
                         <tr>
                             <th>
-                                <a asp-action="NDMLRReports"
+                                   <a asp-action="NDMLRReports"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
-                                   asp-route-month="@Model.Filter.Month"
                                    asp-route-year="@Model.Filter.Year"
                                    asp-route-page="1"
                                    asp-route-pageSize="@Model.Filter.PageSize"
@@ -127,9 +143,8 @@
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="NDMLRReports"
+                                   <a asp-action="NDMLRReports"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
-                                   asp-route-month="@Model.Filter.Month"
                                    asp-route-year="@Model.Filter.Year"
                                    asp-route-page="1"
                                    asp-route-pageSize="@Model.Filter.PageSize"
@@ -149,21 +164,112 @@
                         @foreach (var report in reports)
                         {
                             <tr>
-                                <td>@report.Month @report.Year</td>
+                                <td>
+                                    <a asp-action="NDMLRReportDetails" asp-route-id="@report.Id">
+                                        Annual @report.Year
+                                    </a>
+                                </td>
                                 <td>@report.FacilityName</td>
                                 <td>@report.CreatedDate.ToString("MM/dd/yyyy")</td>
                                 <td class="table-actions">
-                                    <a asp-action="NDAR1ReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
-                                    <a asp-action="ExportNDMLRReport" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success js-report-export-link">
-                                        <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
-                                    </a>
+                                    <div class="d-flex gap-1">
+                                        @if (canEdit)
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteNDMLRModal"
+                                                    data-report-id="@report.Id"
+                                                    data-report-period="@($"Annual {report.Year}")">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        }
+                                        <a asp-action="ExportNDMLRReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary js-report-export-link">
+                                            <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                                        </a>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                More...
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li>
+                                                    <a asp-action="ExportNDMLRReport" asp-route-id="@report.Id" class="dropdown-item js-report-export-link">
+                                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+            </div>
+
+            <div id="ndmlrReportsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
+                @foreach (var report in reports)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header-light d-flex justify-content-between">
+                                <div>
+                                    <h6 class="mb-0">
+                                        <a asp-action="NDMLRReportDetails" asp-route-id="@report.Id">
+                                            Annual @report.Year
+                                        </a>
+                                    </h6>
+                                </div>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <dl class="row small mb-3 responsive-detail-list">
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
+                                        <dd class="col-6 mb-1">@report.CompanyName</dd>
+                                    }
+                                    <dt class="col-6"><i class="bi bi-building me-1"></i>Facility</dt>
+                                    <dd class="col-6 mb-1">@report.FacilityName</dd>
+                                    <dt class="col-6"><i class="bi bi-calendar-event me-1"></i>Year</dt>
+                                    <dd class="col-6 mb-1">@report.Year</dd>
+                                    <dt class="col-6"><i class="bi bi-calendar-plus me-1"></i>Created</dt>
+                                    <dd class="col-6 mb-1">@report.CreatedDate.ToString("MM/dd/yyyy")</dd>
+                                </dl>
+
+                                <div class="mt-auto d-flex justify-content-between">
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        @if (canEdit)
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteNDMLRModal"
+                                                    data-report-id="@report.Id"
+                                                    data-report-period="@($"Annual {report.Year}")">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        }
+                                        <a asp-action="ExportNDMLRReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary js-report-export-link">
+                                            <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                                        </a>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                More...
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li>
+                                                    <a asp-action="ExportNDMLRReport" asp-route-id="@report.Id" class="dropdown-item js-report-export-link">
+                                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
 
             @if (Model.Reports.TotalPages > 1)
@@ -176,7 +282,6 @@
                                 <a class="page-link"
                                    asp-action="NDMLRReports"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
-                                   asp-route-month="@Model.Filter.Month"
                                    asp-route-year="@Model.Filter.Year"
                                    asp-route-page="@pageNumber"
                                    asp-route-pageSize="@Model.Filter.PageSize"
@@ -195,26 +300,204 @@
                 <p class="text-muted mt-3">No Non-Discharge Mass Loading Reports found.</p>
                 @if (canEdit)
                 {
-                    <a asp-action="NDAR1Reports" class="btn btn-outline-primary mt-2">
-                        <i class="bi bi-file-earmark-text"></i> Go to NDAR-1 Reports
-                    </a>
+                    <button type="button"
+                            class="btn btn-primary mt-2"
+                            data-bs-toggle="modal"
+                            data-bs-target="#generateNDMLRModal">
+                        <i class="bi bi-plus-circle"></i> Generate First Report
+                    </button>
                 }
             </div>
         }
     </div>
 </div>
 
+@if (canEdit)
+{
+    <div class="modal fade" id="generateNDMLRModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Generate NDMLR Report</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-1"></i> NDMLR is generated once per facility per calendar year, using Jan-Dec source data.
+                    </div>
+                    <form id="generateNDMLRForm" asp-action="GenerateNDMLRReport" method="post">
+                        @Html.AntiForgeryToken()
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                        <input type="hidden" name="CompanyId" value="@generateForm.CompanyId" />
+
+                        <div class="mb-3">
+                            <label class="form-label required" for="generateFacilityId">Facility</label>
+                            <select id="generateFacilityId" name="FacilityId" class="form-select" required>
+                                <option value="">-- Select Facility --</option>
+                                @if (Model.Facilities != null)
+                                {
+                                    @foreach (var facility in Model.Facilities)
+                                    {
+                                        <option value="@facility.Value" selected="@(generateForm.FacilityId != Guid.Empty && generateForm.FacilityId.ToString() == facility.Value)">
+                                            @facility.Text
+                                        </option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label required" for="generateYear">Year</label>
+                            <input id="generateYear" name="Year" type="number" min="2000" max="2100" class="form-control" value="@generateForm.Year" required />
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-file-earmark-text"></i> Generate Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (canEdit)
+{
+    <div class="modal fade" id="deleteNDMLRModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete NDMLR report for <strong id="deleteNDMLRPeriod"></strong>? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="deleteNDMLRForm" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <script>
-        (function () {
-            if (!window.SAMLoading || !window.SAMLoading.bindLinkClicks) {
-                return;
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.SAMLoading && window.SAMLoading.bindLinkClicks) {
+                window.SAMLoading.bindLinkClicks('.js-report-export-link', {
+                    loadingMessage: 'Generating export, please wait...',
+                    useFetchDownload: true
+                });
             }
 
-            window.SAMLoading.bindLinkClicks('.js-report-export-link', {
-                loadingMessage: 'Generating export, please wait...',
-                useFetchDownload: true
+            const tableBtn = document.getElementById('ndmlrReportsTableViewBtn');
+            const cardBtn = document.getElementById('ndmlrReportsCardViewBtn');
+            const tableView = document.getElementById('ndmlrReportsTableView');
+            const cardView = document.getElementById('ndmlrReportsCardView');
+            const storageKey = 'ndmlrReportsViewMode';
+
+            function setViewMode(mode) {
+                const isTable = mode === 'table';
+
+                if (isTable) {
+                    tableView?.classList.remove('d-none');
+                    cardView?.classList.add('d-none');
+                    tableBtn?.classList.add('active');
+                    cardBtn?.classList.remove('active');
+                } else {
+                    tableView?.classList.add('d-none');
+                    cardView?.classList.remove('d-none');
+                    tableBtn?.classList.remove('active');
+                    cardBtn?.classList.add('active');
+                }
+
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, mode);
+                }
+            }
+
+            const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
+            setViewMode(savedMode === 'card' ? 'card' : 'table');
+
+            tableBtn?.addEventListener('click', function () {
+                setViewMode('table');
             });
-        })();
+
+            cardBtn?.addEventListener('click', function () {
+                setViewMode('card');
+            });
+
+            const filterToggleBtn = document.getElementById('toggleNdmlrFilters');
+            const filterCollapseElement = document.getElementById('ndmlrFiltersCollapse');
+            if (filterToggleBtn && filterCollapseElement && typeof bootstrap !== 'undefined') {
+                const filterCollapse = bootstrap.Collapse.getOrCreateInstance(filterCollapseElement, { toggle: false });
+                const label = filterToggleBtn.querySelector('span');
+
+                function setFilterToggleState(isExpanded) {
+                    filterToggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                    if (label) {
+                        label.textContent = isExpanded ? 'Hide Filters' : 'Show Filters';
+                    }
+                }
+
+                filterCollapse.hide();
+                setFilterToggleState(false);
+
+                filterCollapseElement.addEventListener('shown.bs.collapse', function () {
+                    setFilterToggleState(true);
+                });
+
+                filterCollapseElement.addEventListener('hidden.bs.collapse', function () {
+                    setFilterToggleState(false);
+                });
+            }
+
+            const deleteModal = document.getElementById('deleteNDMLRModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    if (!button) {
+                        return;
+                    }
+
+                    const reportId = button.getAttribute('data-report-id');
+                    const reportPeriod = button.getAttribute('data-report-period');
+
+                    const periodElement = deleteModal.querySelector('#deleteNDMLRPeriod');
+                    if (periodElement) {
+                        periodElement.textContent = reportPeriod;
+                    }
+
+                    const form = deleteModal.querySelector('#deleteNDMLRForm');
+                    if (form) {
+                        const baseUrl = '@Url.Action("NDMLRReportDelete", "Reports")';
+                        form.action = baseUrl + '/' + reportId;
+                    }
+                });
+            }
+
+            if (window.SAMLoading && window.SAMLoading.bindFormSubmit) {
+                window.SAMLoading.bindFormSubmit('#generateNDMLRForm', {
+                    loadingMessage: 'Generating report, please wait...',
+                    loadingButtonHtml: '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Generating...'
+                });
+            }
+
+            const shouldOpenGenerateModal = @Model.OpenGenerateModalOnLoad.ToString().ToLowerInvariant();
+            if (shouldOpenGenerateModal && typeof bootstrap !== 'undefined') {
+                const modalElement = document.getElementById('generateNDMLRModal');
+                if (modalElement) {
+                    bootstrap.Modal.getOrCreateInstance(modalElement).show();
+                }
+            }
+        });
     </script>
 }

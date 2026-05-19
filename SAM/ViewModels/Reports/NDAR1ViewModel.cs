@@ -63,7 +63,6 @@ public class NDAR1ReportsIndexViewModel
 public class NDMLRFilterViewModel
 {
     public Guid? FacilityId { get; set; }
-    public int? Month { get; set; }
     public int? Year { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 25;
@@ -82,7 +81,66 @@ public class NDMLRReportsIndexViewModel
     public SelectList? Facilities { get; set; }
     public NDMLRFilterViewModel Filter { get; set; } = new();
     public NDMLRSortViewModel Sort { get; set; } = new();
-    public PagedResult<NDAR1ViewModel> Reports { get; set; } = new();
+    public PagedResult<NDMLRViewModel> Reports { get; set; } = new();
+    public NDMLRCreateViewModel GenerateForm { get; set; } = new();
+    public bool OpenGenerateModalOnLoad { get; set; }
+}
+
+public class NDMLRViewModel
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string? CompanyName { get; set; }
+    public Guid FacilityId { get; set; }
+    public string? FacilityName { get; set; }
+    public int Year { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime? UpdatedDate { get; set; }
+    public string? CreatedBy { get; set; }
+}
+
+public class NDMLRCreateViewModel
+{
+    [Required]
+    [Display(Name = "Company")]
+    public Guid CompanyId { get; set; }
+
+    [Required]
+    [Display(Name = "Facility")]
+    public Guid FacilityId { get; set; }
+
+    [Required]
+    [Display(Name = "Year")]
+    [Range(2000, 2100)]
+    public int Year { get; set; } = DateTime.Now.Year;
+}
+
+public class NDMLRDetailsViewModel
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string? CompanyName { get; set; }
+    public Guid FacilityId { get; set; }
+    public string? FacilityName { get; set; }
+    public int Year { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime? UpdatedDate { get; set; }
+    public string? CreatedBy { get; set; }
+    public List<NDMLRFieldDetailsViewModel> Fields { get; set; } = new();
+}
+
+public class NDMLRFieldDetailsViewModel
+{
+    public Guid SprayfieldId { get; set; }
+    public string FieldCode { get; set; } = string.Empty;
+    public decimal AreaAcres { get; set; }
+    public string CropSummary { get; set; } = string.Empty;
+    public decimal AnnualVolumeGallons { get; set; }
+    public decimal? AverageConcentrationMgL { get; set; }
+    public decimal AnnualLoadLbsPerAcre { get; set; }
+    public decimal PanFloatingLbsPerAcre { get; set; }
+    public decimal? PanLimitLbsPerAcre { get; set; }
+    public bool FieldLoaded { get; set; }
 }
 
 public class NDAR1CreateViewModel

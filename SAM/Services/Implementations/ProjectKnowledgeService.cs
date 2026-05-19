@@ -48,6 +48,7 @@ flowchart TD
     Facility --> WWChar
     Facility --> GWMonit
     Facility --> NDAR1
+    Facility --> NDMLR
     Facility --> IrrRprt
     Facility --> FacilityPermit
     FacilityPermit --> FacilityPermitTemplateParameter
@@ -102,7 +103,7 @@ flowchart TD
                     {
                         "System Administration: master setup (facilities, sprayfields, permits, lookup entities).",
                         "Operational Data: monthly applications, WWChar, GW monitoring, operator logs.",
-                        "Reports: NDAR1, NDMR/NDMLR exports, irrigation reports.",
+                        "Reports: NDAR1, NDMR, annual NDMLR exports, irrigation reports.",
                         "Analytics and Dashboard: trends and status summaries."
                     }
                 }
@@ -146,9 +147,10 @@ flowchart TD
                         new List<string> { "FacilityPermit", "Permit version + date range + PDF", "Facility, FacilityPermitTemplateParameter", "WWChar template resolution, NDMR header logic" },
                         new List<string> { "FacilityPermitTemplateParameter", "Permit-bound PCS config", "PcsParameterCatalog, WWCharTemplateValue, GWMonitTemplateValue", "Dynamic template-driven behavior" },
                         new List<string> { "WWChar", "Monthly wastewater chemistry base record", "Facility, FacilityPermit, WWCharTemplateValue", "Monthly compliance checks, NDMR input" },
-                        new List<string> { "GWMonit", "Groundwater monitoring record", "Facility, MonitoringWell, GWMonitTemplateValue", "NDMR/NDMLR related workflows" },
+                        new List<string> { "GWMonit", "Groundwater monitoring record", "Facility, MonitoringWell, GWMonitTemplateValue", "NDMR and annual NDMLR related workflows" },
                         new List<string> { "MonthlyApplication", "Sprayfield-level monthly application record", "Facility, Sprayfield", "Compliance + NDAR1 inputs" },
                         new List<string> { "NDAR1", "Non-discharge report data model", "Facility, Sprayfields, dynamic field rows", "NDAR1 report screens/exports" },
+                        new List<string> { "NDMLR", "Annual non-discharge mass loading report identity", "Facility, Company, Year", "NDMLR annual list/details/exports" },
                         new List<string> { "OperatorLog", "Canonical per-day operations record", "Facility, date-level ORC On Site + Storage Lagoon Freeboard (ft)", "WWChar + NDAR proxy read/write source" }
                     }
                 }
@@ -570,14 +572,14 @@ flowchart TD
                     StorageField = "WWChar.TKNN and GWMonit.TKN",
                     UsedInModule = "Operational Data > WWChar and GW Monitoring",
                     FormulaOrTransformation = "Used directly and in downstream nitrogen-related calculations/exports",
-                    ReportOutput = "Compliance checks and NDMR/GW-related output context",
+                    ReportOutput = "Compliance checks and NDMR/NDMLR-related output context",
                     FallbackOrValidation = "Monthly Application compliance requires WWChar chemistry including TKN for same month/year.",
                     Reference = new TraceReferenceViewModel
                     {
                         Label = "TKN Validation + Monitoring",
                         Location = "Controllers/OperationalDataController.cs + ApplicationComplianceService"
                     },
-                    UsedByReports = { "NDMR", "NDMLR/GW", "NDAR1 (compliance dependency)" },
+                    UsedByReports = { "NDMR", "NDMLR (annual)", "NDAR1 (compliance dependency)" },
                     Steps =
                     {
                         new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "Entered in WWChar and GW monitoring forms." },
@@ -682,6 +684,7 @@ flowchart TD
             ["GWMonitTemplateValue"] = "Operational Data > GW Monitoring (Template Values)",
             ["OperatorLog"] = "Operational Data > Operator Logs",
             ["NDAR1"] = "Reports > NDAR1",
+            ["NDMLR"] = "Reports > NDMLR",
             ["NDAR1Field"] = "Reports > NDAR1",
             ["NDAR1FieldDaily"] = "Reports > NDAR1",
             ["IrrRprt"] = "Reports > Irrigation"
@@ -691,15 +694,16 @@ flowchart TD
         {
             ["MonthlyApplication"] = new() { "NDAR1", "Irrigation" },
             ["NDAR1"] = new() { "NDAR1" },
+            ["NDMLR"] = new() { "NDMLR (annual)" },
             ["NDAR1Field"] = new() { "NDAR1" },
             ["NDAR1FieldDaily"] = new() { "NDAR1" },
             ["WWChar"] = new() { "NDMR" },
             ["WWCharTemplateValue"] = new() { "NDMR" },
-            ["GWMonit"] = new() { "NDMR", "NDMLR/GW" },
-            ["GWMonitTemplateValue"] = new() { "NDMR", "NDMLR/GW" },
+            ["GWMonit"] = new() { "NDMR", "NDMLR (annual)" },
+            ["GWMonitTemplateValue"] = new() { "NDMR", "NDMLR (annual)" },
             ["FacilityPermit"] = new() { "NDMR", "NDAR1" },
             ["FacilityPermitTemplateParameter"] = new() { "NDMR" },
-            ["Facility"] = new() { "NDAR1", "NDMR", "Irrigation", "NDMLR/GW" },
+            ["Facility"] = new() { "NDAR1", "NDMR", "Irrigation", "NDMLR (annual)" },
             ["Sprayfield"] = new() { "NDAR1", "Irrigation" }
         };
 

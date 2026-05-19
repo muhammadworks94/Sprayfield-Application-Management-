@@ -3915,8 +3915,27 @@ i.bi-question-circle {
   min-width: 310px;
   max-width: 360px;
 }
-.btn-outline-secondary.dropdown-toggle.show {
-    color: var(--primary);
+.btn-outline-secondary {
+    color: #495057;
+    border-color: #6c757d;
+    background-color: transparent;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: #fff;
+}
+
+.btn-outline-secondary:active,
+.btn-outline-secondary:focus,
+.btn-outline-secondary.active,
+.btn-outline-secondary.show,
+.show > .btn-outline-secondary {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+    box-shadow: none;
 }
 .header-dropdown .header-dropdown-item {
   border-radius: 0.62rem;
@@ -3948,8 +3967,54 @@ i.bi-question-circle {
 
 .header-dropdown .dropdown-item.active,
 .header-dropdown .dropdown-item:active {
-  color: var(--primary-dark);
-  background: linear-gradient(90deg, rgba(31, 79, 138, 0.16) 0%, rgba(31, 79, 138, 0.08) 100%);
+  color: #fff !important;
+  background: #6c757d !important;
+}
+
+.header-dropdown .dropdown-item.active:hover,
+.header-dropdown .dropdown-item.active:focus,
+.header-dropdown .dropdown-item:active:hover,
+.header-dropdown .dropdown-item:active:focus {
+  color: #fff !important;
+  background: #5c636a !important;
+  transform: none;
+}
+
+.header-dropdown .dropdown-item.active i,
+.header-dropdown .dropdown-item:active i {
+  color: #fff !important;
+}
+
+/* Company selector: force readable active/open state */
+.company-selector-dropdown.show .header-dropdown-trigger,
+.company-selector-dropdown .header-dropdown-trigger.show,
+.company-selector-dropdown .header-dropdown-trigger:active,
+.company-selector-dropdown .header-dropdown-trigger.active {
+  background: #6b7280 !important;
+  border-color: #6b7280 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+.company-selector-dropdown.show .header-dropdown-trigger span,
+.company-selector-dropdown .header-dropdown-trigger.show span,
+.company-selector-dropdown.show .header-dropdown-trigger i,
+.company-selector-dropdown .header-dropdown-trigger.show i {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.company-selector-dropdown .header-dropdown-panel .dropdown-item.active,
+.company-selector-dropdown .header-dropdown-panel .dropdown-item:active {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.company-selector-dropdown .header-dropdown-panel .dropdown-item.active i,
+.company-selector-dropdown .header-dropdown-panel .dropdown-item:active i {
+  color: #ffffff !important;
 }
 
 /* User menu specific enhancements */

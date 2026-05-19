@@ -16,6 +16,7 @@ using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
+using SAM.Utilities;
 using SAM.ViewModels.OperationalData;
 using SAM.ViewModels.Reports;
 
@@ -35,6 +36,7 @@ public class ReportsController : BaseController
     private readonly INDMRService _ndmrService;
     private readonly INDMLRService _ndmlrService;
     private readonly IGWMonitService _gwMonitService;
+    private readonly IApplicationComplianceService _applicationComplianceService;
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
@@ -48,6 +50,7 @@ public class ReportsController : BaseController
         INDMRService ndmrService,
         INDMLRService ndmlrService,
         IGWMonitService gwMonitService,
+        IApplicationComplianceService applicationComplianceService,
         ApplicationDbContext context,
         IWebHostEnvironment environment,
         IConfiguration configuration,
@@ -63,6 +66,7 @@ public class ReportsController : BaseController
         _ndmrService = ndmrService;
         _ndmlrService = ndmlrService;
         _gwMonitService = gwMonitService;
+        _applicationComplianceService = applicationComplianceService;
         _context = context;
         _environment = environment;
         _configuration = configuration;
@@ -444,10 +448,9 @@ public class ReportsController : BaseController
         var normalizedPage = page <= 0 ? 1 : page;
         var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "period" : sortBy.Trim().ToLowerInvariant();
         var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
-        var normalizedMonth = month.HasValue && month.Value >= 1 && month.Value <= 12 ? month : null;
         var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
 
-        var query = _context.NDAR1s
+        var query = _context.NDMLRs
             .Include(r => r.Company)
             .Include(r => r.Facility)
             .AsNoTracking()
@@ -463,11 +466,6 @@ public class ReportsController : BaseController
             query = query.Where(r => r.FacilityId == facilityId.Value);
         }
 
-        if (normalizedMonth.HasValue)
-        {
-            query = query.Where(r => (int)r.Month == normalizedMonth.Value);
-        }
-
         if (normalizedYear.HasValue)
         {
             query = query.Where(r => r.Year == normalizedYear.Value);
@@ -479,8 +477,8 @@ public class ReportsController : BaseController
                 ? query.OrderBy(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate)
                 : query.OrderByDescending(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate),
             _ => normalizedSortDir == "asc"
-                ? query.OrderBy(r => r.Year).ThenBy(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
-                : query.OrderByDescending(r => r.Year).ThenByDescending(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+                ? query.OrderBy(r => r.Year).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Year).ThenByDescending(r => r.CreatedDate)
         };
 
         var totalCount = await query.CountAsync();
@@ -489,16 +487,14 @@ public class ReportsController : BaseController
             .Take(normalizedPageSize)
             .ToListAsync();
 
-        var items = reports.Select(r => new NDAR1ViewModel
+        var items = reports.Select(r => new NDMLRViewModel
         {
             Id = r.Id,
             CompanyId = r.CompanyId,
             CompanyName = r.Company?.Name,
             FacilityId = r.FacilityId,
             FacilityName = r.Facility?.Name,
-            Month = r.Month,
             Year = r.Year,
-            DidIrrigationOccur = r.DidIrrigationOccur,
             CreatedDate = r.CreatedDate,
             UpdatedDate = r.UpdatedDate,
             CreatedBy = r.CreatedBy
@@ -512,7 +508,6 @@ public class ReportsController : BaseController
             Filter = new NDMLRFilterViewModel
             {
                 FacilityId = facilityId,
-                Month = normalizedMonth,
                 Year = normalizedYear,
                 Page = normalizedPage,
                 PageSize = normalizedPageSize
@@ -522,16 +517,370 @@ public class ReportsController : BaseController
                 SortBy = normalizedSortBy,
                 SortDir = normalizedSortDir
             },
-            Reports = new PagedResult<NDAR1ViewModel>
+            Reports = new PagedResult<NDMLRViewModel>
             {
                 Items = items,
                 TotalCount = totalCount,
                 Page = normalizedPage,
                 PageSize = normalizedPageSize
+            },
+            GenerateForm = new NDMLRCreateViewModel
+            {
+                CompanyId = companyId ?? Guid.Empty,
+                FacilityId = facilityId ?? Guid.Empty,
+                Year = normalizedYear ?? DateTime.Now.Year
             }
         };
 
         return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> NDMLRReportDetails(Guid id)
+    {
+        var report = await _context.NDMLRs
+            .Include(r => r.Company)
+            .Include(r => r.Facility)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == id);
+        if (report == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var model = new NDMLRDetailsViewModel
+        {
+            Id = report.Id,
+            CompanyId = report.CompanyId,
+            CompanyName = report.Company?.Name,
+            FacilityId = report.FacilityId,
+            FacilityName = report.Facility?.Name,
+            Year = report.Year,
+            CreatedDate = report.CreatedDate,
+            UpdatedDate = report.UpdatedDate,
+            CreatedBy = report.CreatedBy,
+            Fields = await BuildNdmlrDetailFieldsAsync(report)
+        };
+
+        return View(model);
+    }
+
+    private async Task<List<NDMLRFieldDetailsViewModel>> BuildNdmlrDetailFieldsAsync(NDMLR report)
+    {
+        const decimal monthlyLoadConversionFactor = 8.34e-6m;
+        var yearStart = new DateTime(report.Year, 1, 1);
+        var yearEnd = new DateTime(report.Year, 12, 31);
+
+        var ndarReports = await _context.NDAR1s
+            .Where(r => r.CompanyId == report.CompanyId && r.FacilityId == report.FacilityId && r.Year == report.Year)
+            .Include(r => r.Field1).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field2).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field3).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field4).ThenInclude(f => f!.Crop)
+            .Include(r => r.Fields)
+                .ThenInclude(f => f.Sprayfield)
+                    .ThenInclude(s => s!.Crop)
+            .Include(r => r.Fields)
+                .ThenInclude(f => f.DailyValues)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var reportsByMonth = ndarReports
+            .GroupBy(r => (int)r.Month)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
+
+        var gwMonits = await _context.GWMonits
+            .Where(g => g.FacilityId == report.FacilityId &&
+                        g.SampleDate >= yearStart &&
+                        g.SampleDate <= yearEnd)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var fieldMetaById = new Dictionary<Guid, (Sprayfield Sprayfield, int? PreferredOrder)>();
+
+        foreach (var ndar in ndarReports)
+        {
+            if (ndar.Fields.Any())
+            {
+                foreach (var field in ndar.Fields.OrderBy(f => f.FieldOrder))
+                {
+                    if (field.Sprayfield == null)
+                    {
+                        continue;
+                    }
+
+                    var sprayfieldId = field.Sprayfield.Id;
+                    if (!fieldMetaById.TryGetValue(sprayfieldId, out var existing))
+                    {
+                        fieldMetaById[sprayfieldId] = (field.Sprayfield, field.FieldOrder);
+                        continue;
+                    }
+
+                    var selectedOrder = existing.PreferredOrder;
+                    if (!selectedOrder.HasValue || field.FieldOrder < selectedOrder.Value)
+                    {
+                        fieldMetaById[sprayfieldId] = (existing.Sprayfield, field.FieldOrder);
+                    }
+                }
+
+                continue;
+            }
+
+            foreach (var legacy in new[] { ndar.Field1, ndar.Field2, ndar.Field3, ndar.Field4 })
+            {
+                if (legacy == null || fieldMetaById.ContainsKey(legacy.Id))
+                {
+                    continue;
+                }
+
+                fieldMetaById[legacy.Id] = (legacy, null);
+            }
+        }
+
+        var orderedFields = fieldMetaById.Values
+            .OrderBy(x => x.PreferredOrder.HasValue ? 0 : 1)
+            .ThenBy(x => x.PreferredOrder ?? int.MaxValue)
+            .ThenBy(x => x.Sprayfield.FieldId)
+            .Select(x => x.Sprayfield)
+            .ToList();
+
+        if (!orderedFields.Any())
+        {
+            return new List<NDMLRFieldDetailsViewModel>();
+        }
+
+        var monthlyVolumesByFieldByMonth = BuildMonthlyFieldVolumesByMonth(reportsByMonth);
+
+        var annualVolumesByFieldId = new Dictionary<Guid, decimal>();
+        foreach (var monthly in monthlyVolumesByFieldByMonth.Values)
+        {
+            foreach (var kvp in monthly)
+            {
+                if (!annualVolumesByFieldId.ContainsKey(kvp.Key))
+                {
+                    annualVolumesByFieldId[kvp.Key] = 0m;
+                }
+
+                annualVolumesByFieldId[kvp.Key] += kvp.Value;
+            }
+        }
+
+        var annualAvgConc = ComputeAverageTotalNMgl(gwMonits);
+        var result = new List<NDMLRFieldDetailsViewModel>();
+
+        foreach (var field in orderedFields)
+        {
+            var annualVolume = annualVolumesByFieldId.TryGetValue(field.Id, out var volume) ? volume : 0m;
+            var area = SprayfieldReportHelper.GetReportAcres(field);
+            var annualLoad = 0m;
+
+            if (area > 0m)
+            {
+                for (var month = 1; month <= 12; month++)
+                {
+                    if (!monthlyVolumesByFieldByMonth.TryGetValue(month, out var monthVolumes) ||
+                        !monthVolumes.TryGetValue(field.Id, out var monthVolume) ||
+                        monthVolume <= 0m)
+                    {
+                        continue;
+                    }
+
+                    var monthConc = ComputeAverageTotalNMgl(gwMonits
+                        .Where(g => g.SampleDate.Year == report.Year && g.SampleDate.Month == month)
+                        .ToList());
+                    if (!monthConc.HasValue)
+                    {
+                        continue;
+                    }
+
+                    annualLoad += (monthVolume * monthConc.Value * monthlyLoadConversionFactor) / area;
+                }
+            }
+
+            var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, field.Id, yearEnd);
+
+            result.Add(new NDMLRFieldDetailsViewModel
+            {
+                SprayfieldId = field.Id,
+                FieldCode = field.FieldId ?? string.Empty,
+                AreaAcres = area,
+                CropSummary = SprayfieldZoneSummaryHelper.GetCropSummary(field) ?? string.Empty,
+                AnnualVolumeGallons = annualVolume,
+                AverageConcentrationMgL = annualAvgConc,
+                AnnualLoadLbsPerAcre = annualLoad,
+                PanFloatingLbsPerAcre = metrics.RollingPanLbsPerAcre,
+                PanLimitLbsPerAcre = metrics.PanLimitLbsPerAcre,
+                FieldLoaded = annualVolume > 0m
+            });
+        }
+
+        return result;
+    }
+
+    private static decimal? ComputeAverageTotalNMgl(List<GWMonit> gwMonits)
+    {
+        var values = gwMonits
+            .Select(g =>
+            {
+                if (!g.TKN.HasValue && !g.NO3N.HasValue)
+                {
+                    return (decimal?)null;
+                }
+
+                return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
+            })
+            .Where(v => v.HasValue)
+            .ToList();
+
+        if (values.Count == 0)
+        {
+            return null;
+        }
+
+        return values.Average();
+    }
+
+    private static Dictionary<int, Dictionary<Guid, decimal>> BuildMonthlyFieldVolumesByMonth(Dictionary<int, NDAR1> reportsByMonth)
+    {
+        var result = new Dictionary<int, Dictionary<Guid, decimal>>();
+
+        foreach (var (month, report) in reportsByMonth)
+        {
+            var monthly = new Dictionary<Guid, decimal>();
+
+            if (report.Fields.Any())
+            {
+                foreach (var field in report.Fields.OrderBy(f => f.FieldOrder))
+                {
+                    if (field.SprayfieldId == Guid.Empty)
+                    {
+                        continue;
+                    }
+
+                    var sum = field.DailyValues?.Sum(v => v.VolumeApplied ?? 0m) ?? 0m;
+                    if (!monthly.ContainsKey(field.SprayfieldId))
+                    {
+                        monthly[field.SprayfieldId] = 0m;
+                    }
+
+                    monthly[field.SprayfieldId] += sum;
+                }
+            }
+            else
+            {
+                AccumulateLegacyFieldVolume(monthly, report.Field1Id, report.Field1VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field2Id, report.Field2VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field3Id, report.Field3VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field4Id, report.Field4VolumeAppliedDaily);
+            }
+
+            result[month] = monthly;
+        }
+
+        return result;
+    }
+
+    private static void AccumulateLegacyFieldVolume(Dictionary<Guid, decimal> monthly, Guid? sprayfieldId, List<decimal?> dailyVolumes)
+    {
+        if (!sprayfieldId.HasValue || sprayfieldId.Value == Guid.Empty)
+        {
+            return;
+        }
+
+        var sum = dailyVolumes?.Sum(v => v ?? 0m) ?? 0m;
+        if (!monthly.ContainsKey(sprayfieldId.Value))
+        {
+            monthly[sprayfieldId.Value] = 0m;
+        }
+
+        monthly[sprayfieldId.Value] += sum;
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> GenerateNDMLRReport(Guid? companyId = null, Guid? facilityId = null)
+    {
+        return RedirectToAction(nameof(NDMLRReports), new { companyId, facilityId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> GenerateNDMLRReport(NDMLRCreateViewModel model)
+    {
+        await EnsureCompanyAccessAsync(model.CompanyId);
+
+        if (!ModelState.IsValid)
+        {
+            var listResult = await NDMLRReports(
+                companyId: model.CompanyId,
+                facilityId: model.FacilityId,
+                year: model.Year);
+
+            if (listResult is ViewResult viewResult && viewResult.Model is NDMLRReportsIndexViewModel listModel)
+            {
+                listModel.GenerateForm = model;
+                listModel.OpenGenerateModalOnLoad = true;
+                return View(nameof(NDMLRReports), listModel);
+            }
+
+            return listResult;
+        }
+
+        var existing = await _context.NDMLRs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.CompanyId == model.CompanyId && x.FacilityId == model.FacilityId && x.Year == model.Year);
+
+        if (existing != null)
+        {
+            TempData["ErrorMessage"] = $"An NDMLR for {model.Year} already exists for this facility.";
+            return RedirectToAction(nameof(NDMLRReportDetails), new { id = existing.Id });
+        }
+
+        var entity = new NDMLR
+        {
+            CompanyId = model.CompanyId,
+            FacilityId = model.FacilityId,
+            Year = model.Year
+        };
+
+        _context.NDMLRs.Add(entity);
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = $"NDMLR report generated successfully for calendar year {model.Year}.";
+        return RedirectToAction(nameof(NDMLRReportDetails), new { id = entity.Id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDMLRReportDelete(Guid id)
+    {
+        NDMLR? report = null;
+        try
+        {
+            report = await _context.NDMLRs
+                .FirstOrDefaultAsync(x => x.Id == id);
+            if (report == null)
+            {
+                return NotFound();
+            }
+
+            await EnsureCompanyAccessAsync(report.CompanyId);
+
+            _context.NDMLRs.Remove(report);
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "NDMLR report deleted successfully.";
+            return RedirectToAction(nameof(NDMLRReports), new { facilityId = report.FacilityId });
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"Error deleting NDMLR report: {ex.Message}";
+        }
+
+        return RedirectToAction(nameof(NDMLRReports), new { facilityId = report?.FacilityId });
     }
 
     #endregion
@@ -1173,7 +1522,9 @@ public class ReportsController : BaseController
     [HttpGet]
     public async Task<IActionResult> ExportNDMLRReport(Guid id)
     {
-        var report = await _ndar1Service.GetByIdAsync(id);
+        var report = await _context.NDMLRs
+            .Include(r => r.Facility)
+            .FirstOrDefaultAsync(r => r.Id == id);
         if (report == null)
             return NotFound();
 
@@ -1182,7 +1533,7 @@ public class ReportsController : BaseController
         try
         {
             var excelBytes = await _ndmlrService.ExportToExcelAsync(id);
-            var fileName = $"NDMLR_{report.Facility?.Name}_{report.Month}_{report.Year}.xlsx";
+            var fileName = $"NDMLR_{report.Facility?.Name}_{report.Year}.xlsx";
             return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
         catch (Exception ex)
@@ -1198,7 +1549,7 @@ public class ReportsController : BaseController
             }
 
             TempData["ErrorMessage"] = $"Error exporting NDMLR report: {ex.Message}";
-            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+            return RedirectToAction(nameof(NDMLRReportDetails), new { id });
         }
     }
 

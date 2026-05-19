@@ -41,6 +41,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<GWMonitTemplateValue> GWMonitTemplateValues => Set<GWMonitTemplateValue>();
     public DbSet<GWMonit> GWMonits => Set<GWMonit>();
     public DbSet<IrrRprt> IrrRprts => Set<IrrRprt>();
+    public DbSet<NDMLR> NDMLRs => Set<NDMLR>();
     public DbSet<NDAR1> NDAR1s => Set<NDAR1>();
     public DbSet<NDAR1Field> NDAR1Fields => Set<NDAR1Field>();
     public DbSet<NDAR1FieldDaily> NDAR1FieldDailies => Set<NDAR1FieldDaily>();
@@ -103,6 +104,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new GWMonitTemplateValueConfiguration());
         builder.ApplyConfiguration(new GWMonitConfiguration());
         builder.ApplyConfiguration(new IrrRprtConfiguration());
+        builder.ApplyConfiguration(new NDMLRConfiguration());
         builder.ApplyConfiguration(new NDAR1Configuration());
         builder.ApplyConfiguration(new NDAR1FieldConfiguration());
         builder.ApplyConfiguration(new NDAR1FieldDailyConfiguration());

@@ -8,6 +8,7 @@ using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
 using SAM.Utilities;
+using System.Text.RegularExpressions;
 
 namespace SAM.Services.Implementations;
 
@@ -39,27 +40,21 @@ public class NDMLRService : INDMLRService
     }
 
     /// <inheritdoc />
-    public async Task<byte[]> ExportToExcelAsync(Guid ndar1Id)
+    public async Task<byte[]> ExportToExcelAsync(Guid ndmlrId)
     {
-        var report = await _context.NDAR1s
-            .Include(r => r.Facility)
-            .Include(r => r.Field1).ThenInclude(f => f!.Crop)
-            .Include(r => r.Field2).ThenInclude(f => f!.Crop)
-            .Include(r => r.Field3).ThenInclude(f => f!.Crop)
-            .Include(r => r.Field4).ThenInclude(f => f!.Crop)
-            .FirstOrDefaultAsync(r => r.Id == ndar1Id);
+        var ndmlr = await _context.NDMLRs
+            .Include(x => x.Facility)
+            .FirstOrDefaultAsync(x => x.Id == ndmlrId);
+        if (ndmlr == null)
+            throw new EntityNotFoundException(nameof(NDMLR), ndmlrId);
 
-        if (report == null)
-            throw new EntityNotFoundException(nameof(NDAR1), ndar1Id);
-
-        var facility = report.Facility;
+        var facility = ndmlr.Facility;
         if (facility == null)
-            throw new BusinessRuleException("Facility not found for this NDAR-1 report.");
+            throw new BusinessRuleException("Facility not found for this NDMLR report.");
 
-        var month = (int)report.Month;
-        var year = report.Year;
-        var startDate = new DateTime(year, month, 1);
-        var endDate = startDate.AddMonths(1).AddDays(-1);
+        var year = ndmlr.Year;
+        var yearStart = new DateTime(year, 1, 1);
+        var yearEnd = new DateTime(year, 12, 31);
 
         var templatePath = Path.Combine(
             _environment.WebRootPath,
@@ -69,36 +64,146 @@ public class NDMLRService : INDMLRService
         if (!File.Exists(templatePath))
             throw new FileNotFoundException($"Template file not found: {templatePath}");
 
-        var gwMonits = await _context.GWMonits
-            .Where(g => g.FacilityId == facility.Id &&
-                        g.SampleDate >= startDate &&
-                        g.SampleDate <= endDate)
+        var ndarReports = await _context.NDAR1s
+            .Where(r => r.CompanyId == ndmlr.CompanyId && r.FacilityId == ndmlr.FacilityId && r.Year == year)
+            .Include(r => r.Field1).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field2).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field3).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field4).ThenInclude(f => f!.Crop)
+            .Include(r => r.Fields)
+                .ThenInclude(f => f.Sprayfield)
+                    .ThenInclude(s => s!.Crop)
+            .Include(r => r.Fields)
+                .ThenInclude(f => f.DailyValues)
             .ToListAsync();
 
-        decimal? avgConcMgL = ComputeAverageTotalNMgl(gwMonits);
+        var reportsByMonth = ndarReports
+            .GroupBy(r => (int)r.Month)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
 
-        // Resolve Sprayfields when FieldNId is set but navigation is null (e.g. Include didn't load)
-        await ResolveFieldsIfNeededAsync(report);
+        var gwMonits = await _context.GWMonits
+            .Where(g => g.FacilityId == facility.Id &&
+                        g.SampleDate >= yearStart &&
+                        g.SampleDate <= yearEnd)
+            .ToListAsync();
+
+        var fieldMetaById = new Dictionary<Guid, NdmlrFieldMeta>();
+        foreach (var report in ndarReports)
+        {
+            await ResolveFieldsIfNeededAsync(report);
+
+            if (report.Fields.Any())
+            {
+                foreach (var field in report.Fields.OrderBy(f => f.FieldOrder))
+                {
+                    if (field.Sprayfield == null)
+                    {
+                        continue;
+                    }
+
+                    var sprayfieldId = field.Sprayfield.Id;
+                    if (!fieldMetaById.TryGetValue(sprayfieldId, out var existing))
+                    {
+                        fieldMetaById[sprayfieldId] = new NdmlrFieldMeta
+                        {
+                            Sprayfield = field.Sprayfield,
+                            PreferredOrder = field.FieldOrder
+                        };
+                        continue;
+                    }
+
+                    if (!existing.PreferredOrder.HasValue || field.FieldOrder < existing.PreferredOrder.Value)
+                    {
+                        existing.PreferredOrder = field.FieldOrder;
+                    }
+                }
+                continue;
+            }
+
+            foreach (var field in new[] { report.Field1, report.Field2, report.Field3, report.Field4 })
+            {
+                if (field == null)
+                {
+                    continue;
+                }
+
+                if (!fieldMetaById.ContainsKey(field.Id))
+                {
+                    fieldMetaById[field.Id] = new NdmlrFieldMeta
+                    {
+                        Sprayfield = field
+                    };
+                }
+            }
+        }
+
+        var selectedFields = fieldMetaById.Values
+            .OrderBy(x => x.PreferredOrder.HasValue ? 0 : 1)
+            .ThenBy(x => x.PreferredOrder ?? int.MaxValue)
+            .ThenBy(x => x.Sprayfield.FieldId)
+            .Select(x => x.Sprayfield)
+            .ToList();
+
+        var monthlyVolumesByFieldByMonth = BuildMonthlyFieldVolumesByMonth(reportsByMonth);
 
         using var workbook = new XLWorkbook(templatePath);
-        var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name == "Page 1") ?? workbook.Worksheet(1);
+        var reportTemplateSheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name == "Page 1") ?? workbook.Worksheet(1);
+        var certificationTemplate = GetCertificationTemplateSheet(workbook);
+        RemovePreExistingDynamicNdmlrSheets(workbook);
+        RemovePreExistingDynamicCertificationSheets(workbook);
 
-        WriteHeader(worksheet, facility, report.Month, year);
-        WriteFieldBlocks(worksheet, report);
-        WriteDataRow(worksheet, report, avgConcMgL, 9);
-        await WriteFooterAsync(worksheet, report, endDate);
-        WriteCertificationPage(workbook, facility);
+        var chunks = selectedFields
+            .Select((field, idx) => new { field, idx })
+            .GroupBy(x => x.idx / 5)
+            .Select(g => g.Select(x => x.field).ToList())
+            .ToList();
+
+        if (chunks.Count == 0)
+        {
+            chunks.Add(new List<Sprayfield>());
+        }
+
+        for (var chunkIndex = 0; chunkIndex < chunks.Count; chunkIndex++)
+        {
+            IXLWorksheet reportSheet;
+            var reportSheetName = $"NDMLR ({chunkIndex + 1})";
+            if (chunkIndex == 0)
+            {
+                reportSheet = reportTemplateSheet;
+                reportSheet.Name = reportSheetName;
+            }
+            else
+            {
+                reportSheet = reportTemplateSheet.CopyTo(reportSheetName);
+            }
+
+            var chunk = chunks[chunkIndex];
+            WriteHeader(reportSheet, facility, year);
+            WriteFieldBlocks(reportSheet, chunk, monthlyVolumesByFieldByMonth);
+            WriteDataRows(reportSheet, year, chunk, monthlyVolumesByFieldByMonth, gwMonits);
+            await WriteFooterAsync(reportSheet, ndmlr, chunk, yearEnd);
+
+            if (certificationTemplate != null)
+            {
+                var certSheetName = $"Certification ({chunkIndex + 1})";
+                var certSheet = certificationTemplate.CopyTo(certSheetName);
+                WriteCertificationPage(certSheet, facility);
+                certSheet.Position = reportSheet.Position + 1;
+            }
+        }
+
+        DeleteSheetByName(workbook, "Certification Page");
+        DeleteSheetByName(workbook, "Formulas");
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
 
         _logger.LogInformation(
-            "Generated NDMLR Excel report for facility {FacilityName} ({FacilityId}) for {Month}/{Year} based on NDAR-1 report {ReportId}.",
+            "Generated annual NDMLR Excel report for facility {FacilityName} ({FacilityId}) for year {Year} based on NDMLR record {ReportId}.",
             facility.Name,
             facility.Id,
-            month,
             year,
-            ndar1Id);
+            ndmlrId);
 
         return stream.ToArray();
     }
@@ -145,126 +250,160 @@ public class NDMLRService : INDMLRService
         return values.Average();
     }
 
-    private static void WriteHeader(IXLWorksheet worksheet, Facility facility, MonthEnum monthEnum, int year)
+    private static void WriteHeader(IXLWorksheet worksheet, Facility facility, int year)
     {
         worksheet.Cell("C1").Value = facility.PermitNumber ?? "";
         worksheet.Cell("G1").Value = facility.Name ?? "";
         worksheet.Cell("O1").Value = facility.County ?? "";
-        worksheet.Cell("S1").Value = monthEnum.ToString();
+        worksheet.Cell("S1").Value = "Annual";
         worksheet.Cell("V1").Value = year;
     }
 
-    private static void WriteFieldBlocks(IXLWorksheet worksheet, NDAR1 report)
+    private static void WriteFieldBlocks(IXLWorksheet worksheet, List<Sprayfield> selectedFields, Dictionary<int, Dictionary<Guid, decimal>> monthlyVolumesByFieldByMonth)
     {
-        var fields = new[] { report.Field1, report.Field2, report.Field3, report.Field4 };
-        var fieldVolumeSums = new[]
+        var yearlyVolumeByFieldId = new Dictionary<Guid, decimal>();
+        foreach (var monthly in monthlyVolumesByFieldByMonth.Values)
         {
-            report.Field1VolumeAppliedDaily?.Sum(x => x ?? 0) ?? 0,
-            report.Field2VolumeAppliedDaily?.Sum(x => x ?? 0) ?? 0,
-            report.Field3VolumeAppliedDaily?.Sum(x => x ?? 0) ?? 0,
-            report.Field4VolumeAppliedDaily?.Sum(x => x ?? 0) ?? 0,
-        };
-        var fieldIds = new[] { report.Field1Id, report.Field2Id, report.Field3Id, report.Field4Id };
+            foreach (var kvp in monthly)
+            {
+                if (!yearlyVolumeByFieldId.ContainsKey(kvp.Key))
+                {
+                    yearlyVolumeByFieldId[kvp.Key] = 0m;
+                }
+                yearlyVolumeByFieldId[kvp.Key] += kvp.Value;
+            }
+        }
 
-        // Block 1: value col E, Field Loaded? in F6; Block 2-4: value cols I, M, Q (rows 2-6)
-        var valueCols = new[] { "E", "I", "M", "Q" };
+        var valueCols = new[] { "E", "I", "M", "Q", "U" };
 
-        for (int i = 0; i < fields.Length; i++)
+        for (int i = 0; i < valueCols.Length; i++)
         {
             var col = valueCols[i];
-            if (fields[i] != null)
+            var field = i < selectedFields.Count ? selectedFields[i] : null;
+            if (field != null)
             {
-                worksheet.Cell($"{col}2").Value = fields[i]!.FieldId;
-                worksheet.Cell($"{col}3").Value = SprayfieldReportHelper.GetReportAcres(fields[i]!);
-                worksheet.Cell($"{col}4").Value = SprayfieldZoneSummaryHelper.GetCropSummary(fields[i]!) ?? "";
-                worksheet.Cell($"{col}5").Value = "Wastewater"; // Load Type constant per plan
-                var fieldLoaded = fieldIds[i].HasValue && fieldVolumeSums[i] > 0 ? "Yes" : "No";
+                worksheet.Cell($"{col}2").Value = field.FieldId;
+                worksheet.Cell($"{col}3").Value = SprayfieldReportHelper.GetReportAcres(field);
+                worksheet.Cell($"{col}4").Value = SprayfieldZoneSummaryHelper.GetCropSummary(field) ?? "";
+                var isFieldLoaded = yearlyVolumeByFieldId.TryGetValue(field.Id, out var fieldVol) && fieldVol > 0;
                 if (i == 0)
-                    worksheet.Cell("F6").Value = fieldLoaded; // Block 1: E6 and F6 separate per template
+                {
+                    // Block 1 has separate YES/NO cells per template.
+                    var yesCell = worksheet.Cell("E6");
+                    var noCell = worksheet.Cell("F6");
+                    yesCell.Value = isFieldLoaded ? "☑ YES" : "☐ YES";
+                    noCell.Value = isFieldLoaded ? "☐ NO" : "☑ NO";
+                    yesCell.Style.Font.Bold = false;
+                    noCell.Style.Font.Bold = false;
+                }
                 else
-                    worksheet.Cell($"{col}6").Value = fieldLoaded;
+                {
+                    var fieldLoadedCell = worksheet.Cell($"{col}6");
+                    fieldLoadedCell.Value = isFieldLoaded ? "☑ YES    ☐ NO" : "☐ YES    ☑ NO";
+                    fieldLoadedCell.Style.Font.Bold = false;
+                }
+            }
+            else
+            {
+                foreach (var row in new[] { 2, 3, 4, 6 })
+                {
+                    worksheet.Cell($"{col}{row}").Clear(XLClearOptions.Contents);
+                }
             }
         }
     }
 
-    private static void WriteDataRow(IXLWorksheet worksheet, NDAR1 report, decimal? avgConcMgL, int row)
+    private static void WriteDataRows(IXLWorksheet worksheet, int year, List<Sprayfield> selectedFields, Dictionary<int, Dictionary<Guid, decimal>> monthlyVolumesByFieldByMonth, List<GWMonit> gwMonits)
     {
-        var startDate = new DateTime(report.Year, (int)report.Month, 1);
-        worksheet.Cell($"A{row}").Value = startDate;
-        worksheet.Cell($"B{row}").Value = report.Month.ToString();
+        var runningTotals = new decimal[5];
+        var colSets = new[] { ("C", "D", "E", "F"), ("G", "H", "I", "J"), ("K", "L", "M", "N"), ("O", "P", "Q", "R"), ("S", "T", "U", "V") };
 
-        var fields = new[] { report.Field1, report.Field2, report.Field3, report.Field4 };
-        var volumeSums = new[]
+        for (int month = 1; month <= 12; month++)
         {
-            report.Field1VolumeAppliedDaily?.Sum(x => x ?? 0) ?? 0m,
-            report.Field2VolumeAppliedDaily?.Sum(x => x ?? 0) ?? 0m,
-            report.Field3VolumeAppliedDaily?.Sum(x => x ?? 0) ?? 0m,
-            report.Field4VolumeAppliedDaily?.Sum(x => x ?? 0) ?? 0m,
-        };
-        // Per-field columns: Block 1 C,D,E,F; Block 2 G,H,I,J; Block 3 K,L,M,N; Block 4 O,P,Q,R
-        var colSets = new[] { ("C", "D", "E", "F"), ("G", "H", "I", "J"), ("K", "L", "M", "N"), ("O", "P", "Q", "R") };
+            var row = 8 + month;
+            var monthDate = new DateTime(year, month, 1);
+            worksheet.Cell($"A{row}").Value = monthDate;
+            worksheet.Cell($"B{row}").Value = monthDate.ToString("MMMM");
+            var monthAvgConc = ComputeAverageTotalNMgl(gwMonits.Where(g => g.SampleDate.Year == year && g.SampleDate.Month == month).ToList());
+            monthlyVolumesByFieldByMonth.TryGetValue(month, out var monthVolumes);
 
-        for (int i = 0; i < 4; i++)
-        {
-            var (volCol, concCol, monthlyCol, cumulCol) = colSets[i];
-            var vol = volumeSums[i];
-            var area = SprayfieldReportHelper.GetReportAcres(fields[i]);
-
-            if (vol > 0)
-                worksheet.Cell($"{volCol}{row}").Value = vol;
-            else
-                worksheet.Cell($"{volCol}{row}").Clear(XLClearOptions.Contents);
-            if (avgConcMgL.HasValue)
-                worksheet.Cell($"{concCol}{row}").Value = avgConcMgL.Value;
-            else
-                worksheet.Cell($"{concCol}{row}").Clear(XLClearOptions.Contents);
-
-            if (area > 0 && avgConcMgL.HasValue && vol > 0)
+            for (int i = 0; i < 5; i++)
             {
-                var monthlyLoad = (vol * avgConcMgL.Value * MonthlyLoadConversionFactor) / area;
-                worksheet.Cell($"{monthlyCol}{row}").Value = monthlyLoad;
-                worksheet.Cell($"{cumulCol}{row}").Value = monthlyLoad;
-            }
-            else
-            {
-                // Clear cells when we don't have complete data so template formulas don't show #DIV/0!
-                worksheet.Cell($"{monthlyCol}{row}").Clear(XLClearOptions.Contents);
-                worksheet.Cell($"{cumulCol}{row}").Clear(XLClearOptions.Contents);
+                var (volCol, concCol, monthlyCol, cumulCol) = colSets[i];
+                var field = i < selectedFields.Count ? selectedFields[i] : null;
+                var volume = 0m;
+                if (field != null && monthVolumes != null && monthVolumes.TryGetValue(field.Id, out var mappedVolume))
+                {
+                    volume = mappedVolume;
+                }
+                var area = field != null ? SprayfieldReportHelper.GetReportAcres(field) : 0m;
+
+                if (volume > 0)
+                    worksheet.Cell($"{volCol}{row}").Value = volume;
+                else
+                    worksheet.Cell($"{volCol}{row}").Clear(XLClearOptions.Contents);
+
+                if (monthAvgConc.HasValue && volume > 0)
+                {
+                    worksheet.Cell($"{concCol}{row}").Value = monthAvgConc.Value;
+                    worksheet.Cell($"{concCol}{row}").Style.NumberFormat.Format = "0.00";
+                }
+                else
+                    worksheet.Cell($"{concCol}{row}").Clear(XLClearOptions.Contents);
+
+                if (field != null && area > 0 && monthAvgConc.HasValue && volume > 0)
+                {
+                    var monthlyLoad = (volume * monthAvgConc.Value * MonthlyLoadConversionFactor) / area;
+                    runningTotals[i] += monthlyLoad;
+                    worksheet.Cell($"{monthlyCol}{row}").Value = monthlyLoad;
+                    worksheet.Cell($"{cumulCol}{row}").Value = runningTotals[i];
+                    worksheet.Cell($"{monthlyCol}{row}").Style.NumberFormat.Format = "0.00";
+                    worksheet.Cell($"{cumulCol}{row}").Style.NumberFormat.Format = "0.00";
+                }
+                else
+                {
+                    worksheet.Cell($"{monthlyCol}{row}").Clear(XLClearOptions.Contents);
+                    worksheet.Cell($"{cumulCol}{row}").Clear(XLClearOptions.Contents);
+                }
             }
         }
     }
 
-    private async Task WriteFooterAsync(IXLWorksheet worksheet, NDAR1 report, DateTime asOfDate)
+    private async Task WriteFooterAsync(IXLWorksheet worksheet, NDMLR report, List<Sprayfield> selectedFields, DateTime asOfDate)
     {
-        var fieldIds = new[] { report.Field1Id, report.Field2Id, report.Field3Id, report.Field4Id };
-        var valueCols = new[] { "E", "I", "M", "Q" };
+        var valueCols = new[] { "E", "I", "M", "Q", "U" };
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 5; i++)
         {
-            var fieldId = fieldIds[i];
-            if (!fieldId.HasValue)
+            var fieldId = i < selectedFields.Count ? selectedFields[i].Id : Guid.Empty;
+            if (fieldId == Guid.Empty)
             {
+                // Keep template styling, but clear stale values for unused field slots.
+                worksheet.Cell($"{valueCols[i]}21").Clear(XLClearOptions.Contents);
+                worksheet.Cell($"{valueCols[i]}22").Clear(XLClearOptions.Contents);
                 continue;
             }
 
             FieldRollingMetricsResult metrics;
             try
             {
-                metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, fieldId.Value, asOfDate);
+                metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, fieldId, asOfDate);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not compute rolling metrics for sprayfield {SprayfieldId} in NDMLR export {ReportId}.", fieldId.Value, report.Id);
+                _logger.LogWarning(ex, "Could not compute rolling metrics for sprayfield {SprayfieldId} in NDMLR export {ReportId}.", fieldId, report.Id);
                 continue;
             }
 
             // Row 21: 12-month floating PAN load (lbs/ac/yr).
             worksheet.Cell($"{valueCols[i]}21").Value = metrics.RollingPanLbsPerAcre;
+            worksheet.Cell($"{valueCols[i]}21").Style.NumberFormat.Format = "0.00";
 
             // Row 22: Annual PAN load limit (lbs/ac/yr).
             if (metrics.PanLimitLbsPerAcre.HasValue)
             {
                 worksheet.Cell($"{valueCols[i]}22").Value = metrics.PanLimitLbsPerAcre.Value;
+                worksheet.Cell($"{valueCols[i]}22").Style.NumberFormat.Format = "0.00";
             }
             else
             {
@@ -273,21 +412,104 @@ public class NDMLRService : INDMLRService
         }
     }
 
-    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility)
+    private static Dictionary<int, Dictionary<Guid, decimal>> BuildMonthlyFieldVolumesByMonth(Dictionary<int, NDAR1> reportsByMonth)
     {
-        var certificationWorksheet = workbook.Worksheets
-            .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
-
-        if (certificationWorksheet == null && workbook.Worksheets.Count >= 2)
+        var result = new Dictionary<int, Dictionary<Guid, decimal>>();
+        foreach (var (month, report) in reportsByMonth)
         {
-            certificationWorksheet = workbook.Worksheet(2);
+            var monthly = new Dictionary<Guid, decimal>();
+
+            if (report.Fields.Any())
+            {
+                foreach (var field in report.Fields.OrderBy(f => f.FieldOrder))
+                {
+                    if (field.SprayfieldId == Guid.Empty)
+                    {
+                        continue;
+                    }
+
+                    var sum = field.DailyValues?.Sum(v => v.VolumeApplied ?? 0m) ?? 0m;
+                    if (!monthly.ContainsKey(field.SprayfieldId))
+                    {
+                        monthly[field.SprayfieldId] = 0m;
+                    }
+                    monthly[field.SprayfieldId] += sum;
+                }
+            }
+            else
+            {
+                AccumulateLegacyFieldVolume(monthly, report.Field1Id, report.Field1VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field2Id, report.Field2VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field3Id, report.Field3VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field4Id, report.Field4VolumeAppliedDaily);
+            }
+
+            result[month] = monthly;
         }
 
-        if (certificationWorksheet == null)
+        return result;
+    }
+
+    private static void AccumulateLegacyFieldVolume(Dictionary<Guid, decimal> monthly, Guid? sprayfieldId, List<decimal?>? dailyVolumes)
+    {
+        if (!sprayfieldId.HasValue)
         {
             return;
         }
 
+        var sum = dailyVolumes?.Sum(v => v ?? 0m) ?? 0m;
+        if (!monthly.ContainsKey(sprayfieldId.Value))
+        {
+            monthly[sprayfieldId.Value] = 0m;
+        }
+        monthly[sprayfieldId.Value] += sum;
+    }
+
+    private static IXLWorksheet? GetCertificationTemplateSheet(IXLWorkbook workbook)
+    {
+        var byName = workbook.Worksheets
+            .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
+        if (byName != null)
+        {
+            return byName;
+        }
+
+        return workbook.Worksheets.Count >= 2 ? workbook.Worksheet(2) : null;
+    }
+
+    private static void RemovePreExistingDynamicNdmlrSheets(IXLWorkbook workbook)
+    {
+        var staleSheets = workbook.Worksheets
+            .Where(ws => Regex.IsMatch(ws.Name, @"^NDMLR \(\d+\)$", RegexOptions.IgnoreCase))
+            .ToList();
+
+        foreach (var sheet in staleSheets)
+        {
+            sheet.Delete();
+        }
+    }
+
+    private static void RemovePreExistingDynamicCertificationSheets(IXLWorkbook workbook)
+    {
+        var staleSheets = workbook.Worksheets
+            .Where(ws => Regex.IsMatch(ws.Name, @"^Certification \(\d+\)$", RegexOptions.IgnoreCase))
+            .ToList();
+
+        foreach (var sheet in staleSheets)
+        {
+            sheet.Delete();
+        }
+    }
+
+    private static void DeleteSheetByName(IXLWorkbook workbook, string sheetName)
+    {
+        var sheet = workbook.Worksheets
+            .FirstOrDefault(ws => string.Equals(ws.Name, sheetName, StringComparison.OrdinalIgnoreCase));
+        sheet?.Delete();
+    }
+
+    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility)
+    {
         certificationWorksheet.Cell("C6").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("E7").Value = facility.OperatorNumber ?? string.Empty;
         certificationWorksheet.Cell("C8").Value = facility.OperatorGrade ?? string.Empty;
@@ -302,5 +524,11 @@ public class NDMLRService : INDMLRService
         certificationWorksheet.Cell("O9").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("T9").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("U10").Value = DateTime.Today.ToString("MM/dd/yyyy");
+    }
+
+    private sealed class NdmlrFieldMeta
+    {
+        public Sprayfield Sprayfield { get; set; } = null!;
+        public int? PreferredOrder { get; set; }
     }
 }

@@ -144,6 +144,7 @@ public class Facility : CompanyScopedEntity
     public ICollection<GWMonit> GWMonits { get; set; } = new List<GWMonit>();
     public ICollection<MonthlyApplication> MonthlyApplications { get; set; } = new List<MonthlyApplication>();
     public ICollection<IrrRprt> IrrRprts { get; set; } = new List<IrrRprt>();
+    public ICollection<NDMLR> NDMLRs { get; set; } = new List<NDMLR>();
     public ICollection<OperatorLog> OperatorLogs { get; set; } = new List<OperatorLog>();
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
     public ICollection<NDAR1> NDAR1s { get; set; } = new List<NDAR1>();

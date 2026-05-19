@@ -7,11 +7,10 @@ namespace SAM.Services.Interfaces;
 public interface INDMLRService
 {
     /// <summary>
-    /// Exports an NDMLR Excel file for the specified NDAR-1 report.
-    /// The NDAR-1 report provides the facility, month, year, and field data
-    /// used to populate the NDMLR template (volume applied, concentration, loads).
+    /// Exports an annual NDMLR Excel file for the specified NDMLR record.
+    /// Source NDAR-1 and groundwater data are aggregated over Jan-Dec.
     /// </summary>
-    /// <param name="ndar1Id">The ID of the NDAR-1 report to base the NDMLR on.</param>
+    /// <param name="ndmlrId">The ID of the NDMLR annual record.</param>
     /// <returns>Byte array containing the generated Excel workbook.</returns>
-    Task<byte[]> ExportToExcelAsync(Guid ndar1Id);
+    Task<byte[]> ExportToExcelAsync(Guid ndmlrId);
 }
