@@ -301,7 +301,7 @@ flowchart TD
                         "System loads permit template PCS rows flagged for NDMR.",
                         "If none found, page shows guided status message describing missing setup.",
                         "Chemistry/template entry values are saved on WWChar + WWCharTemplateValue rows.",
-                        "ORC On Site and Storage Lagoon Freeboard (ft) are proxy fields: WWChar reads/writes these values through Operator Logs for each exact date.",
+                        "ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours) are proxy fields: WWChar reads/writes these values through Operator Logs for each exact date.",
                         "If a day value is edited in WWChar and no Operator Log exists for that date, SAM creates a log record and saves canonical values there."
                     }
                 },
@@ -339,7 +339,7 @@ flowchart TD
                     Steps =
                     {
                         "Daily/period operational observations are captured.",
-                        "Operator Logs are the single source of truth for ORC On Site and Storage Lagoon Freeboard (ft).",
+                        "Operator Logs are the single source of truth for ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours).",
                         "WWChar and NDAR edit experiences act as proxies that read/write those date-level values through Operator Logs.",
                         "These records support operational traceability, cross-module consistency, and analytics."
                     }
@@ -378,7 +378,7 @@ flowchart TD
                     Rows =
                     {
                         new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Facility permit context influences setup and source values", "Area/time/value handling follows per-field formula rules; export layout includes facility/field checkboxes and footer columns through V." },
-                        new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version resolved by facility + date when available", "ORC day cells are exported as canonical Y/N from Operator Logs; if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
+                        new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version resolved by facility + date when available", "NDMR first two daily columns are exported from canonical Operator Logs as ORC Arrival Time and ORC Time on Site (hours); if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
                         new List<string> { "GW report outputs", "GWMonit (+ template hooks)", "Facility/well context", "Template-driven extension path in progress." },
                         new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
@@ -492,10 +492,10 @@ flowchart TD
                 new TraceabilityItemViewModel
                 {
                     Id = "trace-orc-storage-canonical",
-                    KeywordOrProperty = "ORC On Site / Storage Lagoon Freeboard",
-                    Aliases = { "ORC", "Lagoon Freeboard", "Storage Lagoon Freeboard (ft)" },
+                    KeywordOrProperty = "ORC On Site / Storage Lagoon Freeboard / ORC Arrival Time / ORC Time on Site",
+                    Aliases = { "ORC", "Lagoon Freeboard", "Storage Lagoon Freeboard (ft)", "Arrival Time", "Time On Site" },
                     Entity = "OperatorLog",
-                    StorageField = "ORCOnSite + StorageFt",
+                    StorageField = "ORCOnSite + StorageFt + ArrivalTime + TimeOnSiteHours",
                     UsedInModule = "Operational Data > Operator Logs / WWChar / NDAR",
                     FormulaOrTransformation = "Date-level canonical lookup by facility + date; WWChar/NDAR writes are proxied into OperatorLog records.",
                     ReportOutput = "WWChar daily display and NDAR day-level storage surfaces",
@@ -509,15 +509,15 @@ flowchart TD
                     Steps =
                     {
                         new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "User can update values directly in Operator Logs or via WWChar/NDAR proxy edit surfaces." },
-                        new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "Canonical values persist only on OperatorLog.ORCOnSite and OperatorLog.StorageFt." },
+                        new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "Canonical values persist only on OperatorLog.ORCOnSite, OperatorLog.StorageFt, OperatorLog.ArrivalTime, and OperatorLog.TimeOnSiteHours." },
                         new TraceStepViewModel { Order = 3, Label = "Resolution", Detail = "Readers resolve values per exact facility/date from canonical OperatorLog data." },
                         new TraceStepViewModel { Order = 4, Label = "Surface", Detail = "Changes appear across WWChar, NDAR, NDMR exports, and operator log screens for the same date." }
                     },
                     Usages =
                     {
-                        new TraceUsageViewModel { Module = "Operational Data", Report = "WWChar", Destination = "Attachment A daily ORC/storage columns." },
+                        new TraceUsageViewModel { Module = "Operational Data", Report = "WWChar", Destination = "Attachment A daily ORC/storage/arrival/time-on-site columns." },
                         new TraceUsageViewModel { Module = "Reports", Report = "NDAR1", Destination = "Day-row storage views/exports via canonical lookup." },
-                        new TraceUsageViewModel { Module = "Reports", Report = "NDMR", Destination = "ORC day column exports as Y/N from canonical Operator Logs." }
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDMR", Destination = "First two day columns export ORC arrival time and time on site from canonical Operator Logs." }
                     }
                 },
                 new TraceabilityItemViewModel

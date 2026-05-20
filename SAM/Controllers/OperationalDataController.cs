@@ -1243,6 +1243,8 @@ namespace SAM.Controllers;
             CompositeTime = w.CompositeTime,
             ORCOnSite = new List<ORCOnSiteEnum?>(),
             LagoonFreeboard = new List<decimal?>(),
+            ORCArrivalTime = new List<TimeSpan?>(),
+            ORCTimeOnSiteHours = new List<decimal?>(),
             LabCertification = w.LabCertification,
             CollectedBy = w.CollectedBy,
             AnalyzedBy = w.AnalyzedBy,
@@ -1315,6 +1317,8 @@ namespace SAM.Controllers;
             CompositeTime = wwChar.CompositeTime,
             ORCOnSite = new List<ORCOnSiteEnum?>(),
             LagoonFreeboard = new List<decimal?>(),
+            ORCArrivalTime = new List<TimeSpan?>(),
+            ORCTimeOnSiteHours = new List<decimal?>(),
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
             AnalyzedBy = wwChar.AnalyzedBy,
@@ -1329,10 +1333,15 @@ namespace SAM.Controllers;
         };
 
         var canonicalDetailsValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
-        if (canonicalDetailsValues.ORCOnSite.Any(x => x.HasValue) || canonicalDetailsValues.StorageLagoonFreeboardFt.Any(x => x.HasValue))
+        if (canonicalDetailsValues.ORCOnSite.Any(x => x.HasValue) ||
+            canonicalDetailsValues.StorageLagoonFreeboardFt.Any(x => x.HasValue) ||
+            canonicalDetailsValues.ORCArrivalTime.Any(x => x.HasValue) ||
+            canonicalDetailsValues.ORCTimeOnSiteHours.Any(x => x.HasValue))
         {
             viewModel.ORCOnSite = canonicalDetailsValues.ORCOnSite;
             viewModel.LagoonFreeboard = canonicalDetailsValues.StorageLagoonFreeboardFt;
+            viewModel.ORCArrivalTime = canonicalDetailsValues.ORCArrivalTime;
+            viewModel.ORCTimeOnSiteHours = canonicalDetailsValues.ORCTimeOnSiteHours;
         }
 
         viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(
@@ -1404,6 +1413,8 @@ namespace SAM.Controllers;
             var canonicalDailyValues = await LoadCanonicalOperatorLogDailyValuesAsync(viewModel.FacilityId, viewModel.Year, (int)viewModel.Month);
             viewModel.ORCOnSite = canonicalDailyValues.ORCOnSite;
             viewModel.LagoonFreeboard = canonicalDailyValues.StorageLagoonFreeboardFt;
+            viewModel.ORCArrivalTime = canonicalDailyValues.ORCArrivalTime;
+            viewModel.ORCTimeOnSiteHours = canonicalDailyValues.ORCTimeOnSiteHours;
         }
 
         if (viewModel.FacilityId != Guid.Empty)
@@ -1518,6 +1529,8 @@ namespace SAM.Controllers;
                 (int)wwChar.Month,
                 viewModel.ORCOnSite,
                 viewModel.LagoonFreeboard,
+                viewModel.ORCArrivalTime,
+                viewModel.ORCTimeOnSiteHours,
                 CurrentUserId ?? "system");
             ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
@@ -1580,6 +1593,8 @@ namespace SAM.Controllers;
             CompositeTime = wwChar.CompositeTime,
             ORCOnSite = new List<ORCOnSiteEnum?>(),
             LagoonFreeboard = new List<decimal?>(),
+            ORCArrivalTime = new List<TimeSpan?>(),
+            ORCTimeOnSiteHours = new List<decimal?>(),
             LabCertification = wwChar.LabCertification,
             CollectedBy = wwChar.CollectedBy,
             AnalyzedBy = wwChar.AnalyzedBy,
@@ -1594,10 +1609,15 @@ namespace SAM.Controllers;
         };
 
         var canonicalEditValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
-        if (canonicalEditValues.ORCOnSite.Any(x => x.HasValue) || canonicalEditValues.StorageLagoonFreeboardFt.Any(x => x.HasValue))
+        if (canonicalEditValues.ORCOnSite.Any(x => x.HasValue) ||
+            canonicalEditValues.StorageLagoonFreeboardFt.Any(x => x.HasValue) ||
+            canonicalEditValues.ORCArrivalTime.Any(x => x.HasValue) ||
+            canonicalEditValues.ORCTimeOnSiteHours.Any(x => x.HasValue))
         {
             viewModel.ORCOnSite = canonicalEditValues.ORCOnSite;
             viewModel.LagoonFreeboard = canonicalEditValues.StorageLagoonFreeboardFt;
+            viewModel.ORCArrivalTime = canonicalEditValues.ORCArrivalTime;
+            viewModel.ORCTimeOnSiteHours = canonicalEditValues.ORCTimeOnSiteHours;
         }
 
         // Ensure arrays are initialized with 31 entries
@@ -1658,9 +1678,13 @@ namespace SAM.Controllers;
 
         List<ORCOnSiteEnum?> orcOnSite = new();
         List<decimal?> lagoonFreeboard = new();
+        List<TimeSpan?> orcArrivalTime = new();
+        List<decimal?> orcTimeOnSiteHours = new();
         var canonicalTemplateValues = await LoadCanonicalOperatorLogDailyValuesAsync(facilityId, year, month);
         orcOnSite = canonicalTemplateValues.ORCOnSite;
         lagoonFreeboard = canonicalTemplateValues.StorageLagoonFreeboardFt;
+        orcArrivalTime = canonicalTemplateValues.ORCArrivalTime;
+        orcTimeOnSiteHours = canonicalTemplateValues.ORCTimeOnSiteHours;
 
         var vm = new WWCharTemplateSectionViewModel
         {
@@ -1674,7 +1698,9 @@ namespace SAM.Controllers;
             TemplateParametersStatusMessage = statusMessage,
             TemplateParameters = templateParameters,
             ORCOnSite = orcOnSite,
-            LagoonFreeboard = lagoonFreeboard
+            LagoonFreeboard = lagoonFreeboard,
+            ORCArrivalTime = orcArrivalTime,
+            ORCTimeOnSiteHours = orcTimeOnSiteHours
         };
         EnsureTemplateArraysInitialized(vm.TemplateParameters);
         EnsureDayArraysInitialized(vm);
@@ -1765,6 +1791,8 @@ namespace SAM.Controllers;
                 (int)wwChar.Month,
                 viewModel.ORCOnSite,
                 viewModel.LagoonFreeboard,
+                viewModel.ORCArrivalTime,
+                viewModel.ORCTimeOnSiteHours,
                 CurrentUserId ?? "system");
             ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
@@ -3040,17 +3068,19 @@ namespace SAM.Controllers;
         return new SelectList(monitoringWells, "Id", "WellId");
     }
 
-    private async Task<(List<ORCOnSiteEnum?> ORCOnSite, List<decimal?> StorageLagoonFreeboardFt)> LoadCanonicalOperatorLogDailyValuesAsync(
+    private async Task<(List<ORCOnSiteEnum?> ORCOnSite, List<decimal?> StorageLagoonFreeboardFt, List<TimeSpan?> ORCArrivalTime, List<decimal?> ORCTimeOnSiteHours)> LoadCanonicalOperatorLogDailyValuesAsync(
         Guid facilityId,
         int year,
         int month)
     {
         var orc = Enumerable.Repeat<ORCOnSiteEnum?>(null, 31).ToList();
         var storage = Enumerable.Repeat<decimal?>(null, 31).ToList();
+        var arrivalTime = Enumerable.Repeat<TimeSpan?>(null, 31).ToList();
+        var timeOnSiteHours = Enumerable.Repeat<decimal?>(null, 31).ToList();
 
         if (facilityId == Guid.Empty || month < 1 || month > 12 || year < 2000 || year > 2100)
         {
-            return (orc, storage);
+            return (orc, storage, arrivalTime, timeOnSiteHours);
         }
 
         var start = new DateTime(year, month, 1);
@@ -3071,9 +3101,11 @@ namespace SAM.Controllers;
             var canonical = dayGroup.First();
             orc[day - 1] = canonical.ORCOnSite;
             storage[day - 1] = canonical.StorageFt;
+            arrivalTime[day - 1] = canonical.ArrivalTime;
+            timeOnSiteHours[day - 1] = canonical.TimeOnSiteHours;
         }
 
-        return (orc, storage);
+        return (orc, storage, arrivalTime, timeOnSiteHours);
     }
 
     private async Task UpsertCanonicalOperatorLogDailyValuesAsync(
@@ -3083,6 +3115,8 @@ namespace SAM.Controllers;
         int month,
         List<ORCOnSiteEnum?>? orcOnSite,
         List<decimal?>? storageLagoonFreeboardFt,
+        List<TimeSpan?>? orcArrivalTime,
+        List<decimal?>? orcTimeOnSiteHours,
         string actor)
     {
         if (facilityId == Guid.Empty || month < 1 || month > 12 || year < 2000 || year > 2100)
@@ -3102,7 +3136,9 @@ namespace SAM.Controllers;
             var dayIndex = day - 1;
             var dayOrc = orcOnSite != null && orcOnSite.Count > dayIndex ? orcOnSite[dayIndex] : null;
             var dayStorage = storageLagoonFreeboardFt != null && storageLagoonFreeboardFt.Count > dayIndex ? storageLagoonFreeboardFt[dayIndex] : null;
-            if (!dayOrc.HasValue && !dayStorage.HasValue)
+            var dayArrival = orcArrivalTime != null && orcArrivalTime.Count > dayIndex ? orcArrivalTime[dayIndex] : null;
+            var dayTimeOnSite = orcTimeOnSiteHours != null && orcTimeOnSiteHours.Count > dayIndex ? orcTimeOnSiteHours[dayIndex] : null;
+            if (!dayOrc.HasValue && !dayStorage.HasValue && !dayArrival.HasValue && !dayTimeOnSite.HasValue)
             {
                 continue;
             }
@@ -3121,8 +3157,8 @@ namespace SAM.Controllers;
                     ORCOnSite = dayOrc,
                     StorageFt = dayStorage,
                     WeatherConditions = string.Empty,
-                    ArrivalTime = TimeSpan.Zero,
-                    TimeOnSiteHours = 0m,
+                    ArrivalTime = dayArrival ?? TimeSpan.Zero,
+                    TimeOnSiteHours = dayTimeOnSite ?? 0m,
                     MaintenancePerformed = string.Empty,
                     EquipmentInspected = string.Empty,
                     IssuesNoted = string.Empty,
@@ -3139,6 +3175,15 @@ namespace SAM.Controllers;
             {
                 log.ORCOnSite = dayOrc;
                 log.StorageFt = dayStorage;
+                if (dayArrival.HasValue)
+                {
+                    log.ArrivalTime = dayArrival.Value;
+                }
+
+                if (dayTimeOnSite.HasValue)
+                {
+                    log.TimeOnSiteHours = dayTimeOnSite.Value;
+                }
             }
         }
 
@@ -3225,6 +3270,8 @@ namespace SAM.Controllers;
         EnsureStringArraySize(viewModel.CompositeTime, 31);
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
         EnsureArraySize(viewModel.LagoonFreeboard, 31);
+        EnsureArraySize(viewModel.ORCArrivalTime, 31);
+        EnsureArraySize(viewModel.ORCTimeOnSiteHours, 31);
     }
 
     private void EnsureDailyArraysInitialized(WWCharEditViewModel viewModel)
@@ -3244,12 +3291,16 @@ namespace SAM.Controllers;
         EnsureStringArraySize(viewModel.CompositeTime, 31);
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
         EnsureArraySize(viewModel.LagoonFreeboard, 31);
+        EnsureArraySize(viewModel.ORCArrivalTime, 31);
+        EnsureArraySize(viewModel.ORCTimeOnSiteHours, 31);
     }
 
     private void EnsureDayArraysInitialized(WWCharTemplateSectionViewModel viewModel)
     {
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
         EnsureArraySize(viewModel.LagoonFreeboard, 31);
+        EnsureArraySize(viewModel.ORCArrivalTime, 31);
+        EnsureArraySize(viewModel.ORCTimeOnSiteHours, 31);
     }
 
     private void EnsureArraySize<T>(List<T> list, int size)

@@ -223,7 +223,10 @@
                         return;
                     }
 
-                    if (name.startsWith('ORCOnSite[') || name.startsWith('LagoonFreeboard[')) {
+                    if (name.startsWith('ORCOnSite[') ||
+                        name.startsWith('LagoonFreeboard[') ||
+                        name.startsWith('ORCArrivalTime[') ||
+                        name.startsWith('ORCTimeOnSiteHours[')) {
                         result.namedValues[name] = el.value;
                     }
                 });

@@ -148,11 +148,16 @@
                                     </span>
                                 </td>
                                 <td class="table-actions">
-                                    @if (canEdit)
-                                    {
-                                        <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteIrrigationReportModal" data-report-id="@report.Id" data-report-period="@($"{report.Month} {report.Year}")"><i class="bi bi-trash"></i> Delete</button>
-                                    }
+                                    <div class="d-flex gap-1 ">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" disabled title="Not yet implemented">
+                                            <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                                        </button>
+                                        @if (canEdit)
+                                        {
+                                            <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteIrrigationReportModal" data-report-id="@report.Id" data-report-period="@($"{report.Month} {report.Year}")"><i class="bi bi-trash"></i> Delete</button>
+                                        }
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -186,14 +191,18 @@
                                     <dd class="col-6 mb-1">@report.HydraulicLoadingRate.ToString("F2") in/yr</dd>
                                 </dl>
                                 <div class="mt-auto d-flex justify-content-between">
-                                    <a asp-action="NDMRReportDetails" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> View</a>
-                                    @if (canEdit)
-                                    {
-                                        <div class="btn-group" role="group">
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        
+                                        <button type="button" class="btn btn-sm btn-outline-primary" disabled title="Not yet implemented">
+                                            <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                                        </button>
+                                       
+                                        @if (canEdit)
+                                        {
                                             <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
                                             <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteIrrigationReportModal" data-report-id="@report.Id" data-report-period="@($"{report.Month} {report.Year}")"><i class="bi bi-trash"></i> Delete</button>
-                                        </div>
-                                    }
+                                        }
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -259,6 +268,13 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            if (window.SAMLoading && window.SAMLoading.bindLinkClicks) {
+                window.SAMLoading.bindLinkClicks('.js-report-export-link', {
+                    loadingMessage: 'Generating export, please wait...',
+                    useFetchDownload: true
+                });
+            }
+
             const tableBtn = document.getElementById('irrReportsTableViewBtn');
             const cardBtn = document.getElementById('irrReportsCardViewBtn');
             const tableView = document.getElementById('irrReportsTableView');

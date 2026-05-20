@@ -159,6 +159,8 @@
                             <th>Day</th>
                             <th>ORC On Site</th>
                             <th>Storage Lagoon Freeboard (ft)</th>
+                            <th>ORC Arrival Time (24H)</th>
+                            <th>ORC Time on Site (hours)</th>
                             @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                             {
                                 <th>
@@ -181,6 +183,8 @@
                                 <th scope="row"><strong>@(d + 1)</strong></th>
                                 <td>@(Model.ORCOnSite != null && d < Model.ORCOnSite.Count && Model.ORCOnSite[d].HasValue ? Model.ORCOnSite[d].Value.ToString() : "-")</td>
                                 <td>@(Model.LagoonFreeboard != null && d < Model.LagoonFreeboard.Count && Model.LagoonFreeboard[d].HasValue ? Model.LagoonFreeboard[d].Value.ToString("F2") : "-")</td>
+                                <td>@(Model.ORCArrivalTime != null && d < Model.ORCArrivalTime.Count && Model.ORCArrivalTime[d].HasValue ? Model.ORCArrivalTime[d].Value.ToString(@"hh\:mm") : "-")</td>
+                                <td>@(Model.ORCTimeOnSiteHours != null && d < Model.ORCTimeOnSiteHours.Count && Model.ORCTimeOnSiteHours[d].HasValue ? Model.ORCTimeOnSiteHours[d].Value.ToString("F2") : "-")</td>
                                 @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                                 {
                                     <td>@(Model.TemplateParameters[p].DailyValues != null && d < Model.TemplateParameters[p].DailyValues.Count && Model.TemplateParameters[p].DailyValues[d].HasValue ? Model.TemplateParameters[p].DailyValues[d]!.Value.ToString("F6") : "-")</td>

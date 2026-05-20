@@ -28,7 +28,7 @@
         if (Model.IsEdit)
         {
             <div class="alert alert-info py-2 small">
-                Updates to <strong>ORC On Site</strong> and <strong>Storage Lagoon Freeboard (ft)</strong> are synced through Operator Logs for the exact day and automatically reflected anywhere this date is used.
+                Updates to <strong>ORC On Site</strong>, <strong>Storage Lagoon Freeboard (ft)</strong>, <strong>ORC Arrival Time</strong>, and <strong>ORC Time on Site</strong> are synced through Operator Logs for the exact day and automatically reflected anywhere this date is used.
             </div>
         }
 
@@ -48,6 +48,8 @@
                         <th>Day</th>
                         <th>ORC On Site</th>
                         <th>Storage Lagoon Freeboard (ft)</th>
+                        <th>ORC Arrival Time (24H)</th>
+                        <th>ORC Time on Site (hours)</th>
                         @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                         {
                             <th>
@@ -85,6 +87,8 @@
                                 </select>
                             </td>
                             <td><input name="LagoonFreeboard[@d]" type="number" step="0.01" class="form-control form-control-sm" value="@((Model.LagoonFreeboard != null && Model.LagoonFreeboard.Count > d && Model.LagoonFreeboard[d].HasValue) ? Model.LagoonFreeboard[d]!.Value.ToString() : string.Empty)" /></td>
+                            <td><input name="ORCArrivalTime[@d]" type="time" step="900" class="form-control form-control-sm" value="@((Model.ORCArrivalTime != null && Model.ORCArrivalTime.Count > d && Model.ORCArrivalTime[d].HasValue) ? Model.ORCArrivalTime[d]!.Value.ToString(@"hh\:mm") : string.Empty)" /></td>
+                            <td><input name="ORCTimeOnSiteHours[@d]" type="number" step="0.25" class="form-control form-control-sm" value="@((Model.ORCTimeOnSiteHours != null && Model.ORCTimeOnSiteHours.Count > d && Model.ORCTimeOnSiteHours[d].HasValue) ? Model.ORCTimeOnSiteHours[d]!.Value.ToString() : string.Empty)" /></td>
                             @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                             {
                                 var key = $"{Model.TemplateParameters[p].FacilityPermitTemplateParameterId}:{d}";

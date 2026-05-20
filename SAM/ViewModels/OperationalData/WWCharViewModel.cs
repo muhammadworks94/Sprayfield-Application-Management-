@@ -71,6 +71,12 @@ public class WWCharViewModel
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
 
+    [Display(Name = "ORC Arrival Time Daily")]
+    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+
+    [Display(Name = "ORC Time On Site Daily (hours)")]
+    public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
+
     [Display(Name = "NO2 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
     public decimal? NO2N { get; set; }
@@ -171,6 +177,12 @@ public class WWCharCreateViewModel
     
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
+
+    [Display(Name = "ORC Arrival Time Daily")]
+    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+
+    [Display(Name = "ORC Time On Site Daily (hours)")]
+    public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
 
     [Display(Name = "NO2 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
@@ -274,6 +286,12 @@ public class WWCharEditViewModel
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
 
+    [Display(Name = "ORC Arrival Time Daily")]
+    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+
+    [Display(Name = "ORC Time On Site Daily (hours)")]
+    public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
+
     [Display(Name = "NO2 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
     public decimal? NO2N { get; set; }
@@ -345,6 +363,8 @@ public class WWCharTemplateSectionViewModel
     public string? TemplateParametersStatusMessage { get; set; }
     public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
     public List<decimal?> LagoonFreeboard { get; set; } = new();
+    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+    public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
 }
 

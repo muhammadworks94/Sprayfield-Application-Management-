@@ -382,7 +382,7 @@ public class NDMRService : INDMRService
             // Column A: Day number
             flowWorksheet.Cell($"A{row}").Value = day;
 
-            // Column B/C: ORC arrival time and ORC on-site status (Y/N)
+            // Column B/C: ORC arrival time and ORC time on site (hours)
             var dayOperatorLogs = operatorLogs
                 .Where(o => o.LogDate.Date == currentDate.Date)
                 .ToList();
@@ -400,8 +400,8 @@ public class NDMRService : INDMRService
                 flowWorksheet.Cell($"B{row}").Value = firstLog.ArrivalTime;
                 flowWorksheet.Cell($"B{row}").Style.NumberFormat.Format = "hh:mm";
 
-                flowWorksheet.Cell($"C{row}").Value = FormatOrcOnSiteForReport(canonicalLog.ORCOnSite);
-                flowWorksheet.Cell($"C{row}").Style.NumberFormat.Format = "@";
+                flowWorksheet.Cell($"C{row}").Value = canonicalLog.TimeOnSiteHours;
+                flowWorksheet.Cell($"C{row}").Style.NumberFormat.Format = "0.00";
             }
             else
             {
@@ -564,16 +564,6 @@ public class NDMRService : INDMRService
             ndar1Id);
 
         return stream.ToArray();
-    }
-
-    private static string FormatOrcOnSiteForReport(ORCOnSiteEnum? value)
-    {
-        return value switch
-        {
-            ORCOnSiteEnum.Y => "Y",
-            ORCOnSiteEnum.N => "N",
-            _ => string.Empty
-        };
     }
 
     private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility, ComplianceStatusEnum? complianceStatus)
