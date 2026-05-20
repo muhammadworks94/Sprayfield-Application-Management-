@@ -1561,6 +1561,74 @@ public class ReportsController : BaseController
     }
 
     [HttpGet]
+    public async Task<IActionResult> ExportNDMRReportPdf(Guid id, bool showGrid = false)
+    {
+        NDAR1? report;
+        var ndmrReport = await _irrRprtService.GetByIdAsync(id);
+
+        if (ndmrReport != null)
+        {
+            report = await _context.NDAR1s
+                .AsNoTracking()
+                .Include(r => r.Facility)
+                .FirstOrDefaultAsync(r =>
+                    r.CompanyId == ndmrReport.CompanyId &&
+                    r.FacilityId == ndmrReport.FacilityId &&
+                    r.Year == ndmrReport.Year &&
+                    r.Month == ndmrReport.Month);
+        }
+        else
+        {
+            report = await _ndar1Service.GetByIdAsync(id);
+        }
+
+        if (report == null)
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMR PDF export failed",
+                    Detail = "No matching NDAR-1 report exists for this NDMR period.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = "No matching NDAR-1 report exists for this NDMR period.";
+            return ndmrReport != null
+                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
+                : RedirectToAction(nameof(NDAR1Reports));
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        try
+        {
+            var pdfBytes = await RenderNdmrPdfAsync(report, showGrid);
+            var safeFacility = Regex.Replace(report.Facility?.Name ?? "Facility", @"[^\w\-]+", "_");
+            var fileName = $"NDMR_{safeFacility}_{report.Month}_{report.Year}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMR PDF export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = $"Error exporting NDMR PDF: {ex.Message}";
+            return ndmrReport != null
+                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
+                : RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+        }
+    }
+
+    [HttpGet]
     public async Task<IActionResult> ExportNDMLRReport(Guid id)
     {
         var report = await _context.NDMLRs
@@ -2682,6 +2750,141 @@ public class ReportsController : BaseController
                     DrawCoordinateGrid(certGfx, certPage.Width.Point, certPage.Height.Point);
                 }
                 currentPageNumber++;
+            }
+        }
+
+        document.Save(output, false);
+        return output.ToArray();
+    }
+
+    private async Task<byte[]> RenderNdmrPdfAsync(NDAR1 report, bool showGrid = false)
+    {
+        _ = report ?? throw new ArgumentNullException(nameof(report));
+
+        var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Monitoring Report (NDMR) Form 0312.pdf");
+        if (!System.IO.File.Exists(templatePath))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("NDMR template PDF not found in wwwroot/forms.");
+        }
+
+        var facility = report.Facility
+            ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId)
+            ?? throw new Infrastructure.Exceptions.BusinessRuleException("Facility not found for this NDMR export.");
+
+        var monthNumber = (int)report.Month;
+        var year = report.Year;
+        var startDate = new DateTime(year, monthNumber, 1);
+        var endDate = startDate.AddMonths(1).AddDays(-1);
+        var daysInMonth = DateTime.DaysInMonth(year, monthNumber);
+
+        var wwChar = await _context.WWChars
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w =>
+                w.FacilityId == report.FacilityId &&
+                (int)w.Month == monthNumber &&
+                w.Year == year);
+
+        var operatorLogs = await _context.OperatorLogs
+            .AsNoTracking()
+            .Where(o =>
+                o.FacilityId == report.FacilityId &&
+                o.LogDate >= startDate &&
+                o.LogDate <= endDate)
+            .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+            .ThenByDescending(o => o.CreatedDate)
+            .ToListAsync();
+
+        using var output = new MemoryStream();
+        using var document = new PdfDocument();
+        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
+        var totalPages = templateDoc.PageCount;
+        var exportDate = DateTime.Today.ToString("MM/dd/yyyy");
+        var font = new XFont("Arial", 8, XFontStyle.Regular);
+        var boldFont = new XFont("Arial", 8, XFontStyle.Bold);
+
+        for (var i = 0; i < templateDoc.PageCount; i++)
+        {
+            document.AddPage(templateDoc.Pages[i]);
+            var page = document.Pages[document.PageCount - 1];
+            var gfx = XGraphics.FromPdfPage(page);
+
+            if (i == 0)
+            {
+                // Header block
+                Draw(gfx, facility.PermitNumber, font, new NdarPdfPoint(73, 41));
+                Draw(gfx, facility.Name, font, new NdarPdfPoint(226, 41));
+                Draw(gfx, facility.County, font, new NdarPdfPoint(482, 41));
+                Draw(gfx, report.Month.ToString(), font, new NdarPdfPoint(608.5, 41));
+                Draw(gfx, report.Year.ToString(), font, new NdarPdfPoint(721, 41));
+                Draw(gfx, (i + 1).ToString(), font, new NdarPdfPoint(685, 16));
+                Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
+
+                // Daily table anchors from provided coordinates:
+                // Day1 B=(39,154.7), C=(78,154.7), D=(112,154.7), rowHeight=11
+                const double baseY = 154.7d;
+                const double rowHeight = 11.68d;
+                const double colBX = 39d;
+                const double colCX = 78d;
+                const double colDX = 112d;
+
+                for (var day = 1; day <= daysInMonth; day++)
+                {
+                    var rowY = baseY + ((day - 1) * rowHeight);
+                    var currentDate = new DateTime(year, monthNumber, day).Date;
+                    var dayLogs = operatorLogs.Where(o => o.LogDate.Date == currentDate).ToList();
+
+                    if (dayLogs.Count > 0)
+                    {
+                        var firstLog = dayLogs
+                            .OrderBy(o => o.ArrivalTime)
+                            .First();
+                        var canonicalLog = dayLogs
+                            .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+                            .ThenByDescending(o => o.CreatedDate)
+                            .First();
+
+                        var arrivalText = firstLog.ArrivalTime.ToString(@"hh\:mm");
+                        var timeOnSiteText = canonicalLog.TimeOnSiteHours.ToString("0.00");
+
+                        Draw(gfx, arrivalText, font, new NdarPdfPoint(colBX, rowY));
+                        Draw(gfx, timeOnSiteText, font, new NdarPdfPoint(colCX, rowY));
+                    }
+
+                    var bod5Value = (wwChar?.BOD5Daily != null &&
+                                     wwChar.BOD5Daily.Count >= day &&
+                                     wwChar.BOD5Daily[day - 1].HasValue)
+                        ? wwChar.BOD5Daily[day - 1]
+                        : null;
+                    if (bod5Value.HasValue)
+                    {
+                        Draw(gfx, bod5Value.Value.ToString("0.00"), font, new NdarPdfPoint(colDX, rowY));
+                    }
+                }
+            }
+            else if (i == 1)
+            {
+                // Certification page
+                Draw(gfx, (i + 1).ToString(), font, new NdarPdfPoint(685, 16));
+                Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
+
+                Draw(gfx, facility.OrcName, font, new NdarPdfPoint(50, 327));
+                Draw(gfx, facility.OperatorNumber, font, new NdarPdfPoint(95, 350));
+                Draw(gfx, facility.OperatorGrade, font, new NdarPdfPoint(52.5, 374));
+                Draw(gfx, facility.OperatorPhone, font, new NdarPdfPoint(220, 374));
+                Draw(gfx, facility.ChangeInOrc == true ? "X" : string.Empty, boldFont, new NdarPdfPoint(245, 395));
+                Draw(gfx, facility.ChangeInOrc == true ? string.Empty : "X", boldFont, new NdarPdfPoint(284, 393));
+                Draw(gfx, exportDate, font, new NdarPdfPoint(330, 440));
+
+                Draw(gfx, facility.Permittee, font, new NdarPdfPoint(449, 327));
+                Draw(gfx, facility.OrcName, font, new NdarPdfPoint(469, 350));
+                Draw(gfx, facility.PermitPhone, font, new NdarPdfPoint(470, 399));
+                Draw(gfx, facility.PermitExpirationDate?.ToString("MM/dd/yyyy"), font, new NdarPdfPoint(680, 399));
+                Draw(gfx, exportDate, font, new NdarPdfPoint(700, 440));
+            }
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
             }
         }
 

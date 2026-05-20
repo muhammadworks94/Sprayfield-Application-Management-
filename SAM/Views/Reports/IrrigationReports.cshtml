@@ -149,9 +149,9 @@
                                 </td>
                                 <td class="table-actions">
                                     <div class="d-flex gap-1 ">
-                                        <button type="button" class="btn btn-sm btn-outline-primary" disabled title="Not yet implemented">
+                                        <a asp-action="ExportNDMRReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary js-report-export-link">
                                             <i class="bi bi-file-earmark-pdf"></i> Export PDF
-                                        </button>
+                                        </a>
                                         @if (canEdit)
                                         {
                                             <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
@@ -192,11 +192,9 @@
                                 </dl>
                                 <div class="mt-auto d-flex justify-content-between">
                                     <div class="d-flex gap-1 flex-wrap">
-                                        
-                                        <button type="button" class="btn btn-sm btn-outline-primary" disabled title="Not yet implemented">
+                                        <a asp-action="ExportNDMRReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary js-report-export-link">
                                             <i class="bi bi-file-earmark-pdf"></i> Export PDF
-                                        </button>
-                                       
+                                        </a>
                                         @if (canEdit)
                                         {
                                             <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>

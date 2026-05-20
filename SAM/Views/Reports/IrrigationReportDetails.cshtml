@@ -17,9 +17,9 @@
         <p class="text-muted mb-0">View detailed Non-Discharge Monitoring Report for @Model.Month @Model.Year</p>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <button type="button" class="btn btn-success" disabled title="Not yet implemented">
-            <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF (Not yet implemented)
-        </button>
+        <a class="btn btn-success js-report-export-link" asp-action="ExportNDMRReportPdf" asp-route-id="@Model.Id">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+        </a>
         <div class="dropdown">
             <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 More...

@@ -16,6 +16,14 @@ namespace SAM.Services.Implementations;
 /// </summary>
 public class NDMRService : INDMRService
 {
+    private sealed class NdmrParameterRow
+    {
+        public required FacilityPermitTemplateParameter TemplateRow { get; init; }
+        public required string PcsCode { get; init; }
+        public required string DisplayName { get; init; }
+        public required string Units { get; init; }
+    }
+
     private sealed class SamplingMetadata
     {
         public string SamplingType { get; init; } = "Grab";
@@ -240,6 +248,191 @@ public class NDMRService : INDMRService
         }
     }
 
+    private static bool IsTemplateRowApplicableForMonth(FacilityPermitTemplateParameter row, int month)
+    {
+        var alwaysInclude = row.MeasurementFrequency is MeasurementFrequencyEnum.Daily
+            or MeasurementFrequencyEnum.Weekly
+            or MeasurementFrequencyEnum.Monthly
+            or MeasurementFrequencyEnum.Continuous;
+        if (alwaysInclude)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(row.ScheduledMonthsCsv))
+        {
+            return false;
+        }
+
+        var months = row.ScheduledMonthsCsv
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => int.TryParse(value, out var parsed) ? parsed : -1);
+        return months.Any(m => m == month);
+    }
+
+    private static string BuildDailyLimitText(FacilityPermitTemplateParameter row)
+    {
+        if (row.DailyMaximumLimit.HasValue)
+        {
+            return row.DailyMaximumLimit.Value.ToString("0.##");
+        }
+
+        if (row.DailyMinimumLimit.HasValue)
+        {
+            return row.DailyMinimumLimit.Value.ToString("0.##");
+        }
+
+        return string.Empty;
+    }
+
+    private static string BuildMonthlyLimitText(FacilityPermitTemplateParameter row)
+    {
+        if (row.MonthlyAverageLimit.HasValue)
+        {
+            return row.MonthlyAverageLimit.Value.ToString("0.##");
+        }
+
+        if (row.MonthlyGeometricMeanLimit.HasValue)
+        {
+            return row.MonthlyGeometricMeanLimit.Value.ToString("0.##");
+        }
+
+        return string.Empty;
+    }
+
+    private static decimal? AverageSampleForDay(IReadOnlyList<GWMonit> gwMonits, DateTime currentDate, Func<GWMonit, decimal?> selector)
+    {
+        var values = gwMonits
+            .Where(g => g.SampleDate.Date == currentDate.Date)
+            .Select(selector)
+            .Where(v => v.HasValue)
+            .Select(v => v!.Value)
+            .ToList();
+
+        return values.Count == 0 ? null : values.Average();
+    }
+
+    private static decimal? ResolveFallbackDailyValue(
+        string pcsCode,
+        DateTime currentDate,
+        WWChar? wwChar,
+        IReadOnlyList<GWMonit> gwMonits)
+    {
+        decimal? WwAt(IReadOnlyList<decimal?>? values)
+        {
+            if (values == null) return null;
+            var dayIndex = currentDate.Day - 1;
+            return dayIndex >= 0 && dayIndex < values.Count ? values[dayIndex] : null;
+        }
+
+        return pcsCode switch
+        {
+            "00310" => WwAt(wwChar?.BOD5Daily),
+            "00620" => AverageSampleForDay(gwMonits, currentDate, g => g.NO3N),
+            "00610" => AverageSampleForDay(gwMonits, currentDate, g => g.NH3N),
+            "00625" => AverageSampleForDay(gwMonits, currentDate, g => g.TKN),
+            "00400" => AverageSampleForDay(gwMonits, currentDate, g => g.PH),
+            "31616" => AverageSampleForDay(gwMonits, currentDate, g => g.FecalColiform),
+            "00940" => AverageSampleForDay(gwMonits, currentDate, g => g.Chloride),
+            "00665" => AverageSampleForDay(gwMonits, currentDate, g => g.TOC),
+            "00530" => AverageSampleForDay(gwMonits, currentDate, g => g.TSS),
+            "00600" => AverageSampleForDay(gwMonits, currentDate, g =>
+                (!g.TKN.HasValue && !g.NO3N.HasValue) ? null : (g.TKN ?? 0m) + (g.NO3N ?? 0m)),
+            _ => null
+        };
+    }
+
+    private static void SanitizeErrorCells(IXLWorksheet worksheet)
+    {
+        foreach (var cell in worksheet.RangeUsed()?.CellsUsed() ?? Enumerable.Empty<IXLCell>())
+        {
+            if (cell.DataType == XLDataType.Error)
+            {
+                cell.Clear(XLClearOptions.Contents);
+                continue;
+            }
+
+            if (cell.HasFormula)
+            {
+                var formula = cell.FormulaA1?.Trim();
+                if (string.IsNullOrWhiteSpace(formula))
+                {
+                    continue;
+                }
+
+                if (!formula.StartsWith("IFERROR(", StringComparison.OrdinalIgnoreCase))
+                {
+                    cell.FormulaA1 = $"IFERROR({formula},\"\")";
+                }
+            }
+        }
+    }
+
+    private static void PopulateSummaryRowsForChunk(
+        IXLWorksheet worksheet,
+        IReadOnlyList<NdmrParameterRow> chunk,
+        IReadOnlyList<string> codeSlots,
+        int daysInMonth,
+        int startRow)
+    {
+        const int averageRow = 37;
+        const int dailyMaxRow = 38;
+        const int dailyMinRow = 39;
+
+        for (var slot = 0; slot < codeSlots.Count; slot++)
+        {
+            var col = codeSlots[slot];
+            var avgCell = worksheet.Cell($"{col}{averageRow}");
+            var maxCell = worksheet.Cell($"{col}{dailyMaxRow}");
+            var minCell = worksheet.Cell($"{col}{dailyMinRow}");
+
+            avgCell.Clear(XLClearOptions.Contents);
+            maxCell.Clear(XLClearOptions.Contents);
+            minCell.Clear(XLClearOptions.Contents);
+
+            if (slot >= chunk.Count)
+            {
+                continue;
+            }
+
+            var values = new List<decimal>();
+            for (var day = 0; day < daysInMonth; day++)
+            {
+                var cell = worksheet.Cell($"{col}{startRow + day}");
+                if (!cell.TryGetValue<decimal>(out var numericValue))
+                {
+                    continue;
+                }
+                values.Add(numericValue);
+            }
+
+            if (values.Count == 0)
+            {
+                continue;
+            }
+
+            var parameter = chunk[slot];
+            decimal averageValue;
+            if (string.Equals(parameter.PcsCode, "31616", StringComparison.OrdinalIgnoreCase) && values.All(v => v > 0m))
+            {
+                // Fecal coliform average is represented as geometric mean when daily values are positive.
+                var logAverage = values.Select(v => Math.Log((double)v)).Average();
+                averageValue = (decimal)Math.Exp(logAverage);
+            }
+            else
+            {
+                averageValue = values.Average();
+            }
+
+            avgCell.Value = averageValue;
+            maxCell.Value = values.Max();
+            minCell.Value = values.Min();
+            avgCell.Style.NumberFormat.Format = "0.00";
+            maxCell.Style.NumberFormat.Format = "0.00";
+            minCell.Style.NumberFormat.Format = "0.00";
+        }
+    }
+
     /// <summary>
     /// Exports an NDMR Excel file for the specified NDAR-1 report.
     /// The NDAR-1 report is used only as a convenient way to select
@@ -304,49 +497,81 @@ public class NDMRService : INDMRService
             flowWorksheet.Cell("C1").Value = $"{permit.PermitNumber} v{permit.PermitVersion}";
         }
 
-        // Match client one-page NDMR code layout on the master sheet.
         var permitTemplateRows = permit == null
             ? new List<FacilityPermitTemplateParameter>()
             : await _context.FacilityPermitTemplateParameters
                 .Include(x => x.PcsParameterCatalog)
                 .Where(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
                 .OrderBy(x => x.SortOrder)
-                .ThenBy(x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty)
+                .ThenBy(x => x.CreatedDate)
+                .ThenBy(x => x.Id)
                 .ToListAsync();
+        permitTemplateRows = permitTemplateRows
+            .Where(row => IsTemplateRowApplicableForMonth(row, month))
+            .ToList();
 
         if (permitTemplateRows.Any())
         {
-            // Accept Flow (50050) whether the permit row is marked Required or Optional.
-            var hasFlow = permitTemplateRows.Any(x => string.Equals(x.PcsParameterCatalog!.PcsCode, "50050", StringComparison.OrdinalIgnoreCase));
+            var hasFlow = permitTemplateRows.Any(x =>
+                string.Equals(x.PcsParameterCatalog?.PcsCode, "50050", StringComparison.OrdinalIgnoreCase));
             if (!hasFlow)
             {
                 throw new BusinessRuleException("Permit template must include PCS code 50050 (Flow) for NDMR export.");
             }
         }
 
-        var codeSlots = new[] { "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S" };
-        var codesToRender = permitTemplateRows.Any()
-            ? permitTemplateRows.Select(x => x.PcsParameterCatalog?.PcsCode ?? string.Empty).Where(x => !string.IsNullOrWhiteSpace(x)).Take(codeSlots.Length).ToList()
-            : new List<string> { "00310", "00916", "31616", "00927", "00620", "00610", "00625", "00400", "00665", "00931", "00929", "00530", "00940", "50060", "00600", "70300" };
-
-        var samplingMetadataByParameterCode = new Dictionary<string, SamplingMetadata>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in permitTemplateRows)
-        {
-            var code = row.PcsParameterCatalog?.PcsCode;
-            if (string.IsNullOrWhiteSpace(code)) continue;
-            samplingMetadataByParameterCode[code] = new SamplingMetadata
+        var parameterRows = permitTemplateRows
+            .Select(row =>
             {
-                SamplingType = row.SampleType.ToString(),
-                SampleFrequency = row.MeasurementFrequency.ToDisplayLabel()
-            };
-        }
+                var code = row.PcsParameterCatalog?.PcsCode ?? string.Empty;
+                var name = row.ParameterDisplayOverride
+                    ?? row.PcsParameterCatalog?.UserFriendlyName
+                    ?? row.PcsParameterCatalog?.OfficialParameterName
+                    ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    name = string.IsNullOrWhiteSpace(code) ? string.Empty : $"PCS {code}";
+                }
 
-        for (var idx = 0; idx < codesToRender.Count && idx < codeSlots.Length; idx++)
+                var units = row.UnitsOverride
+                    ?? row.PcsParameterCatalog?.AcceptedUnits
+                    ?? string.Empty;
+
+                return new NdmrParameterRow
+                {
+                    TemplateRow = row,
+                    PcsCode = code,
+                    DisplayName = name,
+                    Units = units
+                };
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.PcsCode))
+            .ToList();
+
+        var defaultCodes = new List<string> { "50050", "00680", "78732", "82546", "00400", "00310", "00940", "50060", "31616", "00610", "00625", "00620", "00600", "00665", "70300", "00530" };
+        if (parameterRows.Count == 0)
         {
-            flowWorksheet.Cell($"{codeSlots[idx]}3").Value = codesToRender[idx];
+            parameterRows = defaultCodes.Select(code => new NdmrParameterRow
+            {
+                TemplateRow = new FacilityPermitTemplateParameter
+                {
+                    SampleType = SampleTypeEnum.Grab,
+                    MeasurementFrequency = MeasurementFrequencyEnum.Monthly
+                },
+                PcsCode = code,
+                DisplayName = $"PCS {code}",
+                Units = string.Empty
+            }).ToList();
         }
 
-        PopulateSamplingFooterRows(flowWorksheet, samplingMetadataByParameterCode);
+        var wwCharTemplateValues = wwChar == null
+            ? new List<WWCharTemplateValue>()
+            : await _context.WWCharTemplateValues
+                .Where(x => x.WWCharId == wwChar.Id && x.DayNo >= 1 && x.DayNo <= 31)
+                .ToListAsync();
+        var wwDailyValueByKey = wwCharTemplateValues
+            .GroupBy(x => (x.FacilityPermitTemplateParameterId, x.DayNo))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First().NumericValue);
 
         // Preload irrigation events and groundwater samples for the month
         var gwMonits = await _context.GWMonits
@@ -370,107 +595,153 @@ public class NDMRService : INDMRService
             .OrderByDescending(i => i.UpdatedDate)
             .FirstOrDefaultAsync();
 
-        // Daily grid starts at row 6 (Day 1)
-        const int startRow = 6;
-
-        // Populate flow values on PPI 001
-        for (int day = 1; day <= daysInMonth; day++)
+        var parameterChunks = parameterRows
+            .Select((row, idx) => new { row, idx })
+            .GroupBy(x => x.idx / 16)
+            .Select(g => g.Select(x => x.row).ToList())
+            .ToList();
+        if (parameterChunks.Count == 0)
         {
-            var currentDate = new DateTime(year, month, day);
-            var row = startRow + (day - 1);
+            parameterChunks.Add(new List<NdmrParameterRow>());
+        }
 
-            // Column A: Day number
-            flowWorksheet.Cell($"A{row}").Value = day;
+        var allPpiSheets = new List<IXLWorksheet>();
+        var firstSheet = flowWorksheet;
+        firstSheet.Name = "PPI 001";
+        allPpiSheets.Add(firstSheet);
+        for (var chunkIndex = 1; chunkIndex < parameterChunks.Count; chunkIndex++)
+        {
+            var nextSheet = firstSheet.CopyTo($"PPI 001 ({chunkIndex + 1})");
+            allPpiSheets.Add(nextSheet);
+        }
 
-            // Column B/C: ORC arrival time and ORC time on site (hours)
-            var dayOperatorLogs = operatorLogs
-                .Where(o => o.LogDate.Date == currentDate.Date)
-                .ToList();
+        var codeSlots = new[] { "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S" };
+        const int startRow = 6;
+        const int codeRow = 3;
+        const int nameRow = 4;
+        const int unitsRow = 5;
+        const int samplingTypeRow = 40;
+        const int monthlyLimitRow = 41;
+        const int dailyLimitRow = 42;
+        const int sampleFrequencyRow = 43;
 
-            if (dayOperatorLogs.Any())
+        for (var chunkIndex = 0; chunkIndex < parameterChunks.Count; chunkIndex++)
+        {
+            var worksheet = allPpiSheets[chunkIndex];
+            var chunk = parameterChunks[chunkIndex];
+
+            WriteStandardHeader(
+                worksheet,
+                facility,
+                ndar1.Month,
+                year,
+                "002",
+                chunk.FirstOrDefault()?.PcsCode ?? "50050",
+                chunk.FirstOrDefault()?.DisplayName ?? "Flow",
+                wwChar?.FlowMeasuringPoint,
+                wwChar?.ParameterMonitoringPoint);
+
+            if (permit != null)
             {
-                var firstLog = dayOperatorLogs
-                    .OrderBy(o => o.ArrivalTime)
-                    .First();
-                var canonicalLog = dayOperatorLogs
-                    .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
-                    .ThenByDescending(o => o.CreatedDate)
-                    .First();
-
-                flowWorksheet.Cell($"B{row}").Value = firstLog.ArrivalTime;
-                flowWorksheet.Cell($"B{row}").Style.NumberFormat.Format = "hh:mm";
-
-                flowWorksheet.Cell($"C{row}").Value = canonicalLog.TimeOnSiteHours;
-                flowWorksheet.Cell($"C{row}").Style.NumberFormat.Format = "0.00";
-            }
-            else
-            {
-                flowWorksheet.Cell($"B{row}").Clear(XLClearOptions.Contents);
-                flowWorksheet.Cell($"C{row}").Clear(XLClearOptions.Contents);
-            }
-
-            // Column D: BOD5 from WWChar daily array (00310)
-            var bod5Value = (wwChar != null &&
-                             wwChar.BOD5Daily != null &&
-                             wwChar.BOD5Daily.Count >= day &&
-                             wwChar.BOD5Daily[day - 1].HasValue)
-                ? wwChar.BOD5Daily[day - 1]
-                : null;
-            if (bod5Value.HasValue)
-            {
-                flowWorksheet.Cell($"D{row}").Value = bod5Value.Value;
-                flowWorksheet.Cell($"D{row}").Style.NumberFormat.Format = "0.00";
-            }
-            else
-            {
-                flowWorksheet.Cell($"D{row}").Clear(XLClearOptions.Contents);
+                worksheet.Cell("C1").Value = $"{permit.PermitNumber} v{permit.PermitVersion}";
             }
 
-            // Populate supported master-sheet parameter columns from GWMonits.
-            var daySamples = gwMonits
-                .Where(g => g.SampleDate.Date == currentDate.Date)
-                .ToList();
-
-            decimal? AverageOf(Func<GWMonit, decimal?> selector)
+            for (var slot = 0; slot < codeSlots.Length; slot++)
             {
-                var values = daySamples
-                    .Select(selector)
-                    .Where(v => v.HasValue)
-                    .Select(v => v!.Value)
-                    .ToList();
-                return values.Any() ? values.Average() : null;
-            }
+                var col = codeSlots[slot];
+                var codeCell = worksheet.Cell($"{col}{codeRow}");
+                var nameCell = worksheet.Cell($"{col}{nameRow}");
+                var unitCell = worksheet.Cell($"{col}{unitsRow}");
+                var samplingCell = worksheet.Cell($"{col}{samplingTypeRow}");
+                var monthlyLimitCell = worksheet.Cell($"{col}{monthlyLimitRow}");
+                var dailyLimitCell = worksheet.Cell($"{col}{dailyLimitRow}");
+                var frequencyCell = worksheet.Cell($"{col}{sampleFrequencyRow}");
 
-            void SetDecimalCell(string col, decimal? value, string format)
-            {
-                var cell = flowWorksheet.Cell($"{col}{row}");
-                if (value.HasValue)
+                codeCell.Clear(XLClearOptions.Contents);
+                nameCell.Clear(XLClearOptions.Contents);
+                unitCell.Clear(XLClearOptions.Contents);
+                samplingCell.Clear(XLClearOptions.Contents);
+                monthlyLimitCell.Clear(XLClearOptions.Contents);
+                dailyLimitCell.Clear(XLClearOptions.Contents);
+                frequencyCell.Clear(XLClearOptions.Contents);
+
+                if (slot >= chunk.Count)
                 {
-                    cell.Value = value.Value;
-                    cell.Style.NumberFormat.Format = format;
+                    continue;
+                }
+
+                var parameter = chunk[slot];
+                codeCell.Value = parameter.PcsCode;
+                nameCell.Value = parameter.DisplayName;
+                unitCell.Value = parameter.Units;
+                samplingCell.Value = parameter.TemplateRow.SampleType.ToString();
+                frequencyCell.Value = parameter.TemplateRow.MeasurementFrequency.ToDisplayLabel();
+                monthlyLimitCell.Value = BuildMonthlyLimitText(parameter.TemplateRow);
+                dailyLimitCell.Value = BuildDailyLimitText(parameter.TemplateRow);
+            }
+
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                var currentDate = new DateTime(year, month, day);
+                var row = startRow + (day - 1);
+                worksheet.Cell($"A{row}").Value = day;
+
+                var dayOperatorLogs = operatorLogs
+                    .Where(o => o.LogDate.Date == currentDate.Date)
+                    .ToList();
+
+                if (dayOperatorLogs.Any())
+                {
+                    var firstLog = dayOperatorLogs
+                        .OrderBy(o => o.ArrivalTime)
+                        .First();
+                    var canonicalLog = dayOperatorLogs
+                        .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+                        .ThenByDescending(o => o.CreatedDate)
+                        .First();
+
+                    worksheet.Cell($"B{row}").Value = firstLog.ArrivalTime;
+                    worksheet.Cell($"B{row}").Style.NumberFormat.Format = "hh:mm";
+
+                    worksheet.Cell($"C{row}").Value = canonicalLog.TimeOnSiteHours;
+                    worksheet.Cell($"C{row}").Style.NumberFormat.Format = "0.00";
                 }
                 else
                 {
-                    cell.Clear(XLClearOptions.Contents);
+                    worksheet.Cell($"B{row}").Clear(XLClearOptions.Contents);
+                    worksheet.Cell($"C{row}").Clear(XLClearOptions.Contents);
+                }
+
+                for (var slot = 0; slot < codeSlots.Length; slot++)
+                {
+                    var col = codeSlots[slot];
+                    var valueCell = worksheet.Cell($"{col}{row}");
+                    valueCell.Clear(XLClearOptions.Contents);
+
+                    if (slot >= chunk.Count)
+                    {
+                        continue;
+                    }
+
+                    var parameter = chunk[slot];
+                    decimal? value = null;
+                    if (parameter.TemplateRow.Id != Guid.Empty &&
+                        wwDailyValueByKey.TryGetValue((parameter.TemplateRow.Id, day), out var wwValue))
+                    {
+                        value = wwValue;
+                    }
+
+                    value ??= ResolveFallbackDailyValue(parameter.PcsCode, currentDate, wwChar, gwMonits);
+                    if (value.HasValue)
+                    {
+                        valueCell.Value = value.Value;
+                        valueCell.Style.NumberFormat.Format = "0.00";
+                    }
                 }
             }
 
-            SetDecimalCell("F", AverageOf(g => g.FecalColiform), "#,##0.00");
-            SetDecimalCell("H", AverageOf(g => g.NO3N), "0.00");
-            SetDecimalCell("I", AverageOf(g => g.NH3N), "0.00");
-            SetDecimalCell("J", AverageOf(g => g.TKN), "0.00");
-            SetDecimalCell("K", AverageOf(g => g.PH), "0.00");
-
-            // Compatibility mapping: 00665 (Total Phosphorus) from TOC in current schema/data payload.
-            SetDecimalCell("L", AverageOf(g => g.TOC), "0.00");
-            SetDecimalCell("O", AverageOf(g => g.TSS), "0.00");
-
-            // Compatibility mapping: 50060 rendered from Chloride field in current schema/data payload.
-            SetDecimalCell("Q", AverageOf(g => g.Chloride), "0.00");
-
-            var totalN = AverageOf(g =>
-                (!g.TKN.HasValue && !g.NO3N.HasValue) ? null : (g.TKN ?? 0m) + (g.NO3N ?? 0m));
-            SetDecimalCell("R", totalN, "0.00");
+            PopulateSummaryRowsForChunk(worksheet, chunk, codeSlots, daysInMonth, startRow);
+            SanitizeErrorCells(worksheet);
         }
 
         // Prevent ###### for high-count fecal values in summary cells.
@@ -479,78 +750,19 @@ public class NDMRService : INDMRService
             flowWorksheet.Column("F").Width = 11;
         }
 
-        // Populate nitrogen PPIs (one parameter per sheet) using GWMonit data.
-        PopulateNitrogenPpi(
-            workbook,
-            sheetName: "PPI_TKN",
-            facility: facility,
-            monthEnum: ndar1.Month,
-            year: year,
-            ppiLabel: "PPI TKN",
-            parameterCode: "00625",
-            parameterName: "Total Kjeldahl Nitrogen (TKN) (mg/L)",
-            flowMeasuringPoint: wwChar?.FlowMeasuringPoint,
-            parameterMonitoringPoint: wwChar?.ParameterMonitoringPoint,
-            gwMonits: gwMonits,
-            daysInMonth: daysInMonth,
-            startRow: startRow,
-            selector: g => g.TKN);
-
-        PopulateNitrogenPpi(
-            workbook,
-            sheetName: "PPI_NH3N",
-            facility: facility,
-            monthEnum: ndar1.Month,
-            year: year,
-            ppiLabel: "PPI NH3-N",
-            parameterCode: "00610",
-            parameterName: "Ammonia Nitrogen (NH3-N) (mg/L)",
-            flowMeasuringPoint: wwChar?.FlowMeasuringPoint,
-            parameterMonitoringPoint: wwChar?.ParameterMonitoringPoint,
-            gwMonits: gwMonits,
-            daysInMonth: daysInMonth,
-            startRow: startRow,
-            selector: g => g.NH3N);
-
-        PopulateNitrogenPpi(
-            workbook,
-            sheetName: "PPI_NO3N",
-            facility: facility,
-            monthEnum: ndar1.Month,
-            year: year,
-            ppiLabel: "PPI NO3-N",
-            parameterCode: "00620",
-            parameterName: "Nitrate Nitrogen (NO3-N) (mg/L)",
-            flowMeasuringPoint: wwChar?.FlowMeasuringPoint,
-            parameterMonitoringPoint: wwChar?.ParameterMonitoringPoint,
-            gwMonits: gwMonits,
-            daysInMonth: daysInMonth,
-            startRow: startRow,
-            selector: g => g.NO3N);
-
-        // Total Nitrogen (as N) approximated as TKN + NO3-N
-        PopulateNitrogenPpi(
-            workbook,
-            sheetName: "PPI_TN",
-            facility: facility,
-            monthEnum: ndar1.Month,
-            year: year,
-            ppiLabel: "PPI TN",
-            parameterCode: "00600",
-            parameterName: "Total Nitrogen (as N) (mg/L)",
-            flowMeasuringPoint: wwChar?.FlowMeasuringPoint,
-            parameterMonitoringPoint: wwChar?.ParameterMonitoringPoint,
-            gwMonits: gwMonits,
-            daysInMonth: daysInMonth,
-            startRow: startRow,
-            selector: g =>
-            {
-                if (!g.TKN.HasValue && !g.NO3N.HasValue)
-                    return null;
-                return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
-            });
-
         WriteCertificationPage(workbook, facility, irrigationReport?.ComplianceStatus);
+
+        // Keep NDMR output focused on PPI 001 chunk pages + required supporting sheets.
+        // Remove legacy nitrogen PPI worksheets that are not part of the consolidated layout.
+        foreach (var sheetName in new[] { "PPI_TKN", "PPI_NH3N", "PPI_NO3N", "PPI_TN" })
+        {
+            var legacySheet = workbook.Worksheets.FirstOrDefault(ws =>
+                string.Equals(ws.Name, sheetName, StringComparison.OrdinalIgnoreCase));
+            if (legacySheet != null)
+            {
+                workbook.Worksheets.Delete(legacySheet.Name);
+            }
+        }
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
