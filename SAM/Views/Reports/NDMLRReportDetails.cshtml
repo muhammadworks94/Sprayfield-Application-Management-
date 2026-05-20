@@ -10,7 +10,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <p class="text-muted mb-0">View annual NDMLR details for calendar year @Model.Year</p>
+        <p class="text-muted mb-0">View NDMLR details through @Model.Month @Model.Year (rolling 12-month window)</p>
     </div>
     <div class="d-flex align-items-center gap-2">
         <a class="btn btn-success js-report-export-link" asp-action="ExportNDMLRReportPdf" asp-route-id="@Model.Id">
@@ -51,7 +51,7 @@
 
 <div class="card">
     <div class="card-body">
-        <h4 class="mb-4"><i class="bi bi-file-earmark-bar-graph me-2"></i>@(Model.FacilityName ?? "Facility") - Annual @Model.Year</h4>
+        <h4 class="mb-4"><i class="bi bi-file-earmark-bar-graph me-2"></i>@(Model.FacilityName ?? "Facility") - Through @Model.Month @Model.Year</h4>
         <div class="row">
             <div class="col-md-6">
                 <h5 class="detail-section-label mb-4">Record Context</h5>
@@ -61,7 +61,7 @@
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-building me-1"></i>Facility:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.FacilityName ?? "N/A")</dd>
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar3 me-1"></i>Annual Period:</dt>
-                    <dd class="col-sm-7 mb-2">January - December @Model.Year</dd>
+                    <dd class="col-sm-7 mb-2">Rolling 12 months ending @Model.Month @Model.Year</dd>
                 </dl>
             </div>
             <div class="col-md-6">

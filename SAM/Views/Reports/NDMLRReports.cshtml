@@ -1,6 +1,7 @@
 @model SAM.ViewModels.Reports.NDMLRReportsIndexViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
+@using SAM.Domain.Enums
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Non-Discharge Mass Loading Reports";
@@ -20,6 +21,7 @@
     {
         CompanyId = Model.SelectedCompanyId ?? Guid.Empty,
         FacilityId = Model.Filter.FacilityId ?? Guid.Empty,
+        Month = (MonthEnum)DateTime.Now.Month,
         Year = Model.Filter.Year ?? DateTime.Now.Year
     };
 }
@@ -166,7 +168,7 @@
                             <tr>
                                 <td>
                                     <a asp-action="NDMLRReportDetails" asp-route-id="@report.Id">
-                                        Annual @report.Year
+                                         @report.Month @report.Year
                                     </a>
                                 </td>
                                 <td>@report.FacilityName</td>
@@ -180,7 +182,7 @@
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#deleteNDMLRModal"
                                                     data-report-id="@report.Id"
-                                                    data-report-period="@($"Annual {report.Year}")">
+                                                    data-report-period="@($" {report.Month} {report.Year}")">
                                                 <i class="bi bi-trash"></i> Delete
                                             </button>
                                         }
@@ -216,7 +218,7 @@
                                 <div>
                                     <h6 class="mb-0">
                                         <a asp-action="NDMLRReportDetails" asp-route-id="@report.Id">
-                                            Annual @report.Year
+                                             @report.Month @report.Year
                                         </a>
                                     </h6>
                                 </div>
@@ -230,8 +232,8 @@
                                     }
                                     <dt class="col-6"><i class="bi bi-building me-1"></i>Facility</dt>
                                     <dd class="col-6 mb-1">@report.FacilityName</dd>
-                                    <dt class="col-6"><i class="bi bi-calendar-event me-1"></i>Year</dt>
-                                    <dd class="col-6 mb-1">@report.Year</dd>
+                                    <dt class="col-6"><i class="bi bi-calendar-event me-1"></i>Period</dt>
+                                    <dd class="col-6 mb-1">@report.Month @report.Year</dd>
                                     <dt class="col-6"><i class="bi bi-calendar-plus me-1"></i>Created</dt>
                                     <dd class="col-6 mb-1">@report.CreatedDate.ToString("MM/dd/yyyy")</dd>
                                 </dl>
@@ -245,7 +247,7 @@
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#deleteNDMLRModal"
                                                     data-report-id="@report.Id"
-                                                    data-report-period="@($"Annual {report.Year}")">
+                                                    data-report-period="@($" {report.Month} {report.Year}")">
                                                 <i class="bi bi-trash"></i> Delete
                                             </button>
                                         }
@@ -323,32 +325,44 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info mb-3">
-                        <i class="bi bi-info-circle me-1"></i> NDMLR is generated once per facility per calendar year, using Jan-Dec source data.
+                        <i class="bi bi-info-circle me-1"></i> NDMLR is generated per facility, month, and year using a rolling 12-month window ending at the selected month.
                     </div>
                     <form id="generateNDMLRForm" asp-action="GenerateNDMLRReport" method="post">
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                         <input type="hidden" name="CompanyId" value="@generateForm.CompanyId" />
 
-                        <div class="mb-3">
-                            <label class="form-label required" for="generateFacilityId">Facility</label>
-                            <select id="generateFacilityId" name="FacilityId" class="form-select" required>
-                                <option value="">-- Select Facility --</option>
-                                @if (Model.Facilities != null)
-                                {
-                                    @foreach (var facility in Model.Facilities)
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label required" for="generateFacilityId">Facility</label>
+                                <select id="generateFacilityId" name="FacilityId" class="form-select" required>
+                                    <option value="">-- Select Facility --</option>
+                                    @if (Model.Facilities != null)
                                     {
-                                        <option value="@facility.Value" selected="@(generateForm.FacilityId != Guid.Empty && generateForm.FacilityId.ToString() == facility.Value)">
-                                            @facility.Text
-                                        </option>
+                                        @foreach (var facility in Model.Facilities)
+                                        {
+                                            <option value="@facility.Value" selected="@(generateForm.FacilityId != Guid.Empty && generateForm.FacilityId.ToString() == facility.Value)">
+                                                @facility.Text
+                                            </option>
+                                        }
                                     }
-                                }
-                            </select>
-                        </div>
+                                </select>
+                            </div>
 
-                        <div class="mb-3">
-                            <label class="form-label required" for="generateYear">Year</label>
-                            <input id="generateYear" name="Year" type="number" min="2000" max="2100" class="form-control" value="@generateForm.Year" required />
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label class="form-label required" for="generateMonth">Month</label>
+                                <select id="generateMonth" name="Month" class="form-select" required>
+                                    @foreach (MonthEnum month in Enum.GetValues(typeof(MonthEnum)))
+                                    {
+                                        <option value="@((int)month)" selected="@(generateForm.Month == month)">@month</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label class="form-label required" for="generateYear">Year</label>
+                                <input id="generateYear" name="Year" type="number" min="2000" max="2100" class="form-control" value="@generateForm.Year" required />
+                            </div>
                         </div>
 
                         <div class="d-flex justify-content-end gap-2">

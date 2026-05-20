@@ -93,6 +93,7 @@ public class NDMLRViewModel
     public string? CompanyName { get; set; }
     public Guid FacilityId { get; set; }
     public string? FacilityName { get; set; }
+    public MonthEnum Month { get; set; }
     public int Year { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }
@@ -110,6 +111,10 @@ public class NDMLRCreateViewModel
     public Guid FacilityId { get; set; }
 
     [Required]
+    [Display(Name = "Month")]
+    public MonthEnum Month { get; set; } = MonthEnum.December;
+
+    [Required]
     [Display(Name = "Year")]
     [Range(2000, 2100)]
     public int Year { get; set; } = DateTime.Now.Year;
@@ -122,6 +127,7 @@ public class NDMLRDetailsViewModel
     public string? CompanyName { get; set; }
     public Guid FacilityId { get; set; }
     public string? FacilityName { get; set; }
+    public MonthEnum Month { get; set; }
     public int Year { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }

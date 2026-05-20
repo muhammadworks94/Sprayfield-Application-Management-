@@ -474,11 +474,11 @@ public class ReportsController : BaseController
         query = normalizedSortBy switch
         {
             "facility" => normalizedSortDir == "asc"
-                ? query.OrderBy(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate)
-                : query.OrderByDescending(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate),
+                ? query.OrderBy(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.Year).ThenByDescending(r => r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.Year).ThenByDescending(r => r.Month).ThenByDescending(r => r.CreatedDate),
             _ => normalizedSortDir == "asc"
-                ? query.OrderBy(r => r.Year).ThenByDescending(r => r.CreatedDate)
-                : query.OrderByDescending(r => r.Year).ThenByDescending(r => r.CreatedDate)
+                ? query.OrderBy(r => r.Year).ThenBy(r => r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Year).ThenByDescending(r => r.Month).ThenByDescending(r => r.CreatedDate)
         };
 
         var totalCount = await query.CountAsync();
@@ -494,6 +494,7 @@ public class ReportsController : BaseController
             CompanyName = r.Company?.Name,
             FacilityId = r.FacilityId,
             FacilityName = r.Facility?.Name,
+            Month = r.Month,
             Year = r.Year,
             CreatedDate = r.CreatedDate,
             UpdatedDate = r.UpdatedDate,
@@ -528,6 +529,7 @@ public class ReportsController : BaseController
             {
                 CompanyId = companyId ?? Guid.Empty,
                 FacilityId = facilityId ?? Guid.Empty,
+                Month = (MonthEnum)DateTime.Now.Month,
                 Year = normalizedYear ?? DateTime.Now.Year
             }
         };
@@ -557,6 +559,7 @@ public class ReportsController : BaseController
             CompanyName = report.Company?.Name,
             FacilityId = report.FacilityId,
             FacilityName = report.Facility?.Name,
+            Month = report.Month,
             Year = report.Year,
             CreatedDate = report.CreatedDate,
             UpdatedDate = report.UpdatedDate,
@@ -570,11 +573,18 @@ public class ReportsController : BaseController
     private async Task<List<NDMLRFieldDetailsViewModel>> BuildNdmlrDetailFieldsAsync(NDMLR report)
     {
         const decimal monthlyLoadConversionFactor = 8.34e-6m;
-        var yearStart = new DateTime(report.Year, 1, 1);
-        var yearEnd = new DateTime(report.Year, 12, 31);
+        var (windowStart, windowEnd) = GetNdmlrWindow(report.Year, report.Month);
+        var monthKeys = BuildDescendingNdmlrWindowMonthKeys(report.Year, report.Month);
+        var startYear = windowStart.Year;
+        var startMonth = windowStart.Month;
+        var endYear = windowEnd.Year;
+        var endMonth = windowEnd.Month;
 
         var ndarReports = await _context.NDAR1s
-            .Where(r => r.CompanyId == report.CompanyId && r.FacilityId == report.FacilityId && r.Year == report.Year)
+            .Where(r => r.CompanyId == report.CompanyId &&
+                        r.FacilityId == report.FacilityId &&
+                        (r.Year > startYear || (r.Year == startYear && (int)r.Month >= startMonth)) &&
+                        (r.Year < endYear || (r.Year == endYear && (int)r.Month <= endMonth)))
             .Include(r => r.Field1).ThenInclude(f => f!.Crop)
             .Include(r => r.Field2).ThenInclude(f => f!.Crop)
             .Include(r => r.Field3).ThenInclude(f => f!.Crop)
@@ -588,13 +598,13 @@ public class ReportsController : BaseController
             .ToListAsync();
 
         var reportsByMonth = ndarReports
-            .GroupBy(r => (int)r.Month)
+            .GroupBy(r => BuildMonthKey(r.Year, (int)r.Month))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
 
         var gwMonits = await _context.GWMonits
             .Where(g => g.FacilityId == report.FacilityId &&
-                        g.SampleDate >= yearStart &&
-                        g.SampleDate <= yearEnd)
+                        g.SampleDate >= windowStart &&
+                        g.SampleDate <= windowEnd)
             .AsNoTracking()
             .ToListAsync();
 
@@ -678,17 +688,18 @@ public class ReportsController : BaseController
 
             if (area > 0m)
             {
-                for (var month = 1; month <= 12; month++)
+                foreach (var monthKey in monthKeys)
                 {
-                    if (!monthlyVolumesByFieldByMonth.TryGetValue(month, out var monthVolumes) ||
+                    if (!monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes) ||
                         !monthVolumes.TryGetValue(field.Id, out var monthVolume) ||
                         monthVolume <= 0m)
                     {
                         continue;
                     }
 
+                    var (monthYear, monthNo) = ParseMonthKey(monthKey);
                     var monthConc = ComputeAverageTotalNMgl(gwMonits
-                        .Where(g => g.SampleDate.Year == report.Year && g.SampleDate.Month == month)
+                        .Where(g => g.SampleDate.Year == monthYear && g.SampleDate.Month == monthNo)
                         .ToList());
                     if (!monthConc.HasValue)
                     {
@@ -699,7 +710,7 @@ public class ReportsController : BaseController
                 }
             }
 
-            var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, field.Id, yearEnd);
+            var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, field.Id, windowEnd);
 
             result.Add(new NDMLRFieldDetailsViewModel
             {
@@ -798,6 +809,31 @@ public class ReportsController : BaseController
         monthly[sprayfieldId.Value] += sum;
     }
 
+    private static int BuildMonthKey(int year, int month) => (year * 100) + month;
+
+    private static (int Year, int Month) ParseMonthKey(int monthKey) => (monthKey / 100, monthKey % 100);
+
+    private static List<int> BuildDescendingNdmlrWindowMonthKeys(int year, MonthEnum month)
+    {
+        var result = new List<int>(12);
+        var cursor = new DateTime(year, (int)month, 1);
+        for (var i = 0; i < 12; i++)
+        {
+            result.Add(BuildMonthKey(cursor.Year, cursor.Month));
+            cursor = cursor.AddMonths(-1);
+        }
+
+        return result;
+    }
+
+    private static (DateTime WindowStart, DateTime WindowEnd) GetNdmlrWindow(int year, MonthEnum month)
+    {
+        var endMonthStart = new DateTime(year, (int)month, 1);
+        var windowStart = endMonthStart.AddMonths(-11);
+        var windowEnd = endMonthStart.AddMonths(1).AddDays(-1);
+        return (windowStart, windowEnd);
+    }
+
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> GenerateNDMLRReport(Guid? companyId = null, Guid? facilityId = null)
@@ -831,11 +867,15 @@ public class ReportsController : BaseController
 
         var existing = await _context.NDMLRs
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.CompanyId == model.CompanyId && x.FacilityId == model.FacilityId && x.Year == model.Year);
+            .FirstOrDefaultAsync(x =>
+                x.CompanyId == model.CompanyId &&
+                x.FacilityId == model.FacilityId &&
+                x.Year == model.Year &&
+                x.Month == model.Month);
 
         if (existing != null)
         {
-            TempData["ErrorMessage"] = $"An NDMLR for {model.Year} already exists for this facility.";
+            TempData["ErrorMessage"] = $"An NDMLR for {model.Month} {model.Year} already exists for this facility.";
             return RedirectToAction(nameof(NDMLRReportDetails), new { id = existing.Id });
         }
 
@@ -843,13 +883,14 @@ public class ReportsController : BaseController
         {
             CompanyId = model.CompanyId,
             FacilityId = model.FacilityId,
+            Month = model.Month,
             Year = model.Year
         };
 
         _context.NDMLRs.Add(entity);
         await _context.SaveChangesAsync();
 
-        TempData["SuccessMessage"] = $"NDMLR report generated successfully for calendar year {model.Year}.";
+        TempData["SuccessMessage"] = $"NDMLR report generated successfully through {model.Month} {model.Year}.";
         return RedirectToAction(nameof(NDMLRReportDetails), new { id = entity.Id });
     }
 
@@ -1533,7 +1574,7 @@ public class ReportsController : BaseController
         try
         {
             var excelBytes = await _ndmlrService.ExportToExcelAsync(id);
-            var fileName = $"NDMLR_{report.Facility?.Name}_{report.Year}.xlsx";
+            var fileName = $"NDMLR_{report.Facility?.Name}_{report.Month}_{report.Year}.xlsx";
             return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
         catch (Exception ex)
@@ -1570,7 +1611,7 @@ public class ReportsController : BaseController
         {
             var pdfBytes = await RenderNdmlrPdfAsync(report, showGrid);
             var safeFacility = Regex.Replace(report.Facility?.Name ?? "Facility", @"[^\w\-]+", "_");
-            var fileName = $"NDMLR_{safeFacility}_{report.Year}.pdf";
+            var fileName = $"NDMLR_{safeFacility}_{report.Month}_{report.Year}.pdf";
             return File(pdfBytes, "application/pdf", fileName);
         }
         catch (Exception ex)
@@ -2362,12 +2403,19 @@ public class ReportsController : BaseController
         }
 
         const decimal monthlyLoadConversionFactor = 8.34e-6m;
-        var yearStart = new DateTime(report.Year, 1, 1);
-        var yearEnd = new DateTime(report.Year, 12, 31);
+        var (windowStart, windowEnd) = GetNdmlrWindow(report.Year, report.Month);
+        var monthKeys = BuildDescendingNdmlrWindowMonthKeys(report.Year, report.Month);
+        var startYear = windowStart.Year;
+        var startMonth = windowStart.Month;
+        var endYear = windowEnd.Year;
+        var endMonth = windowEnd.Month;
 
-        // Build annual field universe and month data (same source logic used by NDMLR Excel path).
+        // Build rolling 12-month field universe and month data (same source logic used by NDMLR Excel path).
         var ndarReports = await _context.NDAR1s
-            .Where(r => r.CompanyId == report.CompanyId && r.FacilityId == report.FacilityId && r.Year == report.Year)
+            .Where(r => r.CompanyId == report.CompanyId &&
+                        r.FacilityId == report.FacilityId &&
+                        (r.Year > startYear || (r.Year == startYear && (int)r.Month >= startMonth)) &&
+                        (r.Year < endYear || (r.Year == endYear && (int)r.Month <= endMonth)))
             .Include(r => r.Field1).ThenInclude(f => f!.Crop)
             .Include(r => r.Field2).ThenInclude(f => f!.Crop)
             .Include(r => r.Field3).ThenInclude(f => f!.Crop)
@@ -2382,13 +2430,13 @@ public class ReportsController : BaseController
 
         var gwMonits = await _context.GWMonits
             .Where(g => g.FacilityId == report.FacilityId &&
-                        g.SampleDate >= yearStart &&
-                        g.SampleDate <= yearEnd)
+                        g.SampleDate >= windowStart &&
+                        g.SampleDate <= windowEnd)
             .AsNoTracking()
             .ToListAsync();
 
         var reportsByMonth = ndarReports
-            .GroupBy(r => (int)r.Month)
+            .GroupBy(r => BuildMonthKey(r.Year, (int)r.Month))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
 
         var fieldMetaById = new Dictionary<Guid, (Sprayfield Sprayfield, int? PreferredOrder)>();
@@ -2492,7 +2540,7 @@ public class ReportsController : BaseController
             Draw(gfx, report.Facility?.PermitNumber, font, new NdarPdfPoint(73, 42));
             Draw(gfx, report.Facility?.Name, font, new NdarPdfPoint(220, 42));
             Draw(gfx, report.Facility?.County, font, new NdarPdfPoint(480, 42));
-            //Draw(gfx, "Annual", font, new NdarPdfPoint(633, 42));
+            Draw(gfx, $"{report.Month}", font, new NdarPdfPoint(633, 42));
             Draw(gfx, report.Year.ToString(), font, new NdarPdfPoint(734, 42));
             Draw(gfx, currentPageNumber.ToString(), font, new NdarPdfPoint(685, 16));
             Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
@@ -2518,18 +2566,20 @@ public class ReportsController : BaseController
                 Draw(gfx, isLoaded ? string.Empty : "X", font, new NdarPdfPoint(baseX + 32, 118.5));
             }
 
-            // Monthly rows (Jan-Dec)
+            // Monthly rows (selected month descending for rolling 12-month window)
             var runningTotals = new decimal[5];
-            for (var month = 1; month <= 12; month++)
+            for (var rowIndex = 0; rowIndex < monthKeys.Count; rowIndex++)
             {
-                var rowY = 207d + ((month - 1) * 11.6d);
-                var monthDate = new DateTime(report.Year, month, 1);
+                var monthKey = monthKeys[rowIndex];
+                var (monthYear, monthNo) = ParseMonthKey(monthKey);
+                var rowY = 207d + (rowIndex * 11.6d);
+                var monthDate = new DateTime(monthYear, monthNo, 1);
                 Draw(gfx, monthDate.ToString("MMMM"), font, new NdarPdfPoint(28, rowY));
 
                 var monthAvgConc = ComputeAverageTotalNMgl(gwMonits
-                    .Where(g => g.SampleDate.Year == report.Year && g.SampleDate.Month == month)
+                    .Where(g => g.SampleDate.Year == monthYear && g.SampleDate.Month == monthNo)
                     .ToList());
-                monthlyVolumesByFieldByMonth.TryGetValue(month, out var monthVolumes);
+                monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes);
 
                 for (var i = 0; i < 5; i++)
                 {
@@ -2581,7 +2631,7 @@ public class ReportsController : BaseController
                     continue;
                 }
 
-                var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, field.Id, yearEnd);
+                var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, field.Id, windowEnd);
                 Draw(gfx, metrics.RollingPanLbsPerAcre.ToString("F2"), font, new NdarPdfPoint(footerValueXs[i], 350));
                 if (metrics.PanLimitLbsPerAcre.HasValue)
                 {

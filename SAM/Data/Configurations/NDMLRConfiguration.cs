@@ -15,12 +15,15 @@ public class NDMLRConfiguration : IEntityTypeConfiguration<NDMLR>
         builder.Property(x => x.Year)
             .IsRequired();
 
+        builder.Property(x => x.Month)
+            .IsRequired();
+
         builder.Property(x => x.SourceNotes)
             .HasMaxLength(2000);
 
         builder.HasIndex(x => x.CompanyId);
         builder.HasIndex(x => x.FacilityId);
-        builder.HasIndex(x => new { x.FacilityId, x.Year }).IsUnique();
+        builder.HasIndex(x => new { x.FacilityId, x.Year, x.Month }).IsUnique();
 
         builder.HasOne(x => x.Facility)
             .WithMany(f => f.NDMLRs)

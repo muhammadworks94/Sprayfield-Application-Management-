@@ -1,4 +1,5 @@
 using SAM.Domain.Entities.Base;
+using SAM.Domain.Enums;
 
 namespace SAM.Domain.Entities;
 
@@ -16,6 +17,11 @@ public class NDMLR : CompanyScopedEntity
     /// Annual reporting year (calendar year).
     /// </summary>
     public int Year { get; set; }
+
+    /// <summary>
+    /// Reporting-through month for the rolling 12-month NDMLR window.
+    /// </summary>
+    public MonthEnum Month { get; set; } = MonthEnum.December;
 
     /// <summary>
     /// Optional notes for source or generation context.

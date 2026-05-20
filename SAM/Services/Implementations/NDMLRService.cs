@@ -53,8 +53,12 @@ public class NDMLRService : INDMLRService
             throw new BusinessRuleException("Facility not found for this NDMLR report.");
 
         var year = ndmlr.Year;
-        var yearStart = new DateTime(year, 1, 1);
-        var yearEnd = new DateTime(year, 12, 31);
+        var (windowStart, windowEnd) = GetNdmlrWindow(year, ndmlr.Month);
+        var monthKeys = BuildDescendingNdmlrWindowMonthKeys(year, ndmlr.Month);
+        var startYear = windowStart.Year;
+        var startMonth = windowStart.Month;
+        var endYear = windowEnd.Year;
+        var endMonth = windowEnd.Month;
 
         var templatePath = Path.Combine(
             _environment.WebRootPath,
@@ -65,7 +69,10 @@ public class NDMLRService : INDMLRService
             throw new FileNotFoundException($"Template file not found: {templatePath}");
 
         var ndarReports = await _context.NDAR1s
-            .Where(r => r.CompanyId == ndmlr.CompanyId && r.FacilityId == ndmlr.FacilityId && r.Year == year)
+            .Where(r => r.CompanyId == ndmlr.CompanyId &&
+                        r.FacilityId == ndmlr.FacilityId &&
+                        (r.Year > startYear || (r.Year == startYear && (int)r.Month >= startMonth)) &&
+                        (r.Year < endYear || (r.Year == endYear && (int)r.Month <= endMonth)))
             .Include(r => r.Field1).ThenInclude(f => f!.Crop)
             .Include(r => r.Field2).ThenInclude(f => f!.Crop)
             .Include(r => r.Field3).ThenInclude(f => f!.Crop)
@@ -78,13 +85,13 @@ public class NDMLRService : INDMLRService
             .ToListAsync();
 
         var reportsByMonth = ndarReports
-            .GroupBy(r => (int)r.Month)
+            .GroupBy(r => BuildMonthKey(r.Year, (int)r.Month))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
 
         var gwMonits = await _context.GWMonits
             .Where(g => g.FacilityId == facility.Id &&
-                        g.SampleDate >= yearStart &&
-                        g.SampleDate <= yearEnd)
+                        g.SampleDate >= windowStart &&
+                        g.SampleDate <= windowEnd)
             .ToListAsync();
 
         var fieldMetaById = new Dictionary<Guid, NdmlrFieldMeta>();
@@ -178,10 +185,10 @@ public class NDMLRService : INDMLRService
             }
 
             var chunk = chunks[chunkIndex];
-            WriteHeader(reportSheet, facility, year);
+            WriteHeader(reportSheet, facility, year, ndmlr.Month);
             WriteFieldBlocks(reportSheet, chunk, monthlyVolumesByFieldByMonth);
-            WriteDataRows(reportSheet, year, chunk, monthlyVolumesByFieldByMonth, gwMonits);
-            await WriteFooterAsync(reportSheet, ndmlr, chunk, yearEnd);
+            WriteDataRows(reportSheet, chunk, monthlyVolumesByFieldByMonth, gwMonits, monthKeys);
+            await WriteFooterAsync(reportSheet, ndmlr, chunk, windowEnd);
 
             if (certificationTemplate != null)
             {
@@ -250,12 +257,12 @@ public class NDMLRService : INDMLRService
         return values.Average();
     }
 
-    private static void WriteHeader(IXLWorksheet worksheet, Facility facility, int year)
+    private static void WriteHeader(IXLWorksheet worksheet, Facility facility, int year, MonthEnum month)
     {
         worksheet.Cell("C1").Value = facility.PermitNumber ?? "";
         worksheet.Cell("G1").Value = facility.Name ?? "";
         worksheet.Cell("O1").Value = facility.County ?? "";
-        worksheet.Cell("S1").Value = "Annual";
+        worksheet.Cell("S1").Value = month.ToString();
         worksheet.Cell("V1").Value = year;
     }
 
@@ -313,19 +320,21 @@ public class NDMLRService : INDMLRService
         }
     }
 
-    private static void WriteDataRows(IXLWorksheet worksheet, int year, List<Sprayfield> selectedFields, Dictionary<int, Dictionary<Guid, decimal>> monthlyVolumesByFieldByMonth, List<GWMonit> gwMonits)
+    private static void WriteDataRows(IXLWorksheet worksheet, List<Sprayfield> selectedFields, Dictionary<int, Dictionary<Guid, decimal>> monthlyVolumesByFieldByMonth, List<GWMonit> gwMonits, List<int> monthKeys)
     {
         var runningTotals = new decimal[5];
         var colSets = new[] { ("C", "D", "E", "F"), ("G", "H", "I", "J"), ("K", "L", "M", "N"), ("O", "P", "Q", "R"), ("S", "T", "U", "V") };
 
-        for (int month = 1; month <= 12; month++)
+        for (int index = 0; index < monthKeys.Count; index++)
         {
-            var row = 8 + month;
-            var monthDate = new DateTime(year, month, 1);
+            var monthKey = monthKeys[index];
+            var (monthYear, monthNo) = ParseMonthKey(monthKey);
+            var row = 9 + index;
+            var monthDate = new DateTime(monthYear, monthNo, 1);
             worksheet.Cell($"A{row}").Value = monthDate;
             worksheet.Cell($"B{row}").Value = monthDate.ToString("MMMM");
-            var monthAvgConc = ComputeAverageTotalNMgl(gwMonits.Where(g => g.SampleDate.Year == year && g.SampleDate.Month == month).ToList());
-            monthlyVolumesByFieldByMonth.TryGetValue(month, out var monthVolumes);
+            var monthAvgConc = ComputeAverageTotalNMgl(gwMonits.Where(g => g.SampleDate.Year == monthYear && g.SampleDate.Month == monthNo).ToList());
+            monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes);
 
             for (int i = 0; i < 5; i++)
             {
@@ -463,6 +472,31 @@ public class NDMLRService : INDMLRService
             monthly[sprayfieldId.Value] = 0m;
         }
         monthly[sprayfieldId.Value] += sum;
+    }
+
+    private static int BuildMonthKey(int year, int month) => (year * 100) + month;
+
+    private static (int Year, int Month) ParseMonthKey(int monthKey) => (monthKey / 100, monthKey % 100);
+
+    private static List<int> BuildDescendingNdmlrWindowMonthKeys(int year, MonthEnum month)
+    {
+        var result = new List<int>(12);
+        var cursor = new DateTime(year, (int)month, 1);
+        for (var i = 0; i < 12; i++)
+        {
+            result.Add(BuildMonthKey(cursor.Year, cursor.Month));
+            cursor = cursor.AddMonths(-1);
+        }
+
+        return result;
+    }
+
+    private static (DateTime WindowStart, DateTime WindowEnd) GetNdmlrWindow(int year, MonthEnum month)
+    {
+        var endMonthStart = new DateTime(year, (int)month, 1);
+        var windowStart = endMonthStart.AddMonths(-11);
+        var windowEnd = endMonthStart.AddMonths(1).AddDays(-1);
+        return (windowStart, windowEnd);
     }
 
     private static IXLWorksheet? GetCertificationTemplateSheet(IXLWorkbook workbook)
