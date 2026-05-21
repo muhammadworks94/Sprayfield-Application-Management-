@@ -509,6 +509,9 @@ public class NDMRService : INDMRService
         permitTemplateRows = permitTemplateRows
             .Where(row => IsTemplateRowApplicableForMonth(row, month))
             .ToList();
+        permitTemplateRows = permitTemplateRows
+            .Where(row => IsTemplateRowApplicableForMonth(row, month))
+            .ToList();
 
         if (permitTemplateRows.Any())
         {

@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
 using SAM.Data;
 using SAM.Domain.Entities;
+using SAM.Domain.Extensions;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
@@ -2757,16 +2758,190 @@ public class ReportsController : BaseController
         return output.ToArray();
     }
 
+    private sealed class NdmrPdfParameter
+    {
+        public required string PcsCode { get; init; }
+        public required string DisplayName { get; init; }
+        public required string Units { get; init; }
+        public required string SampleType { get; init; }
+        public required string SampleFrequency { get; init; }
+        public required string MonthlyLimitText { get; init; }
+        public required string DailyLimitText { get; init; }
+        public required List<decimal?> DailyValues { get; init; }
+        public decimal? Average { get; init; }
+        public decimal? DailyMaximum { get; init; }
+        public decimal? DailyMinimum { get; init; }
+    }
+
+    private sealed class NdmrPdfSnapshot
+    {
+        public required Facility Facility { get; init; }
+        public required MonthEnum Month { get; init; }
+        public required int Year { get; init; }
+        public required int DaysInMonth { get; init; }
+        public required List<TimeSpan?> OrcArrivalByDay { get; init; }
+        public required List<decimal?> OrcTimeOnSiteByDay { get; init; }
+        public required List<List<NdmrPdfParameter>> ParameterChunks { get; init; }
+        public ComplianceStatusEnum? ComplianceStatus { get; init; }
+    }
+
     private async Task<byte[]> RenderNdmrPdfAsync(NDAR1 report, bool showGrid = false)
     {
         _ = report ?? throw new ArgumentNullException(nameof(report));
-
         var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Monitoring Report (NDMR) Form 0312.pdf");
         if (!System.IO.File.Exists(templatePath))
         {
             throw new Infrastructure.Exceptions.BusinessRuleException("NDMR template PDF not found in wwwroot/forms.");
         }
 
+        var snapshot = await BuildNdmrPdfSnapshotAsync(report);
+
+        using var output = new MemoryStream();
+        using var document = new PdfDocument();
+        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
+
+        var hasCertificationTemplate = templateDoc.PageCount > 1;
+        var totalPages = snapshot.ParameterChunks.Count + (hasCertificationTemplate ? 1 : 0);
+        var exportDate = DateTime.Today.ToString("MM/dd/yyyy");
+        var font = new XFont("Arial", 8, XFontStyle.Regular);
+        var boldFont = new XFont("Arial", 8, XFontStyle.Bold);
+        var tinyBold = new XFont("Arial", 7, XFontStyle.Bold);
+
+        var currentPage = 1;
+        // Flow (50050) is already a dedicated template column. Dynamic parameters start at next column (E).
+        var parameterXs = Enumerable.Range(0, 15).Select(i => 168d + (i * 43d)).ToArray();
+        const double parameterColumnWidth = 39d;
+        const double day1Y = 154.7d;
+        const double dayRowHeight = 11.66d;
+        const double orcArrivalX = 39d;
+        const double orcTimeOnSiteX = 78d;
+        const double codeY = 75d;
+        const double parameterNameCellTopY = 76d;
+        const double parameterNameCellHeight = 80d;
+        const double parameterNameCellXOffset = -43d;
+        const double unitsY = 145d;
+        const double unitsCellXInset = -14d;
+        const double unitsCellWidth = 34d;
+        // Footer block anchors off daily-grid end so values never collide with day rows.
+        var footerStartY = day1Y + (31 * dayRowHeight) + 2d;
+        const double footerRowStep = 11.5d;
+        var avgY = footerStartY;
+        var maxY = footerStartY + footerRowStep;
+        var minY = footerStartY + (2d * footerRowStep);
+        var sampleTypeY = footerStartY + (3d * footerRowStep);
+        var monthlyLimitY = footerStartY + (4d * footerRowStep);
+        var dailyLimitY = footerStartY + (5d * footerRowStep);
+        var sampleFreqY = footerStartY + (6d * footerRowStep);
+
+        foreach (var chunk in snapshot.ParameterChunks)
+        {
+            document.AddPage(templateDoc.Pages[0]);
+            var page = document.Pages[document.PageCount - 1];
+            var gfx = XGraphics.FromPdfPage(page);
+
+            Draw(gfx, snapshot.Facility.PermitNumber, boldFont, new NdarPdfPoint(73, 41));
+            Draw(gfx, snapshot.Facility.Name, boldFont, new NdarPdfPoint(226, 41));
+            Draw(gfx, snapshot.Facility.County, boldFont, new NdarPdfPoint(482, 41));
+            Draw(gfx, snapshot.Month.ToString(), boldFont, new NdarPdfPoint(608.5, 41));
+            Draw(gfx, snapshot.Year.ToString(), boldFont, new NdarPdfPoint(721, 41));
+            Draw(gfx, currentPage.ToString(), font, new NdarPdfPoint(685, 16));
+            Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
+
+            for (var slot = 0; slot < chunk.Count && slot < parameterXs.Length; slot++)
+            {
+                var p = chunk[slot];
+                var x = parameterXs[slot];
+                Draw(gfx, p.PcsCode, boldFont, new NdarPdfPoint(x, codeY));
+                DrawVerticalInCell(
+                    gfx,
+                    FormatVerticalLabel(p.DisplayName),
+                    tinyBold,
+                    x + parameterNameCellXOffset,
+                    parameterNameCellTopY,
+                    parameterColumnWidth,
+                    parameterNameCellHeight);
+                DrawInCell(gfx, p.Units, boldFont, x + unitsCellXInset, unitsY, unitsCellWidth, bold: true);
+                Draw(gfx, p.SampleType, font, new NdarPdfPoint(x, sampleTypeY));
+                Draw(gfx, p.MonthlyLimitText, font, new NdarPdfPoint(x, monthlyLimitY));
+                Draw(gfx, p.DailyLimitText, font, new NdarPdfPoint(x, dailyLimitY));
+                Draw(gfx, p.SampleFrequency, font, new NdarPdfPoint(x, sampleFreqY));
+                Draw(gfx, p.Average?.ToString("0.00"), font, new NdarPdfPoint(x, avgY));
+                Draw(gfx, p.DailyMaximum?.ToString("0.00"), font, new NdarPdfPoint(x, maxY));
+                Draw(gfx, p.DailyMinimum?.ToString("0.00"), font, new NdarPdfPoint(x, minY));
+            }
+
+            for (var day = 1; day <= snapshot.DaysInMonth; day++)
+            {
+                var y = day1Y + ((day - 1) * dayRowHeight);
+                Draw(gfx, snapshot.OrcArrivalByDay[day - 1]?.ToString(@"hh\:mm"), font, new NdarPdfPoint(orcArrivalX, y));
+                Draw(gfx, snapshot.OrcTimeOnSiteByDay[day - 1]?.ToString("0.00"), font, new NdarPdfPoint(orcTimeOnSiteX, y));
+
+                for (var slot = 0; slot < chunk.Count && slot < parameterXs.Length; slot++)
+                {
+                    var dayValue = chunk[slot].DailyValues[day - 1];
+                    Draw(gfx, dayValue?.ToString("0.00"), font, new NdarPdfPoint(parameterXs[slot], y));
+                }
+            }
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+            }
+            currentPage++;
+        }
+
+        if (hasCertificationTemplate)
+        {
+            document.AddPage(templateDoc.Pages[1]);
+            var certPage = document.Pages[document.PageCount - 1];
+            var certGfx = XGraphics.FromPdfPage(certPage);
+
+            Draw(certGfx, currentPage.ToString(), font, new NdarPdfPoint(685, 16));
+            Draw(certGfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
+
+            // Top certification block parity with Excel values (best-guess coordinates for missing fields).
+            var samplerNames = (snapshot.Facility.PersonsCollectingSamples ?? string.Empty)
+                .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Draw(certGfx, samplerNames.Length > 0 ? samplerNames[0] : string.Empty, font, new NdarPdfPoint(72, 95));
+            Draw(certGfx, samplerNames.Length > 1 ? samplerNames[1] : string.Empty, font, new NdarPdfPoint(72, 116));
+            Draw(certGfx, snapshot.Facility.CertifiedLaboratory1Name, font, new NdarPdfPoint(430, 95));
+            Draw(certGfx, snapshot.Facility.CertifiedLaboratory2Name, font, new NdarPdfPoint(430, 116));
+
+            var complianceText = snapshot.ComplianceStatus switch
+            {
+                ComplianceStatusEnum.Compliant => "X Compliant    Non-Compliant",
+                ComplianceStatusEnum.NonCompliant => "Compliant    X Non-Compliant",
+                _ => "Compliant    Non-Compliant"
+            };
+            Draw(certGfx, complianceText, font, new NdarPdfPoint(540, 136));
+
+            Draw(certGfx, snapshot.Facility.OrcName, font, new NdarPdfPoint(50, 327));
+            Draw(certGfx, snapshot.Facility.OperatorNumber, font, new NdarPdfPoint(95, 350));
+            Draw(certGfx, snapshot.Facility.OperatorGrade, font, new NdarPdfPoint(52.5, 374));
+            Draw(certGfx, snapshot.Facility.OperatorPhone, font, new NdarPdfPoint(220, 374));
+            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? "X" : string.Empty, boldFont, new NdarPdfPoint(245, 395));
+            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? string.Empty : "X", boldFont, new NdarPdfPoint(284, 393));
+            Draw(certGfx, exportDate, font, new NdarPdfPoint(330, 440));
+
+            Draw(certGfx, snapshot.Facility.Permittee, font, new NdarPdfPoint(449, 327));
+            Draw(certGfx, snapshot.Facility.OrcName, font, new NdarPdfPoint(499, 350));
+            Draw(certGfx, snapshot.Facility.OperatorGrade, font, new NdarPdfPoint(530, 374));
+            Draw(certGfx, snapshot.Facility.PermitPhone, font, new NdarPdfPoint(470, 399));
+            Draw(certGfx, snapshot.Facility.PermitExpirationDate?.ToString("MM/dd/yyyy"), font, new NdarPdfPoint(680, 399));
+            Draw(certGfx, exportDate, font, new NdarPdfPoint(700, 440));
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(certGfx, certPage.Width.Point, certPage.Height.Point);
+            }
+        }
+
+        document.Save(output, false);
+        return output.ToArray();
+    }
+
+    private async Task<NdmrPdfSnapshot> BuildNdmrPdfSnapshotAsync(NDAR1 report)
+    {
         var facility = report.Facility
             ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId)
             ?? throw new Infrastructure.Exceptions.BusinessRuleException("Facility not found for this NDMR export.");
@@ -2776,6 +2951,27 @@ public class ReportsController : BaseController
         var startDate = new DateTime(year, monthNumber, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
         var daysInMonth = DateTime.DaysInMonth(year, monthNumber);
+        var permit = await ResolvePermitForDateAsync(report.FacilityId, startDate);
+
+        var permitTemplateRows = permit == null
+            ? new List<FacilityPermitTemplateParameter>()
+            : await _context.FacilityPermitTemplateParameters
+                .AsNoTracking()
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
+                .OrderBy(x => x.SortOrder)
+                .ThenBy(x => x.CreatedDate)
+                .ThenBy(x => x.Id)
+                .ToListAsync();
+        permitTemplateRows = permitTemplateRows
+            .Where(row => IsNdmrTemplateRowApplicableForMonth(row, monthNumber))
+            .ToList();
+
+        if (permitTemplateRows.Any() &&
+            !permitTemplateRows.Any(x => string.Equals(x.PcsParameterCatalog?.PcsCode, "50050", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("Permit template must include PCS code 50050 (Flow) for NDMR export.");
+        }
 
         var wwChar = await _context.WWChars
             .AsNoTracking()
@@ -2784,112 +2980,193 @@ public class ReportsController : BaseController
                 (int)w.Month == monthNumber &&
                 w.Year == year);
 
+        var wwCharTemplateValues = wwChar == null
+            ? new List<WWCharTemplateValue>()
+            : await _context.WWCharTemplateValues
+                .AsNoTracking()
+                .Where(x => x.WWCharId == wwChar.Id && x.DayNo >= 1 && x.DayNo <= 31)
+                .ToListAsync();
+        var wwDailyValueByKey = wwCharTemplateValues
+            .GroupBy(x => (x.FacilityPermitTemplateParameterId, x.DayNo))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First().NumericValue);
+
         var operatorLogs = await _context.OperatorLogs
             .AsNoTracking()
-            .Where(o =>
-                o.FacilityId == report.FacilityId &&
-                o.LogDate >= startDate &&
-                o.LogDate <= endDate)
+            .Where(o => o.FacilityId == report.FacilityId && o.LogDate >= startDate && o.LogDate <= endDate)
             .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
             .ThenByDescending(o => o.CreatedDate)
             .ToListAsync();
 
-        using var output = new MemoryStream();
-        using var document = new PdfDocument();
-        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
-        var totalPages = templateDoc.PageCount;
-        var exportDate = DateTime.Today.ToString("MM/dd/yyyy");
-        var font = new XFont("Arial", 8, XFontStyle.Regular);
-        var boldFont = new XFont("Arial", 8, XFontStyle.Bold);
+        var gwMonits = await _context.GWMonits
+            .AsNoTracking()
+            .Where(g => g.FacilityId == report.FacilityId && g.SampleDate >= startDate && g.SampleDate <= endDate)
+            .ToListAsync();
 
-        for (var i = 0; i < templateDoc.PageCount; i++)
-        {
-            document.AddPage(templateDoc.Pages[i]);
-            var page = document.Pages[document.PageCount - 1];
-            var gfx = XGraphics.FromPdfPage(page);
+        var irrigationReport = await _context.IrrRprts
+            .AsNoTracking()
+            .Where(i => i.FacilityId == report.FacilityId && (int)i.Month == monthNumber && i.Year == year)
+            .OrderByDescending(i => i.UpdatedDate)
+            .FirstOrDefaultAsync();
 
-            if (i == 0)
+        var parameters = permitTemplateRows
+            .Select(row =>
             {
-                // Header block
-                Draw(gfx, facility.PermitNumber, font, new NdarPdfPoint(73, 41));
-                Draw(gfx, facility.Name, font, new NdarPdfPoint(226, 41));
-                Draw(gfx, facility.County, font, new NdarPdfPoint(482, 41));
-                Draw(gfx, report.Month.ToString(), font, new NdarPdfPoint(608.5, 41));
-                Draw(gfx, report.Year.ToString(), font, new NdarPdfPoint(721, 41));
-                Draw(gfx, (i + 1).ToString(), font, new NdarPdfPoint(685, 16));
-                Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
-
-                // Daily table anchors from provided coordinates:
-                // Day1 B=(39,154.7), C=(78,154.7), D=(112,154.7), rowHeight=11
-                const double baseY = 154.7d;
-                const double rowHeight = 11.68d;
-                const double colBX = 39d;
-                const double colCX = 78d;
-                const double colDX = 112d;
-
-                for (var day = 1; day <= daysInMonth; day++)
+                var code = row.PcsParameterCatalog?.PcsCode ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(code)) return null;
+                if (string.Equals(code, "50050", StringComparison.OrdinalIgnoreCase)) return null;
+                var name = row.ParameterDisplayOverride
+                    ?? row.PcsParameterCatalog?.UserFriendlyName
+                    ?? row.PcsParameterCatalog?.OfficialParameterName;
+                if (string.IsNullOrWhiteSpace(name)) name = $"PCS {code}";
+                var units = row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty;
+                var daily = Enumerable.Range(1, 31).Select(day =>
                 {
-                    var rowY = baseY + ((day - 1) * rowHeight);
-                    var currentDate = new DateTime(year, monthNumber, day).Date;
-                    var dayLogs = operatorLogs.Where(o => o.LogDate.Date == currentDate).ToList();
-
-                    if (dayLogs.Count > 0)
+                    decimal? value = null;
+                    if (wwDailyValueByKey.TryGetValue((row.Id, day), out var wwValue))
                     {
-                        var firstLog = dayLogs
-                            .OrderBy(o => o.ArrivalTime)
-                            .First();
-                        var canonicalLog = dayLogs
-                            .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
-                            .ThenByDescending(o => o.CreatedDate)
-                            .First();
-
-                        var arrivalText = firstLog.ArrivalTime.ToString(@"hh\:mm");
-                        var timeOnSiteText = canonicalLog.TimeOnSiteHours.ToString("0.00");
-
-                        Draw(gfx, arrivalText, font, new NdarPdfPoint(colBX, rowY));
-                        Draw(gfx, timeOnSiteText, font, new NdarPdfPoint(colCX, rowY));
+                        value = wwValue;
                     }
+                    value ??= ResolveNdmrPdfFallbackDailyValue(code, new DateTime(year, monthNumber, day), wwChar, gwMonits);
+                    return value;
+                }).ToList();
 
-                    var bod5Value = (wwChar?.BOD5Daily != null &&
-                                     wwChar.BOD5Daily.Count >= day &&
-                                     wwChar.BOD5Daily[day - 1].HasValue)
-                        ? wwChar.BOD5Daily[day - 1]
-                        : null;
-                    if (bod5Value.HasValue)
-                    {
-                        Draw(gfx, bod5Value.Value.ToString("0.00"), font, new NdarPdfPoint(colDX, rowY));
-                    }
+                var days = daily.Take(daysInMonth).Where(v => v.HasValue).Select(v => v!.Value).ToList();
+                decimal? average = null;
+                if (days.Count > 0)
+                {
+                    average = string.Equals(code, "31616", StringComparison.OrdinalIgnoreCase) && days.All(v => v > 0m)
+                        ? (decimal)Math.Exp(days.Select(v => Math.Log((double)v)).Average())
+                        : days.Average();
                 }
-            }
-            else if (i == 1)
-            {
-                // Certification page
-                Draw(gfx, (i + 1).ToString(), font, new NdarPdfPoint(685, 16));
-                Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
 
-                Draw(gfx, facility.OrcName, font, new NdarPdfPoint(50, 327));
-                Draw(gfx, facility.OperatorNumber, font, new NdarPdfPoint(95, 350));
-                Draw(gfx, facility.OperatorGrade, font, new NdarPdfPoint(52.5, 374));
-                Draw(gfx, facility.OperatorPhone, font, new NdarPdfPoint(220, 374));
-                Draw(gfx, facility.ChangeInOrc == true ? "X" : string.Empty, boldFont, new NdarPdfPoint(245, 395));
-                Draw(gfx, facility.ChangeInOrc == true ? string.Empty : "X", boldFont, new NdarPdfPoint(284, 393));
-                Draw(gfx, exportDate, font, new NdarPdfPoint(330, 440));
+                return new NdmrPdfParameter
+                {
+                    PcsCode = code,
+                    DisplayName = name ?? string.Empty,
+                    Units = units,
+                    SampleType = row.SampleType.ToString(),
+                    SampleFrequency = row.MeasurementFrequency.ToDisplayLabel(),
+                    MonthlyLimitText = row.MonthlyAverageLimit?.ToString("0.##")
+                        ?? row.MonthlyGeometricMeanLimit?.ToString("0.##")
+                        ?? string.Empty,
+                    DailyLimitText = row.DailyMaximumLimit?.ToString("0.##")
+                        ?? row.DailyMinimumLimit?.ToString("0.##")
+                        ?? string.Empty,
+                    DailyValues = daily,
+                    Average = average,
+                    DailyMaximum = days.Count > 0 ? days.Max() : null,
+                    DailyMinimum = days.Count > 0 ? days.Min() : null
+                };
+            })
+            .Where(x => x != null)
+            .Cast<NdmrPdfParameter>()
+            .ToList();
 
-                Draw(gfx, facility.Permittee, font, new NdarPdfPoint(449, 327));
-                Draw(gfx, facility.OrcName, font, new NdarPdfPoint(469, 350));
-                Draw(gfx, facility.PermitPhone, font, new NdarPdfPoint(470, 399));
-                Draw(gfx, facility.PermitExpirationDate?.ToString("MM/dd/yyyy"), font, new NdarPdfPoint(680, 399));
-                Draw(gfx, exportDate, font, new NdarPdfPoint(700, 440));
-            }
-
-            if (showGrid)
-            {
-                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
-            }
+        if (parameters.Count == 0)
+        {
+            parameters = new List<NdmrPdfParameter>();
         }
 
-        document.Save(output, false);
-        return output.ToArray();
+        var chunks = parameters
+            .Select((p, idx) => new { p, idx })
+            .GroupBy(x => x.idx / 15)
+            .Select(g => g.Select(x => x.p).ToList())
+            .ToList();
+        if (chunks.Count == 0)
+        {
+            chunks.Add(new List<NdmrPdfParameter>());
+        }
+
+        var orcArrival = Enumerable.Repeat<TimeSpan?>(null, 31).ToList();
+        var orcTimeOnSite = Enumerable.Repeat<decimal?>(null, 31).ToList();
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(year, monthNumber, day).Date;
+            var dayLogs = operatorLogs.Where(o => o.LogDate.Date == date).ToList();
+            if (dayLogs.Count == 0) continue;
+
+            var firstLog = dayLogs.OrderBy(o => o.ArrivalTime).First();
+            var canonicalLog = dayLogs
+                .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+                .ThenByDescending(o => o.CreatedDate)
+                .First();
+            orcArrival[day - 1] = firstLog.ArrivalTime;
+            orcTimeOnSite[day - 1] = canonicalLog.TimeOnSiteHours;
+        }
+
+        return new NdmrPdfSnapshot
+        {
+            Facility = facility,
+            Month = report.Month,
+            Year = year,
+            DaysInMonth = daysInMonth,
+            OrcArrivalByDay = orcArrival,
+            OrcTimeOnSiteByDay = orcTimeOnSite,
+            ParameterChunks = chunks,
+            ComplianceStatus = irrigationReport?.ComplianceStatus
+        };
+    }
+
+    private static decimal? ResolveNdmrPdfFallbackDailyValue(
+        string pcsCode,
+        DateTime currentDate,
+        WWChar? wwChar,
+        IReadOnlyList<GWMonit> gwMonits)
+    {
+        decimal? WwAt(IReadOnlyList<decimal?>? values)
+        {
+            if (values == null) return null;
+            var idx = currentDate.Day - 1;
+            return idx >= 0 && idx < values.Count ? values[idx] : null;
+        }
+
+        decimal? Avg(Func<GWMonit, decimal?> selector)
+        {
+            var values = gwMonits
+                .Where(g => g.SampleDate.Date == currentDate.Date)
+                .Select(selector)
+                .Where(v => v.HasValue)
+                .Select(v => v!.Value)
+                .ToList();
+            return values.Count == 0 ? null : values.Average();
+        }
+
+        return pcsCode switch
+        {
+            "00310" => WwAt(wwChar?.BOD5Daily),
+            "00620" => Avg(g => g.NO3N),
+            "00610" => Avg(g => g.NH3N),
+            "00625" => Avg(g => g.TKN),
+            "00400" => Avg(g => g.PH),
+            "31616" => Avg(g => g.FecalColiform),
+            "00940" => Avg(g => g.Chloride),
+            "00665" => Avg(g => g.TOC),
+            "00530" => Avg(g => g.TSS),
+            "00600" => Avg(g => (!g.TKN.HasValue && !g.NO3N.HasValue) ? null : (g.TKN ?? 0m) + (g.NO3N ?? 0m)),
+            _ => null
+        };
+    }
+
+    private static bool IsNdmrTemplateRowApplicableForMonth(FacilityPermitTemplateParameter row, int month)
+    {
+        var alwaysInclude = row.MeasurementFrequency is MeasurementFrequencyEnum.Daily
+            or MeasurementFrequencyEnum.Weekly
+            or MeasurementFrequencyEnum.Monthly
+            or MeasurementFrequencyEnum.Continuous;
+        if (alwaysInclude)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(row.ScheduledMonthsCsv))
+        {
+            return false;
+        }
+
+        var months = row.ScheduledMonthsCsv
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => int.TryParse(value, out var parsed) ? parsed : -1);
+        return months.Any(m => m == month);
     }
 
 
@@ -2905,6 +3182,133 @@ public class ReportsController : BaseController
     private static void Draw(XGraphics gfx, string? text, XFont font, NdarPdfPoint point)
     {
         gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(point.X, point.Y, 220, font.Height + 2), XStringFormats.TopLeft);
+    }
+
+    private static void DrawInCell(
+        XGraphics gfx,
+        string? text,
+        XFont font,
+        double x,
+        double y,
+        double width,
+        bool bold = false)
+    {
+        gfx.DrawString(
+            text ?? string.Empty,
+            font,
+            XBrushes.Black,
+            new XRect(x, y, width, font.Height + 2),
+            XStringFormats.TopCenter);
+    }
+
+    private static void DrawVerticalInCell(
+        XGraphics gfx,
+        string? text,
+        XFont font,
+        double cellX,
+        double cellY,
+        double cellWidth,
+        double cellHeight)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        var lines = text
+            .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length == 0)
+        {
+            return;
+        }
+
+        gfx.Save();
+        gfx.TranslateTransform(cellX + (cellWidth / 2d), cellY + (cellHeight / 2d));
+        gfx.RotateTransform(-90);
+
+        const double lineHeight = 7.2d;
+        var totalHeight = lines.Length * lineHeight;
+        var startY = Math.Max(0d, ((cellWidth - 2d) - totalHeight) / 2d);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            gfx.DrawString(
+                lines[i],
+                font,
+                XBrushes.Black,
+                new XRect(-(cellHeight / 2d), startY + (i * lineHeight), cellHeight, 9),
+                XStringFormats.TopCenter);
+        }
+
+        gfx.Restore();
+    }
+
+    private static void DrawVertical(XGraphics gfx, string? text, XFont font, NdarPdfPoint point)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        var lines = text
+            .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length == 0)
+        {
+            return;
+        }
+
+        gfx.Save();
+        gfx.TranslateTransform(point.X, point.Y);
+        gfx.RotateTransform(-90);
+
+        const double lineHeight = 7.2d;
+        var totalHeight = lines.Length * lineHeight;
+        var startY = Math.Max(0d, (34d - totalHeight) / 2d);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            gfx.DrawString(lines[i], font, XBrushes.Black, new XRect(0, startY + (i * lineHeight), 96, 9), XStringFormats.TopCenter);
+        }
+
+        gfx.Restore();
+    }
+
+    private static string FormatVerticalLabel(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+
+        var words = name
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (words.Length <= 1)
+        {
+            return string.Join(' ', words);
+        }
+
+        const int maxCharsPerLine = 10;
+        var lines = new List<string>();
+        var currentLine = new List<string>();
+        var currentLength = 0;
+        foreach (var word in words)
+        {
+            var nextLength = currentLength == 0 ? word.Length : currentLength + 1 + word.Length;
+            if (currentLine.Count > 0 && nextLength > maxCharsPerLine)
+            {
+                lines.Add(string.Join(' ', currentLine));
+                currentLine.Clear();
+                currentLength = 0;
+            }
+
+            currentLine.Add(word);
+            currentLength = currentLength == 0 ? word.Length : currentLength + 1 + word.Length;
+        }
+
+        if (currentLine.Count > 0)
+        {
+            lines.Add(string.Join(' ', currentLine));
+        }
+
+        return string.Join("\n", lines);
     }
 
     private static Ndar1PdfMap BuildNdar1PdfMap()
