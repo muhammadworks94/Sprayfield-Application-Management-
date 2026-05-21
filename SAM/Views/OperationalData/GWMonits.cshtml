@@ -50,7 +50,6 @@
     <div class="card">
         <div class="card-body">
             <form method="get" class="row g-3">
-                <input type="hidden" name="companyId" value="@Model.SelectedCompanyId" />
                 <div class="col-md-4">
                     <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
                     <select name="facilityId" id="facilityId" class="form-select">
@@ -102,10 +101,10 @@
                     <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
                     <input type="hidden" name="page" value="1" />
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-funnel"></i> Apply
+                        <i class="bi bi-funnel"></i> 
                     </button>
-                    <a asp-action="GWMonits" asp-route-companyId="@Model.SelectedCompanyId" class="btn btn-outline-secondary w-100">
-                        <i class="bi bi-x-circle"></i> Reset
+                    <a asp-action="GWMonits" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-x-circle"></i> 
                     </a>
                 </div>
             </form>
@@ -146,7 +145,6 @@
                         <tr>
                             <th>
                                 <a asp-action="GWMonits"
-                                   asp-route-companyId="@Model.SelectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-page="1"
@@ -161,7 +159,6 @@
                             </th>
                             <th>
                                 <a asp-action="GWMonits"
-                                   asp-route-companyId="@Model.SelectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-page="1"
@@ -176,7 +173,6 @@
                             </th>
                             <th>
                                 <a asp-action="GWMonits"
-                                   asp-route-companyId="@Model.SelectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-page="1"
@@ -191,7 +187,6 @@
                             </th>
                             <th>
                                 <a asp-action="GWMonits"
-                                   asp-route-companyId="@Model.SelectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-page="1"
@@ -329,7 +324,6 @@
                             <li class="page-item @(pageNumber == currentPage ? "active" : "")">
                                 <a class="page-link"
                                    asp-action="GWMonits"
-                                   asp-route-companyId="@Model.SelectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-page="@pageNumber"

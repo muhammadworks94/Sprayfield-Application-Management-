@@ -2120,6 +2120,17 @@ i.bi-question-circle {
   color: var(--text-primary);
 }
 
+/* Keep modal text contained even when modal is rendered inside nowrap table contexts */
+.modal-content,
+.modal-body,
+.modal-body p,
+.modal-body .text-muted,
+.modal-body .small {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .modal-footer {
   padding: 1.25rem 1.5rem;
   border-top: 1px solid var(--border-color);

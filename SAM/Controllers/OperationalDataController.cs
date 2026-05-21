@@ -1952,11 +1952,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        // Use effective company ID if no companyId specified (respects session selection for admins)
-        if (!companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
+        // Resolve company from global selection (header) only; ignore query-string companyId
+        companyId = effectiveCompanyId;
 
         if (companyId.HasValue)
         {
@@ -2482,12 +2479,8 @@ namespace SAM.Controllers;
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        // If a non-global user, default to their company when no company is specified
-        // Set company ID if not provided (respects session selection for admins)
-        if (!companyId.HasValue && effectiveCompanyId.HasValue)
-        {
-            companyId = effectiveCompanyId.Value;
-        }
+        // Resolve company from global selection (header) only; ignore query-string companyId
+        companyId = effectiveCompanyId;
 
         // If facility is selected but companyId is still unknown (e.g., global admin),
         // derive the company from the facility so downstream logic has a valid company.
@@ -2566,22 +2559,6 @@ namespace SAM.Controllers;
             viewModel.TemplateParameters = new List<GWMonitTemplateParameterViewModel>();
         }
 
-        var missingTemplateRows = ValidateGwTemplateRequirements(viewModel.TemplateParameters);
-        for (var i = 0; i < viewModel.TemplateParameters.Count; i++)
-        {
-            var row = viewModel.TemplateParameters[i];
-            if (row.IsRequiredForSelectedMonth && !row.EnteredValue.HasValue)
-            {
-                ModelState.AddModelError($"TemplateParameters[{i}].EnteredValue", "Required for this month.");
-            }
-        }
-        if (missingTemplateRows.Count > 0)
-        {
-            var joinedRows = string.Join(", ", missingTemplateRows);
-            ModelState.AddModelError(
-                string.Empty,
-                $"We could not save this record yet because required permit-template values for {viewModel.SampleDate:MMM yyyy} are missing: {joinedRows}. Enter values for these required rows to unblock save.");
-        }
         var badTemplateRows = await ValidateGwTemplateRowScopeAsync(resolvedPermit?.Id, viewModel.TemplateParameters);
         if (badTemplateRows.Count > 0)
         {
@@ -2592,11 +2569,7 @@ namespace SAM.Controllers;
 
         if (viewModel.VOCReportAttached)
         {
-            if (viewModel.VOCReportFile == null || viewModel.VOCReportFile.Length == 0)
-            {
-                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "VOC Report (PDF) is required when 'VOC Report Attached' is selected.");
-            }
-            else if (!IsPdfUpload(viewModel.VOCReportFile))
+            if (viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0 && !IsPdfUpload(viewModel.VOCReportFile))
             {
                 ModelState.AddModelError(nameof(viewModel.VOCReportFile), "Only PDF files are allowed for VOC Report.");
             }
@@ -2635,8 +2608,8 @@ namespace SAM.Controllers;
                 Temperature = viewModel.Temperature,
                 PH = viewModel.PH,
                 GallonsPumped = viewModel.GallonsPumped,
-                Odor = viewModel.Odor,
-                Appearance = viewModel.Appearance,
+                Odor = viewModel.Odor ?? string.Empty,
+                Appearance = viewModel.Appearance ?? string.Empty,
                 Conductivity = viewModel.Conductivity,
                 TDS = viewModel.TDS,
                 Turbidity = viewModel.Turbidity,
@@ -2653,11 +2626,11 @@ namespace SAM.Controllers;
                 FecalColiform = viewModel.FecalColiform,
                 TotalColiform = viewModel.TotalColiform,
                 VOCReportAttached = viewModel.VOCReportAttached,
-                VOCMethodNumber = viewModel.VOCMethodNumber,
-                LabCertification = viewModel.LabCertification,
-                CollectedBy = viewModel.CollectedBy,
-                AnalyzedBy = viewModel.AnalyzedBy,
-                Comments = viewModel.Comments,
+                VOCMethodNumber = viewModel.VOCMethodNumber ?? string.Empty,
+                LabCertification = viewModel.LabCertification ?? string.Empty,
+                CollectedBy = viewModel.CollectedBy ?? string.Empty,
+                AnalyzedBy = viewModel.AnalyzedBy ?? string.Empty,
+                Comments = viewModel.Comments ?? string.Empty,
                 GW59AQuestion1Response = viewModel.GW59AQuestion1Response,
                 GW59AQuestion2Response = viewModel.GW59AQuestion2Response,
                 GW59AQuestion3Response = viewModel.GW59AQuestion3Response,
@@ -2666,12 +2639,12 @@ namespace SAM.Controllers;
                 GW59AQuestion6Response = viewModel.GW59AQuestion6Response,
                 GW59AQuestion7Response = viewModel.GW59AQuestion7Response,
                 GW59ADueDate = viewModel.GW59ADueDate,
-                GW59AQuestion2Details = viewModel.GW59AQuestion2Details,
-                GW59AQuestion4Details = viewModel.GW59AQuestion4Details,
-                GW59AQuestion5Details = viewModel.GW59AQuestion5Details,
-                GW59AQuestion7Details = viewModel.GW59AQuestion7Details,
-                GW59ASignerName = viewModel.GW59ASignerName,
-                GW59ASignerTitle = viewModel.GW59ASignerTitle,
+                GW59AQuestion2Details = viewModel.GW59AQuestion2Details ?? string.Empty,
+                GW59AQuestion4Details = viewModel.GW59AQuestion4Details ?? string.Empty,
+                GW59AQuestion5Details = viewModel.GW59AQuestion5Details ?? string.Empty,
+                GW59AQuestion7Details = viewModel.GW59AQuestion7Details ?? string.Empty,
+                GW59ASignerName = viewModel.GW59ASignerName ?? string.Empty,
+                GW59ASignerTitle = viewModel.GW59ASignerTitle ?? string.Empty,
                 GW59ASignedDate = viewModel.GW59ASignedDate
             };
 
@@ -2852,14 +2825,6 @@ namespace SAM.Controllers;
                 viewModel.TemplateParameters,
                 viewModel.Id);
 
-        var missingTemplateRows = ValidateGwTemplateRequirements(viewModel.TemplateParameters);
-        if (missingTemplateRows.Count > 0)
-        {
-            var joinedRows = string.Join(", ", missingTemplateRows);
-            ModelState.AddModelError(
-                string.Empty,
-                $"We could not save this record yet because required permit-template values for {viewModel.SampleDate:MMM yyyy} are missing: {joinedRows}. Enter values for these required rows to unblock save.");
-        }
         var badTemplateRows = await ValidateGwTemplateRowScopeAsync(resolvedPermit?.Id, viewModel.TemplateParameters);
         if (badTemplateRows.Count > 0)
         {
@@ -2870,13 +2835,7 @@ namespace SAM.Controllers;
 
         if (viewModel.VOCReportAttached)
         {
-            var hasExistingFile = !string.IsNullOrWhiteSpace(viewModel.VOCReportFileName);
             var hasNewUpload = viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0;
-            if (!hasExistingFile && !hasNewUpload)
-            {
-                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "VOC Report (PDF) is required when 'VOC Report Attached' is selected.");
-            }
-
             if (hasNewUpload && !IsPdfUpload(viewModel.VOCReportFile!))
             {
                 ModelState.AddModelError(nameof(viewModel.VOCReportFile), "Only PDF files are allowed for VOC Report.");
@@ -2906,8 +2865,8 @@ namespace SAM.Controllers;
             gwMonit.Temperature = viewModel.Temperature;
             gwMonit.PH = viewModel.PH;
             gwMonit.GallonsPumped = viewModel.GallonsPumped;
-            gwMonit.Odor = viewModel.Odor;
-            gwMonit.Appearance = viewModel.Appearance;
+            gwMonit.Odor = viewModel.Odor ?? string.Empty;
+            gwMonit.Appearance = viewModel.Appearance ?? string.Empty;
             gwMonit.Conductivity = viewModel.Conductivity;
             gwMonit.TDS = viewModel.TDS;
             gwMonit.Turbidity = viewModel.Turbidity;
@@ -2924,11 +2883,11 @@ namespace SAM.Controllers;
             gwMonit.FecalColiform = viewModel.FecalColiform;
             gwMonit.TotalColiform = viewModel.TotalColiform;
             gwMonit.VOCReportAttached = viewModel.VOCReportAttached;
-            gwMonit.VOCMethodNumber = viewModel.VOCMethodNumber;
-            gwMonit.LabCertification = viewModel.LabCertification;
-            gwMonit.CollectedBy = viewModel.CollectedBy;
-            gwMonit.AnalyzedBy = viewModel.AnalyzedBy;
-            gwMonit.Comments = viewModel.Comments;
+            gwMonit.VOCMethodNumber = viewModel.VOCMethodNumber ?? string.Empty;
+            gwMonit.LabCertification = viewModel.LabCertification ?? string.Empty;
+            gwMonit.CollectedBy = viewModel.CollectedBy ?? string.Empty;
+            gwMonit.AnalyzedBy = viewModel.AnalyzedBy ?? string.Empty;
+            gwMonit.Comments = viewModel.Comments ?? string.Empty;
             gwMonit.GW59AQuestion1Response = viewModel.GW59AQuestion1Response;
             gwMonit.GW59AQuestion2Response = viewModel.GW59AQuestion2Response;
             gwMonit.GW59AQuestion3Response = viewModel.GW59AQuestion3Response;
@@ -2937,12 +2896,12 @@ namespace SAM.Controllers;
             gwMonit.GW59AQuestion6Response = viewModel.GW59AQuestion6Response;
             gwMonit.GW59AQuestion7Response = viewModel.GW59AQuestion7Response;
             gwMonit.GW59ADueDate = viewModel.GW59ADueDate;
-            gwMonit.GW59AQuestion2Details = viewModel.GW59AQuestion2Details;
-            gwMonit.GW59AQuestion4Details = viewModel.GW59AQuestion4Details;
-            gwMonit.GW59AQuestion5Details = viewModel.GW59AQuestion5Details;
-            gwMonit.GW59AQuestion7Details = viewModel.GW59AQuestion7Details;
-            gwMonit.GW59ASignerName = viewModel.GW59ASignerName;
-            gwMonit.GW59ASignerTitle = viewModel.GW59ASignerTitle;
+            gwMonit.GW59AQuestion2Details = viewModel.GW59AQuestion2Details ?? string.Empty;
+            gwMonit.GW59AQuestion4Details = viewModel.GW59AQuestion4Details ?? string.Empty;
+            gwMonit.GW59AQuestion5Details = viewModel.GW59AQuestion5Details ?? string.Empty;
+            gwMonit.GW59AQuestion7Details = viewModel.GW59AQuestion7Details ?? string.Empty;
+            gwMonit.GW59ASignerName = viewModel.GW59ASignerName ?? string.Empty;
+            gwMonit.GW59ASignerTitle = viewModel.GW59ASignerTitle ?? string.Empty;
             gwMonit.GW59ASignedDate = viewModel.GW59ASignedDate;
             if (!gwMonit.VOCReportAttached.GetValueOrDefault())
             {

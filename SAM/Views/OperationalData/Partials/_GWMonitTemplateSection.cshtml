@@ -16,7 +16,7 @@
     }
 
     <div class="alert alert-secondary py-2 small mb-2">
-        Enter values in the right-most column. Rows marked <strong>Required This Month</strong> must be filled before save.
+        Enter values in the right-most column as available. Rows marked <strong>Scheduled This Month</strong> are informational and do not block save.
     </div>
 
     <div class="table-responsive fixed-height-table-wrapper mb-3">
@@ -42,7 +42,7 @@
                         @Model.TemplateParameters[i].ParameterName
                         @if (Model.TemplateParameters[i].IsRequiredForSelectedMonth)
                         {
-                            <span class="badge bg-warning text-dark ms-1">Required This Month</span>
+                            <span class="badge bg-warning text-dark ms-1">Scheduled This Month</span>
                         }
                         <i class="bi bi-info-circle ms-1 text-primary" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[i].Notes) ? "No notes." : Model.TemplateParameters[i].Notes)"></i>
                     </td>

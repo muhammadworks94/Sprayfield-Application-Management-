@@ -135,19 +135,118 @@
                     <div class="col-md-4"><div class="mb-3"><label asp-for="GW59ADueDate" class="form-label"></label><input asp-for="GW59ADueDate" type="date" class="form-control" /><span asp-validation-for="GW59ADueDate" class="text-danger"></span></div></div>
                 </div>
                 <div class="row">
-                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 1 Response</label><select asp-for="GW59AQuestion1Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
-                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 2 Response</label><select asp-for="GW59AQuestion2Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
-                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 3 Response</label><select asp-for="GW59AQuestion3Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
-                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 4 Response</label><select asp-for="GW59AQuestion4Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
-                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 5 Response</label><select asp-for="GW59AQuestion5Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
-                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 6 Response</label><select asp-for="GW59AQuestion6Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
-                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Question 7 Response</label><select asp-for="GW59AQuestion7Response" class="form-select"><option value="">Unanswered</option><option value="true">Yes</option><option value="false">No</option></select></div></div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6"><div class="mb-3"><label asp-for="GW59AQuestion2Details" class="form-label"></label><textarea asp-for="GW59AQuestion2Details" class="form-control" rows="3"></textarea></div></div>
-                    <div class="col-md-6"><div class="mb-3"><label asp-for="GW59AQuestion4Details" class="form-label"></label><textarea asp-for="GW59AQuestion4Details" class="form-control" rows="3"></textarea></div></div>
-                    <div class="col-md-6"><div class="mb-3"><label asp-for="GW59AQuestion5Details" class="form-label"></label><textarea asp-for="GW59AQuestion5Details" class="form-control" rows="3"></textarea></div></div>
-                    <div class="col-md-6"><div class="mb-3"><label asp-for="GW59AQuestion7Details" class="form-label"></label><textarea asp-for="GW59AQuestion7Details" class="form-control" rows="3"></textarea></div></div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label">1. Enter date monitoring results were due. (@(Model.GW59ADueDate?.ToString("MM/dd/yyyy") ?? "__________")) Will this monitoring report (GW-59 and GW-59A) be submitted after the established due date?</label>
+                        <div class="d-flex gap-4">
+                            <input type="hidden" name="GW59AQuestion1Response" value="@(Model.GW59AQuestion1Response.HasValue ? (Model.GW59AQuestion1Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion1Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion1Response_Yes" data-gw59a-toggle="GW59AQuestion1Response" data-gw59a-value="true" @(Model.GW59AQuestion1Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion1Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion1Response_No" data-gw59a-toggle="GW59AQuestion1Response" data-gw59a-value="false" @(Model.GW59AQuestion1Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion1Response_No">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">2. Was any required information missing on the GW-59 report forms?</label>
+                        <div class="d-flex gap-4 mb-2">
+                            <input type="hidden" name="GW59AQuestion2Response" value="@(Model.GW59AQuestion2Response.HasValue ? (Model.GW59AQuestion2Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion2Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion2Response_Yes" data-gw59a-toggle="GW59AQuestion2Response" data-gw59a-value="true" @(Model.GW59AQuestion2Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion2Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion2Response_No" data-gw59a-toggle="GW59AQuestion2Response" data-gw59a-value="false" @(Model.GW59AQuestion2Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion2Response_No">No</label>
+                            </div>
+                        </div>
+                        <label asp-for="GW59AQuestion2Details" class="form-label"></label>
+                        <textarea asp-for="GW59AQuestion2Details" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">3. Are any of the monitor wells in need of repair or maintenance (damaged casing, unlocked or missing cap, missing identification plate, area overgrown, etc.)? If the answer is "Yes", contact the Regional Office for guidance.</label>
+                        <div class="d-flex gap-4">
+                            <input type="hidden" name="GW59AQuestion3Response" value="@(Model.GW59AQuestion3Response.HasValue ? (Model.GW59AQuestion3Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion3Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion3Response_Yes" data-gw59a-toggle="GW59AQuestion3Response" data-gw59a-value="true" @(Model.GW59AQuestion3Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion3Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion3Response_No" data-gw59a-toggle="GW59AQuestion3Response" data-gw59a-value="false" @(Model.GW59AQuestion3Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion3Response_No">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">4. Are any monitored constituents equal to or above the established standards?</label>
+                        <div class="d-flex gap-4 mb-2">
+                            <input type="hidden" name="GW59AQuestion4Response" value="@(Model.GW59AQuestion4Response.HasValue ? (Model.GW59AQuestion4Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion4Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion4Response_Yes" data-gw59a-toggle="GW59AQuestion4Response" data-gw59a-value="true" @(Model.GW59AQuestion4Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion4Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion4Response_No" data-gw59a-toggle="GW59AQuestion4Response" data-gw59a-value="false" @(Model.GW59AQuestion4Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion4Response_No">No</label>
+                            </div>
+                        </div>
+                        <label asp-for="GW59AQuestion4Details" class="form-label"></label>
+                        <textarea asp-for="GW59AQuestion4Details" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">5. For the constituents identified in question 4 above, have standards been exceeded previously for the same constituent(s) in the same well(s) in the last two years?</label>
+                        <div class="d-flex gap-4 mb-2">
+                            <input type="hidden" name="GW59AQuestion5Response" value="@(Model.GW59AQuestion5Response.HasValue ? (Model.GW59AQuestion5Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion5Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion5Response_Yes" data-gw59a-toggle="GW59AQuestion5Response" data-gw59a-value="true" @(Model.GW59AQuestion5Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion5Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion5Response_No" data-gw59a-toggle="GW59AQuestion5Response" data-gw59a-value="false" @(Model.GW59AQuestion5Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion5Response_No">No</label>
+                            </div>
+                        </div>
+                        <label asp-for="GW59AQuestion5Details" class="form-label"></label>
+                        <textarea asp-for="GW59AQuestion5Details" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">6. Are the monitoring wells listed in section 5 located at or beyond the review boundary?</label>
+                        <div class="d-flex gap-4">
+                            <input type="hidden" name="GW59AQuestion6Response" value="@(Model.GW59AQuestion6Response.HasValue ? (Model.GW59AQuestion6Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion6Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion6Response_Yes" data-gw59a-toggle="GW59AQuestion6Response" data-gw59a-value="true" @(Model.GW59AQuestion6Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion6Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion6Response_No" data-gw59a-toggle="GW59AQuestion6Response" data-gw59a-value="false" @(Model.GW59AQuestion6Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion6Response_No">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">7. Is the permittee implementing previously approved actions required by the Division involving this groundwater quality problem?</label>
+                        <div class="d-flex gap-4 mb-2">
+                            <input type="hidden" name="GW59AQuestion7Response" value="@(Model.GW59AQuestion7Response.HasValue ? (Model.GW59AQuestion7Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion7Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion7Response_Yes" data-gw59a-toggle="GW59AQuestion7Response" data-gw59a-value="true" @(Model.GW59AQuestion7Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion7Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion7Response_No" data-gw59a-toggle="GW59AQuestion7Response" data-gw59a-value="false" @(Model.GW59AQuestion7Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion7Response_No">No</label>
+                            </div>
+                        </div>
+                        <label asp-for="GW59AQuestion7Details" class="form-label"></label>
+                        <textarea asp-for="GW59AQuestion7Details" class="form-control" rows="3"></textarea>
+                    </div>
                 </div>
                 <div class="row">
                     <div class="col-md-4"><div class="mb-3"><label asp-for="GW59ASignerName" class="form-label"></label><input asp-for="GW59ASignerName" class="form-control" /></div></div>
@@ -255,6 +354,32 @@
             facilitySelect?.addEventListener('change', queueRefresh);
             sampleDateInput?.addEventListener('change', queueRefresh);
             initTooltips(document);
+
+            function initGw59AToggles() {
+                const toggleInputs = document.querySelectorAll('[data-gw59a-toggle]');
+                toggleInputs.forEach(function (input) {
+                    input.addEventListener('change', function () {
+                        const field = input.getAttribute('data-gw59a-toggle');
+                        const selectedValue = input.getAttribute('data-gw59a-value');
+                        const hidden = document.querySelector(`[data-gw59a-hidden="${field}"]`);
+                        if (!hidden) return;
+
+                        const siblings = document.querySelectorAll(`[data-gw59a-toggle="${field}"]`);
+                        if (input.checked) {
+                            siblings.forEach(function (sibling) {
+                                if (sibling !== input) {
+                                    sibling.checked = false;
+                                }
+                            });
+                            hidden.value = selectedValue;
+                        } else if (hidden.value === selectedValue) {
+                            hidden.value = '';
+                        }
+                    });
+                });
+            }
+
+            initGw59AToggles();
         })();
     </script>
 }

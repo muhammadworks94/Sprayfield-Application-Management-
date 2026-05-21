@@ -46,11 +46,11 @@ public class GWMonitViewModel
 
     [StringLength(100)]
     [Display(Name = "Odor")]
-    public string Odor { get; set; } = string.Empty;
+    public string? Odor { get; set; }
 
     [StringLength(100)]
     [Display(Name = "Appearance")]
-    public string Appearance { get; set; } = string.Empty;
+    public string? Appearance { get; set; }
 
     [Display(Name = "TDS (mg/L)")]
     [Range(0, double.MaxValue)]
@@ -113,23 +113,23 @@ public class GWMonitViewModel
 
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
-    public string VOCMethodNumber { get; set; } = string.Empty;
+    public string? VOCMethodNumber { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+    public string? LabCertification { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
-    public string CollectedBy { get; set; } = string.Empty;
+    public string? CollectedBy { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
-    public string AnalyzedBy { get; set; } = string.Empty;
+    public string? AnalyzedBy { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]
-    public string Comments { get; set; } = string.Empty;
+    public string? Comments { get; set; }
 
     [Display(Name = "Q1 Response")]
     public bool? GW59AQuestion1Response { get; set; }
@@ -150,22 +150,22 @@ public class GWMonitViewModel
     public DateTime? GW59ADueDate { get; set; }
     [StringLength(4000)]
     [Display(Name = "Q2 Details")]
-    public string GW59AQuestion2Details { get; set; } = string.Empty;
+    public string? GW59AQuestion2Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "Q4 Details")]
-    public string GW59AQuestion4Details { get; set; } = string.Empty;
+    public string? GW59AQuestion4Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "Q5 Details")]
-    public string GW59AQuestion5Details { get; set; } = string.Empty;
+    public string? GW59AQuestion5Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "Q7 Details")]
-    public string GW59AQuestion7Details { get; set; } = string.Empty;
+    public string? GW59AQuestion7Details { get; set; }
     [StringLength(200)]
     [Display(Name = "GW-59A Signer Name")]
-    public string GW59ASignerName { get; set; } = string.Empty;
+    public string? GW59ASignerName { get; set; }
     [StringLength(200)]
     [Display(Name = "GW-59A Signer Title")]
-    public string GW59ASignerTitle { get; set; } = string.Empty;
+    public string? GW59ASignerTitle { get; set; }
     [Display(Name = "GW-59A Signed Date")]
     [DataType(DataType.Date)]
     public DateTime? GW59ASignedDate { get; set; }
@@ -216,11 +216,11 @@ public class GWMonitCreateViewModel
 
     [StringLength(100)]
     [Display(Name = "Odor")]
-    public string Odor { get; set; } = string.Empty;
+    public string? Odor { get; set; }
 
     [StringLength(100)]
     [Display(Name = "Appearance")]
-    public string Appearance { get; set; } = string.Empty;
+    public string? Appearance { get; set; }
     [Display(Name = "TDS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TDS { get; set; }
@@ -285,23 +285,23 @@ public class GWMonitCreateViewModel
 
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
-    public string VOCMethodNumber { get; set; } = string.Empty;
+    public string? VOCMethodNumber { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+    public string? LabCertification { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
-    public string CollectedBy { get; set; } = string.Empty;
+    public string? CollectedBy { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
-    public string AnalyzedBy { get; set; } = string.Empty;
+    public string? AnalyzedBy { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]
-    public string Comments { get; set; } = string.Empty;
+    public string? Comments { get; set; }
 
     [Display(Name = "GW-59A Q1")]
     public bool? GW59AQuestion1Response { get; set; }
@@ -322,22 +322,22 @@ public class GWMonitCreateViewModel
     public DateTime? GW59ADueDate { get; set; }
     [StringLength(4000)]
     [Display(Name = "GW-59A Q2 Details")]
-    public string GW59AQuestion2Details { get; set; } = string.Empty;
+    public string? GW59AQuestion2Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "GW-59A Q4 Details")]
-    public string GW59AQuestion4Details { get; set; } = string.Empty;
+    public string? GW59AQuestion4Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "GW-59A Q5 Details")]
-    public string GW59AQuestion5Details { get; set; } = string.Empty;
+    public string? GW59AQuestion5Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "GW-59A Q7 Details")]
-    public string GW59AQuestion7Details { get; set; } = string.Empty;
+    public string? GW59AQuestion7Details { get; set; }
     [StringLength(200)]
     [Display(Name = "GW-59A Signer Name")]
-    public string GW59ASignerName { get; set; } = string.Empty;
+    public string? GW59ASignerName { get; set; }
     [StringLength(200)]
     [Display(Name = "GW-59A Signer Title")]
-    public string GW59ASignerTitle { get; set; } = string.Empty;
+    public string? GW59ASignerTitle { get; set; }
     [Display(Name = "GW-59A Signed Date")]
     [DataType(DataType.Date)]
     public DateTime? GW59ASignedDate { get; set; }
@@ -395,11 +395,11 @@ public class GWMonitEditViewModel
 
     [StringLength(100)]
     [Display(Name = "Odor")]
-    public string Odor { get; set; } = string.Empty;
+    public string? Odor { get; set; }
 
     [StringLength(100)]
     [Display(Name = "Appearance")]
-    public string Appearance { get; set; } = string.Empty;
+    public string? Appearance { get; set; }
     [Display(Name = "TDS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TDS { get; set; }
@@ -464,23 +464,23 @@ public class GWMonitEditViewModel
 
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
-    public string VOCMethodNumber { get; set; } = string.Empty;
+    public string? VOCMethodNumber { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+    public string? LabCertification { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
-    public string CollectedBy { get; set; } = string.Empty;
+    public string? CollectedBy { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
-    public string AnalyzedBy { get; set; } = string.Empty;
+    public string? AnalyzedBy { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]
-    public string Comments { get; set; } = string.Empty;
+    public string? Comments { get; set; }
 
     [Display(Name = "GW-59A Q1")]
     public bool? GW59AQuestion1Response { get; set; }
@@ -501,22 +501,22 @@ public class GWMonitEditViewModel
     public DateTime? GW59ADueDate { get; set; }
     [StringLength(4000)]
     [Display(Name = "GW-59A Q2 Details")]
-    public string GW59AQuestion2Details { get; set; } = string.Empty;
+    public string? GW59AQuestion2Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "GW-59A Q4 Details")]
-    public string GW59AQuestion4Details { get; set; } = string.Empty;
+    public string? GW59AQuestion4Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "GW-59A Q5 Details")]
-    public string GW59AQuestion5Details { get; set; } = string.Empty;
+    public string? GW59AQuestion5Details { get; set; }
     [StringLength(4000)]
     [Display(Name = "GW-59A Q7 Details")]
-    public string GW59AQuestion7Details { get; set; } = string.Empty;
+    public string? GW59AQuestion7Details { get; set; }
     [StringLength(200)]
     [Display(Name = "GW-59A Signer Name")]
-    public string GW59ASignerName { get; set; } = string.Empty;
+    public string? GW59ASignerName { get; set; }
     [StringLength(200)]
     [Display(Name = "GW-59A Signer Title")]
-    public string GW59ASignerTitle { get; set; } = string.Empty;
+    public string? GW59ASignerTitle { get; set; }
     [Display(Name = "GW-59A Signed Date")]
     [DataType(DataType.Date)]
     public DateTime? GW59ASignedDate { get; set; }
