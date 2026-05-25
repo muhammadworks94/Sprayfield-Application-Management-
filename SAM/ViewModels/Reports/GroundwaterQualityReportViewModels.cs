@@ -57,6 +57,14 @@ public sealed class Gw59ParameterSnapshot
     public bool IsGw59A { get; set; }
 }
 
+public sealed class Gw59OtherParameterLine
+{
+    public string PcsCode { get; set; } = string.Empty;
+    public string ParameterName { get; set; } = string.Empty;
+    public string Units { get; set; } = string.Empty;
+    public decimal Value { get; set; }
+}
+
 public sealed class Gw59ExportModel
 {
     public Guid GwMonitId { get; set; }
@@ -81,6 +89,7 @@ public sealed class Gw59ExportModel
     public DateTime SampleDate { get; set; }
     public decimal? SampleDepth { get; set; }
     public decimal? WaterLevel { get; set; }
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
     public decimal? GallonsPumped { get; set; }
     public decimal? PHField { get; set; }
     public decimal? TemperatureField { get; set; }
@@ -110,7 +119,10 @@ public sealed class Gw59ExportModel
     public DateTime? CertificationDate { get; set; }
     public string? VOCReportFileStoragePath { get; set; }
     public bool HasGw59APermitTemplateRows { get; set; }
+    public bool GwOperationLagoon { get; set; }
+    public bool GwOperationSprayField { get; set; }
     public List<Gw59ParameterSnapshot> ParameterSnapshots { get; set; } = new();
+    public List<Gw59OtherParameterLine> OtherParameterLines { get; set; } = new();
 
     public bool? GW59AQuestion1Response { get; set; }
     public bool? GW59AQuestion2Response { get; set; }

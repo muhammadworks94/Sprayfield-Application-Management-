@@ -2022,6 +2022,7 @@ namespace SAM.Controllers;
             SampleDate = g.SampleDate,
             SampleDepth = g.SampleDepth,
             WaterLevel = g.WaterLevel,
+            MeasuringPointAboveLandSurface = g.MeasuringPointAboveLandSurface,
             Temperature = g.Temperature,
             PH = g.PH,
             GallonsPumped = g.GallonsPumped,
@@ -2115,6 +2116,7 @@ namespace SAM.Controllers;
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
+            MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
             Temperature = gwMonit.Temperature,
             PH = gwMonit.PH,
             GallonsPumped = gwMonit.GallonsPumped,
@@ -2283,6 +2285,7 @@ namespace SAM.Controllers;
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
+            MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
             GallonsPumped = gwMonit.GallonsPumped,
             PHField = gwMonit.PH,
             TemperatureField = gwMonit.Temperature,
@@ -2310,6 +2313,9 @@ namespace SAM.Controllers;
                 : gwMonit.LabCertification,
             LabReportAttached = gwMonit.VOCReportAttached ?? false,
             VOCMethodNumber = gwMonit.VOCMethodNumber,
+            GwOperationLagoon = resolvedPermit?.GwOperationLagoon ?? true,
+            GwOperationSprayField = resolvedPermit?.GwOperationSprayField ?? true,
+            OtherParameterLines = Gw59ChemistryResolver.ResolveOtherLines(snapshots).ToList(),
             ParameterSnapshots = snapshots
         };
 
@@ -2486,6 +2492,7 @@ namespace SAM.Controllers;
                 SampleDate = viewModel.SampleDate,
                 SampleDepth = viewModel.SampleDepth,
                 WaterLevel = viewModel.WaterLevel,
+                MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface,
                 Temperature = viewModel.Temperature,
                 PH = viewModel.PH,
                 GallonsPumped = viewModel.GallonsPumped,
@@ -2571,6 +2578,7 @@ namespace SAM.Controllers;
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
+            MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
             Temperature = gwMonit.Temperature,
             PH = gwMonit.PH,
             GallonsPumped = gwMonit.GallonsPumped,
@@ -2767,6 +2775,7 @@ namespace SAM.Controllers;
             gwMonit.SampleDate = viewModel.SampleDate;
             gwMonit.SampleDepth = viewModel.SampleDepth;
             gwMonit.WaterLevel = viewModel.WaterLevel;
+            gwMonit.MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface;
             gwMonit.Temperature = viewModel.Temperature;
             gwMonit.PH = viewModel.PH;
             gwMonit.GallonsPumped = viewModel.GallonsPumped;

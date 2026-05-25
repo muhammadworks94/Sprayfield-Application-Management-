@@ -10,6 +10,8 @@ public class FacilityPermit : CompanyScopedEntity
     public DateTime EffectiveStartDate { get; set; }
     public DateTime? EffectiveEndDate { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool GwOperationLagoon { get; set; } = true;
+    public bool GwOperationSprayField { get; set; } = true;
     public string? Notes { get; set; }
     public string? PermitPdfFileName { get; set; }
     public string? PermitPdfStoragePath { get; set; }
@@ -18,4 +20,3 @@ public class FacilityPermit : CompanyScopedEntity
     public ICollection<FacilityPermitTemplateParameter> TemplateParameters { get; set; } = new List<FacilityPermitTemplateParameter>();
     public ICollection<WWChar> WWChars { get; set; } = new List<WWChar>();
 }
-

@@ -63,6 +63,13 @@
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
+                            <label asp-for="MeasuringPointAboveLandSurface" class="form-label"></label>
+                            <input asp-for="MeasuringPointAboveLandSurface" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="MeasuringPointAboveLandSurface" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
                             <label asp-for="Temperature" class="form-label"></label>
                             <input asp-for="Temperature" type="number" step="0.01" class="form-control" />
                             <span asp-validation-for="Temperature" class="text-danger"></span>

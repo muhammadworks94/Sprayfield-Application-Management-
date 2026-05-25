@@ -27,6 +27,10 @@ public class GWMonitViewModel
     [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
@@ -191,6 +195,10 @@ public class GWMonitCreateViewModel
     [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
@@ -362,6 +370,10 @@ public class GWMonitEditViewModel
     [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]

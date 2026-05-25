@@ -33,6 +33,11 @@ public class GWMonit : CompanyScopedEntity
     public decimal? WaterLevel { get; set; }
 
     /// <summary>
+    /// Measuring point above land surface.
+    /// </summary>
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    /// <summary>
     /// Temperature.
     /// </summary>
     public decimal? Temperature { get; set; }

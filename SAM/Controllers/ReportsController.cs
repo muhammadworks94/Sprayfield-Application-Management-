@@ -1900,6 +1900,7 @@ public class ReportsController : BaseController
             SampleDate = model.SampleDate,
             SampleDepth = model.SampleDepth,
             WaterLevel = model.WaterLevel,
+            MeasuringPointAboveLandSurface = model.MeasuringPointAboveLandSurface,
             GallonsPumped = model.GallonsPumped,
             PHField = model.PHField,
             TemperatureField = model.TemperatureField,
@@ -1922,6 +1923,9 @@ public class ReportsController : BaseController
             LabCertificationNumber = model.LabCertificationNumber,
             LabReportAttached = model.LabReportAttached,
             VOCMethodNumber = model.VOCMethodNumber,
+            GwOperationLagoon = model.GwOperationLagoon,
+            GwOperationSprayField = model.GwOperationSprayField,
+            OtherParameterLines = model.OtherParameterLines,
             CertificationName = model.CertificationName,
             CertificationTitle = model.CertificationTitle,
             CertificationDate = model.CertificationDate,
@@ -1938,21 +1942,6 @@ public class ReportsController : BaseController
         var bytes = await RenderCombinedGw59PdfAsync(model, showGrid);
         var safeFacility = string.IsNullOrWhiteSpace(model.FacilityName) ? "Facility" : model.FacilityName.Replace(' ', '_');
         return File(bytes, "application/pdf", $"GW59_{safeFacility}_{model.SampleDate:yyyyMMdd}.pdf");
-    }
-
-    [HttpGet]
-    [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> ExportGW59AReport(Guid id, bool showGrid = false)
-    {
-        var model = await BuildGw59ExportModelAsync(id);
-        if (IsGw59AQuestionnaireEmpty(model))
-        {
-            throw new Infrastructure.Exceptions.BusinessRuleException(
-                "GW-59A has no compliance questionnaire data for this record. Fill the 'GW-59A Compliance' section on the Groundwater Monitoring create/edit page, save, then export again.");
-        }
-        var bytes = await RenderGw59APdfAsync(model, showGrid);
-        var safeFacility = string.IsNullOrWhiteSpace(model.FacilityName) ? "Facility" : model.FacilityName.Replace(' ', '_');
-        return File(bytes, "application/pdf", $"GW59A_{safeFacility}_{model.SampleDate:yyyyMMdd}_{DateTime.UtcNow:HHmmss}.pdf");
     }
 
     #endregion
@@ -2113,6 +2102,7 @@ public class ReportsController : BaseController
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
+            MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
             GallonsPumped = gwMonit.GallonsPumped,
             PHField = gwMonit.PH,
             TemperatureField = gwMonit.Temperature,
@@ -2146,6 +2136,9 @@ public class ReportsController : BaseController
             CertificationDate = DateTime.UtcNow.Date,
             VOCReportFileStoragePath = gwMonit.VOCReportFileStoragePath,
             HasGw59APermitTemplateRows = hasGw59APermitTemplateRows,
+            GwOperationLagoon = permit?.GwOperationLagoon ?? true,
+            GwOperationSprayField = permit?.GwOperationSprayField ?? true,
+            OtherParameterLines = Gw59ChemistryResolver.ResolveOtherLines(snapshots).ToList(),
             ParameterSnapshots = snapshots,
             GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
             GW59AQuestion2Response = gwMonit.GW59AQuestion2Response,
@@ -2209,6 +2202,7 @@ public class ReportsController : BaseController
             }
             DrawText(model.RelativeMpElevation?.ToString("F2"), 450, 250, 75);
             DrawText(model.WaterLevel?.ToString("F2"), 160, 237);
+            DrawText(model.MeasuringPointAboveLandSurface?.ToString("F2"), 130, 251, 80);
             DrawText(model.GallonsPumped?.ToString("F2"), 260, 266);
             DrawText(model.PHField?.ToString("F2"), 610, 220, 45);
             DrawText(model.TemperatureField?.ToString("F1"), 750, 220);
@@ -2235,8 +2229,22 @@ public class ReportsController : BaseController
             DrawText(model.LabReportAttached ? "X" : string.Empty, 684, 509);
             DrawText(!model.LabReportAttached ? "X" : string.Empty, 752, 509);
             DrawText(model.VOCMethodNumber, 750, 525);
-            DrawTick(555, 121);
-            DrawTick(555, 136);
+            if (model.GwOperationLagoon)
+            {
+                DrawTick(555, 121);
+            }
+
+            if (model.GwOperationSprayField)
+            {
+                DrawTick(555, 136);
+            }
+
+            var otherLineY = 382d;
+            foreach (var otherLine in model.OtherParameterLines.Take(4))
+            {
+                DrawText(FormatGw59OtherLine(otherLine), 540, otherLineY, 250);
+                otherLineY += 16;
+            }
             DrawText($"{model.CertificationName} - {model.CertificationTitle}", 40, 649, 340);
             DrawText(model.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726);
 
@@ -2334,6 +2342,12 @@ public class ReportsController : BaseController
         await source.CopyToAsync(buffer);
         buffer.Position = 0;
         return buffer;
+    }
+
+    private static string FormatGw59OtherLine(Gw59OtherParameterLine line)
+    {
+        var units = string.IsNullOrWhiteSpace(line.Units) ? string.Empty : $" [{line.Units}]";
+        return $"{line.ParameterName} {line.Value:0.######}{units}";
     }
 
     private async Task<byte[]> RenderNdar1PdfAsync(NDAR1 report, bool showGrid = false)

@@ -74,6 +74,9 @@ public class GW59ReportViewModel
     [Display(Name = "Depth to Water Level (ft)")]
     public decimal? WaterLevel { get; set; }
 
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
     [Display(Name = "Gallons Pumped")]
     public decimal? GallonsPumped { get; set; }
 
@@ -143,6 +146,10 @@ public class GW59ReportViewModel
 
     [Display(Name = "VOC Method #")]
     public string VOCMethodNumber { get; set; } = string.Empty;
+
+    public bool GwOperationLagoon { get; set; }
+    public bool GwOperationSprayField { get; set; }
+    public List<Gw59OtherParameterLine> OtherParameterLines { get; set; } = new();
 
     // Certification block (signature area)
 

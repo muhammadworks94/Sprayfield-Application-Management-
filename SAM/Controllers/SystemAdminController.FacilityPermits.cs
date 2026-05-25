@@ -56,6 +56,8 @@ public partial class SystemAdminController
         string permitVersion,
         DateTime effectiveStartDate,
         DateTime? effectiveEndDate,
+        bool gwOperationLagoon,
+        bool gwOperationSprayField,
         string? notes,
         IFormFile? permitPdf)
     {
@@ -108,6 +110,8 @@ public partial class SystemAdminController
             existingSameVersion.IsActive = true;
             existingSameVersion.EffectiveStartDate = startDate;
             existingSameVersion.EffectiveEndDate = endDate;
+            existingSameVersion.GwOperationLagoon = gwOperationLagoon;
+            existingSameVersion.GwOperationSprayField = gwOperationSprayField;
             existingSameVersion.Notes = notes;
             existingSameVersion.PermitNumber = normalizedPermitNumber;
             existingSameVersion.PermitVersion = normalizedPermitVersion;
@@ -135,6 +139,8 @@ public partial class SystemAdminController
             EffectiveStartDate = startDate,
             EffectiveEndDate = endDate,
             IsActive = true,
+            GwOperationLagoon = gwOperationLagoon,
+            GwOperationSprayField = gwOperationSprayField,
             Notes = notes,
             PermitPdfFileName = originalName,
             PermitPdfStoragePath = storedPath
@@ -161,6 +167,8 @@ public partial class SystemAdminController
         Guid permitId,
         DateTime effectiveStartDate,
         DateTime? effectiveEndDate,
+        bool gwOperationLagoon,
+        bool gwOperationSprayField,
         string? notes,
         IFormFile? permitPdf)
     {
@@ -210,6 +218,8 @@ public partial class SystemAdminController
 
         permit.EffectiveStartDate = startDate;
         permit.EffectiveEndDate = endDate;
+        permit.GwOperationLagoon = gwOperationLagoon;
+        permit.GwOperationSprayField = gwOperationSprayField;
         permit.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
 
         if (!string.IsNullOrWhiteSpace(newBlobPath))

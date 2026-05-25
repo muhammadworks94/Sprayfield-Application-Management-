@@ -78,6 +78,7 @@
                     <dt>Date Sample Collected</dt><dd>@Model.SampleDate.ToString("MM/dd/yyyy")</dd>
                     <dt>Sample Depth</dt><dd>@(Model.SampleDepth?.ToString("F2") ?? "N/A") ft</dd>
                     <dt>Depth to Water Level</dt><dd>@(Model.WaterLevel?.ToString("F2") ?? "N/A") ft</dd>
+                    <dt>Measuring Point</dt><dd>@(Model.MeasuringPointAboveLandSurface?.ToString("F2") ?? "N/A") ft above land surface</dd>
                     <dt>Volume Pumped/Bailed Before Sampling</dt><dd>@(Model.GallonsPumped?.ToString("F2") ?? "N/A") gallons</dd>
                 </dl>
             </div>
@@ -131,6 +132,34 @@
                     <dt>Lab Report Attached?</dt><dd>@(Model.LabReportAttached ? "Yes" : "No")</dd>
                     <dt>VOC Method #</dt><dd>@(!string.IsNullOrWhiteSpace(Model.VOCMethodNumber) ? Model.VOCMethodNumber : "N/A")</dd>
                 </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Permit Operation &amp; Other GW-59 Rows</h6></div>
+            <div class="card-body small">
+                <dl class="gw-kv">
+                    <dt>Lagoon</dt><dd>@(Model.GwOperationLagoon ? "Checked" : "Unchecked")</dd>
+                    <dt>Spray Field</dt><dd>@(Model.GwOperationSprayField ? "Checked" : "Unchecked")</dd>
+                </dl>
+                <div class="mt-3">
+                    <div class="fw-semibold mb-2">Other (Specify Compounds and Concentration Units)</div>
+                    @if (Model.OtherParameterLines.Any())
+                    {
+                        <ul class="mb-0 ps-3">
+                            @foreach (var line in Model.OtherParameterLines)
+                            {
+                                <li>@line.ParameterName: @line.Value.ToString("0.######") @line.Units</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="text-muted">No additional non-direct GW-59 rows for this record.</div>
+                    }
+                </div>
             </div>
         </div>
     </div>

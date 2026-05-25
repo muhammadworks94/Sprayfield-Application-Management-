@@ -78,6 +78,18 @@
                     <div class="col-md-2"><input name="effectiveStartDate" type="date" class="form-control" required value="@defaultEffectiveStart" /></div>
                     <div class="col-md-2"><input name="effectiveEndDate" type="date" class="form-control" /></div>
                     <div class="col-md-3"><input name="permitPdf" type="file" class="form-control" accept=".pdf" /></div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="gwOperationLagoon" value="true" id="addPermitGwLagoon" checked />
+                            <label class="form-check-label" for="addPermitGwLagoon">GW-59 Operation Type: Lagoon</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="gwOperationSprayField" value="true" id="addPermitGwSprayField" checked />
+                            <label class="form-check-label" for="addPermitGwSprayField">GW-59 Operation Type: Spray Field</label>
+                        </div>
+                    </div>
                     <div class="col-12"><textarea name="notes" class="form-control" rows="2" placeholder="Notes (optional)"></textarea></div>
                     <div class="col-12"><button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Add Permit</button></div>
                 </div>
@@ -182,6 +194,18 @@
                                     </div>
                                     <div class="col-md-2 d-grid align-self-end">
                                         <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save</button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="gwOperationLagoon" value="true" id="permitLagoon_@permit.Id" checked="@permit.GwOperationLagoon" />
+                                            <label class="form-check-label" for="permitLagoon_@permit.Id">GW-59 Operation Type: Lagoon</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="gwOperationSprayField" value="true" id="permitSprayField_@permit.Id" checked="@permit.GwOperationSprayField" />
+                                            <label class="form-check-label" for="permitSprayField_@permit.Id">GW-59 Operation Type: Spray Field</label>
+                                        </div>
                                     </div>
                                     @if (!string.IsNullOrWhiteSpace(permit.PermitPdfFileName))
                                     {
@@ -377,6 +401,18 @@
                                     <div class="col-md-2 d-grid align-self-end">
                                         <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save</button>
                                     </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="gwOperationLagoon" value="true" id="permitLagoonGw59_@permit.Id" checked="@permit.GwOperationLagoon" />
+                                            <label class="form-check-label" for="permitLagoonGw59_@permit.Id">GW-59 Operation Type: Lagoon</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="gwOperationSprayField" value="true" id="permitSprayFieldGw59_@permit.Id" checked="@permit.GwOperationSprayField" />
+                                            <label class="form-check-label" for="permitSprayFieldGw59_@permit.Id">GW-59 Operation Type: Spray Field</label>
+                                        </div>
+                                    </div>
                                     @if (!string.IsNullOrWhiteSpace(permit.PermitPdfFileName))
                                     {
                                         <div class="col-md-4 offset-md-6">
@@ -553,6 +589,18 @@
                                     </div>
                                     <div class="col-md-2 d-grid align-self-end">
                                         <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save</button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="gwOperationLagoon" value="true" id="permitLagoonGw59A_@permit.Id" checked="@permit.GwOperationLagoon" />
+                                            <label class="form-check-label" for="permitLagoonGw59A_@permit.Id">GW-59 Operation Type: Lagoon</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="gwOperationSprayField" value="true" id="permitSprayFieldGw59A_@permit.Id" checked="@permit.GwOperationSprayField" />
+                                            <label class="form-check-label" for="permitSprayFieldGw59A_@permit.Id">GW-59 Operation Type: Spray Field</label>
+                                        </div>
                                     </div>
                                     @if (!string.IsNullOrWhiteSpace(permit.PermitPdfFileName))
                                     {
