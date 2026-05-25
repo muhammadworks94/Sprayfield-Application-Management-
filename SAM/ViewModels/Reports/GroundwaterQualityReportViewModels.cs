@@ -53,6 +53,7 @@ public sealed class Gw59ParameterSnapshot
     public string Units { get; set; } = string.Empty;
     public decimal? Value { get; set; }
     public decimal? DailyMaximumLimit { get; set; }
+    public bool IsGw59 { get; set; }
     public bool IsGw59A { get; set; }
 }
 

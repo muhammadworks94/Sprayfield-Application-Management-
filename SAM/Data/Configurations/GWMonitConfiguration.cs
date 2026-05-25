@@ -33,12 +33,6 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
         builder.Property(g => g.Conductivity)
             .HasColumnType("decimal(18,2)");
 
-        builder.Property(g => g.TDS)
-            .HasColumnType("decimal(18,2)");
-
-        builder.Property(g => g.Turbidity)
-            .HasColumnType("decimal(18,2)");
-
         builder.Property(g => g.TSS)
             .HasColumnType("decimal(18,2)");
 

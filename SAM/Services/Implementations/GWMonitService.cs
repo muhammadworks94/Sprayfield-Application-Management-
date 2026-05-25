@@ -130,8 +130,6 @@ public class GWMonitService : IGWMonitService
         existing.Odor = gwMonit.Odor;
         existing.Appearance = gwMonit.Appearance;
         existing.Conductivity = gwMonit.Conductivity;
-        existing.TDS = gwMonit.TDS;
-        existing.Turbidity = gwMonit.Turbidity;
         existing.TSS = gwMonit.TSS;
         existing.NH3N = gwMonit.NH3N;
         existing.NO3N = gwMonit.NO3N;

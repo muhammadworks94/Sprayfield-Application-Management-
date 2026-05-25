@@ -21,6 +21,7 @@ using SAM.Services.Models;
 using SAM.Services.Helpers;
 using SAM.Utilities;
 using SAM.ViewModels.OperationalData;
+using SAM.ViewModels.Reports;
 
 namespace SAM.Controllers;
 
@@ -2027,8 +2028,6 @@ namespace SAM.Controllers;
             Odor = g.Odor,
             Appearance = g.Appearance,
             Conductivity = g.Conductivity,
-            TDS = g.TDS,
-            Turbidity = g.Turbidity,
             TSS = g.TSS,
             NH3N = g.NH3N,
             NO3N = g.NO3N,
@@ -2122,8 +2121,6 @@ namespace SAM.Controllers;
             Odor = gwMonit.Odor,
             Appearance = gwMonit.Appearance,
             Conductivity = gwMonit.Conductivity,
-            TDS = gwMonit.TDS,
-            Turbidity = gwMonit.Turbidity,
             TSS = gwMonit.TSS,
             NH3N = gwMonit.NH3N,
             NO3N = gwMonit.NO3N,
@@ -2159,6 +2156,13 @@ namespace SAM.Controllers;
             GW59ASignerTitle = gwMonit.GW59ASignerTitle,
             GW59ASignedDate = gwMonit.GW59ASignedDate
         };
+
+        var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(gwMonit.FacilityId, gwMonit.SampleDate);
+        viewModel.TemplateParameters = await BuildGwMonitTemplateInputsAsync(
+            gwMonit.FacilityId,
+            resolvedPermit?.Id,
+            gwMonit.SampleDate,
+            gwMonit.Id);
 
         return View(viewModel);
     }
@@ -2221,6 +2225,35 @@ namespace SAM.Controllers;
 
         var facility = gwMonit.Facility;
         var well = gwMonit.MonitoringWell;
+        var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(gwMonit.FacilityId, gwMonit.SampleDate);
+        var templateValues = await _context.GWMonitTemplateValues
+            .AsNoTracking()
+            .Where(x => x.GWMonitId == gwMonitId)
+            .Include(x => x.FacilityPermitTemplateParameter)
+                .ThenInclude(p => p!.PcsParameterCatalog)
+            .ToListAsync();
+        var snapshots = templateValues
+            .Where(x => x.FacilityPermitTemplateParameter != null)
+            .Select(x => new Gw59ParameterSnapshot
+            {
+                SortOrder = x.FacilityPermitTemplateParameter!.SortOrder,
+                PcsCode = x.FacilityPermitTemplateParameter!.PcsParameterCatalog?.PcsCode ?? string.Empty,
+                ParameterName = x.FacilityPermitTemplateParameter.ParameterDisplayOverride
+                    ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.UserFriendlyName
+                    ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.OfficialParameterName
+                    ?? string.Empty,
+                Units = x.FacilityPermitTemplateParameter.UnitsOverride
+                    ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.AcceptedUnits
+                    ?? string.Empty,
+                Value = x.NumericValue,
+                DailyMaximumLimit = x.FacilityPermitTemplateParameter.DailyMaximumLimit,
+                IsGw59 = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0,
+                IsGw59A = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0
+            })
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.PcsCode)
+            .ToList();
+        var chemistry = Gw59ChemistryResolver.Resolve(snapshots);
 
         // Basic mapping from entities to report view model
         var report = new GW59ReportViewModel
@@ -2228,7 +2261,7 @@ namespace SAM.Controllers;
             GwMonitId = gwMonit.Id,
             FacilityId = gwMonit.FacilityId,
             FacilityName = facility?.Name ?? string.Empty,
-            PermitNumber = facility?.PermitNumber ?? string.Empty,
+            PermitNumber = resolvedPermit?.PermitNumber ?? facility?.PermitNumber ?? string.Empty,
             Permittee = facility?.Permittee ?? string.Empty,
             Address = facility?.Address ?? string.Empty,
             City = facility?.City ?? string.Empty,
@@ -2236,7 +2269,7 @@ namespace SAM.Controllers;
             ZipCode = facility?.ZipCode ?? string.Empty,
             County = facility?.County ?? string.Empty,
             FacilityPhone = facility?.FacilityPhone ?? string.Empty,
-            PermitExpirationDate = facility?.PermitExpirationDate,
+            PermitExpirationDate = resolvedPermit?.EffectiveEndDate ?? facility?.PermitExpirationDate,
 
             MonitoringWellId = gwMonit.MonitoringWellId,
             WellId = well?.WellId ?? string.Empty,
@@ -2258,17 +2291,16 @@ namespace SAM.Controllers;
             Appearance = gwMonit.Appearance,
             MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered ?? false,
             MetalsAcidified = gwMonit.MetalSamplesFieldAcidified ?? false,
-
-            TDS = gwMonit.TDS,
-            TOC = gwMonit.TOC,
-            Chloride = gwMonit.Chloride,
-            NH3N = gwMonit.NH3N,
-            NO3N = gwMonit.NO3N,
-            TKN = gwMonit.TKN,
-            Calcium = gwMonit.Calcium,
-            Magnesium = gwMonit.Magnesium,
-            FecalColiform = gwMonit.FecalColiform,
-            TotalColiform = gwMonit.TotalColiform,
+            TDS = chemistry.TDS,
+            TOC = chemistry.TOC,
+            Chloride = chemistry.Chloride,
+            NH3N = chemistry.NH3N,
+            NO3N = chemistry.NO3N,
+            TKN = chemistry.TKN,
+            Calcium = chemistry.Calcium,
+            Magnesium = chemistry.Magnesium,
+            FecalColiform = chemistry.FecalColiform,
+            TotalColiform = chemistry.TotalColiform,
 
             LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
                 ? (facility?.CertifiedLaboratory1Name ?? string.Empty)
@@ -2277,7 +2309,8 @@ namespace SAM.Controllers;
                 ? (facility?.LabCertificationNumber1 ?? string.Empty)
                 : gwMonit.LabCertification,
             LabReportAttached = gwMonit.VOCReportAttached ?? false,
-            VOCMethodNumber = gwMonit.VOCMethodNumber
+            VOCMethodNumber = gwMonit.VOCMethodNumber,
+            ParameterSnapshots = snapshots
         };
 
         // Certification block – default name from current user if available
@@ -2435,8 +2468,6 @@ namespace SAM.Controllers;
                 Odor = viewModel.Odor ?? string.Empty,
                 Appearance = viewModel.Appearance ?? string.Empty,
                 Conductivity = viewModel.Conductivity,
-                TDS = viewModel.TDS,
-                Turbidity = viewModel.Turbidity,
                 TSS = viewModel.TSS,
                 NH3N = viewModel.NH3N,
                 NO3N = viewModel.NO3N,
@@ -2522,8 +2553,6 @@ namespace SAM.Controllers;
             Odor = gwMonit.Odor,
             Appearance = gwMonit.Appearance,
             Conductivity = gwMonit.Conductivity,
-            TDS = gwMonit.TDS,
-            Turbidity = gwMonit.Turbidity,
             TSS = gwMonit.TSS,
             NH3N = gwMonit.NH3N,
             NO3N = gwMonit.NO3N,
@@ -2701,8 +2730,6 @@ namespace SAM.Controllers;
             gwMonit.Odor = viewModel.Odor ?? string.Empty;
             gwMonit.Appearance = viewModel.Appearance ?? string.Empty;
             gwMonit.Conductivity = viewModel.Conductivity;
-            gwMonit.TDS = viewModel.TDS;
-            gwMonit.Turbidity = viewModel.Turbidity;
             gwMonit.TSS = viewModel.TSS;
             gwMonit.NH3N = viewModel.NH3N;
             gwMonit.NO3N = viewModel.NO3N;

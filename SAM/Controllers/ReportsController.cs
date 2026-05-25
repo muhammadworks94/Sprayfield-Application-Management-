@@ -1924,7 +1924,8 @@ public class ReportsController : BaseController
             VOCMethodNumber = model.VOCMethodNumber,
             CertificationName = model.CertificationName,
             CertificationTitle = model.CertificationTitle,
-            CertificationDate = model.CertificationDate
+            CertificationDate = model.CertificationDate,
+            ParameterSnapshots = model.ParameterSnapshots
         };
         return View("~/Views/OperationalData/GWMonitReport.cshtml", preview);
     }
@@ -2075,6 +2076,7 @@ public class ReportsController : BaseController
                     ?? string.Empty,
                 Value = x.NumericValue,
                 DailyMaximumLimit = x.FacilityPermitTemplateParameter.DailyMaximumLimit,
+                IsGw59 = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0,
                 IsGw59A = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0
             })
             .OrderBy(x => x.SortOrder)
@@ -2086,6 +2088,7 @@ public class ReportsController : BaseController
             .AnyAsync(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0);
 
         var currentUser = await GetCurrentUserAsync();
+        var chemistry = Gw59ChemistryResolver.Resolve(snapshots);
         return new Gw59ExportModel
         {
             GwMonitId = gwMonit.Id,
@@ -2117,16 +2120,16 @@ public class ReportsController : BaseController
             Appearance = gwMonit.Appearance,
             MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered.GetValueOrDefault(),
             MetalsAcidified = gwMonit.MetalSamplesFieldAcidified.GetValueOrDefault(),
-            TDS = gwMonit.TDS,
-            TOC = gwMonit.TOC,
-            Chloride = gwMonit.Chloride,
-            NH3N = gwMonit.NH3N,
-            NO3N = gwMonit.NO3N,
-            TKN = gwMonit.TKN,
-            Calcium = gwMonit.Calcium,
-            Magnesium = gwMonit.Magnesium,
-            FecalColiform = gwMonit.FecalColiform,
-            TotalColiform = gwMonit.TotalColiform,
+            TDS = chemistry.TDS,
+            TOC = chemistry.TOC,
+            Chloride = chemistry.Chloride,
+            NH3N = chemistry.NH3N,
+            NO3N = chemistry.NO3N,
+            TKN = chemistry.TKN,
+            Calcium = chemistry.Calcium,
+            Magnesium = chemistry.Magnesium,
+            FecalColiform = chemistry.FecalColiform,
+            TotalColiform = chemistry.TotalColiform,
             LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
                 ? (gwMonit.Facility?.CertifiedLaboratory1Name ?? string.Empty)
                 : gwMonit.AnalyzedBy,

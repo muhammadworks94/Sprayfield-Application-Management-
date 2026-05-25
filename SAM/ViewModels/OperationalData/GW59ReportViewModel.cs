@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SAM.ViewModels.Reports;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -154,5 +155,7 @@ public class GW59ReportViewModel
     [Display(Name = "Certification Date")]
     [DataType(DataType.Date)]
     public DateTime? CertificationDate { get; set; }
+
+    public List<Gw59ParameterSnapshot> ParameterSnapshots { get; set; } = new();
 }
 

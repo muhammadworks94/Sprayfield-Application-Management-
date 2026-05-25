@@ -52,14 +52,6 @@ public class GWMonitViewModel
     [Display(Name = "Appearance")]
     public string? Appearance { get; set; }
 
-    [Display(Name = "TDS (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TDS { get; set; }
-    
-    [Display(Name = "Turbidity (NTU)")]
-    [Range(0, double.MaxValue)]
-    public decimal? Turbidity { get; set; }
-    
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TSS { get; set; }
@@ -169,6 +161,8 @@ public class GWMonitViewModel
     [Display(Name = "GW-59A Signed Date")]
     [DataType(DataType.Date)]
     public DateTime? GW59ASignedDate { get; set; }
+
+    public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
 }
 
 public class GWMonitCreateViewModel
@@ -221,14 +215,6 @@ public class GWMonitCreateViewModel
     [StringLength(100)]
     [Display(Name = "Appearance")]
     public string? Appearance { get; set; }
-    [Display(Name = "TDS (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TDS { get; set; }
-    
-    [Display(Name = "Turbidity (NTU)")]
-    [Range(0, double.MaxValue)]
-    public decimal? Turbidity { get; set; }
-    
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TSS { get; set; }
@@ -400,14 +386,6 @@ public class GWMonitEditViewModel
     [StringLength(100)]
     [Display(Name = "Appearance")]
     public string? Appearance { get; set; }
-    [Display(Name = "TDS (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TDS { get; set; }
-    
-    [Display(Name = "Turbidity (NTU)")]
-    [Range(0, double.MaxValue)]
-    public decimal? Turbidity { get; set; }
-    
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TSS { get; set; }

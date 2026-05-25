@@ -71,6 +71,11 @@
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-briefcase me-1"></i>Company:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.CompanyName ?? "N/A")</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-collection me-1"></i>Metals Unfiltered:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.MetalsSamplesCollectedUnfiltered ? "Yes" : "No")</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-fill me-1"></i>Metal Samples Field Acidified:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.MetalSamplesFieldAcidified ? "Yes" : "No")</dd>
                 </dl>
             </div>
             <div class="col-md-6">
@@ -107,47 +112,41 @@
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-lightning-charge me-1"></i>Specific Conductance:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.Conductivity?.ToString("F2") ?? "N/A") μS/cm</dd>
 
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-cloud me-1"></i>Turbidity:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.Turbidity?.ToString("F2") ?? "N/A") NTU</dd>
                 </dl>
             </div>
             <div class="col-md-6">
-                <h5 class="detail-section-label mb-4">Chemical Parameters</h5>
+                <h5 class="detail-section-label mb-4">Permit Template Parameters</h5>
                 <div class="rounded p-3 bg-light">
-                <dl class="row">
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>TSS:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.TSS?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>NH3-N:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.NH3N?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>NO3-N:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.NO3N?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>TKN:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.TKN?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>TDS:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.TDS?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>Chloride:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.Chloride?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>TOC:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.TOC?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>Calcium:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.Calcium?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>Magnesium:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.Magnesium?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-collection me-1"></i>Metals Unfiltered:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.MetalsSamplesCollectedUnfiltered ? "Yes" : "No")</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-fill me-1"></i>Metal Samples Field Acidified:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.MetalSamplesFieldAcidified ? "Yes" : "No")</dd>
-                </dl>
+                    @if (Model.TemplateParameters.Any(p => p.EnteredValue.HasValue))
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>PCS</th>
+                                        <th>Parameter</th>
+                                        <th>Units</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var parameter in Model.TemplateParameters.Where(p => p.EnteredValue.HasValue))
+                                {
+                                    <tr>
+                                        <td>@parameter.PcsCode</td>
+                                        <td>@parameter.ParameterName</td>
+                                        <td>@parameter.Units</td>
+                                        <td>@parameter.EnteredValue?.ToString("0.######")</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No permit-template chemistry values were saved for this record.</span>
+                    }
                 </div>
             </div>
         </div>

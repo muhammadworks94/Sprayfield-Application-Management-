@@ -63,16 +63,6 @@ public class GWMonit : CompanyScopedEntity
     public decimal? Conductivity { get; set; }
 
     /// <summary>
-    /// Total Dissolved Solids.
-    /// </summary>
-    public decimal? TDS { get; set; }
-
-    /// <summary>
-    /// Turbidity.
-    /// </summary>
-    public decimal? Turbidity { get; set; }
-
-    /// <summary>
     /// Total Suspended Solids.
     /// </summary>
     public decimal? TSS { get; set; }
