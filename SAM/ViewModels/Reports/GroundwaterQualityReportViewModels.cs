@@ -82,8 +82,8 @@ public sealed class Gw59ExportModel
     public string WellLocation { get; set; } = string.Empty;
     public decimal? WellDepthFeet { get; set; }
     public decimal? DiameterInches { get; set; }
-    public decimal? LowScreenDepthFeet { get; set; }
-    public decimal? HighScreenDepthFeet { get; set; }
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+    public decimal? ScreenedIntervalToFeet { get; set; }
     public decimal? RelativeMpElevation { get; set; }
     public int? NumberOfWellsToBeSampled { get; set; }
     public DateTime SampleDate { get; set; }

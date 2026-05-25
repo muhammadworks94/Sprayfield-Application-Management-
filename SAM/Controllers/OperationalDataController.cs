@@ -2023,6 +2023,9 @@ namespace SAM.Controllers;
             SampleDepth = g.SampleDepth,
             WaterLevel = g.WaterLevel,
             MeasuringPointAboveLandSurface = g.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = g.RelativeMpElevation,
+            ScreenedIntervalFromFeet = g.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = g.ScreenedIntervalToFeet,
             Temperature = g.Temperature,
             PH = g.PH,
             GallonsPumped = g.GallonsPumped,
@@ -2117,6 +2120,9 @@ namespace SAM.Controllers;
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
             MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = gwMonit.RelativeMpElevation,
+            ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
             Temperature = gwMonit.Temperature,
             PH = gwMonit.PH,
             GallonsPumped = gwMonit.GallonsPumped,
@@ -2278,14 +2284,15 @@ namespace SAM.Controllers;
             WellLocation = well?.LocationDescription ?? string.Empty,
             WellDepthFeet = well?.WellDepthFeet,
             DiameterInches = well?.DiameterInches,
-            LowScreenDepthFeet = well?.LowScreenDepthFeet,
-            HighScreenDepthFeet = well?.HighScreenDepthFeet,
+            ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
             NumberOfWellsToBeSampled = well?.NumberOfWellsToBeSampled,
 
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
             MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = gwMonit.RelativeMpElevation,
             GallonsPumped = gwMonit.GallonsPumped,
             PHField = gwMonit.PH,
             TemperatureField = gwMonit.Temperature,
@@ -2493,6 +2500,9 @@ namespace SAM.Controllers;
                 SampleDepth = viewModel.SampleDepth,
                 WaterLevel = viewModel.WaterLevel,
                 MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface,
+                RelativeMpElevation = viewModel.RelativeMpElevation,
+                ScreenedIntervalFromFeet = viewModel.ScreenedIntervalFromFeet,
+                ScreenedIntervalToFeet = viewModel.ScreenedIntervalToFeet,
                 Temperature = viewModel.Temperature,
                 PH = viewModel.PH,
                 GallonsPumped = viewModel.GallonsPumped,
@@ -2579,6 +2589,9 @@ namespace SAM.Controllers;
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
             MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = gwMonit.RelativeMpElevation,
+            ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
             Temperature = gwMonit.Temperature,
             PH = gwMonit.PH,
             GallonsPumped = gwMonit.GallonsPumped,
@@ -2776,6 +2789,9 @@ namespace SAM.Controllers;
             gwMonit.SampleDepth = viewModel.SampleDepth;
             gwMonit.WaterLevel = viewModel.WaterLevel;
             gwMonit.MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface;
+            gwMonit.RelativeMpElevation = viewModel.RelativeMpElevation;
+            gwMonit.ScreenedIntervalFromFeet = viewModel.ScreenedIntervalFromFeet;
+            gwMonit.ScreenedIntervalToFeet = viewModel.ScreenedIntervalToFeet;
             gwMonit.Temperature = viewModel.Temperature;
             gwMonit.PH = viewModel.PH;
             gwMonit.GallonsPumped = viewModel.GallonsPumped;

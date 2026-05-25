@@ -1894,8 +1894,8 @@ public class ReportsController : BaseController
             WellLocation = model.WellLocation,
             WellDepthFeet = model.WellDepthFeet,
             DiameterInches = model.DiameterInches,
-            LowScreenDepthFeet = model.LowScreenDepthFeet,
-            HighScreenDepthFeet = model.HighScreenDepthFeet,
+            ScreenedIntervalFromFeet = model.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = model.ScreenedIntervalToFeet,
             NumberOfWellsToBeSampled = model.NumberOfWellsToBeSampled,
             SampleDate = model.SampleDate,
             SampleDepth = model.SampleDepth,
@@ -2095,9 +2095,9 @@ public class ReportsController : BaseController
             WellLocation = gwMonit.MonitoringWell?.LocationDescription ?? string.Empty,
             WellDepthFeet = gwMonit.MonitoringWell?.WellDepthFeet,
             DiameterInches = gwMonit.MonitoringWell?.DiameterInches,
-            LowScreenDepthFeet = gwMonit.MonitoringWell?.LowScreenDepthFeet,
-            HighScreenDepthFeet = gwMonit.MonitoringWell?.HighScreenDepthFeet,
-            RelativeMpElevation = gwMonit.MonitoringWell?.TopOfCasingElevationMsl,
+            ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
+            RelativeMpElevation = gwMonit.RelativeMpElevation,
             NumberOfWellsToBeSampled = gwMonit.MonitoringWell?.NumberOfWellsToBeSampled,
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
@@ -2193,12 +2193,12 @@ public class ReportsController : BaseController
             DrawText(model.WellId, 210, 204);
             DrawText(model.SampleDate.ToString("MM/dd/yyyy"), 460, 204);
             DrawText(model.WellLocation, 150, 168);
-            DrawText(model.WellDepthFeet?.ToString("F2"), 158, 222);
+            DrawText(model.WellDepthFeet?.ToString("F2"), 153, 222);
             DrawText(model.DiameterInches?.ToString("F2"), 455, 222);
-            if (model.LowScreenDepthFeet.HasValue || model.HighScreenDepthFeet.HasValue)
+            if (model.ScreenedIntervalFromFeet.HasValue || model.ScreenedIntervalToFeet.HasValue)
             {
-                DrawText(model.LowScreenDepthFeet?.ToString("F2"), 450, 239, 55);
-                DrawText(model.HighScreenDepthFeet?.ToString("F2"), 520, 239, 55);
+                DrawText(model.ScreenedIntervalFromFeet?.ToString("F2"), 450, 239, 55);
+                DrawText(model.ScreenedIntervalToFeet?.ToString("F2"), 520, 239, 55);
             }
             DrawText(model.RelativeMpElevation?.ToString("F2"), 450, 250, 75);
             DrawText(model.WaterLevel?.ToString("F2"), 160, 237);

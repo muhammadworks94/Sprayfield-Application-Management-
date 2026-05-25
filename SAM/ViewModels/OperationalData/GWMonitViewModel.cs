@@ -31,6 +31,17 @@ public class GWMonitViewModel
     [Display(Name = "Measuring Point (ft above land surface)")]
     [Range(0, double.MaxValue)]
     public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
+
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
@@ -199,6 +210,17 @@ public class GWMonitCreateViewModel
     [Display(Name = "Measuring Point (ft above land surface)")]
     [Range(0, double.MaxValue)]
     public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
+
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
@@ -374,6 +396,17 @@ public class GWMonitEditViewModel
     [Display(Name = "Measuring Point (ft above land surface)")]
     [Range(0, double.MaxValue)]
     public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
+
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]

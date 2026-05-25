@@ -12,7 +12,7 @@ public class ProjectKnowledgeService : IProjectKnowledgeService
     {
         var model = new ProjectKnowledgeViewModel
         {
-            Summary = "This page explains how SAM is structured, how major workflows run, how reports are generated, and which formulas and fallback rules are applied."
+            Summary = "This page explains how SAM is structured, how major workflows run, how reports are generated, and which formulas and fallback rules are applied. Groundwater monitoring now uses permit-template PCS rows as the chemistry source of truth, combines GW-59 and GW-59A into one PDF export, and manages VOC attachments through the reports flow."
         };
 
         model.Sections.Add(BuildSystemOverview());
@@ -207,9 +207,10 @@ flowchart TD
                         "Groundwater and wastewater template values are stored separately (GWMonitTemplateValues vs WWCharTemplateValues) even when sharing the same PCS catalog entry (for example pH).",
                         "Rows required for the selected sample month are highlighted and enforced at save with user-friendly unblock guidance.",
                         "PAN chemistry in WWChar workflow is sourced from template PCS rows: 00625 (TKN) and 00620 (NO3). NO2 is treated as 0 for PAN.",
+                        "Groundwater chemistry previously stored as direct TDS/Turbidity fields was cut over to permit-template PCS values; GW reporting now resolves chemistry from saved GWMonitTemplateValues.",
                         "NDMR/GW reporting uses the same permit/template context so output matches configured permit requirements.",
                         "Per-row notes (permit instructions/footnotes) are shown through an info icon tooltip in admin and monitoring dialogs.",
-                        "GW VOC report attachment is PDF-only and is merged into GW-59 PDF output when present."
+                        "GW VOC report attachment is PDF-only, validated with the same PDF parser used by report merge, and is merged into the combined GW-59 export when present."
                     }
                 }
             },
@@ -314,9 +315,11 @@ flowchart TD
                         "System resolves active permit and shows Attachment C template rows with editable value inputs.",
                         "GW saves reject template rows outside GW59/GW59A for the resolved permit to prevent cross-report contamination.",
                         "Rows required for the selected sample month (from frequency + scheduled months) must be entered before save.",
+                        "Groundwater sample-level fields now include Measuring Point (ft above land surface), Relative M.P. Elevation, Screened Interval From, Screened Interval To, and pH 00400 directly on GWMonit.",
                         "GW-59A compliance answers (Q1-Q7, detail text, due date, signer/date) are captured on GWMonit create/edit as a separate questionnaire workflow.",
-                        "If VOC Report Attached is selected, a VOC PDF upload is required and saved with the groundwater record.",
-                        "GW-59 PDF export appends VOC PDF pages after the generated GW-59 form pages.",
+                        "If Attachment C row 78732 (Volatile Compounds) is required for the selected month, save requires a VOC PDF, forces VOC Report Attached to true, and requires VOC Method #.",
+                        "Unchecking VOC Report Attached no longer deletes the stored VOC file; replacement uploads still remove the old blob and overwrite the groundwater record metadata.",
+                        "Edit flow provides an explicit remove-current-VOC-file action, which clears the stored blob and forces VOC Report Attached off unless a replacement file is uploaded.",
                         "Template values are stored and used downstream for reporting/compliance context."
                     }
                 },
@@ -327,9 +330,15 @@ flowchart TD
                     {
                         "Company Admin opens Reports > Groundwater Quality Reports.",
                         "System lists groundwater monitoring records with facility, well, sample date, and resolved permit context.",
-                        "GW-59 export uses form template GW-59 GW-QualityMonitoringReportForm.pdf with mapped SAM fields.",
-                        "GW-59A export uses form template GW-59A.pdf and maps the dedicated GW-59A questionnaire fields on the groundwater record (questions, detail notes, and signature/date).",
+                        "Download PDF is the single supported groundwater report export action; the record-details page no longer serves as the report-download entry point.",
+                        "ExportGW59Report generates one combined PDF in this order: GW-59, GW-59A if questionnaire data exists, then attached VOC PDF pages if present.",
+                        "GW-59 export uses form template GW-59 GW-QualityMonitoringReportForm.pdf with mapped facility, permit, monitoring-well, GWMonit, and permit-template data.",
+                        "GW-59A export uses form template GW-59A.pdf and maps the dedicated GW-59A questionnaire fields on the groundwater record (questions, detail notes, and export-time signer/date).",
                         "GW-59A unanswered questions are exported as blank yes/no boxes (no forced default).",
+                        "GW-59 operation type checkboxes are sourced from FacilityPermit.GwOperationLagoon and FacilityPermit.GwOperationSprayField, resolved by facility + sample date.",
+                        "GW-59 screened interval, measuring point, relative M.P. elevation, and pH 00400 now come from the groundwater monitoring record itself rather than monitoring-well master values for those form slots.",
+                        "GW-59 named chemistry slots use direct PCS mappings from saved template snapshots, and the Other section auto-populates from remaining eligible non-direct GW-59 PCS rows in permit sort order.",
+                        "VOC merge reads Azure blobs into memory before PdfSharpCore import so valid PDFs no longer fail on non-seekable Azure streams.",
                         "Exports fail with actionable messages when template files or required source data are missing."
                     }
                 },
@@ -380,7 +389,7 @@ flowchart TD
                         new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Facility permit context influences setup and source values", "Area/time/value handling follows per-field formula rules; export layout includes facility/field checkboxes and footer columns through V." },
                         new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version resolved by facility + date when available", "NDMR first two daily columns are exported from canonical Operator Logs as ORC Arrival Time and ORC Time on Site (hours); if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
-                        new List<string> { "GW report outputs", "GWMonit (+ template hooks)", "Facility/well context", "Template-driven extension path in progress." },
+                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + MonitoringWell", "Permit version resolved by facility + sample date; operation type checkboxes come from permit flags", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF; screened interval, measuring point, relative M.P. elevation, and pH 00400 are taken from GWMonit while named chemistry comes from template PCS snapshots and Other is auto-populated from remaining eligible rows." },
                         new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
                     }
                 }

@@ -70,9 +70,37 @@
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
+                            <label asp-for="RelativeMpElevation" class="form-label"></label>
+                            <input asp-for="RelativeMpElevation" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="RelativeMpElevation" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="ScreenedIntervalFromFeet" class="form-label"></label>
+                            <input asp-for="ScreenedIntervalFromFeet" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="ScreenedIntervalFromFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
                             <label asp-for="Temperature" class="form-label"></label>
                             <input asp-for="Temperature" type="number" step="0.01" class="form-control" />
                             <span asp-validation-for="Temperature" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="ScreenedIntervalToFeet" class="form-label"></label>
+                            <input asp-for="ScreenedIntervalToFeet" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="ScreenedIntervalToFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="PH" class="form-label"></label>
+                            <input asp-for="PH" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="PH" class="text-danger"></span>
                         </div>
                     </div>
                     <div class="col-md-3">

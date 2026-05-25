@@ -54,10 +54,10 @@ public class GW59ReportViewModel
     public decimal? DiameterInches { get; set; }
 
     [Display(Name = "Screened Interval Low (ft)")]
-    public decimal? LowScreenDepthFeet { get; set; }
+    public decimal? ScreenedIntervalFromFeet { get; set; }
 
     [Display(Name = "Screened Interval High (ft)")]
-    public decimal? HighScreenDepthFeet { get; set; }
+    public decimal? ScreenedIntervalToFeet { get; set; }
 
     [Display(Name = "Number of Wells to be Sampled")]
     public int? NumberOfWellsToBeSampled { get; set; }
@@ -76,6 +76,9 @@ public class GW59ReportViewModel
 
     [Display(Name = "Measuring Point (ft above land surface)")]
     public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
 
     [Display(Name = "Gallons Pumped")]
     public decimal? GallonsPumped { get; set; }

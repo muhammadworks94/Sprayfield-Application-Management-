@@ -65,9 +65,9 @@
                     <dt>Well Diameter</dt><dd>@(Model.DiameterInches?.ToString("F2") ?? "N/A") in</dd>
                     <dt>Screened Interval</dt>
                     <dd>
-                        @if (Model.LowScreenDepthFeet.HasValue || Model.HighScreenDepthFeet.HasValue)
+                        @if (Model.ScreenedIntervalFromFeet.HasValue || Model.ScreenedIntervalToFeet.HasValue)
                         {
-                            @($"{Model.LowScreenDepthFeet?.ToString("F2") ?? "?"} to {Model.HighScreenDepthFeet?.ToString("F2") ?? "?"} ft")
+                            @($"{Model.ScreenedIntervalFromFeet?.ToString("F2") ?? "?"} to {Model.ScreenedIntervalToFeet?.ToString("F2") ?? "?"} ft")
                         }
                         else
                         {
@@ -79,6 +79,7 @@
                     <dt>Sample Depth</dt><dd>@(Model.SampleDepth?.ToString("F2") ?? "N/A") ft</dd>
                     <dt>Depth to Water Level</dt><dd>@(Model.WaterLevel?.ToString("F2") ?? "N/A") ft</dd>
                     <dt>Measuring Point</dt><dd>@(Model.MeasuringPointAboveLandSurface?.ToString("F2") ?? "N/A") ft above land surface</dd>
+                    <dt>Relative M.P. Elevation</dt><dd>@(Model.RelativeMpElevation?.ToString("F2") ?? "N/A") ft</dd>
                     <dt>Volume Pumped/Bailed Before Sampling</dt><dd>@(Model.GallonsPumped?.ToString("F2") ?? "N/A") gallons</dd>
                 </dl>
             </div>
