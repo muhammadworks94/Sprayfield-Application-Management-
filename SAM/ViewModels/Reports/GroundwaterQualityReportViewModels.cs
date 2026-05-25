@@ -76,6 +76,7 @@ public sealed class Gw59ExportModel
     public decimal? DiameterInches { get; set; }
     public decimal? LowScreenDepthFeet { get; set; }
     public decimal? HighScreenDepthFeet { get; set; }
+    public decimal? RelativeMpElevation { get; set; }
     public int? NumberOfWellsToBeSampled { get; set; }
     public DateTime SampleDate { get; set; }
     public decimal? SampleDepth { get; set; }

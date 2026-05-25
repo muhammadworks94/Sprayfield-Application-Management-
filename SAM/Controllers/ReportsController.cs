@@ -1932,10 +1932,10 @@ public class ReportsController : BaseController
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> ExportGW59Report(Guid id)
+    public async Task<IActionResult> ExportGW59Report(Guid id, bool showGrid = false)
     {
         var model = await BuildGw59ExportModelAsync(id);
-        var bytes = await RenderGw59PdfAsync(model);
+        var bytes = await RenderCombinedGw59PdfAsync(model, showGrid);
         var safeFacility = string.IsNullOrWhiteSpace(model.FacilityName) ? "Facility" : model.FacilityName.Replace(' ', '_');
         return File(bytes, "application/pdf", $"GW59_{safeFacility}_{model.SampleDate:yyyyMMdd}.pdf");
     }
@@ -2108,6 +2108,7 @@ public class ReportsController : BaseController
             DiameterInches = gwMonit.MonitoringWell?.DiameterInches,
             LowScreenDepthFeet = gwMonit.MonitoringWell?.LowScreenDepthFeet,
             HighScreenDepthFeet = gwMonit.MonitoringWell?.HighScreenDepthFeet,
+            RelativeMpElevation = gwMonit.MonitoringWell?.TopOfCasingElevationMsl,
             NumberOfWellsToBeSampled = gwMonit.MonitoringWell?.NumberOfWellsToBeSampled,
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
@@ -2164,7 +2165,7 @@ public class ReportsController : BaseController
         };
     }
 
-    private async Task<byte[]> RenderGw59PdfAsync(Gw59ExportModel model)
+    private async Task<byte[]> RenderGw59PdfAsync(Gw59ExportModel model, bool showGrid = false)
     {
         var templatePath = Path.Combine(_environment.WebRootPath, "forms", "GW-59 GW-QualityMonitoringReportForm.pdf");
         if (!System.IO.File.Exists(templatePath))
@@ -2178,16 +2179,21 @@ public class ReportsController : BaseController
             var page = document.Pages[0];
             var gfx = XGraphics.FromPdfPage(page);
             var font = new XFont("Arial", 8, XFontStyle.Regular);
-            void DrawText(string? text, double x, double y) =>
-                gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(x, y, 260, font.Height + 2), XStringFormats.TopLeft);
+            void DrawText(string? text, double x, double y, double width = 260) =>
+                gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(x, y, width, font.Height + 2), XStringFormats.TopLeft);
+            void DrawTick(double x, double y)
+            {
+                gfx.DrawLine(XPens.Black, x, y + 5, x + 3, y + 8);
+                gfx.DrawLine(XPens.Black, x + 3, y + 8, x + 9, y + 1);
+            }
 
             DrawText(model.FacilityName, 120, 74);
-            DrawText(model.PermitNumber, 630, 60);
+            DrawText(model.PermitNumber, 630, 75);
             DrawText(model.Permittee, 170, 90);
             DrawText(model.Address, 120, 106);
-            DrawText(model.City, 80, 140);
-            DrawText(model.ZipCode, 280, 140);
-            DrawText(model.State, 230, 140);
+            DrawText(model.City, 80, 122);
+            DrawText(model.ZipCode, 280, 122);
+            DrawText(model.State, 230, 122);
             DrawText(model.County, 410, 120);
             DrawText(model.PermitExpirationDate?.ToString("MM/dd/yyyy"), 775, 60);
             DrawText(model.FacilityPhone, 410, 152);
@@ -2198,19 +2204,22 @@ public class ReportsController : BaseController
             DrawText(model.DiameterInches?.ToString("F2"), 455, 222);
             if (model.LowScreenDepthFeet.HasValue || model.HighScreenDepthFeet.HasValue)
             {
-                DrawText($"{model.LowScreenDepthFeet?.ToString("F2") ?? "?"} to {model.HighScreenDepthFeet?.ToString("F2") ?? "?"} ft", 260, 220);
+                DrawText(model.LowScreenDepthFeet?.ToString("F2"), 450, 239, 55);
+                DrawText(model.HighScreenDepthFeet?.ToString("F2"), 520, 239, 55);
             }
+            DrawText(model.RelativeMpElevation?.ToString("F2"), 450, 250, 75);
             DrawText(model.WaterLevel?.ToString("F2"), 160, 237);
             DrawText(model.GallonsPumped?.ToString("F2"), 260, 266);
-            DrawText(model.PHField?.ToString("F2"), 615, 220);
+            DrawText(model.PHField?.ToString("F2"), 610, 220, 45);
             DrawText(model.TemperatureField?.ToString("F1"), 750, 220);
             DrawText(model.SpecificConductance?.ToString("F2"), 660, 238);
             DrawText(model.Odor, 650, 252);
             DrawText(model.Appearance, 650, 267);
             DrawText(model.MetalsUnfiltered ? "X" : string.Empty, 240, 283);
-            DrawText(!model.MetalsUnfiltered ? "X" : string.Empty, 301, 282);
+            DrawText(!model.MetalsUnfiltered ? "X" : string.Empty, 303, 282);
             DrawText(model.MetalsAcidified ? "X" : string.Empty, 444, 283);
-            DrawText(!model.MetalsAcidified ? "X" : string.Empty, 491, 283);
+            DrawText(!model.MetalsAcidified ? "X" : string.Empty, 492, 283);
+            DrawText(model.SampleDate.ToString("MM/dd/yyyy"), 132, 309, 110);
             DrawText(model.LabName, 450, 308);
             DrawText(model.LabCertificationNumber, 740, 308);
             DrawText(model.TDS?.ToString("F2"), 160, 400);
@@ -2223,51 +2232,84 @@ public class ReportsController : BaseController
             DrawText(model.Magnesium?.ToString("F2"), 440, 538);
             DrawText(model.FecalColiform?.ToString("F0"), 165, 352);
             DrawText(model.TotalColiform?.ToString("F0"), 165, 369);
-            DrawText(model.LabReportAttached ? "X" : string.Empty, 684, 510);
-            DrawText(!model.LabReportAttached ? "X" : string.Empty, 752, 510);
+            DrawText(model.LabReportAttached ? "X" : string.Empty, 684, 509);
+            DrawText(!model.LabReportAttached ? "X" : string.Empty, 752, 509);
             DrawText(model.VOCMethodNumber, 750, 525);
-            DrawText(model.CertificationName, 140, 690);
-            DrawText(model.CertificationTitle, 140, 708);
+            DrawTick(555, 121);
+            DrawTick(555, 136);
+            DrawText($"{model.CertificationName} - {model.CertificationTitle}", 40, 649, 340);
             DrawText(model.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726);
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+            }
+
             document.Save(outputStream, false);
         }
 
-        outputStream.Position = 0;
-        if (model.LabReportAttached && !string.IsNullOrWhiteSpace(model.VOCReportFileStoragePath))
+        return outputStream.ToArray();
+    }
+
+    private async Task<byte[]> RenderCombinedGw59PdfAsync(Gw59ExportModel model, bool showGrid = false)
+    {
+        var baseGw59Bytes = await RenderGw59PdfAsync(model, showGrid);
+        byte[]? gw59aBytes = null;
+
+        if (!IsGw59AQuestionnaireEmpty(model))
         {
-            var container = await GetSamBlobContainerClientAsync();
-            var vocBlobClient = container.GetBlobClient(model.VOCReportFileStoragePath);
-            if (await vocBlobClient.ExistsAsync())
-            {
-                using var mergedOutput = new MemoryStream();
-                using var mergedDoc = new PdfDocument();
-                using (var baseDoc = PdfReader.Open(outputStream, PdfDocumentOpenMode.Import))
-                {
-                    foreach (var page in baseDoc.Pages) mergedDoc.AddPage(page);
-                }
-
-                try
-                {
-                    await using var vocBuffer = await DownloadBlobToMemoryAsync(vocBlobClient);
-                    using (var vocDoc = PdfReader.Open(vocBuffer, PdfDocumentOpenMode.Import))
-                    {
-                        foreach (var page in vocDoc.Pages) mergedDoc.AddPage(page);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Failed to merge VOC report PDF for GWMonit {GWMonitId}", model.GwMonitId);
-                    throw new Infrastructure.Exceptions.BusinessRuleException(
-                        "VOC report file could not be merged. Ensure the attached VOC report is a valid PDF.",
-                        ex);
-                }
-
-                mergedDoc.Save(mergedOutput, false);
-                return mergedOutput.ToArray();
-            }
+            gw59aBytes = await RenderGw59APdfAsync(model, showGrid);
         }
 
-        return outputStream.ToArray();
+        using var assembledOutput = new MemoryStream();
+        using (var assembledDoc = new PdfDocument())
+        {
+            ImportPdfBytes(assembledDoc, baseGw59Bytes);
+
+            if (gw59aBytes != null)
+            {
+                ImportPdfBytes(assembledDoc, gw59aBytes);
+            }
+
+            if (model.LabReportAttached && !string.IsNullOrWhiteSpace(model.VOCReportFileStoragePath))
+            {
+                var container = await GetSamBlobContainerClientAsync();
+                var vocBlobClient = container.GetBlobClient(model.VOCReportFileStoragePath);
+                if (await vocBlobClient.ExistsAsync())
+                {
+                    try
+                    {
+                        await using var vocBuffer = await DownloadBlobToMemoryAsync(vocBlobClient);
+                        using var vocDoc = PdfReader.Open(vocBuffer, PdfDocumentOpenMode.Import);
+                        foreach (var page in vocDoc.Pages)
+                        {
+                            assembledDoc.AddPage(page);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "Failed to merge VOC report PDF for GWMonit {GWMonitId}", model.GwMonitId);
+                        throw new Infrastructure.Exceptions.BusinessRuleException(
+                            "VOC report file could not be merged. Ensure the attached VOC report is a valid PDF.",
+                            ex);
+                    }
+                }
+            }
+
+            assembledDoc.Save(assembledOutput, false);
+        }
+
+        return assembledOutput.ToArray();
+    }
+
+    private static void ImportPdfBytes(PdfDocument target, byte[] bytes)
+    {
+        using var sourceStream = new MemoryStream(bytes);
+        using var sourceDoc = PdfReader.Open(sourceStream, PdfDocumentOpenMode.Import);
+        foreach (var page in sourceDoc.Pages)
+        {
+            target.AddPage(page);
+        }
     }
 
     private async Task<BlobContainerClient> GetSamBlobContainerClientAsync()
