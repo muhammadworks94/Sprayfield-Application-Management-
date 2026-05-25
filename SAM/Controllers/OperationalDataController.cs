@@ -2317,10 +2317,15 @@ namespace SAM.Controllers;
         var currentUser = await GetCurrentUserAsync();
         if (currentUser != null)
         {
-            report.CertificationName = string.IsNullOrWhiteSpace(currentUser.FullName)
+            var currentUserName = string.IsNullOrWhiteSpace(currentUser.FullName)
                 ? currentUser.UserName ?? string.Empty
                 : currentUser.FullName;
+            report.CertificationName = currentUserName;
+            report.GW59ASignerName = currentUserName;
         }
+
+        report.GW59ASignerTitle = "Authorized Agent";
+        report.GW59ASignedDate = DateTime.UtcNow.Date;
 
         return report;
     }
@@ -2426,11 +2431,30 @@ namespace SAM.Controllers;
                 $"Invalid groundwater template row mapping detected. These rows are not valid GW59/GW59A rows for the resolved permit: {string.Join(", ", badTemplateRows)}.");
         }
 
+        var vocRequiredForSelectedMonth = IsVocRequiredForSelectedMonth(viewModel.TemplateParameters);
+        if (vocRequiredForSelectedMonth)
+        {
+            viewModel.VOCReportAttached = true;
+        }
+
         await ValidateGwVocReportAsync(
             viewModel.VOCReportAttached,
             viewModel.VOCReportFile,
             hasExistingStoredFile: false,
             nameof(viewModel.VOCReportFile));
+
+        if (vocRequiredForSelectedMonth)
+        {
+            if (!hasNewVocUpload)
+            {
+                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "Attach a VOC Report PDF because Volatile Compounds are scheduled for the selected month.");
+            }
+
+            if (string.IsNullOrWhiteSpace(viewModel.VOCMethodNumber))
+            {
+                ModelState.AddModelError(nameof(viewModel.VOCMethodNumber), "Enter the VOC Method # because Volatile Compounds are scheduled for the selected month.");
+            }
+        }
 
         if (facility != null)
         {
@@ -2480,7 +2504,7 @@ namespace SAM.Controllers;
                 MetalSamplesFieldAcidified = viewModel.MetalSamplesFieldAcidified,
                 FecalColiform = viewModel.FecalColiform,
                 TotalColiform = viewModel.TotalColiform,
-                VOCReportAttached = viewModel.VOCReportAttached,
+                VOCReportAttached = vocRequiredForSelectedMonth || viewModel.VOCReportAttached,
                 VOCMethodNumber = viewModel.VOCMethodNumber ?? string.Empty,
                 LabCertification = viewModel.LabCertification ?? string.Empty,
                 CollectedBy = viewModel.CollectedBy ?? string.Empty,
@@ -2698,11 +2722,30 @@ namespace SAM.Controllers;
                 $"Invalid groundwater template row mapping detected. These rows are not valid GW59/GW59A rows for the resolved permit: {string.Join(", ", badTemplateRows)}.");
         }
 
+        var vocRequiredForSelectedMonth = IsVocRequiredForSelectedMonth(viewModel.TemplateParameters);
+        if (vocRequiredForSelectedMonth)
+        {
+            viewModel.VOCReportAttached = true;
+        }
+
         await ValidateGwVocReportAsync(
             viewModel.VOCReportAttached,
             viewModel.VOCReportFile,
             hasExistingStoredFile: hasExistingVocFile && !viewModel.RemoveVocReportFile,
             nameof(viewModel.VOCReportFile));
+
+        if (vocRequiredForSelectedMonth)
+        {
+            if (!(hasExistingVocFile && !viewModel.RemoveVocReportFile) && !hasNewVocUpload)
+            {
+                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "Attach a VOC Report PDF because Volatile Compounds are scheduled for the selected month.");
+            }
+
+            if (string.IsNullOrWhiteSpace(viewModel.VOCMethodNumber))
+            {
+                ModelState.AddModelError(nameof(viewModel.VOCMethodNumber), "Enter the VOC Method # because Volatile Compounds are scheduled for the selected month.");
+            }
+        }
 
         if (!ModelState.IsValid)
         {
@@ -2742,7 +2785,7 @@ namespace SAM.Controllers;
             gwMonit.MetalSamplesFieldAcidified = viewModel.MetalSamplesFieldAcidified;
             gwMonit.FecalColiform = viewModel.FecalColiform;
             gwMonit.TotalColiform = viewModel.TotalColiform;
-            gwMonit.VOCReportAttached = viewModel.VOCReportAttached;
+            gwMonit.VOCReportAttached = vocRequiredForSelectedMonth || viewModel.VOCReportAttached;
             gwMonit.VOCMethodNumber = viewModel.VOCMethodNumber ?? string.Empty;
             gwMonit.LabCertification = viewModel.LabCertification ?? string.Empty;
             gwMonit.CollectedBy = viewModel.CollectedBy ?? string.Empty;
@@ -3493,6 +3536,13 @@ namespace SAM.Controllers;
             .Where(p => p.IsRequiredForSelectedMonth && !p.EnteredValue.HasValue)
             .Select(p => $"{p.PcsCode} - {p.ParameterName}")
             .ToList();
+    }
+
+    private static bool IsVocRequiredForSelectedMonth(List<GWMonitTemplateParameterViewModel>? templateParameters)
+    {
+        return templateParameters?.Any(p =>
+            p.IsRequiredForSelectedMonth &&
+            string.Equals(p.PcsCode, "78732", StringComparison.OrdinalIgnoreCase)) == true;
     }
 
     private async Task SaveGwMonitTemplateValuesAsync(GWMonit gwMonit, List<GWMonitTemplateParameterViewModel>? templateParameters)

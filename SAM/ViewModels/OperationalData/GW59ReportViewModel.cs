@@ -156,6 +156,16 @@ public class GW59ReportViewModel
     [DataType(DataType.Date)]
     public DateTime? CertificationDate { get; set; }
 
+    [Display(Name = "GW-59A Signer Name")]
+    public string GW59ASignerName { get; set; } = string.Empty;
+
+    [Display(Name = "GW-59A Signer Title")]
+    public string GW59ASignerTitle { get; set; } = string.Empty;
+
+    [Display(Name = "GW-59A Signed Date")]
+    [DataType(DataType.Date)]
+    public DateTime? GW59ASignedDate { get; set; }
+
     public List<Gw59ParameterSnapshot> ParameterSnapshots { get; set; } = new();
 }
 

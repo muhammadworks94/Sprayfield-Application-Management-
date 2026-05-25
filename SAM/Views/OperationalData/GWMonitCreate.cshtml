@@ -4,6 +4,7 @@
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var monitoringWells = ViewBag.MonitoringWells as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var hasVocFile = !string.IsNullOrWhiteSpace(Model.VOCReportFileName);
+    var vocScheduledThisMonth = Model.TemplateParameters.Any(p => p.PcsCode == "78732" && p.IsRequiredForSelectedMonth);
 }
 
 <div class="mb-4">
@@ -51,31 +52,8 @@
             </div>
 
             <div class="form-section">
-                <div id="gwTemplateSectionContainer">
-                    @await Html.PartialAsync("Partials/_GWMonitTemplateSection", new SAM.ViewModels.OperationalData.GWMonitTemplateSectionViewModel
-                    {
-                        FacilityId = Model.FacilityId,
-                        SampleDate = Model.SampleDate,
-                        RecordId = null,
-                        IsEdit = false,
-                        FacilityPermitId = Model.FacilityPermitId,
-                        FacilityPermitDisplay = Model.FacilityPermitDisplay,
-                        TemplateParametersStatusMessage = Model.TemplateParametersStatusMessage,
-                        TemplateParameters = Model.TemplateParameters
-                    })
-                </div>
-            </div>
-
-            <div class="form-section">
                 <div class="form-section-title">Sample Information</div>
                 <div class="row">
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label asp-for="SampleDepth" class="form-label"></label>
-                            <input asp-for="SampleDepth" type="number" step="0.01" class="form-control" />
-                            <span asp-validation-for="SampleDepth" class="text-danger"></span>
-                        </div>
-                    </div>
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label asp-for="WaterLevel" class="form-label"></label>
@@ -139,35 +117,6 @@
             </div>
 
             <div class="form-section">
-                <div class="form-section-title">Organics</div>
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="mb-3 form-check">
-                            <input class="form-check-input" asp-for="VOCReportAttached" type="checkbox" id="vocReportAttachedCheckbox" disabled="@(!hasVocFile)" />
-                            <label class="form-check-label" asp-for="VOCReportAttached"></label>
-                            <small class="text-muted d-block mt-1" id="vocAttachmentHelp">
-                                Upload a VOC PDF before it can be attached to the GW-59 report.
-                            </small>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="mb-3">
-                            <label asp-for="VOCReportFile" class="form-label"></label>
-                            <input asp-for="VOCReportFile" type="file" class="form-control" accept=".pdf,application/pdf" id="vocReportFileInput" />
-                            <span asp-validation-for="VOCReportFile" class="text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-12">
-                        <div class="mb-3">
-                            <label asp-for="VOCMethodNumber" class="form-label"></label>
-                            <input asp-for="VOCMethodNumber" class="form-control" />
-                            <span asp-validation-for="VOCMethodNumber" class="text-danger"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-section">
                 <div class="form-section-title">Lab Information</div>
                 <div class="row">
                     <div class="col-md-4">
@@ -195,11 +144,50 @@
             </div>
 
             <div class="form-section">
-                <div class="form-section-title">Additional Information</div>
-                <div class="mb-3">
-                    <label asp-for="Comments" class="form-label"></label>
-                    <textarea asp-for="Comments" class="form-control" rows="3"></textarea>
-                    <span asp-validation-for="Comments" class="text-danger"></span>
+                <div id="gwTemplateSectionContainer">
+                    @await Html.PartialAsync("Partials/_GWMonitTemplateSection", new SAM.ViewModels.OperationalData.GWMonitTemplateSectionViewModel
+                    {
+                        FacilityId = Model.FacilityId,
+                        SampleDate = Model.SampleDate,
+                        RecordId = null,
+                        IsEdit = false,
+                        FacilityPermitId = Model.FacilityPermitId,
+                        FacilityPermitDisplay = Model.FacilityPermitDisplay,
+                        TemplateParametersStatusMessage = Model.TemplateParametersStatusMessage,
+                        TemplateParameters = Model.TemplateParameters
+                    })
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Organics</div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3 form-check">
+                            <input class="form-check-input" asp-for="VOCReportAttached" type="checkbox" id="vocReportAttachedCheckbox" disabled="@(!hasVocFile)" />
+                            <label class="form-check-label @(vocScheduledThisMonth ? "required" : string.Empty)" asp-for="VOCReportAttached" id="vocReportAttachedLabel"></label>
+                            <small class="text-muted d-block mt-1" id="vocAttachmentHelp">
+                                Upload a VOC PDF before it can be attached to the GW-59 report.
+                            </small>
+                            <small class="text-warning d-block mt-2 @(vocScheduledThisMonth ? string.Empty : "d-none")" id="vocTemplateNotice">
+                                Attachment C lists Volatile Compounds for this sample month. If a VOC report applies to this event, upload the PDF here so it can be attached to the GW-59 report.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label asp-for="VOCReportFile" class="form-label @(vocScheduledThisMonth ? "required" : string.Empty)" id="vocReportFileLabel"></label>
+                            <input asp-for="VOCReportFile" type="file" class="form-control" accept=".pdf,application/pdf" id="vocReportFileInput" />
+                            <span asp-validation-for="VOCReportFile" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label asp-for="VOCMethodNumber" class="form-label @(vocScheduledThisMonth ? "required" : string.Empty)" id="vocMethodNumberLabel"></label>
+                            <input asp-for="VOCMethodNumber" class="form-control" />
+                            <span asp-validation-for="VOCMethodNumber" class="text-danger"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -328,10 +316,9 @@
                         <textarea asp-for="GW59AQuestion7Details" class="form-control" rows="3"></textarea>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-md-4"><div class="mb-3"><label asp-for="GW59ASignerName" class="form-label"></label><input asp-for="GW59ASignerName" class="form-control" /></div></div>
-                    <div class="col-md-4"><div class="mb-3"><label asp-for="GW59ASignerTitle" class="form-label"></label><input asp-for="GW59ASignerTitle" class="form-control" /></div></div>
-                    <div class="col-md-4"><div class="mb-3"><label asp-for="GW59ASignedDate" class="form-label"></label><input asp-for="GW59ASignedDate" type="date" class="form-control" /></div></div>
+                <div class="alert alert-secondary mb-0">
+                    GW-59A signer fields are populated automatically when the report is exported.
+                    The signer uses the exporting user, the title is set to <strong>Authorized Agent</strong>, and the signed date uses the export date.
                 </div>
             </div>
 
@@ -356,6 +343,9 @@
             const vocFileInput = document.getElementById('vocReportFileInput');
             const vocAttachedCheckbox = document.getElementById('vocReportAttachedCheckbox');
             const vocAttachmentHelp = document.getElementById('vocAttachmentHelp');
+            const vocAttachedLabel = document.getElementById('vocReportAttachedLabel');
+            const vocFileLabel = document.getElementById('vocReportFileLabel');
+            const vocMethodLabel = document.getElementById('vocMethodNumberLabel');
             let debounceTimer = null;
             let requestCounter = 0;
 
@@ -408,6 +398,25 @@
                 });
             }
 
+            function syncVocTemplateNotice() {
+                const notice = document.getElementById('vocTemplateNotice');
+                if (!notice || !container) return;
+
+                const hasScheduledVocRow = Array.from(container.querySelectorAll('tbody tr')).some(function (row) {
+                    const pcsCell = row.querySelector('td');
+                    return row.classList.contains('table-warning') && pcsCell && pcsCell.textContent.trim() === '78732';
+                });
+
+                notice.classList.toggle('d-none', !hasScheduledVocRow);
+                vocAttachedLabel?.classList.toggle('required', hasScheduledVocRow);
+                vocFileLabel?.classList.toggle('required', hasScheduledVocRow);
+                vocMethodLabel?.classList.toggle('required', hasScheduledVocRow);
+
+                if (hasScheduledVocRow && vocAttachedCheckbox) {
+                    vocAttachedCheckbox.checked = true;
+                }
+            }
+
             async function refreshTemplateSection() {
                 const facilityId = facilitySelect?.value;
                 const sampleDate = sampleDateInput?.value;
@@ -425,6 +434,7 @@
                     container.innerHTML = html;
                     restoreTemplateValues(snapshot);
                     initTooltips(container);
+                    syncVocTemplateNotice();
                 } catch {
                     // no-op; keep current UI state on transient failures
                 }
@@ -438,12 +448,17 @@
             facilitySelect?.addEventListener('change', queueRefresh);
             sampleDateInput?.addEventListener('change', queueRefresh);
             initTooltips(document);
+            syncVocTemplateNotice();
 
             function syncVocAttachmentState() {
                 if (!vocAttachedCheckbox || !vocFileInput) return;
                 const hasSelectedFile = vocFileInput.files && vocFileInput.files.length > 0;
+                const vocIsRequired = vocAttachedLabel?.classList.contains('required') ?? false;
                 vocAttachedCheckbox.disabled = !hasSelectedFile;
-                if (!hasSelectedFile) {
+
+                if (vocIsRequired && hasSelectedFile) {
+                    vocAttachedCheckbox.checked = true;
+                } else if (!hasSelectedFile) {
                     vocAttachedCheckbox.checked = false;
                     if (vocAttachmentHelp) {
                         vocAttachmentHelp.textContent = 'Upload a VOC PDF before it can be attached to the GW-59 report.';
@@ -454,6 +469,12 @@
             }
 
             vocFileInput?.addEventListener('change', syncVocAttachmentState);
+            vocAttachedCheckbox?.addEventListener('change', function () {
+                const vocIsRequired = vocAttachedLabel?.classList.contains('required') ?? false;
+                if (vocIsRequired) {
+                    vocAttachedCheckbox.checked = true;
+                }
+            });
             syncVocAttachmentState();
 
             function initGw59AToggles() {

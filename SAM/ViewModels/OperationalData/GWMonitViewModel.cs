@@ -24,7 +24,7 @@ public class GWMonitViewModel
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (ft)")]
+    [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
     
@@ -188,7 +188,7 @@ public class GWMonitCreateViewModel
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (ft)")]
+    [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
     
@@ -359,7 +359,7 @@ public class GWMonitEditViewModel
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (ft)")]
+    [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
     

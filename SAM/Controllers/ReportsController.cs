@@ -2158,9 +2158,9 @@ public class ReportsController : BaseController
             GW59AQuestion4Details = gwMonit.GW59AQuestion4Details,
             GW59AQuestion5Details = gwMonit.GW59AQuestion5Details,
             GW59AQuestion7Details = gwMonit.GW59AQuestion7Details,
-            GW59ASignerName = gwMonit.GW59ASignerName,
-            GW59ASignerTitle = gwMonit.GW59ASignerTitle,
-            GW59ASignedDate = gwMonit.GW59ASignedDate
+            GW59ASignerName = string.IsNullOrWhiteSpace(currentUser?.FullName) ? (currentUser?.UserName ?? string.Empty) : currentUser!.FullName,
+            GW59ASignerTitle = "Authorized Agent",
+            GW59ASignedDate = DateTime.UtcNow.Date
         };
     }
 
