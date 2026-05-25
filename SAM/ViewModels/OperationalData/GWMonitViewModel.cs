@@ -462,6 +462,9 @@ public class GWMonitEditViewModel
 
     public string? VOCReportFileName { get; set; }
 
+    [Display(Name = "Remove Current VOC File")]
+    public bool RemoveVocReportFile { get; set; }
+
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
     public string? VOCMethodNumber { get; set; }

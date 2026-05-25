@@ -2164,6 +2164,43 @@ namespace SAM.Controllers;
     }
 
     [HttpGet]
+    public async Task<IActionResult> GWMonitVocReportPdf(Guid id, bool download = false)
+    {
+        var gwMonit = await _gwMonitService.GetByIdAsync(id);
+        if (gwMonit == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(gwMonit.CompanyId);
+        if (string.IsNullOrWhiteSpace(gwMonit.VOCReportFileStoragePath))
+        {
+            return NotFound("VOC report PDF is not stored for this groundwater record.");
+        }
+
+        var blobClient = (await GetSamBlobContainerClientAsync()).GetBlobClient(gwMonit.VOCReportFileStoragePath);
+        if (!await blobClient.ExistsAsync())
+        {
+            return NotFound("VOC report PDF blob is missing from storage.");
+        }
+
+        var blob = await blobClient.DownloadStreamingAsync();
+        var contentType = string.IsNullOrWhiteSpace(blob.Value.Details.ContentType)
+            ? "application/pdf"
+            : blob.Value.Details.ContentType;
+
+        if (download)
+        {
+            var fileName = string.IsNullOrWhiteSpace(gwMonit.VOCReportFileName)
+                ? $"GWMonit_{gwMonit.SampleDate:yyyyMMdd}_VOC.pdf"
+                : gwMonit.VOCReportFileName;
+            return File(blob.Value.Content, contentType, fileName);
+        }
+
+        return File(blob.Value.Content, contentType);
+    }
+
+    [HttpGet]
     [Authorize(Policy = Policies.RequireTechnician)]
     public async Task<IActionResult> GWMonitReport(Guid id)
     {
@@ -2171,223 +2208,6 @@ namespace SAM.Controllers;
         return View(model);
     }
 
-    [HttpGet]
-    [Authorize(Policy = Policies.RequireTechnician)]
-    public async Task<IActionResult> GWMonitReportPdf(Guid id)
-    {
-        var reportModel = await BuildGW59ReportAsync(id);
-        var gwMonit = await _gwMonitService.GetByIdAsync(id);
-        if (gwMonit == null)
-        {
-            return NotFound();
-        }
-
-        var templatePath = Path.Combine(
-            _environment.WebRootPath,
-            "forms",
-            "GW-59 GW-QualityMonitoringReportForm.pdf");
-
-        if (!System.IO.File.Exists(templatePath))
-        {
-            return NotFound("GW-59 template PDF not found.");
-        }
-
-        using var outputStream = new MemoryStream();
-        using (var document = PdfReader.Open(templatePath, PdfDocumentOpenMode.Modify))
-        {
-            var page = document.Pages[0];
-            var gfx = XGraphics.FromPdfPage(page);
-            var font = new XFont("Arial", 8, XFontStyle.Regular);
-
-            void DrawText(string? text, double x, double y)
-            {
-                gfx.DrawString(text ?? string.Empty, font, XBrushes.Black,
-                    new XRect(x, y, 250, font.Height + 2),
-                    XStringFormats.TopLeft);
-            }
-
-            // DEBUG GRID (temporary) - helps calibrate coordinates for fields.
-            // Comment out or remove this block once you've recorded the positions you need.
-            //for (int y = 50; y <= page.Height; y += 20)
-            //{
-            //    gfx.DrawLine(XPens.Red, 40, y, page.Width - 40, y);
-            //    gfx.DrawString(y.ToString(), font, XBrushes.Red,
-            //        new XRect(5, y - 4, 30, font.Height + 2), XStringFormats.TopLeft);
-            //}
-
-            //for (int x = 50; x <= page.Width - 40; x += 20)
-            //{
-            //    gfx.DrawLine(XPens.Red, x, 40, x, page.Height - 40);
-            //    gfx.DrawString(x.ToString(), font, XBrushes.Red,
-            //        new XRect(x - 10, 25, 40, font.Height + 2), XStringFormats.TopLeft);
-            //}
-
-            // NOTE: All coordinates are approximate and may need fine-tuning
-            // Facility information
-            DrawText(reportModel.FacilityName, 120, 74);                      // Facility Name
-            DrawText(reportModel.PermitNumber, 630, 60);                      // Permit Number
-            DrawText(reportModel.Permittee, 170, 90);                          // Permit Name
-            DrawText($"{reportModel.Address}", 120, 106);                      // Address line
-            DrawText(reportModel.City, 80, 140);
-            DrawText(reportModel.ZipCode, 280, 140);
-            DrawText(reportModel.State, 230, 140);
-            DrawText(reportModel.County, 410, 120);                            // County
-
-            // Permit expiration (small box near permit header on template)
-            DrawText(reportModel.PermitExpirationDate?.ToString("MM/dd/yyyy"), 775, 60);
-
-            // Contact / phone – using facility phone
-            DrawText(reportModel.FacilityPhone, 410, 152);
-
-            // Sampling information / well details
-            DrawText(reportModel.WellId, 210, 204);                               // WELL ID NUMBER (from Permit)
-            DrawText(reportModel.SampleDate.ToString("MM/dd/yyyy"), 460, 204);    // Date sample collected
-
-            // Well location / site name (right-hand box in sampling section)
-            DrawText(reportModel.WellLocation, 150, 168);
-
-            DrawText(reportModel.WellDepthFeet?.ToString("F2"), 158, 222);        // Well Depth
-            DrawText(reportModel.DiameterInches?.ToString("F2"), 455, 222);       // Well Diameter
-
-            // Screened interval – combined string "{low} to {high} ft" placed on same row
-            string? screenedInterval = null;
-            if (reportModel.LowScreenDepthFeet.HasValue || reportModel.HighScreenDepthFeet.HasValue)
-            {
-                var low = reportModel.LowScreenDepthFeet?.ToString("F2") ?? "?";
-                var high = reportModel.HighScreenDepthFeet?.ToString("F2") ?? "?";
-                screenedInterval = $"{low} to {high} ft";
-            }
-            DrawText(screenedInterval, 260, 220);
-
-            // NOTE: Sample depth is intentionally not drawn; the official GW-59 form
-            // does not provide a dedicated field for sample depth.
-            DrawText(reportModel.WaterLevel?.ToString("F2"), 160, 237);           // Depth to water
-
-            DrawText(reportModel.GallonsPumped?.ToString("F2"), 260, 266);        // Volume pumped
-
-            // Field analyses
-            DrawText(reportModel.PHField?.ToString("F2"), 615, 220);     // pH field
-            DrawText(reportModel.TemperatureField?.ToString("F1"), 750, 220); // Temp field
-            DrawText(reportModel.SpecificConductance?.ToString("F2"), 660, 238); // Spec. Cond.
-            DrawText(reportModel.Odor, 650, 252);                        // Odor
-            DrawText(reportModel.Appearance, 650, 267);                  // Appearance
-
-            // Metals handling YES/NO checkboxes (approximate positions)
-            if (reportModel.MetalsUnfiltered)
-            {
-                DrawText("X", 240, 283); // YES box
-            }
-            else
-            {
-                DrawText("X", 301, 282); // NO box
-            }
-
-            if (reportModel.MetalsAcidified)
-            {
-                DrawText("X", 444, 283); // YES box for acidified
-            }
-            else
-            {
-                DrawText("X", 491, 283); // NO box for acidified
-            }
-
-            // Laboratory information
-            DrawText(reportModel.LabName, 450, 308);                           // Laboratory Name
-            DrawText(reportModel.LabCertificationNumber, 740, 308);           // Certification No.
-
-            // Core parameters from GWMonit
-            DrawText(reportModel.TDS?.ToString("F2"), 160, 400);               // Dissolved Solids: Total
-            DrawText(reportModel.TOC?.ToString("F2"), 165, 430);               // TOC
-            DrawText(reportModel.Chloride?.ToString("F2"), 165, 446);          // Chloride
-
-            DrawText(reportModel.NH3N?.ToString("F2"), 165, 538);              // Total Ammonia
-            DrawText(reportModel.TKN?.ToString("F2"), 165, 571);               // TKN as N
-
-            DrawText(reportModel.NO3N?.ToString("F2"), 440, 352);              // Nitrate (NO3) as N
-
-            DrawText(reportModel.Calcium?.ToString("F2"), 440, 430);           // Ca
-            DrawText(reportModel.Magnesium?.ToString("F2"), 440, 538);         // Mg
-
-            DrawText(reportModel.FecalColiform?.ToString("F0"), 165, 352);     // Coliform MF Fecal
-            DrawText(reportModel.TotalColiform?.ToString("F0"), 165, 369);     // Coliform MF Total
-
-            // Organics section – lab report + VOC method
-            if (reportModel.LabReportAttached)
-            {
-                DrawText("X", 684, 510); // Yes box
-            }
-            else
-            {
-                DrawText("X", 752, 510); // No box
-            }
-
-            DrawText(reportModel.VOCMethodNumber, 750, 525);             // VOC method #
-
-            // Certification block – name, title, date in signature area
-            DrawText(reportModel.CertificationName, 140, 690);           // Printed name
-            DrawText(reportModel.CertificationTitle, 140, 708);          // Title
-            DrawText(reportModel.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726); // Date
-
-            document.Save(outputStream, false);
-        }
-
-        outputStream.Position = 0;
-        if (gwMonit.VOCReportAttached == true)
-        {
-            if (string.IsNullOrWhiteSpace(gwMonit.VOCReportFileStoragePath))
-            {
-                return BadRequest("VOC report is marked attached, but no VOC file is stored on this groundwater record.");
-            }
-
-            var container = await GetSamBlobContainerClientAsync();
-            var vocBlobClient = container.GetBlobClient(gwMonit.VOCReportFileStoragePath);
-            if (!await vocBlobClient.ExistsAsync())
-            {
-                return BadRequest("VOC report file is missing from blob storage for this groundwater record.");
-            }
-
-            try
-            {
-                using var mergedOutput = new MemoryStream();
-                using var mergedDoc = new PdfDocument();
-                using (var baseDoc = PdfReader.Open(outputStream, PdfDocumentOpenMode.Import))
-                {
-                    foreach (var page in baseDoc.Pages)
-                    {
-                        mergedDoc.AddPage(page);
-                    }
-                }
-
-                await using var vocStream = (await vocBlobClient.DownloadStreamingAsync()).Value.Content;
-                using (var vocDoc = PdfReader.Open(vocStream, PdfDocumentOpenMode.Import))
-                {
-                    foreach (var page in vocDoc.Pages)
-                    {
-                        mergedDoc.AddPage(page);
-                    }
-                }
-
-                mergedDoc.Save(mergedOutput, false);
-                mergedOutput.Position = 0;
-                var safeFacilityMerged = string.IsNullOrWhiteSpace(reportModel.FacilityName)
-                    ? "Facility"
-                    : reportModel.FacilityName.Replace(' ', '_');
-                var mergedName = $"GW59_{safeFacilityMerged}_{reportModel.SampleDate:yyyyMMdd}_WithVOC.pdf";
-                return File(mergedOutput.ToArray(), "application/pdf", mergedName);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to merge VOC report PDF for GWMonit {GWMonitId}", id);
-                return BadRequest("VOC report file could not be merged. Ensure the attached VOC report is a valid PDF.");
-            }
-        }
-
-        var safeFacility = string.IsNullOrWhiteSpace(reportModel.FacilityName)
-            ? "Facility"
-            : reportModel.FacilityName.Replace(' ', '_');
-        var fileName = $"GW59_{safeFacility}_{reportModel.SampleDate:yyyyMMdd}.pdf";
-        return File(outputStream.ToArray(), "application/pdf", fileName);
-    }
 
     private async Task<GW59ReportViewModel> BuildGW59ReportAsync(Guid gwMonitId)
     {
@@ -2532,6 +2352,12 @@ namespace SAM.Controllers;
     [Authorize(Policy = Policies.RequireTechnician)]
     public async Task<IActionResult> GWMonitCreate(GWMonitCreateViewModel viewModel)
     {
+        var hasNewVocUpload = viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0;
+        if (!hasNewVocUpload)
+        {
+            viewModel.VOCReportAttached = false;
+        }
+
         var facility = await _facilityService.GetByIdAsync(viewModel.FacilityId);
         if (facility == null)
         {
@@ -2567,13 +2393,11 @@ namespace SAM.Controllers;
                 $"Invalid groundwater template row mapping detected. These rows are not valid GW59/GW59A rows for the resolved permit: {string.Join(", ", badTemplateRows)}.");
         }
 
-        if (viewModel.VOCReportAttached)
-        {
-            if (viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0 && !IsPdfUpload(viewModel.VOCReportFile))
-            {
-                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "Only PDF files are allowed for VOC Report.");
-            }
-        }
+        await ValidateGwVocReportAsync(
+            viewModel.VOCReportAttached,
+            viewModel.VOCReportFile,
+            hasExistingStoredFile: false,
+            nameof(viewModel.VOCReportFile));
 
         if (facility != null)
         {
@@ -2649,7 +2473,7 @@ namespace SAM.Controllers;
             };
 
             await _gwMonitService.CreateAsync(gwMonit);
-            if (viewModel.VOCReportAttached && viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0)
+            if (viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0)
             {
                 await SaveGwVocFileAsync(gwMonit, viewModel.VOCReportFile);
                 await _gwMonitService.UpdateAsync(gwMonit);
@@ -2809,6 +2633,18 @@ namespace SAM.Controllers;
         }
         viewModel.VOCReportFileName = existingGwMonit.VOCReportFileName;
 
+        var hasExistingVocFile = !string.IsNullOrWhiteSpace(existingGwMonit.VOCReportFileStoragePath);
+        var hasNewVocUpload = viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0;
+        if (viewModel.RemoveVocReportFile && !hasNewVocUpload)
+        {
+            viewModel.VOCReportAttached = false;
+        }
+
+        if (!hasExistingVocFile && !hasNewVocUpload)
+        {
+            viewModel.VOCReportAttached = false;
+        }
+
         var resolvedPermit = viewModel.FacilityId == Guid.Empty
             ? null
             : await _facilityPermitResolver.ResolveForDateAsync(viewModel.FacilityId, viewModel.SampleDate);
@@ -2833,14 +2669,11 @@ namespace SAM.Controllers;
                 $"Invalid groundwater template row mapping detected. These rows are not valid GW59/GW59A rows for the resolved permit: {string.Join(", ", badTemplateRows)}.");
         }
 
-        if (viewModel.VOCReportAttached)
-        {
-            var hasNewUpload = viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0;
-            if (hasNewUpload && !IsPdfUpload(viewModel.VOCReportFile!))
-            {
-                ModelState.AddModelError(nameof(viewModel.VOCReportFile), "Only PDF files are allowed for VOC Report.");
-            }
-        }
+        await ValidateGwVocReportAsync(
+            viewModel.VOCReportAttached,
+            viewModel.VOCReportFile,
+            hasExistingStoredFile: hasExistingVocFile && !viewModel.RemoveVocReportFile,
+            nameof(viewModel.VOCReportFile));
 
         if (!ModelState.IsValid)
         {
@@ -2903,13 +2736,19 @@ namespace SAM.Controllers;
             gwMonit.GW59ASignerName = viewModel.GW59ASignerName ?? string.Empty;
             gwMonit.GW59ASignerTitle = viewModel.GW59ASignerTitle ?? string.Empty;
             gwMonit.GW59ASignedDate = viewModel.GW59ASignedDate;
-            if (!gwMonit.VOCReportAttached.GetValueOrDefault())
+            if (viewModel.RemoveVocReportFile)
             {
                 await ClearGwVocFileAsync(gwMonit);
             }
-            else if (viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0)
+
+            if (viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0)
             {
                 await SaveGwVocFileAsync(gwMonit, viewModel.VOCReportFile);
+            }
+
+            if (string.IsNullOrWhiteSpace(gwMonit.VOCReportFileStoragePath))
+            {
+                gwMonit.VOCReportAttached = false;
             }
 
             await _gwMonitService.UpdateAsync(gwMonit);
@@ -3901,6 +3740,46 @@ namespace SAM.Controllers;
         var fileName = file.FileName ?? string.Empty;
         return file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
             || fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task ValidateGwVocReportAsync(
+        bool vocReportAttached,
+        IFormFile? file,
+        bool hasExistingStoredFile,
+        string modelKey)
+    {
+        var hasNewUpload = file != null && file.Length > 0;
+        if (hasNewUpload)
+        {
+            if (!IsPdfUpload(file!))
+            {
+                ModelState.AddModelError(modelKey, "Only PDF files are allowed for VOC Report.");
+                return;
+            }
+
+            await using var uploadStream = file!.OpenReadStream();
+            await using var bufferedStream = new MemoryStream();
+            await uploadStream.CopyToAsync(bufferedStream);
+            bufferedStream.Position = 0;
+
+            try
+            {
+                using var parsedDoc = PdfReader.Open(bufferedStream, PdfDocumentOpenMode.Import);
+                _ = parsedDoc.PageCount;
+            }
+            catch
+            {
+                ModelState.AddModelError(
+                    modelKey,
+                    "The uploaded VOC report is not a compatible PDF for GW-59 merging. Please upload a standard PDF.");
+                return;
+            }
+        }
+
+        if (vocReportAttached && !hasNewUpload && !hasExistingStoredFile)
+        {
+            ModelState.AddModelError(modelKey, "Attach a VOC Report PDF when VOC Report Attached is selected.");
+        }
     }
 
     private async Task SaveGwVocFileAsync(GWMonit gwMonit, IFormFile file)

@@ -8,6 +8,7 @@ using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
 using System.Security.Claims;
+using System.Text;
 using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
 using SAM.Data;
@@ -2242,10 +2243,20 @@ public class ReportsController : BaseController
                     foreach (var page in baseDoc.Pages) mergedDoc.AddPage(page);
                 }
 
-                await using var vocStream = (await vocBlobClient.DownloadStreamingAsync()).Value.Content;
-                using (var vocDoc = PdfReader.Open(vocStream, PdfDocumentOpenMode.Import))
+                try
                 {
-                    foreach (var page in vocDoc.Pages) mergedDoc.AddPage(page);
+                    await using var vocBuffer = await DownloadBlobToMemoryAsync(vocBlobClient);
+                    using (var vocDoc = PdfReader.Open(vocBuffer, PdfDocumentOpenMode.Import))
+                    {
+                        foreach (var page in vocDoc.Pages) mergedDoc.AddPage(page);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to merge VOC report PDF for GWMonit {GWMonitId}", model.GwMonitId);
+                    throw new Infrastructure.Exceptions.BusinessRuleException(
+                        "VOC report file could not be merged. Ensure the attached VOC report is a valid PDF.",
+                        ex);
                 }
 
                 mergedDoc.Save(mergedOutput, false);
@@ -2268,6 +2279,16 @@ public class ReportsController : BaseController
         var container = blobServiceClient.GetBlobContainerClient("sam-files");
         await container.CreateIfNotExistsAsync();
         return container;
+    }
+
+    private static async Task<MemoryStream> DownloadBlobToMemoryAsync(BlobClient blobClient)
+    {
+        var download = await blobClient.DownloadStreamingAsync();
+        var buffer = new MemoryStream();
+        await using var source = download.Value.Content;
+        await source.CopyToAsync(buffer);
+        buffer.Position = 0;
+        return buffer;
     }
 
     private async Task<byte[]> RenderNdar1PdfAsync(NDAR1 report, bool showGrid = false)
@@ -3483,6 +3504,8 @@ public class ReportsController : BaseController
             var map = BuildGw59ACalibrationMap();
             void Draw(string? text, double x, double y, bool isBold = false) =>
                 gfx.DrawString(text ?? string.Empty, isBold ? bold : font, XBrushes.Black, new XRect(x, y, 320, 11), XStringFormats.TopLeft);
+            void DrawWrapped(string? text, TextBox2D box) =>
+                DrawWrappedText(gfx, text, font, XBrushes.Black, box);
             void DrawMark(bool? value, bool yes, double x, double y)
             {
                 if (value.HasValue && value.Value == yes)
@@ -3511,10 +3534,10 @@ public class ReportsController : BaseController
             DrawMark(model.GW59AQuestion7Response, true, map.Q7Yes.X, map.Q7Yes.Y);
             DrawMark(model.GW59AQuestion7Response, false, map.Q7No.X, map.Q7No.Y);
 
-            Draw(model.GW59AQuestion2Details, map.Q2Details.X, map.Q2Details.Y);
-            Draw(model.GW59AQuestion4Details, map.Q4Details.X, map.Q4Details.Y);
-            Draw(model.GW59AQuestion5Details, map.Q5Details.X, map.Q5Details.Y);
-            Draw(model.GW59AQuestion7Details, map.Q7Details.X, map.Q7Details.Y);
+            DrawWrapped(model.GW59AQuestion2Details, map.Q2Details);
+            DrawWrapped(model.GW59AQuestion4Details, map.Q4Details);
+            DrawWrapped(model.GW59AQuestion5Details, map.Q5Details);
+            DrawWrapped(model.GW59AQuestion7Details, map.Q7Details);
 
             Draw(model.GW59ASignerName, map.SignerName.X, map.SignerName.Y);
             Draw(model.GW59ASignedDate?.ToString("MM/dd/yyyy"), map.SignedDate.X, map.SignedDate.Y);
@@ -3554,10 +3577,10 @@ public class ReportsController : BaseController
             Q7Yes = new Point2D(530, 510),
             Q7No = new Point2D(560, 510),
 
-            Q2Details = new Point2D(70, 146),
-            Q4Details = new Point2D(70, 265),
-            Q5Details = new Point2D(70, 370),
-            Q7Details = new Point2D(70, 586),
+            Q2Details = new TextBox2D(70, 132, 440, 44),
+            Q4Details = new TextBox2D(70, 254, 440, 44),
+            Q5Details = new TextBox2D(70, 359, 440, 72),
+            Q7Details = new TextBox2D(70, 576, 440, 56),
 
             SignerName = new Point2D(100, 710),
             SignedDate = new Point2D(410, 710)
@@ -3582,15 +3605,70 @@ public class ReportsController : BaseController
         public Point2D Q6No { get; set; }
         public Point2D Q7Yes { get; set; }
         public Point2D Q7No { get; set; }
-        public Point2D Q2Details { get; set; }
-        public Point2D Q4Details { get; set; }
-        public Point2D Q5Details { get; set; }
-        public Point2D Q7Details { get; set; }
+        public TextBox2D Q2Details { get; set; }
+        public TextBox2D Q4Details { get; set; }
+        public TextBox2D Q5Details { get; set; }
+        public TextBox2D Q7Details { get; set; }
         public Point2D SignerName { get; set; }
         public Point2D SignedDate { get; set; }
     }
 
     private readonly record struct Point2D(double X, double Y);
+    private readonly record struct TextBox2D(double X, double Y, double Width, double Height);
+
+    private static void DrawWrappedText(XGraphics gfx, string? text, XFont font, XBrush brush, TextBox2D box)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        var normalized = Regex.Replace(text.Trim(), @"\s+", " ");
+        var lineHeight = gfx.MeasureString("Ag", font).Height;
+        var words = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var line = new StringBuilder();
+        var y = box.Y;
+
+        foreach (var word in words)
+        {
+            var candidate = line.Length == 0 ? word : $"{line} {word}";
+            var size = gfx.MeasureString(candidate, font);
+            if (size.Width <= box.Width)
+            {
+                line.Clear();
+                line.Append(candidate);
+                continue;
+            }
+
+            if (line.Length > 0)
+            {
+                if (y + lineHeight > box.Y + box.Height)
+                {
+                    return;
+                }
+
+                gfx.DrawString(line.ToString(), font, brush, new XRect(box.X, y, box.Width, lineHeight), XStringFormats.TopLeft);
+                y += lineHeight;
+                line.Clear();
+                line.Append(word);
+            }
+            else
+            {
+                if (y + lineHeight > box.Y + box.Height)
+                {
+                    return;
+                }
+
+                gfx.DrawString(word, font, brush, new XRect(box.X, y, box.Width, lineHeight), XStringFormats.TopLeft);
+                y += lineHeight;
+            }
+        }
+
+        if (line.Length > 0 && y + lineHeight <= box.Y + box.Height)
+        {
+            gfx.DrawString(line.ToString(), font, brush, new XRect(box.X, y, box.Width, lineHeight), XStringFormats.TopLeft);
+        }
+    }
 
     private static void DrawCoordinateGrid(XGraphics gfx, double pageWidth, double pageHeight)
     {

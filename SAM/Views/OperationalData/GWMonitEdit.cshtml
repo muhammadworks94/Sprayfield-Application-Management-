@@ -3,6 +3,7 @@
     ViewData["Title"] = "Edit Groundwater Monitoring Record";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var monitoringWells = ViewBag.MonitoringWells as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var hasVocFile = !string.IsNullOrWhiteSpace(Model.VOCReportFileName);
 }
 
 <div class="mb-4">
@@ -99,15 +100,51 @@
             <div class="form-section">
                 <div class="form-section-title">Organics</div>
                 <div class="row">
-                    <div class="col-md-4"><div class="mb-3 form-check"><input class="form-check-input" asp-for="VOCReportAttached" type="checkbox" /><label class="form-check-label" asp-for="VOCReportAttached"></label></div></div>
+                    <div class="col-md-4">
+                        <div class="mb-3 form-check">
+                            <input class="form-check-input" asp-for="VOCReportAttached" type="checkbox" id="vocReportAttachedCheckbox" disabled="@(!hasVocFile)" />
+                            <label class="form-check-label" asp-for="VOCReportAttached"></label>
+                            <small class="text-muted d-block mt-1" id="vocAttachmentHelp">
+                                @(hasVocFile
+                                    ? "A stored VOC PDF can be attached to the GW-59 report."
+                                    : "Upload a VOC PDF before it can be attached to the GW-59 report.")
+                            </small>
+                        </div>
+                        @if (hasVocFile)
+                        {
+                            <div class="mb-3 form-check">
+                                <input class="form-check-input" asp-for="RemoveVocReportFile" type="checkbox" id="removeVocReportFileCheckbox" />
+                                <label class="form-check-label" asp-for="RemoveVocReportFile"></label>
+                            </div>
+                        }
+                    </div>
                     <div class="col-md-8">
                         <div class="mb-3">
                             <label asp-for="VOCReportFile" class="form-label"></label>
-                            <input asp-for="VOCReportFile" type="file" class="form-control" accept=".pdf,application/pdf" />
+                            <input asp-for="VOCReportFile" type="file" class="form-control" accept=".pdf,application/pdf" id="vocReportFileInput" />
                             <span asp-validation-for="VOCReportFile" class="text-danger"></span>
-                            @if (!string.IsNullOrWhiteSpace(Model.VOCReportFileName))
+                            @if (hasVocFile)
                             {
                                 <small class="text-muted d-block mt-1">Current file: @Model.VOCReportFileName</small>
+                                <small class="text-muted d-block mt-1">
+                                    @(Model.VOCReportAttached
+                                        ? "A VOC PDF is uploaded and attached to the GW-59 report."
+                                        : "A VOC PDF is uploaded but not attached to the GW-59 report.")
+                                </small>
+                                <div class="d-flex gap-2 mt-2">
+                                    <a class="btn btn-outline-secondary btn-sm"
+                                       asp-action="GWMonitVocReportPdf"
+                                       asp-route-id="@Model.Id"
+                                       target="_blank" rel="noopener">
+                                        View Current VOC PDF
+                                    </a>
+                                    <a class="btn btn-outline-primary btn-sm"
+                                       asp-action="GWMonitVocReportPdf"
+                                       asp-route-id="@Model.Id"
+                                       asp-route-download="true">
+                                        Download Current VOC PDF
+                                    </a>
+                                </div>
                             }
                         </div>
                     </div>
@@ -272,6 +309,11 @@
             const container = document.getElementById('gwTemplateSectionContainer');
             const contextUrl = '@Url.Action("GWMonitTemplateContext", "OperationalData")';
             const recordId = '@Model.Id';
+            const vocFileInput = document.getElementById('vocReportFileInput');
+            const vocAttachedCheckbox = document.getElementById('vocReportAttachedCheckbox');
+            const removeVocCheckbox = document.getElementById('removeVocReportFileCheckbox');
+            const vocAttachmentHelp = document.getElementById('vocAttachmentHelp');
+            const hasStoredVocFile = @hasVocFile.ToString().ToLowerInvariant();
             let debounceTimer = null;
             let requestCounter = 0;
 
@@ -354,6 +396,32 @@
             facilitySelect?.addEventListener('change', queueRefresh);
             sampleDateInput?.addEventListener('change', queueRefresh);
             initTooltips(document);
+
+            function syncVocAttachmentState() {
+                if (!vocAttachedCheckbox || !vocFileInput) return;
+                const hasSelectedFile = vocFileInput.files && vocFileInput.files.length > 0;
+                const removeCurrentFile = removeVocCheckbox ? removeVocCheckbox.checked : false;
+                const hasAvailableFile = (hasStoredVocFile && !removeCurrentFile) || hasSelectedFile;
+
+                vocAttachedCheckbox.disabled = !hasAvailableFile || removeCurrentFile;
+                if (!hasAvailableFile || removeCurrentFile) {
+                    vocAttachedCheckbox.checked = false;
+                }
+
+                if (vocAttachmentHelp) {
+                    if (removeCurrentFile) {
+                        vocAttachmentHelp.textContent = 'The current VOC PDF will be removed when you save this record.';
+                    } else if (hasAvailableFile) {
+                        vocAttachmentHelp.textContent = 'An available VOC PDF can be attached to the GW-59 report.';
+                    } else {
+                        vocAttachmentHelp.textContent = 'Upload a VOC PDF before it can be attached to the GW-59 report.';
+                    }
+                }
+            }
+
+            vocFileInput?.addEventListener('change', syncVocAttachmentState);
+            removeVocCheckbox?.addEventListener('change', syncVocAttachmentState);
+            syncVocAttachmentState();
 
             function initGw59AToggles() {
                 const toggleInputs = document.querySelectorAll('[data-gw59a-toggle]');
