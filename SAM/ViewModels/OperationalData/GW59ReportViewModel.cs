@@ -31,6 +31,9 @@ public class GW59ReportViewModel
     public string ZipCode { get; set; } = string.Empty;
     public string County { get; set; } = string.Empty;
 
+    [Display(Name = "Contact Person")]
+    public string ContactPerson { get; set; } = string.Empty;
+
     [Display(Name = "Facility Phone")]
     public string FacilityPhone { get; set; } = string.Empty;
 

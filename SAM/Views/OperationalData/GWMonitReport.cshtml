@@ -47,7 +47,8 @@
                     <dt>Permittee</dt><dd>@Model.Permittee</dd>
                     <dt>Address</dt><dd>@Model.Address, @Model.City, @Model.State @Model.ZipCode</dd>
                     <dt>County</dt><dd>@Model.County</dd>
-                    <dt>Facility Phone</dt><dd>@Model.FacilityPhone</dd>
+                    <dt>Contact Person</dt><dd>@(!string.IsNullOrWhiteSpace(Model.ContactPerson) ? Model.ContactPerson : "N/A")</dd>
+                    <dt>Telephone</dt><dd>@(!string.IsNullOrWhiteSpace(Model.FacilityPhone) ? Model.FacilityPhone : "N/A")</dd>
                     <dt>Permit Expiration</dt><dd>@Model.PermitExpirationDate?.ToString("MM/dd/yyyy")</dd>
                 </dl>
             </div>

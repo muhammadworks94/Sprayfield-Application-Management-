@@ -1888,6 +1888,7 @@ public class ReportsController : BaseController
             State = model.State,
             ZipCode = model.ZipCode,
             County = model.County,
+            ContactPerson = model.ContactPerson,
             FacilityPhone = model.FacilityPhone,
             PermitExpirationDate = model.PermitExpirationDate,
             WellId = model.WellId,
@@ -2078,27 +2079,39 @@ public class ReportsController : BaseController
 
         var currentUser = await GetCurrentUserAsync();
         var chemistry = Gw59ChemistryResolver.Resolve(snapshots);
+        var facility = gwMonit.Facility ?? await _context.Facilities
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == gwMonit.FacilityId);
+        var facilityWellCount = await Gw59FacilityFieldResolver.CountMonitoringWellsForFacilityAsync(
+            _context,
+            gwMonit.FacilityId,
+            facility?.CompanyId ?? gwMonit.CompanyId);
+        var wellLocation = await Gw59FacilityFieldResolver.ResolveWellLocationAsync(
+            _context,
+            gwMonit.MonitoringWellId,
+            gwMonit.MonitoringWell);
         return new Gw59ExportModel
         {
             GwMonitId = gwMonit.Id,
-            FacilityName = gwMonit.Facility?.Name ?? string.Empty,
-            PermitNumber = permit?.PermitNumber ?? gwMonit.Facility?.PermitNumber ?? string.Empty,
-            Permittee = gwMonit.Facility?.Permittee ?? string.Empty,
-            Address = gwMonit.Facility?.Address ?? string.Empty,
-            City = gwMonit.Facility?.City ?? string.Empty,
-            State = gwMonit.Facility?.State ?? string.Empty,
-            ZipCode = gwMonit.Facility?.ZipCode ?? string.Empty,
-            County = gwMonit.Facility?.County ?? string.Empty,
-            FacilityPhone = gwMonit.Facility?.FacilityPhone ?? string.Empty,
-            PermitExpirationDate = permit?.EffectiveEndDate ?? gwMonit.Facility?.PermitExpirationDate,
+            FacilityName = facility?.Name ?? string.Empty,
+            PermitNumber = permit?.PermitNumber ?? facility?.PermitNumber ?? string.Empty,
+            Permittee = facility?.Permittee ?? string.Empty,
+            Address = facility?.Address ?? string.Empty,
+            City = facility?.City ?? string.Empty,
+            State = facility?.State ?? string.Empty,
+            ZipCode = facility?.ZipCode ?? string.Empty,
+            County = facility?.County ?? string.Empty,
+            ContactPerson = Gw59FacilityFieldResolver.ResolveContactPerson(facility),
+            FacilityPhone = Gw59FacilityFieldResolver.ResolveFacilityPhone(facility),
+            PermitExpirationDate = permit?.EffectiveEndDate ?? facility?.PermitExpirationDate,
             WellId = gwMonit.MonitoringWell?.WellId ?? string.Empty,
-            WellLocation = gwMonit.MonitoringWell?.LocationDescription ?? string.Empty,
+            WellLocation = wellLocation,
             WellDepthFeet = gwMonit.MonitoringWell?.WellDepthFeet,
             DiameterInches = gwMonit.MonitoringWell?.DiameterInches,
             ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
             ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
             RelativeMpElevation = gwMonit.RelativeMpElevation,
-            NumberOfWellsToBeSampled = gwMonit.MonitoringWell?.NumberOfWellsToBeSampled,
+            NumberOfWellsToBeSampled = facilityWellCount,
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
@@ -2122,10 +2135,10 @@ public class ReportsController : BaseController
             FecalColiform = chemistry.FecalColiform,
             TotalColiform = chemistry.TotalColiform,
             LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
-                ? (gwMonit.Facility?.CertifiedLaboratory1Name ?? string.Empty)
+                ? (facility?.CertifiedLaboratory1Name ?? string.Empty)
                 : gwMonit.AnalyzedBy,
             LabCertificationNumber = string.IsNullOrWhiteSpace(gwMonit.LabCertification)
-                ? (gwMonit.Facility?.LabCertificationNumber1 ?? string.Empty)
+                ? (facility?.LabCertificationNumber1 ?? string.Empty)
                 : gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
             AnalyzedBy = gwMonit.AnalyzedBy,
@@ -2189,10 +2202,12 @@ public class ReportsController : BaseController
             DrawText(model.State, 230, 122);
             DrawText(model.County, 410, 120);
             DrawText(model.PermitExpirationDate?.ToString("MM/dd/yyyy"), 775, 60);
+            DrawText(model.ContactPerson, 120, 152);
             DrawText(model.FacilityPhone, 410, 152);
+            DrawText(model.WellLocation, 150, 168);
+            DrawText(model.NumberOfWellsToBeSampled?.ToString(), 495, 168, 60);
             DrawText(model.WellId, 210, 204);
             DrawText(model.SampleDate.ToString("MM/dd/yyyy"), 460, 204);
-            DrawText(model.WellLocation, 150, 168);
             DrawText(model.WellDepthFeet?.ToString("F2"), 153, 222);
             DrawText(model.DiameterInches?.ToString("F2"), 455, 222);
             if (model.ScreenedIntervalFromFeet.HasValue || model.ScreenedIntervalToFeet.HasValue)

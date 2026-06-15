@@ -76,6 +76,7 @@ public sealed class Gw59ExportModel
     public string State { get; set; } = string.Empty;
     public string ZipCode { get; set; } = string.Empty;
     public string County { get; set; } = string.Empty;
+    public string ContactPerson { get; set; } = string.Empty;
     public string FacilityPhone { get; set; } = string.Empty;
     public DateTime? PermitExpirationDate { get; set; }
     public string WellId { get; set; } = string.Empty;

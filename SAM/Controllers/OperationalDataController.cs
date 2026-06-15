@@ -2231,9 +2231,21 @@ namespace SAM.Controllers;
 
         await EnsureCompanyAccessAsync(gwMonit.CompanyId);
 
-        var facility = gwMonit.Facility;
-        var well = gwMonit.MonitoringWell;
+        var facility = gwMonit.Facility ?? await _context.Facilities
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == gwMonit.FacilityId);
+        var well = gwMonit.MonitoringWell ?? await _context.MonitoringWells
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Id == gwMonit.MonitoringWellId);
         var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(gwMonit.FacilityId, gwMonit.SampleDate);
+        var facilityWellCount = await Gw59FacilityFieldResolver.CountMonitoringWellsForFacilityAsync(
+            _context,
+            gwMonit.FacilityId,
+            facility?.CompanyId ?? gwMonit.CompanyId);
+        var wellLocation = await Gw59FacilityFieldResolver.ResolveWellLocationAsync(
+            _context,
+            gwMonit.MonitoringWellId,
+            well);
         var templateValues = await _context.GWMonitTemplateValues
             .AsNoTracking()
             .Where(x => x.GWMonitId == gwMonitId)
@@ -2276,17 +2288,18 @@ namespace SAM.Controllers;
             State = facility?.State ?? string.Empty,
             ZipCode = facility?.ZipCode ?? string.Empty,
             County = facility?.County ?? string.Empty,
-            FacilityPhone = facility?.FacilityPhone ?? string.Empty,
+            ContactPerson = Gw59FacilityFieldResolver.ResolveContactPerson(facility),
+            FacilityPhone = Gw59FacilityFieldResolver.ResolveFacilityPhone(facility),
             PermitExpirationDate = resolvedPermit?.EffectiveEndDate ?? facility?.PermitExpirationDate,
 
             MonitoringWellId = gwMonit.MonitoringWellId,
             WellId = well?.WellId ?? string.Empty,
-            WellLocation = well?.LocationDescription ?? string.Empty,
+            WellLocation = wellLocation,
             WellDepthFeet = well?.WellDepthFeet,
             DiameterInches = well?.DiameterInches,
             ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
             ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
-            NumberOfWellsToBeSampled = well?.NumberOfWellsToBeSampled,
+            NumberOfWellsToBeSampled = facilityWellCount,
 
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
