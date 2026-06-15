@@ -333,6 +333,12 @@ flowchart TD
                         "Download PDF is the single supported groundwater report export action; the record-details page no longer serves as the report-download entry point.",
                         "ExportGW59Report generates one combined PDF in this order: GW-59, GW-59A if questionnaire data exists, then attached VOC PDF pages if present.",
                         "GW-59 export uses form template GW-59 GW-QualityMonitoringReportForm.pdf with mapped facility, permit, monitoring-well, GWMonit, and permit-template data.",
+                        "GW-59 Facility Information section maps Sys Admin facility/permit/well master data through Gw59FacilityFieldResolver (Utilities/Gw59FacilityFieldResolver.cs) for export and preview parity.",
+                        "GW-59 Contact Person exports Facility.OrcName (ORC Name on the facility record).",
+                        "GW-59 Telephone uses ResolveFacilityPhone fallback order: FacilityPhone, then PermitPhone, then OperatorPhone.",
+                        "GW-59 Well Location / Site Name exports MonitoringWell.LocationDescription for the well selected on the groundwater record.",
+                        "GW-59 No. of wells to be sampled counts active MonitoringWell rows for the facility company (Sys Admin > Monitoring Wells).",
+                        "GW-59 preview (Operational Data > GW Monit > Preview GW-59) and Reports > Groundwater Quality Reports > Download PDF both use the same BuildGw59ExportModelAsync / BuildGW59ReportAsync resolver logic for facility fields.",
                         "GW-59A export uses form template GW-59A.pdf and maps the dedicated GW-59A questionnaire fields on the groundwater record (questions, detail notes, and export-time signer/date).",
                         "GW-59A unanswered questions are exported as blank yes/no boxes (no forced default).",
                         "GW-59 operation type checkboxes are sourced from FacilityPermit.GwOperationLagoon and FacilityPermit.GwOperationSprayField, resolved by facility + sample date.",
@@ -382,6 +388,23 @@ flowchart TD
                 },
                 new ProjectTableViewModel
                 {
+                    Caption = "GW-59 Facility Information Field Mapping (PDF + Preview)",
+                    Headers = { "Form Label", "Primary Source", "Fallback / Notes" },
+                    Rows =
+                    {
+                        new List<string> { "Facility Name", "Facility.Name", "Blank if facility missing." },
+                        new List<string> { "Permit Number", "FacilityPermit.PermitNumber (resolved by facility + sample date)", "Facility.PermitNumber when no resolved permit." },
+                        new List<string> { "Permittee", "Facility.Permittee", "—" },
+                        new List<string> { "Address / City / State / Zip / County", "Matching Facility fields", "—" },
+                        new List<string> { "Permit Expiration Date", "FacilityPermit.EffectiveEndDate", "Facility.PermitExpirationDate when permit end date unavailable." },
+                        new List<string> { "Contact Person", "Facility.OrcName", "ORC Name entered in System Admin > Facilities." },
+                        new List<string> { "Telephone", "Facility.FacilityPhone", "Then Facility.PermitPhone, then Facility.OperatorPhone (Gw59FacilityFieldResolver.ResolveFacilityPhone)." },
+                        new List<string> { "Well Location / Site Name", "MonitoringWell.LocationDescription", "Well selected on GWMonit; explicit load if navigation property is null." },
+                        new List<string> { "No. of wells to be sampled", "Count of MonitoringWell rows for facility CompanyId", "Configured under System Admin > Monitoring Wells; shared resolver used by export and preview." }
+                    }
+                },
+                new ProjectTableViewModel
+                {
                     Caption = "Report Source Mapping",
                     Headers = { "Report", "Primary Source Models", "Header/Permit Logic", "Fallback Notes" },
                     Rows =
@@ -389,7 +412,7 @@ flowchart TD
                         new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Facility permit context influences setup and source values", "Area/time/value handling follows per-field formula rules; export layout includes facility/field checkboxes and footer columns through V." },
                         new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version resolved by facility + date when available", "NDMR first two daily columns are exported from canonical Operator Logs as ORC Arrival Time and ORC Time on Site (hours); if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
-                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + MonitoringWell", "Permit version resolved by facility + sample date; operation type checkboxes come from permit flags", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF; screened interval, measuring point, relative M.P. elevation, and pH 00400 are taken from GWMonit while named chemistry comes from template PCS snapshots and Other is auto-populated from remaining eligible rows." },
+                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + MonitoringWell + Facility", "Permit version resolved by facility + sample date; operation type checkboxes come from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. Facility Information: name/permittee/address/county from Facility; permit number/expiration from resolved permit with facility fallback; contact person from Facility.OrcName; telephone from FacilityPhone → PermitPhone → OperatorPhone; well location from selected MonitoringWell.LocationDescription; no. of wells from company monitoring-well count. Sampling/chemistry: screened interval, measuring point, relative M.P. elevation, and pH 00400 from GWMonit; named chemistry from template PCS snapshots; Other auto-populated from remaining eligible rows." },
                         new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
                     }
                 }
@@ -656,6 +679,44 @@ flowchart TD
                     {
                         new TraceFallbackRuleViewModel { Condition = "50050 missing", Behavior = "Template cannot be activated/used for compliant NDMR flow." }
                     }
+                },
+                new TraceabilityItemViewModel
+                {
+                    Id = "trace-gw59-facility-info",
+                    KeywordOrProperty = "GW-59 Facility Information",
+                    Aliases = { "Contact Person", "OrcName", "FacilityPhone", "Well Location", "NumberOfWellsToBeSampled", "Gw59FacilityFieldResolver" },
+                    Entity = "Facility + MonitoringWell + FacilityPermit",
+                    StorageField = "Facility.OrcName, Facility.FacilityPhone/PermitPhone/OperatorPhone, MonitoringWell.LocationDescription, MonitoringWell count",
+                    UsedInModule = "Reports > Groundwater Quality Reports + Operational Data > GW Monit Preview",
+                    FormulaOrTransformation = "BuildGw59ExportModelAsync / BuildGW59ReportAsync map facility block through Gw59FacilityFieldResolver; RenderGw59PdfAsync draws values on GW-59 template coordinates.",
+                    ReportOutput = "GW-59 PDF Facility Information section and GWMonitReport preview card",
+                    FallbackOrValidation = "Telephone falls back PermitPhone then OperatorPhone; permit number/expiration fall back to facility fields; well location loads explicitly when navigation is null.",
+                    Reference = new TraceReferenceViewModel
+                    {
+                        Label = "GW-59 Facility Field Resolver",
+                        Location = "Utilities/Gw59FacilityFieldResolver.cs + Controllers/ReportsController.cs + Controllers/OperationalDataController.cs"
+                    },
+                    UsedByReports = { "GW-59", "GW-59A (combined export)" },
+                    Steps =
+                    {
+                        new TraceStepViewModel { Order = 1, Label = "Setup Source", Detail = "Facility master data (including ORC Name and phone fields) and Monitoring Well location descriptions are maintained in System Admin." },
+                        new TraceStepViewModel { Order = 2, Label = "Record Context", Detail = "GWMonit ties export to FacilityId, MonitoringWellId, and SampleDate for permit/well resolution." },
+                        new TraceStepViewModel { Order = 3, Label = "Resolver", Detail = "Gw59FacilityFieldResolver supplies contact person, telephone fallback chain, well location, and company monitoring-well count." },
+                        new TraceStepViewModel { Order = 4, Label = "Report Surface", Detail = "Values render in GWMonitReport preview and ExportGW59Report PDF (Contact Person, Telephone, Well Location, No. of wells)." }
+                    },
+                    Usages =
+                    {
+                        new TraceUsageViewModel { Module = "System Admin", Report = "GW-59", Destination = "Facility ORC Name, phone fields, monitoring-well master setup." },
+                        new TraceUsageViewModel { Module = "Reports", Report = "GW-59", Destination = "Facility Information PDF block via ExportGW59Report." },
+                        new TraceUsageViewModel { Module = "Operational Data", Report = "GW-59", Destination = "Preview GW-59 facility card via BuildGW59ReportAsync." }
+                    },
+                    FallbackRules =
+                    {
+                        new TraceFallbackRuleViewModel { Condition = "Contact Person blank on PDF", Behavior = "Verify Facility.OrcName (ORC Name) is populated in System Admin > Facilities." },
+                        new TraceFallbackRuleViewModel { Condition = "Telephone blank on PDF", Behavior = "Populate Facility Phone, Permit Phone, or Operator Phone on the facility record." },
+                        new TraceFallbackRuleViewModel { Condition = "Well Location blank", Behavior = "Enter Location Description on the selected monitoring well in System Admin > Monitoring Wells." },
+                        new TraceFallbackRuleViewModel { Condition = "No. of wells blank or zero", Behavior = "Add monitoring wells for the company in System Admin; export counts company-scoped MonitoringWell rows." }
+                    }
                 }
             }
         };
@@ -873,7 +934,8 @@ flowchart TD
                         new List<string> { "Permit active but no NDMR template rows", "WWChar shows template-row warning", "Add PCS rows under permit version template." },
                         new List<string> { "Permit unarchive causes overlap", "Unarchive blocked with message", "Adjust date ranges or archive conflicting active permit." },
                         new List<string> { "Duplicate permit number+version on create", "Create either restores soft-deleted match or shows friendly duplicate message", "Use archived section or update existing record." },
-                        new List<string> { "PCS import duplicate codes", "Importer deduplicates and upserts safely", "Re-run import; duplicates in TSV no longer break process." }
+                        new List<string> { "PCS import duplicate codes", "Importer deduplicates and upserts safely", "Re-run import; duplicates in TSV no longer break process." },
+                        new List<string> { "GW-59 Facility Information field blank on PDF", "Export still succeeds; affected slot is left empty", "Contact Person: set Facility ORC Name. Telephone: set Facility/Permit/Operator phone. Well Location: set monitoring-well Location Description. No. of wells: add company monitoring wells in System Admin." }
                     }
                 }
             }
@@ -922,6 +984,7 @@ flowchart TD
                         "Changing sprayfield area/rates impacts monthly loading and NDAR outcomes.",
                         "Changing permit versions/date ranges impacts WWChar template resolution and NDMR context.",
                         "Changing permit template PCS rows impacts dynamic entry fields and NDMR parameter output.",
+                        "Changing facility ORC Name, phone fields, or monitoring-well location descriptions impacts GW-59 Facility Information on export and preview.",
                         "Changing monthly application values impacts compliance projections and downstream reporting."
                     }
                 }
