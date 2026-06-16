@@ -3,8 +3,8 @@
 
 @{
     ViewData["Title"] = "GW-59 Groundwater Monitoring Report";
-    var namedLabSnapshots = Gw59LabPdfCalibration.SelectNamedSnapshots(Model.ParameterSnapshots);
-    var otherLines = Model.OtherParameterLines.Take(Gw59LabPdfCalibration.OtherLineLimit).ToList();
+    var namedLabSnapshots = Gw59PdfCalibration.SelectNamedSnapshots(Model.ParameterSnapshots);
+    var otherLines = Model.OtherParameterLines.Take(Gw59PdfCalibration.OtherLineLimit).ToList();
     var leftOtherLines = otherLines.Take(5).ToList();
     var rightOtherLines = otherLines.Skip(5).Take(5).ToList();
 }
@@ -172,7 +172,7 @@
                                     <ol class="mb-0 ps-3" start="1">
                                         @foreach (var line in leftOtherLines)
                                         {
-                                            <li>@Gw59LabPdfCalibration.FormatOtherLine(line)</li>
+                                            <li>@Gw59PdfCalibration.FormatOtherLine(line)</li>
                                         }
                                     </ol>
                                 }
@@ -188,7 +188,7 @@
                                     <ol class="mb-0 ps-3" start="6">
                                         @foreach (var line in rightOtherLines)
                                         {
-                                            <li>@Gw59LabPdfCalibration.FormatOtherLine(line)</li>
+                                            <li>@Gw59PdfCalibration.FormatOtherLine(line)</li>
                                         }
                                     </ol>
                                 }

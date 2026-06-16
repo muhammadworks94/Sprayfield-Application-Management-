@@ -334,7 +334,7 @@ flowchart TD
                         "System lists groundwater monitoring records with facility, well, sample date, and resolved permit context.",
                         "Download PDF is the single supported groundwater report export action; the record-details page no longer serves as the report-download entry point.",
                         "ExportGW59Report generates one combined PDF in this order: GW-59, GW-59A if questionnaire data exists, then attached VOC PDF pages if present.",
-                        "GW-59 export uses form template GW-59 GW-QualityMonitoringReportForm.pdf with mapped facility, permit, monitoring-well, GWMonit, and permit-template data.",
+                        "GW-59 export uses letter-size form template GW59_Resized.pdf (792×612 pt, 11\"×8.5\" landscape) with mapped facility, permit, monitoring-well, GWMonit, and permit-template data.",
                         "GW-59 Facility Information section maps Sys Admin facility/permit/well master data through Gw59FacilityFieldResolver (Utilities/Gw59FacilityFieldResolver.cs) for export and preview parity.",
                         "GW-59 Contact Person exports Facility.OrcName (ORC Name on the facility record).",
                         "GW-59 Telephone uses ResolveFacilityPhone fallback order: FacilityPhone, then PermitPhone, then OperatorPhone.",
@@ -347,8 +347,8 @@ flowchart TD
                         "GW-59 Sampling Information well-static slots (well depth, diameter, screened interval, measuring point, relative M.P. elevation) come from MonitoringWell for the well selected on the GWMonit record.",
                         "GW-59 per-sample slots (date, depth to water level, volume pumped, metals Y/N) come from GWMonit; metals Y/N export blank when unset.",
                         "GW-59 Date sample collected exports from GWMonit.SampleDate; Date sample analyzed exports from GWMonit.LabSampleAnalyzedDate (Laboratory Information block).",
-                        "GW-59 field pH comes from GWMonit.PH. Laboratory Information named rows (COD, coliform, TDS, lab pH, TOC, metals, etc.) are drawn from GWMonitTemplateValue snapshots via Gw59LabPdfCalibration (Utilities/Gw59LabPdfCalibration.cs), which maps each PCS code to fixed PDF coordinates.",
-                        "GW-59 Other section accepts up to 10 remaining GW-59 PCS rows with values that do not have a named PDF slot (excluding VOC 78732, water level 82546, and recoverable parameters), in permit sort order. Slots #1–#5 export in the left column (x≈582, width≈98) and #6–#10 in the right column (x≈685, width≈95) on shared row Y positions; text is clipped to each column box using format: Compound, concentration units.",
+                        "GW-59 field pH comes from GWMonit.PH. Laboratory Information named rows (COD, coliform, TDS, lab pH, TOC, metals, etc.) are drawn from GWMonitTemplateValue snapshots via Gw59PdfCalibration (Utilities/Gw59PdfCalibration.cs), which maps each PCS code to fixed PDF coordinates on the letter-size template.",
+                        "GW-59 Other section accepts up to 10 remaining GW-59 PCS rows with values that do not have a named PDF slot (excluding VOC 78732, water level 82546, and recoverable parameters), in permit sort order. Slots #1–#5 export in the left column (x≈495, width≈83) and #6–#10 in the right column (x≈582.5, width≈81) on the letter-size template; text is clipped to each column box using format: Compound, concentration units.",
                         "VOC merge reads Azure blobs into memory before PdfSharpCore import so valid PDFs no longer fail on non-seekable Azure streams.",
                         "Exports fail with actionable messages when template files or required source data are missing."
                     }
@@ -693,7 +693,7 @@ flowchart TD
                     Entity = "Facility + MonitoringWell + FacilityPermit",
                     StorageField = "Facility.OrcName, Facility.FacilityPhone/PermitPhone/OperatorPhone, MonitoringWell.LocationDescription, MonitoringWell count",
                     UsedInModule = "Reports > Groundwater Quality Reports + Operational Data > GW Monit Preview",
-                    FormulaOrTransformation = "BuildGw59ExportModelAsync / BuildGW59ReportAsync map facility block through Gw59FacilityFieldResolver; RenderGw59PdfAsync draws values on GW-59 template coordinates.",
+                    FormulaOrTransformation = "BuildGw59ExportModelAsync / BuildGW59ReportAsync map facility block through Gw59FacilityFieldResolver; RenderGw59PdfAsync draws values on GW59_Resized.pdf coordinates via Gw59PdfCalibration.",
                     ReportOutput = "GW-59 PDF Facility Information section and GWMonitReport preview card",
                     FallbackOrValidation = "Telephone falls back PermitPhone then OperatorPhone; permit number/expiration fall back to facility fields; well location loads explicitly when navigation is null.",
                     Reference = new TraceReferenceViewModel

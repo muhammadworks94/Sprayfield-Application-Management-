@@ -2180,7 +2180,7 @@ public class ReportsController : BaseController
 
     private async Task<byte[]> RenderGw59PdfAsync(Gw59ExportModel model, bool showGrid = false)
     {
-        var templatePath = Path.Combine(_environment.WebRootPath, "forms", "GW-59 GW-QualityMonitoringReportForm.pdf");
+        var templatePath = Path.Combine(_environment.WebRootPath, "forms", Gw59PdfCalibration.TemplateFileName);
         if (!System.IO.File.Exists(templatePath))
         {
             throw new Infrastructure.Exceptions.BusinessRuleException("GW-59 template PDF not found in wwwroot/forms.");
@@ -2191,142 +2191,140 @@ public class ReportsController : BaseController
         {
             var page = document.Pages[0];
             var gfx = XGraphics.FromPdfPage(page);
-            var font = new XFont("Arial", 8, XFontStyle.Regular);
-            var otherFont = new XFont("Arial", 7, XFontStyle.Regular);
-            void DrawText(string? text, double x, double y, double width = 260) =>
-                gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(x, y, width, font.Height + 2), XStringFormats.TopLeft);
-            void DrawLabText(string? text, double x, double underlineY, double width = 55)
+            var fields = Gw59PdfCalibration.Fields;
+            var font = new XFont("Arial", 7, XFontStyle.Regular);
+            var otherFont = new XFont("Arial", 6.5, XFontStyle.Regular);
+            void DrawBaselineText(string? text, double x, double underlineY, double width, XFont drawFont)
             {
                 if (string.IsNullOrWhiteSpace(text))
                 {
                     return;
                 }
 
-                gfx.DrawString(
-                    text,
-                    font,
-                    XBrushes.Black,
-                    new XPoint(x, Gw59LabPdfCalibration.GetBaselineY(underlineY)),
-                    XStringFormats.BaseLineLeft);
-            }
-            void DrawClippedLabText(string? text, double x, double underlineY, double width, XFont drawFont)
-            {
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    return;
-                }
-
-                var baselineY = Gw59LabPdfCalibration.GetBaselineY(underlineY);
+                var baselineY = Gw59PdfCalibration.GetBaselineY(underlineY);
                 var rect = new XRect(x, baselineY - drawFont.Height, width, drawFont.Height + 1);
                 gfx.DrawString(text, drawFont, XBrushes.Black, rect, XStringFormats.BottomLeft);
             }
-            void DrawTick(double x, double y)
+
+            void DrawFieldText(string? text, Gw59PdfTextSlot slot) =>
+                DrawBaselineText(text, slot.X, slot.Y, slot.Width, font);
+
+            void DrawFieldLabText(string? text, Gw59PdfUnderlineSlot slot) =>
+                DrawBaselineText(text, slot.X, slot.Y, slot.Width, font);
+
+            void DrawCheckboxMark(string? text, Gw59PdfTextSlot slot)
             {
-                gfx.DrawLine(XPens.Black, x, y + 5, x + 3, y + 8);
-                gfx.DrawLine(XPens.Black, x + 3, y + 8, x + 9, y + 1);
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return;
+                }
+
+                DrawTick(slot.X, slot.Y);
             }
 
-            DrawText(model.FacilityName, 120, 74);
-            DrawText(model.PermitNumber, 630, 75);
-            DrawText(model.Permittee, 170, 90);
-            DrawText(model.Address, 120, 106);
-            DrawText(model.City, 80, 122);
-            DrawText(model.ZipCode, 280, 122);
-            DrawText(model.State, 230, 122);
-            DrawText(model.County, 410, 120);
-            DrawText(model.PermitExpirationDate?.ToString("MM/dd/yyyy"), 775, 60);
-            DrawText(model.ContactPerson, 120, 152);
-            DrawText(model.FacilityPhone, 410, 152);
-            DrawText(model.WellLocation, 150, 168);
-            DrawText(model.NumberOfWellsToBeSampled?.ToString(), 495, 168, 60);
-            DrawText(model.WellId, 210, 204);
-            DrawText(model.SampleDate.ToString("MM/dd/yyyy"), 460, 204);
-            DrawText(model.WellDepthFeet?.ToString("F2"), 153, 222);
-            DrawText(model.DiameterInches?.ToString("F2"), 455, 222);
+            void DrawTick(double boxLeft, double boxTop)
+            {
+                var x = boxLeft + 1.0;
+                var topY = boxTop + 0.5;
+                gfx.DrawLine(XPens.Black, x, topY + 4, x + 3, topY + 7);
+                gfx.DrawLine(XPens.Black, x + 3, topY + 7, x + 8, topY + 1);
+            }
+
+            DrawFieldText(model.FacilityName, fields.FacilityName);
+            DrawFieldText(model.PermitNumber, fields.PermitNumber);
+            DrawFieldText(model.Permittee, fields.Permittee);
+            DrawFieldText(model.Address, fields.Address);
+            DrawFieldText(model.City, fields.City);
+            DrawFieldText(model.ZipCode, fields.ZipCode);
+            DrawFieldText(model.State, fields.State);
+            DrawFieldText(model.County, fields.County);
+            DrawFieldText(model.PermitExpirationDate?.ToString("MM/dd/yyyy"), fields.PermitExpirationDate);
+            DrawFieldText(model.ContactPerson, fields.ContactPerson);
+            DrawFieldText(model.FacilityPhone, fields.FacilityPhone);
+            DrawFieldText(model.WellLocation, fields.WellLocation);
+            DrawFieldText(model.NumberOfWellsToBeSampled?.ToString(), fields.NumberOfWellsToBeSampled);
+            DrawFieldText(model.WellId, fields.WellId);
+            DrawFieldText(model.SampleDate.ToString("MM/dd/yyyy"), fields.SampleDate);
+            DrawFieldText(model.WellDepthFeet?.ToString("F2"), fields.WellDepthFeet);
+            DrawFieldText(model.DiameterInches?.ToString("F2"), fields.DiameterInches);
             if (model.ScreenedIntervalFromFeet.HasValue || model.ScreenedIntervalToFeet.HasValue)
             {
-                DrawText(model.ScreenedIntervalFromFeet?.ToString("F2"), 450, 239, 55);
-                DrawText(model.ScreenedIntervalToFeet?.ToString("F2"), 520, 239, 55);
+                DrawFieldText(model.ScreenedIntervalFromFeet?.ToString("F2"), fields.ScreenedIntervalFromFeet);
+                DrawFieldText(model.ScreenedIntervalToFeet?.ToString("F2"), fields.ScreenedIntervalToFeet);
             }
-            DrawText(model.RelativeMpElevation?.ToString("F2"), 450, 250, 75);
-            DrawText(model.WaterLevel?.ToString("F2"), 160, 237);
-            DrawText(model.MeasuringPointAboveLandSurface?.ToString("F2"), 130, 251, 80);
-            DrawText(model.GallonsPumped?.ToString("F2"), 260, 266);
-            DrawText(model.PHField?.ToString("F2"), 610, 220, 45);
-            DrawText(model.TemperatureField?.ToString("F1"), 750, 220);
-            DrawText(model.SpecificConductance?.ToString("F2"), 660, 238);
-            DrawText(model.Odor, 650, 252);
-            DrawText(model.Appearance, 650, 267);
-            void DrawMetalsMark(bool? value, bool yes, double x, double y)
+            DrawFieldText(model.RelativeMpElevation?.ToString("F2"), fields.RelativeMpElevation);
+            DrawFieldText(model.WaterLevel?.ToString("F2"), fields.WaterLevel);
+            DrawFieldText(model.MeasuringPointAboveLandSurface?.ToString("F2"), fields.MeasuringPointAboveLandSurface);
+            DrawFieldText(model.GallonsPumped?.ToString("F2"), fields.GallonsPumped);
+            DrawFieldText(model.PHField?.ToString("F2"), fields.PHField);
+            DrawFieldText(model.TemperatureField?.ToString("F1"), fields.TemperatureField);
+            DrawFieldText(model.SpecificConductance?.ToString("F2"), fields.SpecificConductance);
+            DrawFieldText(model.Odor, fields.Odor);
+            DrawFieldText(model.Appearance, fields.Appearance);
+            void DrawMetalsMark(bool? value, bool yes, Gw59PdfTextSlot slot)
             {
                 if (value.HasValue && value.Value == yes)
                 {
-                    DrawText("X", x, y);
+                    DrawTick(slot.X, slot.Y);
                 }
             }
 
-            DrawMetalsMark(model.MetalsUnfiltered, true, 244, 283);
-            DrawMetalsMark(model.MetalsUnfiltered, false, 303, 282);
-            DrawMetalsMark(model.MetalsAcidified, true, 444, 283);
-            DrawMetalsMark(model.MetalsAcidified, false, 492, 283);
-            DrawLabText(
-                model.LabSampleAnalyzedDate?.ToString("MM/dd/yyyy"),
-                205,
-                317,
-                90);
-            DrawLabText(model.LabName, 450, 316);
-            DrawLabText(model.LabCertificationNumber, 740, 316);
+            DrawMetalsMark(model.MetalsUnfiltered, true, fields.MetalsUnfilteredYes);
+            DrawMetalsMark(model.MetalsUnfiltered, false, fields.MetalsUnfilteredNo);
+            DrawMetalsMark(model.MetalsAcidified, true, fields.MetalsAcidifiedYes);
+            DrawMetalsMark(model.MetalsAcidified, false, fields.MetalsAcidifiedNo);
+            DrawFieldLabText(model.LabSampleAnalyzedDate?.ToString("MM/dd/yyyy"), fields.LabSampleAnalyzedDate);
+            DrawFieldLabText(model.LabName, fields.LabName);
+            DrawFieldLabText(model.LabCertificationNumber, fields.LabCertificationNumber);
 
             var drawnNamedSlots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var snapshot in model.ParameterSnapshots
-                         .Where(x => x.IsGw59 && x.Value.HasValue)
-                         .OrderBy(x => x.SortOrder)
-                         .ThenBy(x => x.PcsCode, StringComparer.OrdinalIgnoreCase))
+            foreach (var snapshot in Gw59PdfCalibration.SelectNamedSnapshots(model.ParameterSnapshots))
             {
-                if (!Gw59LabPdfCalibration.TryGetNamedSlot(snapshot.PcsCode, out var slot))
+                if (!Gw59PdfCalibration.TryGetNamedSlot(snapshot.PcsCode, out var slot))
                 {
                     continue;
                 }
 
-                var slotKey = Gw59LabPdfCalibration.GetSlotPositionKey(slot);
+                var slotKey = Gw59PdfCalibration.GetSlotPositionKey(slot);
                 if (!drawnNamedSlots.Add(slotKey))
                 {
                     continue;
                 }
 
-                DrawLabText(
-                    Gw59LabPdfCalibration.FormatSlotValue(snapshot.Value!.Value, slot),
+                DrawBaselineText(
+                    Gw59PdfCalibration.FormatSlotValue(snapshot.Value!.Value, slot),
                     slot.X,
                     slot.Y,
-                    slot.Width);
+                    slot.Width,
+                    font);
             }
 
-            DrawText(model.LabReportAttached ? "X" : string.Empty, 684, 510);
-            DrawText(!model.LabReportAttached ? "X" : string.Empty, 752, 510);
-            DrawLabText(model.VOCMethodNumber, 750, 530);
+            DrawCheckboxMark(model.LabReportAttached ? "X" : string.Empty, fields.LabReportAttachedYes);
+            DrawCheckboxMark(!model.LabReportAttached ? "X" : string.Empty, fields.LabReportAttachedNo);
+            DrawFieldLabText(model.VOCMethodNumber, fields.VOCMethodNumber);
             if (model.GwOperationLagoon)
             {
-                DrawTick(555, 121);
+                DrawTick(fields.OperationLagoonTick.X, fields.OperationLagoonTick.Y);
             }
 
             if (model.GwOperationSprayField)
             {
-                DrawTick(555, 136);
+                DrawTick(fields.OperationSprayFieldTick.X, fields.OperationSprayFieldTick.Y);
             }
 
             var otherLineIndex = 0;
-            foreach (var otherLine in model.OtherParameterLines.Take(Gw59LabPdfCalibration.OtherLineLimit))
+            foreach (var otherLine in model.OtherParameterLines.Take(Gw59PdfCalibration.OtherLineLimit))
             {
-                var otherSlot = Gw59LabPdfCalibration.GetOtherSlot(otherLineIndex++);
-                DrawClippedLabText(
-                    Gw59LabPdfCalibration.FormatOtherLine(otherLine),
+                var otherSlot = Gw59PdfCalibration.GetOtherSlot(otherLineIndex++);
+                DrawBaselineText(
+                    Gw59PdfCalibration.FormatOtherLine(otherLine),
                     otherSlot.X,
                     otherSlot.Y,
                     otherSlot.Width,
                     otherFont);
             }
-            DrawText($"{model.CertificationName} - {model.CertificationTitle}", 40, 649, 340);
-            DrawText(model.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726);
+            DrawFieldText($"{model.CertificationName} - {model.CertificationTitle}", fields.CertificationNameTitle);
+            DrawFieldText(model.CertificationDate?.ToString("MM/dd/yyyy"), fields.CertificationDate);
 
             if (showGrid)
             {
@@ -2344,11 +2342,11 @@ public class ReportsController : BaseController
     {
         var markerFont = new XFont("Arial", 6, XFontStyle.Bold);
         var boxPen = new XPen(XColors.DarkGreen, 0.25);
-        var otherFont = new XFont("Arial", 7, XFontStyle.Regular);
-        for (var i = 0; i < Gw59LabPdfCalibration.OtherLineLimit; i++)
+        var otherFont = new XFont("Arial", 6.5, XFontStyle.Regular);
+        for (var i = 0; i < Gw59PdfCalibration.OtherLineLimit; i++)
         {
-            var slot = Gw59LabPdfCalibration.GetOtherSlot(i);
-            var baselineY = Gw59LabPdfCalibration.GetBaselineY(slot.Y);
+            var slot = Gw59PdfCalibration.GetOtherSlot(i);
+            var baselineY = Gw59PdfCalibration.GetBaselineY(slot.Y);
             var rect = new XRect(slot.X, baselineY - otherFont.Height, slot.Width, otherFont.Height + 1);
             gfx.DrawRectangle(boxPen, rect);
             gfx.DrawString(
@@ -3710,34 +3708,34 @@ public class ReportsController : BaseController
 
     private static Gw59ACalibrationMap BuildGw59ACalibrationMap()
     {
-        // Temporary calibration map sourced from the grid screenshot. Keep all coordinates centralized here.
+        // GW-59A field positions on GW-59A.pdf (portrait letter).
         return new Gw59ACalibrationMap
         {
-            PermitNumber = new Point2D(450, 30),
-            DueDate = new Point2D(192, 78),
+            PermitNumber = new Point2D(450, 18),
+            DueDate = new Point2D(292, 58),
 
-            Q1Yes = new Point2D(530, 80),
-            Q1No = new Point2D(560, 80),
-            Q2Yes = new Point2D(530, 112),
-            Q2No = new Point2D(560, 113),
-            Q3Yes = new Point2D(530, 190),
-            Q3No = new Point2D(570, 190),
-            Q4Yes = new Point2D(530, 220),
-            Q4No = new Point2D(560, 220),
-            Q5Yes = new Point2D(520, 310),
-            Q5No = new Point2D(560, 310),
-            Q6Yes = new Point2D(530, 429),
-            Q6No = new Point2D(560, 429),
-            Q7Yes = new Point2D(530, 510),
-            Q7No = new Point2D(560, 510),
+            Q1Yes = new Point2D(522, 58),
+            Q1No = new Point2D(554, 58),
+            Q2Yes = new Point2D(522, 90),
+            Q2No = new Point2D(554, 90),
+            Q3Yes = new Point2D(522, 170),
+            Q3No = new Point2D(554, 170),
+            Q4Yes = new Point2D(522, 202),
+            Q4No = new Point2D(554, 202),
+            Q5Yes = new Point2D(522, 293),
+            Q5No = new Point2D(554, 293),
+            Q6Yes = new Point2D(522, 408),
+            Q6No = new Point2D(554, 408),
+            Q7Yes = new Point2D(522, 489),
+            Q7No = new Point2D(554, 489),
 
-            Q2Details = new TextBox2D(70, 132, 440, 44),
-            Q4Details = new TextBox2D(70, 254, 440, 44),
-            Q5Details = new TextBox2D(70, 359, 440, 72),
-            Q7Details = new TextBox2D(70, 576, 440, 56),
+            Q2Details = new TextBox2D(70, 142, 440, 36),
+            Q4Details = new TextBox2D(70, 262, 440, 36),
+            Q5Details = new TextBox2D(70, 364, 440, 66),
+            Q7Details = new TextBox2D(70, 576, 440, 50),
 
-            SignerName = new Point2D(100, 710),
-            SignedDate = new Point2D(410, 710)
+            SignerName = new Point2D(80, 704),
+            SignedDate = new Point2D(400, 704)
         };
     }
 

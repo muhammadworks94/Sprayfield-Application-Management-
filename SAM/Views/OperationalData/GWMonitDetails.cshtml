@@ -1,12 +1,15 @@
 @model SAM.ViewModels.OperationalData.GWMonitViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
+@using SAM.Utilities
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Groundwater Monitoring Details";
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
     string Yn(bool? v) => !v.HasValue ? "Unanswered" : (v.Value ? "Yes" : "No");
+    string YnBadgeClass(bool? v) => !v.HasValue ? "bg-secondary" : (v.Value ? "bg-success" : "bg-dark");
+    string DetailOrNa(string? value) => string.IsNullOrWhiteSpace(value) ? "N/A" : value;
     var hasVocFile = !string.IsNullOrWhiteSpace(Model.VOCReportFileName);
     var vocFileStatus = !hasVocFile
         ? "No VOC PDF uploaded."
@@ -33,6 +36,39 @@
 </div>
 
 @section Scripts {
+    <style>
+        .gw59a-question {
+            border: 1px solid #e4e7ec;
+            border-radius: .5rem;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+            background: #fff;
+        }
+
+        .gw59a-question-text {
+            color: #101828;
+            line-height: 1.45;
+            margin-bottom: .65rem;
+        }
+
+        .gw59a-detail-block {
+            margin-top: .75rem;
+            padding-top: .75rem;
+            border-top: 1px dashed #d0d5dd;
+        }
+
+        .gw59a-detail-label {
+            color: #475467;
+            font-size: .875rem;
+            margin-bottom: .35rem;
+        }
+
+        .gw59a-detail-value {
+            color: #101828;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    </style>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
@@ -250,60 +286,79 @@
         <div class="row">
             <div class="col-12">
                 <h5 class="detail-section-label mb-4">GW-59A Compliance</h5>
-                <div class="row">
-                    <div class="col-md-6">
-                        <dl class="row">
-                            <dt class="col-sm-5 mb-2 text-muted">Due Date (Q1):</dt>
-                            <dd class="col-sm-7 mb-2">@(Model.GW59ADueDate?.ToString("MM/dd/yyyy") ?? "N/A")</dd>
 
-                            <dt class="col-sm-5 mb-2 text-muted">Q1 Response:</dt>
-                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion1Response)</dd>
-
-                            <dt class="col-sm-5 mb-2 text-muted">Q2 Response:</dt>
-                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion2Response)</dd>
-
-                            <dt class="col-sm-5 mb-2 text-muted">Q3 Response:</dt>
-                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion3Response)</dd>
-
-                            <dt class="col-sm-5 mb-2 text-muted">Q4 Response:</dt>
-                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion4Response)</dd>
-
-                            <dt class="col-sm-5 mb-2 text-muted">Q5 Response:</dt>
-                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion5Response)</dd>
-
-                            <dt class="col-sm-5 mb-2 text-muted">Q6 Response:</dt>
-                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion6Response)</dd>
-
-                            <dt class="col-sm-5 mb-2 text-muted">Q7 Response:</dt>
-                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion7Response)</dd>
-                        </dl>
-                    </div>
-                    <div class="col-md-6">
-                        <dl class="row">
-                            <dt class="col-sm-5 mb-2 text-muted">GW-59A Signer Name:</dt>
-                            <dd class="col-sm-7 mb-2">@(string.IsNullOrWhiteSpace(Model.GW59ASignerName) ? "N/A" : Model.GW59ASignerName)</dd>
-
-                            <dt class="col-sm-5 mb-2 text-muted">GW-59A Signer Title:</dt>
-                            <dd class="col-sm-7 mb-2">@(string.IsNullOrWhiteSpace(Model.GW59ASignerTitle) ? "N/A" : Model.GW59ASignerTitle)</dd>
-
-                            <dt class="col-sm-5 mb-2 text-muted">GW-59A Signed Date:</dt>
-                            <dd class="col-sm-7 mb-2">@(Model.GW59ASignedDate?.ToString("MM/dd/yyyy") ?? "N/A")</dd>
-                        </dl>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="text-muted small mb-1">Monitoring results due date</div>
+                        <div>@(Model.GW59ADueDate?.ToString("MM/dd/yyyy") ?? "N/A")</div>
                     </div>
                 </div>
-                <dl class="row">
-                    <dt class="col-sm-2 mb-2 text-muted">Q2 Details:</dt>
-                    <dd class="col-sm-10 mb-2 text-break">@(string.IsNullOrWhiteSpace(Model.GW59AQuestion2Details) ? "N/A" : Model.GW59AQuestion2Details)</dd>
 
-                    <dt class="col-sm-2 mb-2 text-muted">Q4 Details:</dt>
-                    <dd class="col-sm-10 mb-2 text-break">@(string.IsNullOrWhiteSpace(Model.GW59AQuestion4Details) ? "N/A" : Model.GW59AQuestion4Details)</dd>
+                <div class="gw59a-question">
+                    <div class="gw59a-question-text">@Gw59AQuestionText.FormatQuestion1(Model.GW59ADueDate)</div>
+                    <span class="badge @YnBadgeClass(Model.GW59AQuestion1Response)">@Yn(Model.GW59AQuestion1Response)</span>
+                </div>
 
-                    <dt class="col-sm-2 mb-2 text-muted">Q5 Details:</dt>
-                    <dd class="col-sm-10 mb-2 text-break">@(string.IsNullOrWhiteSpace(Model.GW59AQuestion5Details) ? "N/A" : Model.GW59AQuestion5Details)</dd>
+                <div class="gw59a-question">
+                    <div class="gw59a-question-text">@Gw59AQuestionText.Question2</div>
+                    <span class="badge @YnBadgeClass(Model.GW59AQuestion2Response)">@Yn(Model.GW59AQuestion2Response)</span>
+                    <div class="gw59a-detail-block">
+                        <div class="gw59a-detail-label">@Gw59AQuestionText.Question2DetailsPrompt</div>
+                        <div class="gw59a-detail-value">@DetailOrNa(Model.GW59AQuestion2Details)</div>
+                    </div>
+                </div>
 
-                    <dt class="col-sm-2 mb-2 text-muted">Q7 Details:</dt>
-                    <dd class="col-sm-10 mb-2 text-break">@(string.IsNullOrWhiteSpace(Model.GW59AQuestion7Details) ? "N/A" : Model.GW59AQuestion7Details)</dd>
-                </dl>
+                <div class="gw59a-question">
+                    <div class="gw59a-question-text">@Gw59AQuestionText.Question3</div>
+                    <span class="badge @YnBadgeClass(Model.GW59AQuestion3Response)">@Yn(Model.GW59AQuestion3Response)</span>
+                </div>
+
+                <div class="gw59a-question">
+                    <div class="gw59a-question-text">@Gw59AQuestionText.Question4</div>
+                    <span class="badge @YnBadgeClass(Model.GW59AQuestion4Response)">@Yn(Model.GW59AQuestion4Response)</span>
+                    <div class="gw59a-detail-block">
+                        <div class="gw59a-detail-label">@Gw59AQuestionText.Question4DetailsPrompt</div>
+                        <div class="gw59a-detail-value">@DetailOrNa(Model.GW59AQuestion4Details)</div>
+                    </div>
+                </div>
+
+                <div class="gw59a-question">
+                    <div class="gw59a-question-text">@Gw59AQuestionText.Question5</div>
+                    <span class="badge @YnBadgeClass(Model.GW59AQuestion5Response)">@Yn(Model.GW59AQuestion5Response)</span>
+                    <div class="gw59a-detail-block">
+                        <div class="gw59a-detail-label">@Gw59AQuestionText.Question5DetailsPrompt</div>
+                        <div class="gw59a-detail-value">@DetailOrNa(Model.GW59AQuestion5Details)</div>
+                    </div>
+                </div>
+
+                <div class="gw59a-question">
+                    <div class="gw59a-question-text">@Gw59AQuestionText.Question6</div>
+                    <span class="badge @YnBadgeClass(Model.GW59AQuestion6Response)">@Yn(Model.GW59AQuestion6Response)</span>
+                </div>
+
+                <div class="gw59a-question">
+                    <div class="gw59a-question-text">@Gw59AQuestionText.Question7</div>
+                    <span class="badge @YnBadgeClass(Model.GW59AQuestion7Response)">@Yn(Model.GW59AQuestion7Response)</span>
+                    <div class="gw59a-detail-block">
+                        <div class="gw59a-detail-label">@Gw59AQuestionText.Question7DetailsPrompt</div>
+                        <div class="gw59a-detail-value">@DetailOrNa(Model.GW59AQuestion7Details)</div>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-4 mb-3">
+                        <div class="text-muted small mb-1">GW-59A signer name</div>
+                        <div>@(string.IsNullOrWhiteSpace(Model.GW59ASignerName) ? "N/A" : Model.GW59ASignerName)</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-muted small mb-1">GW-59A signer title</div>
+                        <div>@(string.IsNullOrWhiteSpace(Model.GW59ASignerTitle) ? "N/A" : Model.GW59ASignerTitle)</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-muted small mb-1">GW-59A signed date</div>
+                        <div>@(Model.GW59ASignedDate?.ToString("MM/dd/yyyy") ?? "N/A")</div>
+                    </div>
+                </div>
             </div>
         </div>
         </div>

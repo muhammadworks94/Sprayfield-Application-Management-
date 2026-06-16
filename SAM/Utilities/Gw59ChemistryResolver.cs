@@ -22,7 +22,7 @@ public sealed class Gw59ResolvedChemistry
 public static class Gw59ChemistryResolver
 {
     private const string VocPcsCode = "78732";
-    private const int Gw59OtherLineLimit = Gw59LabPdfCalibration.OtherLineLimit;
+    private const int Gw59OtherLineLimit = Gw59PdfCalibration.OtherLineLimit;
     private static readonly string[] TdsPcsCodes = ["70300", "70295"];
     private static readonly string[] TurbidityPcsCodes = ["00076"];
     private static readonly string[] CodPcsCodes = ["00340"];
@@ -84,7 +84,7 @@ public static class Gw59ChemistryResolver
             .Where(x => x.Value.HasValue)
             .Where(x => !string.Equals(x.PcsCode, VocPcsCode, StringComparison.OrdinalIgnoreCase))
             .Where(x => !string.Equals(x.PcsCode, WaterLevelPcsCodes[0], StringComparison.OrdinalIgnoreCase))
-            .Where(x => !Gw59LabPdfCalibration.HasNamedSlot(x.PcsCode))
+            .Where(x => !Gw59PdfCalibration.HasNamedSlot(x.PcsCode))
             .Where(x => !x.ParameterName.Contains("recoverable", StringComparison.OrdinalIgnoreCase))
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.PcsCode, StringComparer.OrdinalIgnoreCase)
