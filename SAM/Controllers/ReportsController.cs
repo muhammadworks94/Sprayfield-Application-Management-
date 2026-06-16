@@ -2192,6 +2192,7 @@ public class ReportsController : BaseController
             var page = document.Pages[0];
             var gfx = XGraphics.FromPdfPage(page);
             var font = new XFont("Arial", 8, XFontStyle.Regular);
+            var otherFont = new XFont("Arial", 7, XFontStyle.Regular);
             void DrawText(string? text, double x, double y, double width = 260) =>
                 gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(x, y, width, font.Height + 2), XStringFormats.TopLeft);
             void DrawLabText(string? text, double x, double underlineY, double width = 55)
@@ -2207,6 +2208,17 @@ public class ReportsController : BaseController
                     XBrushes.Black,
                     new XPoint(x, Gw59LabPdfCalibration.GetBaselineY(underlineY)),
                     XStringFormats.BaseLineLeft);
+            }
+            void DrawClippedLabText(string? text, double x, double underlineY, double width, XFont drawFont)
+            {
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return;
+                }
+
+                var baselineY = Gw59LabPdfCalibration.GetBaselineY(underlineY);
+                var rect = new XRect(x, baselineY - drawFont.Height, width, drawFont.Height + 1);
+                gfx.DrawString(text, drawFont, XBrushes.Black, rect, XStringFormats.BottomLeft);
             }
             void DrawTick(double x, double y)
             {
@@ -2306,11 +2318,12 @@ public class ReportsController : BaseController
             foreach (var otherLine in model.OtherParameterLines.Take(Gw59LabPdfCalibration.OtherLineLimit))
             {
                 var otherSlot = Gw59LabPdfCalibration.GetOtherSlot(otherLineIndex++);
-                DrawLabText(
+                DrawClippedLabText(
                     Gw59LabPdfCalibration.FormatOtherLine(otherLine),
                     otherSlot.X,
                     otherSlot.Y,
-                    otherSlot.Width);
+                    otherSlot.Width,
+                    otherFont);
             }
             DrawText($"{model.CertificationName} - {model.CertificationTitle}", 40, 649, 340);
             DrawText(model.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726);
@@ -2318,12 +2331,33 @@ public class ReportsController : BaseController
             if (showGrid)
             {
                 DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+                DrawGw59OtherSlotGrid(gfx);
             }
 
             document.Save(outputStream, false);
         }
 
         return outputStream.ToArray();
+    }
+
+    private static void DrawGw59OtherSlotGrid(XGraphics gfx)
+    {
+        var markerFont = new XFont("Arial", 6, XFontStyle.Bold);
+        var boxPen = new XPen(XColors.DarkGreen, 0.25);
+        var otherFont = new XFont("Arial", 7, XFontStyle.Regular);
+        for (var i = 0; i < Gw59LabPdfCalibration.OtherLineLimit; i++)
+        {
+            var slot = Gw59LabPdfCalibration.GetOtherSlot(i);
+            var baselineY = Gw59LabPdfCalibration.GetBaselineY(slot.Y);
+            var rect = new XRect(slot.X, baselineY - otherFont.Height, slot.Width, otherFont.Height + 1);
+            gfx.DrawRectangle(boxPen, rect);
+            gfx.DrawString(
+                $"O{i + 1}",
+                markerFont,
+                XBrushes.DarkGreen,
+                new XPoint(slot.X, baselineY),
+                XStringFormats.BaseLineLeft);
+        }
     }
 
     private async Task<byte[]> RenderCombinedGw59PdfAsync(Gw59ExportModel model, bool showGrid = false)

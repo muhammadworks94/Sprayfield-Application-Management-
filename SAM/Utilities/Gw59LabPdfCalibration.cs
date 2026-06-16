@@ -20,8 +20,9 @@ public static class Gw59LabPdfCalibration
     private const double OtherLineStep = 14.5;
     private const double OtherStartY = 409;
     private const double OtherLeftX = 582;
-    private const double OtherRightX = 652;
-    private const double OtherWidth = 95;
+    private const double OtherRightX = 685;
+    private const double OtherLeftWidth = 98;
+    private const double OtherRightWidth = 95;
 
     private static readonly Dictionary<string, Gw59LabPdfSlot> NamedSlots = BuildNamedSlots();
 
@@ -53,7 +54,7 @@ public static class Gw59LabPdfCalibration
         {
             X = isRightColumn ? OtherRightX : OtherLeftX,
             Y = OtherStartY + (row * OtherLineStep),
-            Width = OtherWidth
+            Width = isRightColumn ? OtherRightWidth : OtherLeftWidth
         };
     }
 
@@ -65,10 +66,34 @@ public static class Gw59LabPdfCalibration
 
     public static double GetBaselineY(double underlineY) => underlineY - BaselineAboveUnderline;
 
-    public static string FormatOtherLine(Gw59OtherParameterLine line)
+    public static string FormatOtherLine(Gw59OtherParameterLine line) =>
+        FormatOtherLine(line.ParameterName, line.Value, line.Units);
+
+    public static string FormatOtherLine(string parameterName, decimal value, string? units)
     {
-        var units = string.IsNullOrWhiteSpace(line.Units) ? string.Empty : $" {line.Units.Trim()}";
-        return $"{line.ParameterName}, {line.Value:0.######}{units}";
+        var unitsSuffix = string.IsNullOrWhiteSpace(units) ? string.Empty : $" {units.Trim()}";
+        var name = AbbreviateOtherParameterName(parameterName);
+        return $"{name}, {value:0.######}{unitsSuffix}";
+    }
+
+    private static string AbbreviateOtherParameterName(string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(parameterName))
+        {
+            return string.Empty;
+        }
+
+        return parameterName.Trim() switch
+        {
+            "Total Suspended Solids" => "TSS",
+            "Total Nitrogen" => "Total N",
+            "Nitrite + Nitrate" => "Nitrite+Nitrate",
+            "Dissolved Organic Carbon" => "DOC",
+            "Organic Phosphorus" => "Org P",
+            "Volatile Compounds" => "VOC",
+            _ when parameterName.Length > 22 => parameterName[..21].TrimEnd() + "…",
+            _ => parameterName.Trim()
+        };
     }
 
     public static IReadOnlyList<Gw59ParameterSnapshot> SelectNamedSnapshots(IEnumerable<Gw59ParameterSnapshot>? snapshots)

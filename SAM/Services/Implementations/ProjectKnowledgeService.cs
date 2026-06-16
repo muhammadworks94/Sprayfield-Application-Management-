@@ -348,7 +348,7 @@ flowchart TD
                         "GW-59 per-sample slots (date, depth to water level, volume pumped, metals Y/N) come from GWMonit; metals Y/N export blank when unset.",
                         "GW-59 Date sample collected exports from GWMonit.SampleDate; Date sample analyzed exports from GWMonit.LabSampleAnalyzedDate (Laboratory Information block).",
                         "GW-59 field pH comes from GWMonit.PH. Laboratory Information named rows (COD, coliform, TDS, lab pH, TOC, metals, etc.) are drawn from GWMonitTemplateValue snapshots via Gw59LabPdfCalibration (Utilities/Gw59LabPdfCalibration.cs), which maps each PCS code to fixed PDF coordinates.",
-                        "GW-59 Other section accepts up to 10 remaining GW-59 PCS rows with values that do not have a named PDF slot (excluding VOC 78732, water level 82546, and recoverable parameters), in permit sort order. Slots #1–#5 export in the left column and #6–#10 in the right column using format: Compound, concentration units.",
+                        "GW-59 Other section accepts up to 10 remaining GW-59 PCS rows with values that do not have a named PDF slot (excluding VOC 78732, water level 82546, and recoverable parameters), in permit sort order. Slots #1–#5 export in the left column (x≈582, width≈98) and #6–#10 in the right column (x≈685, width≈95) on shared row Y positions; text is clipped to each column box using format: Compound, concentration units.",
                         "VOC merge reads Azure blobs into memory before PdfSharpCore import so valid PDFs no longer fail on non-seekable Azure streams.",
                         "Exports fail with actionable messages when template files or required source data are missing."
                     }
