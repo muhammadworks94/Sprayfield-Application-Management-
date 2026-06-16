@@ -21,18 +21,6 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
         builder.Property(g => g.WaterLevel)
             .HasColumnType("decimal(18,2)");
 
-        builder.Property(g => g.MeasuringPointAboveLandSurface)
-            .HasColumnType("decimal(18,2)");
-
-        builder.Property(g => g.RelativeMpElevation)
-            .HasColumnType("decimal(18,2)");
-
-        builder.Property(g => g.ScreenedIntervalFromFeet)
-            .HasColumnType("decimal(18,2)");
-
-        builder.Property(g => g.ScreenedIntervalToFeet)
-            .HasColumnType("decimal(18,2)");
-
         builder.Property(g => g.Temperature)
             .HasColumnType("decimal(18,2)");
 

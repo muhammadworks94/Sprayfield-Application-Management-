@@ -2022,10 +2022,12 @@ namespace SAM.Controllers;
             SampleDate = g.SampleDate,
             SampleDepth = g.SampleDepth,
             WaterLevel = g.WaterLevel,
-            MeasuringPointAboveLandSurface = g.MeasuringPointAboveLandSurface,
-            RelativeMpElevation = g.RelativeMpElevation,
-            ScreenedIntervalFromFeet = g.ScreenedIntervalFromFeet,
-            ScreenedIntervalToFeet = g.ScreenedIntervalToFeet,
+            WellDepthFeet = g.MonitoringWell?.WellDepthFeet,
+            DiameterInches = g.MonitoringWell?.DiameterInches,
+            MeasuringPointAboveLandSurface = g.MonitoringWell?.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = g.MonitoringWell?.RelativeMpElevation,
+            ScreenedIntervalFromFeet = g.MonitoringWell?.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = g.MonitoringWell?.ScreenedIntervalToFeet,
             Temperature = g.Temperature,
             PH = g.PH,
             GallonsPumped = g.GallonsPumped,
@@ -2040,8 +2042,8 @@ namespace SAM.Controllers;
             Chloride = g.Chloride,
             Calcium = g.Calcium,
             Magnesium = g.Magnesium,
-            MetalsSamplesCollectedUnfiltered = g.MetalsSamplesCollectedUnfiltered ?? false,
-            MetalSamplesFieldAcidified = g.MetalSamplesFieldAcidified ?? false,
+            MetalsSamplesCollectedUnfiltered = g.MetalsSamplesCollectedUnfiltered,
+            MetalSamplesFieldAcidified = g.MetalSamplesFieldAcidified,
             FecalColiform = g.FecalColiform,
             TotalColiform = g.TotalColiform,
             VOCReportAttached = g.VOCReportAttached ?? false,
@@ -2107,6 +2109,7 @@ namespace SAM.Controllers;
 
         await EnsureCompanyAccessAsync(gwMonit.CompanyId);
 
+        var wellData = Gw59WellDataFields.FromMonitoringWell(gwMonit.MonitoringWell);
         var viewModel = new GWMonitViewModel
         {
             Id = gwMonit.Id,
@@ -2119,10 +2122,12 @@ namespace SAM.Controllers;
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
-            MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
-            RelativeMpElevation = gwMonit.RelativeMpElevation,
-            ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
-            ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
+            WellDepthFeet = wellData.WellDepthFeet,
+            DiameterInches = wellData.DiameterInches,
+            MeasuringPointAboveLandSurface = wellData.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = wellData.RelativeMpElevation,
+            ScreenedIntervalFromFeet = wellData.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = wellData.ScreenedIntervalToFeet,
             Temperature = gwMonit.Temperature,
             PH = gwMonit.PH,
             GallonsPumped = gwMonit.GallonsPumped,
@@ -2137,8 +2142,8 @@ namespace SAM.Controllers;
             Chloride = gwMonit.Chloride,
             Calcium = gwMonit.Calcium,
             Magnesium = gwMonit.Magnesium,
-            MetalsSamplesCollectedUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered ?? false,
-            MetalSamplesFieldAcidified = gwMonit.MetalSamplesFieldAcidified ?? false,
+            MetalsSamplesCollectedUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered,
+            MetalSamplesFieldAcidified = gwMonit.MetalSamplesFieldAcidified,
             FecalColiform = gwMonit.FecalColiform,
             TotalColiform = gwMonit.TotalColiform,
             VOCReportAttached = gwMonit.VOCReportAttached ?? false,
@@ -2297,23 +2302,23 @@ namespace SAM.Controllers;
             WellLocation = wellLocation,
             WellDepthFeet = well?.WellDepthFeet,
             DiameterInches = well?.DiameterInches,
-            ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
-            ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
+            ScreenedIntervalFromFeet = well?.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = well?.ScreenedIntervalToFeet,
             NumberOfWellsToBeSampled = facilityWellCount,
 
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
-            MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
-            RelativeMpElevation = gwMonit.RelativeMpElevation,
+            MeasuringPointAboveLandSurface = well?.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = well?.RelativeMpElevation,
             GallonsPumped = gwMonit.GallonsPumped,
             PHField = gwMonit.PH,
             TemperatureField = gwMonit.Temperature,
             SpecificConductance = gwMonit.Conductivity,
             Odor = gwMonit.Odor,
             Appearance = gwMonit.Appearance,
-            MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered ?? false,
-            MetalsAcidified = gwMonit.MetalSamplesFieldAcidified ?? false,
+            MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered,
+            MetalsAcidified = gwMonit.MetalSamplesFieldAcidified,
             TDS = chemistry.TDS,
             TOC = chemistry.TOC,
             Chloride = chemistry.Chloride,
@@ -2512,10 +2517,6 @@ namespace SAM.Controllers;
                 SampleDate = viewModel.SampleDate,
                 SampleDepth = viewModel.SampleDepth,
                 WaterLevel = viewModel.WaterLevel,
-                MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface,
-                RelativeMpElevation = viewModel.RelativeMpElevation,
-                ScreenedIntervalFromFeet = viewModel.ScreenedIntervalFromFeet,
-                ScreenedIntervalToFeet = viewModel.ScreenedIntervalToFeet,
                 Temperature = viewModel.Temperature,
                 PH = viewModel.PH,
                 GallonsPumped = viewModel.GallonsPumped,
@@ -2558,6 +2559,10 @@ namespace SAM.Controllers;
             };
 
             await _gwMonitService.CreateAsync(gwMonit);
+            await UpdateMonitoringWellGw59FieldsAsync(
+                viewModel.MonitoringWellId,
+                facility!.CompanyId,
+                BuildGw59WellDataFromCreateViewModel(viewModel));
             if (viewModel.VOCReportFile != null && viewModel.VOCReportFile.Length > 0)
             {
                 await SaveGwVocFileAsync(gwMonit, viewModel.VOCReportFile);
@@ -2592,6 +2597,8 @@ namespace SAM.Controllers;
 
         await EnsureCompanyAccessAsync(gwMonit.CompanyId);
 
+        var editWell = gwMonit.MonitoringWell ?? await _monitoringWellService.GetByIdAsync(gwMonit.MonitoringWellId);
+        var editWellData = Gw59WellDataFields.FromMonitoringWell(editWell);
         var viewModel = new GWMonitEditViewModel
         {
             Id = gwMonit.Id,
@@ -2601,10 +2608,12 @@ namespace SAM.Controllers;
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
-            MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
-            RelativeMpElevation = gwMonit.RelativeMpElevation,
-            ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
-            ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
+            WellDepthFeet = editWellData.WellDepthFeet,
+            DiameterInches = editWellData.DiameterInches,
+            MeasuringPointAboveLandSurface = editWellData.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = editWellData.RelativeMpElevation,
+            ScreenedIntervalFromFeet = editWellData.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = editWellData.ScreenedIntervalToFeet,
             Temperature = gwMonit.Temperature,
             PH = gwMonit.PH,
             GallonsPumped = gwMonit.GallonsPumped,
@@ -2619,8 +2628,8 @@ namespace SAM.Controllers;
             Chloride = gwMonit.Chloride,
             Calcium = gwMonit.Calcium,
             Magnesium = gwMonit.Magnesium,
-            MetalsSamplesCollectedUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered ?? false,
-            MetalSamplesFieldAcidified = gwMonit.MetalSamplesFieldAcidified ?? false,
+            MetalsSamplesCollectedUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered,
+            MetalSamplesFieldAcidified = gwMonit.MetalSamplesFieldAcidified,
             FecalColiform = gwMonit.FecalColiform,
             TotalColiform = gwMonit.TotalColiform,
             VOCReportAttached = gwMonit.VOCReportAttached ?? false,
@@ -2799,12 +2808,9 @@ namespace SAM.Controllers;
             var gwMonit = existingGwMonit;
 
             gwMonit.SampleDate = viewModel.SampleDate;
+            gwMonit.MonitoringWellId = viewModel.MonitoringWellId;
             gwMonit.SampleDepth = viewModel.SampleDepth;
             gwMonit.WaterLevel = viewModel.WaterLevel;
-            gwMonit.MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface;
-            gwMonit.RelativeMpElevation = viewModel.RelativeMpElevation;
-            gwMonit.ScreenedIntervalFromFeet = viewModel.ScreenedIntervalFromFeet;
-            gwMonit.ScreenedIntervalToFeet = viewModel.ScreenedIntervalToFeet;
             gwMonit.Temperature = viewModel.Temperature;
             gwMonit.PH = viewModel.PH;
             gwMonit.GallonsPumped = viewModel.GallonsPumped;
@@ -2859,6 +2865,10 @@ namespace SAM.Controllers;
                 gwMonit.VOCReportAttached = false;
             }
 
+            await UpdateMonitoringWellGw59FieldsAsync(
+                viewModel.MonitoringWellId,
+                viewModel.CompanyId,
+                BuildGw59WellDataFromEditViewModel(viewModel));
             await _gwMonitService.UpdateAsync(gwMonit);
             await SaveGwMonitTemplateValuesAsync(gwMonit, viewModel.TemplateParameters);
             TempData["SuccessMessage"] = "Groundwater monitoring record updated successfully.";
@@ -2877,6 +2887,24 @@ namespace SAM.Controllers;
             ViewBag.MonitoringWells = await GetMonitoringWellSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
             return View(viewModel);
         }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GWMonitWellData(Guid monitoringWellId)
+    {
+        if (monitoringWellId == Guid.Empty)
+        {
+            return BadRequest("Monitoring well is required.");
+        }
+
+        var well = await _monitoringWellService.GetByIdAsync(monitoringWellId);
+        if (well == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(well.CompanyId);
+        return Json(Gw59WellDataFields.FromMonitoringWell(well));
     }
 
     [HttpPost]
@@ -2958,6 +2986,45 @@ namespace SAM.Controllers;
         var companies = await _lookupQueryService.GetCompaniesAsync(effectiveCompanyId);
 
         return new SelectList(companies, "Id", "Name");
+    }
+
+    private static Gw59WellDataFields BuildGw59WellDataFromCreateViewModel(GWMonitCreateViewModel viewModel) =>
+        new()
+        {
+            WellDepthFeet = viewModel.WellDepthFeet,
+            DiameterInches = viewModel.DiameterInches,
+            ScreenedIntervalFromFeet = viewModel.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = viewModel.ScreenedIntervalToFeet,
+            MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = viewModel.RelativeMpElevation
+        };
+
+    private static Gw59WellDataFields BuildGw59WellDataFromEditViewModel(GWMonitEditViewModel viewModel) =>
+        new()
+        {
+            WellDepthFeet = viewModel.WellDepthFeet,
+            DiameterInches = viewModel.DiameterInches,
+            ScreenedIntervalFromFeet = viewModel.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = viewModel.ScreenedIntervalToFeet,
+            MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = viewModel.RelativeMpElevation
+        };
+
+    private async Task UpdateMonitoringWellGw59FieldsAsync(Guid monitoringWellId, Guid companyId, Gw59WellDataFields fields)
+    {
+        var well = await _context.MonitoringWells.FirstOrDefaultAsync(w => w.Id == monitoringWellId);
+        if (well == null)
+        {
+            throw new EntityNotFoundException(nameof(MonitoringWell), monitoringWellId);
+        }
+
+        if (well.CompanyId != companyId)
+        {
+            throw new BusinessRuleException("Monitoring well must belong to the same company.");
+        }
+
+        fields.ApplyTo(well);
+        await _context.SaveChangesAsync();
     }
 
     private async Task<SelectList> GetMonitoringWellSelectListAsync(Guid? companyId = null, Guid? facilityId = null)

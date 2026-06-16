@@ -102,10 +102,10 @@ public class GW59ReportViewModel
     public string Appearance { get; set; } = string.Empty;
 
     [Display(Name = "Metals Samples Collected Unfiltered")]
-    public bool MetalsUnfiltered { get; set; }
+    public bool? MetalsUnfiltered { get; set; }
 
     [Display(Name = "Metal Samples Field Acidified")]
-    public bool MetalsAcidified { get; set; }
+    public bool? MetalsAcidified { get; set; }
 
     // Laboratory parameters (subset supported by current entity)
 

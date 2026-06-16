@@ -72,10 +72,10 @@
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-briefcase me-1"></i>Company:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.CompanyName ?? "N/A")</dd>
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-collection me-1"></i>Metals Unfiltered:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.MetalsSamplesCollectedUnfiltered ? "Yes" : "No")</dd>
+                    <dd class="col-sm-7 mb-2">@(Model.MetalsSamplesCollectedUnfiltered switch { true => "Yes", false => "No", _ => "Not set" })</dd>
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-fill me-1"></i>Metal Samples Field Acidified:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.MetalSamplesFieldAcidified ? "Yes" : "No")</dd>
+                    <dd class="col-sm-7 mb-2">@(Model.MetalSamplesFieldAcidified switch { true => "Yes", false => "No", _ => "Not set" })</dd>
                 </dl>
             </div>
             <div class="col-md-6">
@@ -86,6 +86,12 @@
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-half me-1"></i>Water Level:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.WaterLevel?.ToString("F2") ?? "N/A") feet</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-layers me-1"></i>Well Depth:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.WellDepthFeet?.ToString("F2") ?? "N/A") ft</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-circle me-1"></i>Well Diameter:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.DiameterInches?.ToString("F2") ?? "N/A") in</dd>
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Measuring Point:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.MeasuringPointAboveLandSurface?.ToString("F2") ?? "N/A") ft above land surface</dd>

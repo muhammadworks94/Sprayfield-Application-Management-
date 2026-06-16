@@ -315,7 +315,9 @@ flowchart TD
                         "System resolves active permit and shows Attachment C template rows with editable value inputs.",
                         "GW saves reject template rows outside GW59/GW59A for the resolved permit to prevent cross-report contamination.",
                         "Rows required for the selected sample month (from frequency + scheduled months) must be entered before save.",
-                        "Groundwater sample-level fields now include Measuring Point (ft above land surface), Relative M.P. Elevation, Screened Interval From, Screened Interval To, and pH 00400 directly on GWMonit.",
+                        "GW-59 well-static fields (well depth, diameter, screened interval from/to, measuring point, relative M.P. elevation) are stored on MonitoringWell and can be edited from GWMonit create/edit as a proxy that updates the selected well master record.",
+                        "Per-sample GWMonit fields include water level, gallons pumped, field observations, template PCS values, and optional metals Y/N (MetalsSamplesCollectedUnfiltered, MetalSamplesFieldAcidified).",
+                        "Metals Y/N are optional on save; unset values export as blank yes/no boxes on GW-59 PDF (same behavior as GW-59A unanswered questions).",
                         "GW-59A compliance answers (Q1-Q7, detail text, due date, signer/date) are captured on GWMonit create/edit as a separate questionnaire workflow.",
                         "If Attachment C row 78732 (Volatile Compounds) is required for the selected month, save requires a VOC PDF, forces VOC Report Attached to true, and requires VOC Method #.",
                         "Unchecking VOC Report Attached no longer deletes the stored VOC file; replacement uploads still remove the old blob and overwrite the groundwater record metadata.",
@@ -342,8 +344,9 @@ flowchart TD
                         "GW-59A export uses form template GW-59A.pdf and maps the dedicated GW-59A questionnaire fields on the groundwater record (questions, detail notes, and export-time signer/date).",
                         "GW-59A unanswered questions are exported as blank yes/no boxes (no forced default).",
                         "GW-59 operation type checkboxes are sourced from FacilityPermit.GwOperationLagoon and FacilityPermit.GwOperationSprayField, resolved by facility + sample date.",
-                        "GW-59 screened interval, measuring point, relative M.P. elevation, and pH 00400 now come from the groundwater monitoring record itself rather than monitoring-well master values for those form slots.",
-                        "GW-59 named chemistry slots use direct PCS mappings from saved template snapshots, and the Other section auto-populates from remaining eligible non-direct GW-59 PCS rows in permit sort order.",
+                        "GW-59 Sampling Information well-static slots (well depth, diameter, screened interval, measuring point, relative M.P. elevation) come from MonitoringWell for the well selected on the GWMonit record.",
+                        "GW-59 per-sample slots (date, depth to water level, volume pumped, metals Y/N) come from GWMonit; metals Y/N export blank when unset.",
+                        "GW-59 pH 00400 and named chemistry slots use direct PCS mappings from saved GWMonitTemplateValue snapshots, and the Other section auto-populates from remaining eligible non-direct GW-59 PCS rows in permit sort order.",
                         "VOC merge reads Azure blobs into memory before PdfSharpCore import so valid PDFs no longer fail on non-seekable Azure streams.",
                         "Exports fail with actionable messages when template files or required source data are missing."
                     }
@@ -412,7 +415,7 @@ flowchart TD
                         new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Facility permit context influences setup and source values", "Area/time/value handling follows per-field formula rules; export layout includes facility/field checkboxes and footer columns through V." },
                         new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version resolved by facility + date when available", "NDMR first two daily columns are exported from canonical Operator Logs as ORC Arrival Time and ORC Time on Site (hours); if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
-                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + MonitoringWell + Facility", "Permit version resolved by facility + sample date; operation type checkboxes come from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. Facility Information: name/permittee/address/county from Facility; permit number/expiration from resolved permit with facility fallback; contact person from Facility.OrcName; telephone from FacilityPhone → PermitPhone → OperatorPhone; well location from selected MonitoringWell.LocationDescription; no. of wells from company monitoring-well count. Sampling/chemistry: screened interval, measuring point, relative M.P. elevation, and pH 00400 from GWMonit; named chemistry from template PCS snapshots; Other auto-populated from remaining eligible rows." },
+                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + MonitoringWell + Facility", "Permit version resolved by facility + sample date; operation type checkboxes come from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. Facility Information: name/permittee/address/county from Facility; permit number/expiration from resolved permit with facility fallback; contact person from Facility.OrcName; telephone from FacilityPhone → PermitPhone → OperatorPhone; well location from selected MonitoringWell.LocationDescription; no. of wells from company monitoring-well count. Sampling: well depth/diameter/screened interval/measuring point/relative M.P. elevation from MonitoringWell; water level/gallons pumped/metals Y/N from GWMonit (metals blank when unset); pH 00400 and named chemistry from template PCS snapshots; Other auto-populated from remaining eligible rows." },
                         new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
                     }
                 }
@@ -935,7 +938,9 @@ flowchart TD
                         new List<string> { "Permit unarchive causes overlap", "Unarchive blocked with message", "Adjust date ranges or archive conflicting active permit." },
                         new List<string> { "Duplicate permit number+version on create", "Create either restores soft-deleted match or shows friendly duplicate message", "Use archived section or update existing record." },
                         new List<string> { "PCS import duplicate codes", "Importer deduplicates and upserts safely", "Re-run import; duplicates in TSV no longer break process." },
-                        new List<string> { "GW-59 Facility Information field blank on PDF", "Export still succeeds; affected slot is left empty", "Contact Person: set Facility ORC Name. Telephone: set Facility/Permit/Operator phone. Well Location: set monitoring-well Location Description. No. of wells: add company monitoring wells in System Admin." }
+                        new List<string> { "GW-59 Facility Information field blank on PDF", "Export still succeeds; affected slot is left empty", "Contact Person: set Facility ORC Name. Telephone: set Facility/Permit/Operator phone. Well Location: set monitoring-well Location Description. No. of wells: add company monitoring wells in System Admin." },
+                        new List<string> { "GW-59 well depth/diameter/screen/measuring point blank", "Export still succeeds; affected slot is left empty", "Set values on MonitoringWell in System Admin > Monitoring Wells, or edit them from GWMonit create/edit Well Data (GW-59) section." },
+                        new List<string> { "GW-59 metals yes/no boxes blank on PDF", "Export still succeeds; both yes and no boxes left empty for that question", "Set Metals Samples Collected Unfiltered and/or Metal Samples Field Acidified on the GWMonit record (optional fields; unset is intentional)." }
                     }
                 }
             }
@@ -985,6 +990,7 @@ flowchart TD
                         "Changing permit versions/date ranges impacts WWChar template resolution and NDMR context.",
                         "Changing permit template PCS rows impacts dynamic entry fields and NDMR parameter output.",
                         "Changing facility ORC Name, phone fields, or monitoring-well location descriptions impacts GW-59 Facility Information on export and preview.",
+                        "Changing monitoring-well GW-59 fields (depth, diameter, screened interval, measuring point, relative M.P. elevation) impacts GW-59 Sampling Information on export and preview for all samples tied to that well.",
                         "Changing monthly application values impacts compliance projections and downstream reporting."
                     }
                 }

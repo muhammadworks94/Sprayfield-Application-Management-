@@ -38,6 +38,18 @@ public class MonitoringWellConfiguration : IEntityTypeConfiguration<MonitoringWe
         builder.Property(m => m.HighScreenDepthFeet)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(m => m.ScreenedIntervalFromFeet)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(m => m.ScreenedIntervalToFeet)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(m => m.MeasuringPointAboveLandSurface)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(m => m.RelativeMpElevation)
+            .HasColumnType("decimal(18,2)");
+
         builder.Property(m => m.TopOfCasingElevationMsl)
             .HasColumnType("decimal(18,2)");
 

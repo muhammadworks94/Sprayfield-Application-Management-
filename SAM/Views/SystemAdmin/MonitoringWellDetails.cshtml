@@ -57,6 +57,18 @@
             <dt class="col-sm-3">High Screen Depth (feet):</dt>
             <dd class="col-sm-9">@(Model.HighScreenDepthFeet.HasValue ? Model.HighScreenDepthFeet.Value.ToString("F2") : "-")</dd>
 
+            <dt class="col-sm-3">Screened Interval From (ft):</dt>
+            <dd class="col-sm-9">@(Model.ScreenedIntervalFromFeet.HasValue ? Model.ScreenedIntervalFromFeet.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">Screened Interval To (ft):</dt>
+            <dd class="col-sm-9">@(Model.ScreenedIntervalToFeet.HasValue ? Model.ScreenedIntervalToFeet.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">Measuring Point (ft above land surface):</dt>
+            <dd class="col-sm-9">@(Model.MeasuringPointAboveLandSurface.HasValue ? Model.MeasuringPointAboveLandSurface.Value.ToString("F2") : "-")</dd>
+
+            <dt class="col-sm-3">Relative M.P. Elevation (ft):</dt>
+            <dd class="col-sm-9">@(Model.RelativeMpElevation.HasValue ? Model.RelativeMpElevation.Value.ToString("F2") : "-")</dd>
+
             <dt class="col-sm-3">Top of Casing Elevation (msl):</dt>
             <dd class="col-sm-9">@(Model.TopOfCasingElevationMsl.HasValue ? Model.TopOfCasingElevationMsl.Value.ToString("F2") : "-")</dd>
 

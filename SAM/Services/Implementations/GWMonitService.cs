@@ -124,10 +124,6 @@ public class GWMonitService : IGWMonitService
         existing.SampleDate = gwMonit.SampleDate;
         existing.SampleDepth = gwMonit.SampleDepth;
         existing.WaterLevel = gwMonit.WaterLevel;
-        existing.MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface;
-        existing.RelativeMpElevation = gwMonit.RelativeMpElevation;
-        existing.ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet;
-        existing.ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet;
         existing.Temperature = gwMonit.Temperature;
         existing.PH = gwMonit.PH;
         existing.GallonsPumped = gwMonit.GallonsPumped;

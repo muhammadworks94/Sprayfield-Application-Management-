@@ -97,8 +97,8 @@ public sealed class Gw59ExportModel
     public decimal? SpecificConductance { get; set; }
     public string Odor { get; set; } = string.Empty;
     public string Appearance { get; set; } = string.Empty;
-    public bool MetalsUnfiltered { get; set; }
-    public bool MetalsAcidified { get; set; }
+    public bool? MetalsUnfiltered { get; set; }
+    public bool? MetalsAcidified { get; set; }
     public decimal? TDS { get; set; }
     public decimal? TOC { get; set; }
     public decimal? Chloride { get; set; }

@@ -43,7 +43,7 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label asp-for="MonitoringWellId" class="form-label required"></label>
-                            <select asp-for="MonitoringWellId" asp-items="monitoringWells" class="form-select">
+                            <select asp-for="MonitoringWellId" asp-items="monitoringWells" class="form-select" id="monitoringWellSelect">
                                 <option value="">-- Select Monitoring Well --</option>
                             </select>
                             <span asp-validation-for="MonitoringWellId" class="text-danger"></span>
@@ -59,21 +59,32 @@
                 </div>
             </div>
 
+            <div class="form-section" id="gw59WellDataSection">
+                <div class="form-section-title">Well Data (GW-59)</div>
+                <p class="small text-muted">These values are stored on the selected monitoring well and update the well master record when you save.</p>
+                <div class="row">
+                    <div class="col-md-3"><div class="mb-3"><label asp-for="WellDepthFeet" class="form-label"></label><input asp-for="WellDepthFeet" type="number" step="0.01" class="form-control gw59-well-field" /><span asp-validation-for="WellDepthFeet" class="text-danger"></span></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label asp-for="DiameterInches" class="form-label"></label><input asp-for="DiameterInches" type="number" step="0.01" class="form-control gw59-well-field" /><span asp-validation-for="DiameterInches" class="text-danger"></span></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label asp-for="ScreenedIntervalFromFeet" class="form-label"></label><input asp-for="ScreenedIntervalFromFeet" type="number" step="0.01" class="form-control gw59-well-field" /><span asp-validation-for="ScreenedIntervalFromFeet" class="text-danger"></span></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label asp-for="ScreenedIntervalToFeet" class="form-label"></label><input asp-for="ScreenedIntervalToFeet" type="number" step="0.01" class="form-control gw59-well-field" /><span asp-validation-for="ScreenedIntervalToFeet" class="text-danger"></span></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label asp-for="MeasuringPointAboveLandSurface" class="form-label"></label><input asp-for="MeasuringPointAboveLandSurface" type="number" step="0.01" class="form-control gw59-well-field" /><span asp-validation-for="MeasuringPointAboveLandSurface" class="text-danger"></span></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label asp-for="RelativeMpElevation" class="form-label"></label><input asp-for="RelativeMpElevation" type="number" step="0.01" class="form-control gw59-well-field" /><span asp-validation-for="RelativeMpElevation" class="text-danger"></span></div></div>
+                </div>
+            </div>
+
             <div class="form-section">
                 <div class="form-section-title">Sample Information</div>
                 <div class="row">
                     <div class="col-md-3"><div class="mb-3"><label asp-for="WaterLevel" class="form-label"></label><input asp-for="WaterLevel" type="number" step="0.01" class="form-control" /><span asp-validation-for="WaterLevel" class="text-danger"></span></div></div>
-                    <div class="col-md-3"><div class="mb-3"><label asp-for="MeasuringPointAboveLandSurface" class="form-label"></label><input asp-for="MeasuringPointAboveLandSurface" type="number" step="0.01" class="form-control" /><span asp-validation-for="MeasuringPointAboveLandSurface" class="text-danger"></span></div></div>
-                    <div class="col-md-3"><div class="mb-3"><label asp-for="RelativeMpElevation" class="form-label"></label><input asp-for="RelativeMpElevation" type="number" step="0.01" class="form-control" /><span asp-validation-for="RelativeMpElevation" class="text-danger"></span></div></div>
-                    <div class="col-md-3"><div class="mb-3"><label asp-for="ScreenedIntervalFromFeet" class="form-label"></label><input asp-for="ScreenedIntervalFromFeet" type="number" step="0.01" class="form-control" /><span asp-validation-for="ScreenedIntervalFromFeet" class="text-danger"></span></div></div>
                     <div class="col-md-3"><div class="mb-3"><label asp-for="Temperature" class="form-label"></label><input asp-for="Temperature" type="number" step="0.01" class="form-control" /><span asp-validation-for="Temperature" class="text-danger"></span></div></div>
-                    <div class="col-md-3"><div class="mb-3"><label asp-for="ScreenedIntervalToFeet" class="form-label"></label><input asp-for="ScreenedIntervalToFeet" type="number" step="0.01" class="form-control" /><span asp-validation-for="ScreenedIntervalToFeet" class="text-danger"></span></div></div>
                     <div class="col-md-3"><div class="mb-3"><label asp-for="PH" class="form-label"></label><input asp-for="PH" type="number" step="0.01" class="form-control" /><span asp-validation-for="PH" class="text-danger"></span></div></div>
                     <div class="col-md-3"><div class="mb-3"><label asp-for="GallonsPumped" class="form-label"></label><input asp-for="GallonsPumped" type="number" step="0.01" class="form-control" /><span asp-validation-for="GallonsPumped" class="text-danger"></span></div></div>
                 </div>
                 <div class="row">
                     <div class="col-md-3"><div class="mb-3"><label asp-for="Odor" class="form-label"></label><select asp-for="Odor" class="form-select"><option value="">Select Odor</option><option value="None">None</option><option value="Slight">Slight</option><option value="Strong">Strong</option></select><span asp-validation-for="Odor" class="text-danger"></span></div></div>
                     <div class="col-md-3"><div class="mb-3"><label asp-for="Appearance" class="form-label"></label><select asp-for="Appearance" class="form-select"><option value="">Select Appearance</option><option value="Clear">Clear</option><option value="Turbid">Turbid</option></select><span asp-validation-for="Appearance" class="text-danger"></span></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label asp-for="MetalsSamplesCollectedUnfiltered" class="form-label"></label><select asp-for="MetalsSamplesCollectedUnfiltered" class="form-select"><option value="">Not set</option><option value="true">Yes</option><option value="false">No</option></select><span asp-validation-for="MetalsSamplesCollectedUnfiltered" class="text-danger"></span></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label asp-for="MetalSamplesFieldAcidified" class="form-label"></label><select asp-for="MetalSamplesFieldAcidified" class="form-select"><option value="">Not set</option><option value="true">Yes</option><option value="false">No</option></select><span asp-validation-for="MetalSamplesFieldAcidified" class="text-danger"></span></div></div>
                 </div>
             </div>
 
@@ -481,6 +492,43 @@
             }
 
             initGw59AToggles();
+
+            const monitoringWellSelect = document.getElementById('monitoringWellSelect');
+            const wellFieldMap = {
+                wellDepthFeet: 'WellDepthFeet',
+                diameterInches: 'DiameterInches',
+                screenedIntervalFromFeet: 'ScreenedIntervalFromFeet',
+                screenedIntervalToFeet: 'ScreenedIntervalToFeet',
+                measuringPointAboveLandSurface: 'MeasuringPointAboveLandSurface',
+                relativeMpElevation: 'RelativeMpElevation'
+            };
+
+            function setWellFieldValue(fieldName, value) {
+                const input = document.getElementById(fieldName) || document.querySelector(`[name="${fieldName}"]`);
+                if (!input) return;
+                input.value = value === null || value === undefined ? '' : value;
+            }
+
+            async function loadWellData(wellId) {
+                if (!wellId) {
+                    Object.values(wellFieldMap).forEach(name => setWellFieldValue(name, ''));
+                    return;
+                }
+
+                const response = await fetch(`@Url.Action("GWMonitWellData", "OperationalData")?monitoringWellId=${encodeURIComponent(wellId)}`);
+                if (!response.ok) return;
+                const data = await response.json();
+                setWellFieldValue(wellFieldMap.wellDepthFeet, data.wellDepthFeet);
+                setWellFieldValue(wellFieldMap.diameterInches, data.diameterInches);
+                setWellFieldValue(wellFieldMap.screenedIntervalFromFeet, data.screenedIntervalFromFeet);
+                setWellFieldValue(wellFieldMap.screenedIntervalToFeet, data.screenedIntervalToFeet);
+                setWellFieldValue(wellFieldMap.measuringPointAboveLandSurface, data.measuringPointAboveLandSurface);
+                setWellFieldValue(wellFieldMap.relativeMpElevation, data.relativeMpElevation);
+            }
+
+            monitoringWellSelect?.addEventListener('change', function () {
+                loadWellData(monitoringWellSelect.value);
+            });
         })();
     </script>
 }

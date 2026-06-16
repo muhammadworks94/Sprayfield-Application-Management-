@@ -33,26 +33,6 @@ public class GWMonit : CompanyScopedEntity
     public decimal? WaterLevel { get; set; }
 
     /// <summary>
-    /// Measuring point above land surface.
-    /// </summary>
-    public decimal? MeasuringPointAboveLandSurface { get; set; }
-
-    /// <summary>
-    /// Relative measuring point elevation.
-    /// </summary>
-    public decimal? RelativeMpElevation { get; set; }
-
-    /// <summary>
-    /// Screened interval from depth in feet.
-    /// </summary>
-    public decimal? ScreenedIntervalFromFeet { get; set; }
-
-    /// <summary>
-    /// Screened interval to depth in feet.
-    /// </summary>
-    public decimal? ScreenedIntervalToFeet { get; set; }
-
-    /// <summary>
     /// Temperature.
     /// </summary>
     public decimal? Temperature { get; set; }

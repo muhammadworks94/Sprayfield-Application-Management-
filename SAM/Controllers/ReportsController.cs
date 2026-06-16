@@ -2108,22 +2108,22 @@ public class ReportsController : BaseController
             WellLocation = wellLocation,
             WellDepthFeet = gwMonit.MonitoringWell?.WellDepthFeet,
             DiameterInches = gwMonit.MonitoringWell?.DiameterInches,
-            ScreenedIntervalFromFeet = gwMonit.ScreenedIntervalFromFeet,
-            ScreenedIntervalToFeet = gwMonit.ScreenedIntervalToFeet,
-            RelativeMpElevation = gwMonit.RelativeMpElevation,
+            ScreenedIntervalFromFeet = gwMonit.MonitoringWell?.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = gwMonit.MonitoringWell?.ScreenedIntervalToFeet,
+            RelativeMpElevation = gwMonit.MonitoringWell?.RelativeMpElevation,
             NumberOfWellsToBeSampled = facilityWellCount,
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = gwMonit.WaterLevel,
-            MeasuringPointAboveLandSurface = gwMonit.MeasuringPointAboveLandSurface,
+            MeasuringPointAboveLandSurface = gwMonit.MonitoringWell?.MeasuringPointAboveLandSurface,
             GallonsPumped = gwMonit.GallonsPumped,
             PHField = gwMonit.PH,
             TemperatureField = gwMonit.Temperature,
             SpecificConductance = gwMonit.Conductivity,
             Odor = gwMonit.Odor,
             Appearance = gwMonit.Appearance,
-            MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered.GetValueOrDefault(),
-            MetalsAcidified = gwMonit.MetalSamplesFieldAcidified.GetValueOrDefault(),
+            MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered,
+            MetalsAcidified = gwMonit.MetalSamplesFieldAcidified,
             TDS = chemistry.TDS,
             TOC = chemistry.TOC,
             Chloride = chemistry.Chloride,
@@ -2224,10 +2224,18 @@ public class ReportsController : BaseController
             DrawText(model.SpecificConductance?.ToString("F2"), 660, 238);
             DrawText(model.Odor, 650, 252);
             DrawText(model.Appearance, 650, 267);
-            DrawText(model.MetalsUnfiltered ? "X" : string.Empty, 240, 283);
-            DrawText(!model.MetalsUnfiltered ? "X" : string.Empty, 303, 282);
-            DrawText(model.MetalsAcidified ? "X" : string.Empty, 444, 283);
-            DrawText(!model.MetalsAcidified ? "X" : string.Empty, 492, 283);
+            void DrawMetalsMark(bool? value, bool yes, double x, double y)
+            {
+                if (value.HasValue && value.Value == yes)
+                {
+                    DrawText("X", x, y);
+                }
+            }
+
+            DrawMetalsMark(model.MetalsUnfiltered, true, 240, 283);
+            DrawMetalsMark(model.MetalsUnfiltered, false, 303, 282);
+            DrawMetalsMark(model.MetalsAcidified, true, 444, 283);
+            DrawMetalsMark(model.MetalsAcidified, false, 492, 283);
             DrawText(model.SampleDate.ToString("MM/dd/yyyy"), 132, 309, 110);
             DrawText(model.LabName, 450, 308);
             DrawText(model.LabCertificationNumber, 740, 308);

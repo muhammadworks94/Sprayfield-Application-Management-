@@ -28,6 +28,14 @@ public class GWMonitViewModel
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
 
+    [Display(Name = "Well Depth (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? WellDepthFeet { get; set; }
+
+    [Display(Name = "Well Diameter (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? DiameterInches { get; set; }
+
     [Display(Name = "Measuring Point (ft above land surface)")]
     [Range(0, double.MaxValue)]
     public decimal? MeasuringPointAboveLandSurface { get; set; }
@@ -100,10 +108,10 @@ public class GWMonitViewModel
     public decimal? Magnesium { get; set; }
 
     [Display(Name = "Metals Samples Collected Unfiltered")]
-    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+    public bool? MetalsSamplesCollectedUnfiltered { get; set; }
 
     [Display(Name = "Metal Samples Field Acidified")]
-    public bool MetalSamplesFieldAcidified { get; set; }
+    public bool? MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
@@ -207,6 +215,14 @@ public class GWMonitCreateViewModel
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
 
+    [Display(Name = "Well Depth (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? WellDepthFeet { get; set; }
+
+    [Display(Name = "Well Diameter (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? DiameterInches { get; set; }
+
     [Display(Name = "Measuring Point (ft above land surface)")]
     [Range(0, double.MaxValue)]
     public decimal? MeasuringPointAboveLandSurface { get; set; }
@@ -278,10 +294,10 @@ public class GWMonitCreateViewModel
     public decimal? Magnesium { get; set; }
 
     [Display(Name = "Metals Samples Collected Unfiltered")]
-    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+    public bool? MetalsSamplesCollectedUnfiltered { get; set; }
 
     [Display(Name = "Metal Samples Field Acidified")]
-    public bool MetalSamplesFieldAcidified { get; set; }
+    public bool? MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
@@ -393,6 +409,14 @@ public class GWMonitEditViewModel
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
 
+    [Display(Name = "Well Depth (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? WellDepthFeet { get; set; }
+
+    [Display(Name = "Well Diameter (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? DiameterInches { get; set; }
+
     [Display(Name = "Measuring Point (ft above land surface)")]
     [Range(0, double.MaxValue)]
     public decimal? MeasuringPointAboveLandSurface { get; set; }
@@ -464,10 +488,10 @@ public class GWMonitEditViewModel
     public decimal? Magnesium { get; set; }
 
     [Display(Name = "Metals Samples Collected Unfiltered")]
-    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+    public bool? MetalsSamplesCollectedUnfiltered { get; set; }
 
     [Display(Name = "Metal Samples Field Acidified")]
-    public bool MetalSamplesFieldAcidified { get; set; }
+    public bool? MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]

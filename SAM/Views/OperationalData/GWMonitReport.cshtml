@@ -97,8 +97,8 @@
                     <dt>Specific Conductance</dt><dd>@(Model.SpecificConductance?.ToString("F2") ?? "N/A") &micro;Mhos</dd>
                     <dt>Odor</dt><dd>@(!string.IsNullOrWhiteSpace(Model.Odor) ? Model.Odor : "N/A")</dd>
                     <dt>Appearance</dt><dd>@(!string.IsNullOrWhiteSpace(Model.Appearance) ? Model.Appearance : "N/A")</dd>
-                    <dt>Metals Collected Unfiltered</dt><dd>@(Model.MetalsUnfiltered ? "Yes" : "No")</dd>
-                    <dt>Metals Field Acidified</dt><dd>@(Model.MetalsAcidified ? "Yes" : "No")</dd>
+                    <dt>Metals Collected Unfiltered</dt><dd>@(Model.MetalsUnfiltered switch { true => "Yes", false => "No", _ => "Not set" })</dd>
+                    <dt>Metals Field Acidified</dt><dd>@(Model.MetalsAcidified switch { true => "Yes", false => "No", _ => "Not set" })</dd>
                 </dl>
             </div>
         </div>
