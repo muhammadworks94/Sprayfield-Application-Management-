@@ -1920,6 +1920,8 @@ public class ReportsController : BaseController
             Magnesium = model.Magnesium,
             FecalColiform = model.FecalColiform,
             TotalColiform = model.TotalColiform,
+            PHLab = model.PHLab,
+            PhosphorusTotal = model.PhosphorusTotal,
             LabName = model.LabName,
             LabCertificationNumber = model.LabCertificationNumber,
             LabReportAttached = model.LabReportAttached,
@@ -2090,6 +2092,7 @@ public class ReportsController : BaseController
             _context,
             gwMonit.MonitoringWellId,
             gwMonit.MonitoringWell);
+        var wellData = Gw59WellDataFields.FromMonitoringWell(gwMonit.MonitoringWell);
         return new Gw59ExportModel
         {
             GwMonitId = gwMonit.Id,
@@ -2106,16 +2109,16 @@ public class ReportsController : BaseController
             PermitExpirationDate = permit?.EffectiveEndDate ?? facility?.PermitExpirationDate,
             WellId = gwMonit.MonitoringWell?.WellId ?? string.Empty,
             WellLocation = wellLocation,
-            WellDepthFeet = gwMonit.MonitoringWell?.WellDepthFeet,
-            DiameterInches = gwMonit.MonitoringWell?.DiameterInches,
-            ScreenedIntervalFromFeet = gwMonit.MonitoringWell?.ScreenedIntervalFromFeet,
-            ScreenedIntervalToFeet = gwMonit.MonitoringWell?.ScreenedIntervalToFeet,
-            RelativeMpElevation = gwMonit.MonitoringWell?.RelativeMpElevation,
+            WellDepthFeet = wellData.WellDepthFeet,
+            DiameterInches = wellData.DiameterInches,
+            ScreenedIntervalFromFeet = wellData.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = wellData.ScreenedIntervalToFeet,
+            RelativeMpElevation = wellData.RelativeMpElevation,
             NumberOfWellsToBeSampled = facilityWellCount,
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
-            WaterLevel = gwMonit.WaterLevel,
-            MeasuringPointAboveLandSurface = gwMonit.MonitoringWell?.MeasuringPointAboveLandSurface,
+            WaterLevel = Gw59ChemistryResolver.ResolveWaterLevel(gwMonit.WaterLevel, snapshots),
+            MeasuringPointAboveLandSurface = wellData.MeasuringPointAboveLandSurface,
             GallonsPumped = gwMonit.GallonsPumped,
             PHField = gwMonit.PH,
             TemperatureField = gwMonit.Temperature,
@@ -2134,6 +2137,8 @@ public class ReportsController : BaseController
             Magnesium = chemistry.Magnesium,
             FecalColiform = chemistry.FecalColiform,
             TotalColiform = chemistry.TotalColiform,
+            PHLab = chemistry.PHLab,
+            PhosphorusTotal = chemistry.PhosphorusTotal,
             LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
                 ? (facility?.CertifiedLaboratory1Name ?? string.Empty)
                 : gwMonit.AnalyzedBy,
@@ -2187,6 +2192,20 @@ public class ReportsController : BaseController
             var font = new XFont("Arial", 8, XFontStyle.Regular);
             void DrawText(string? text, double x, double y, double width = 260) =>
                 gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(x, y, width, font.Height + 2), XStringFormats.TopLeft);
+            void DrawLabText(string? text, double x, double underlineY, double width = 55)
+            {
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return;
+                }
+
+                gfx.DrawString(
+                    text,
+                    font,
+                    XBrushes.Black,
+                    new XPoint(x, Gw59LabPdfCalibration.GetBaselineY(underlineY)),
+                    XStringFormats.BaseLineLeft);
+            }
             void DrawTick(double x, double y)
             {
                 gfx.DrawLine(XPens.Black, x, y + 5, x + 3, y + 8);
@@ -2232,26 +2251,41 @@ public class ReportsController : BaseController
                 }
             }
 
-            DrawMetalsMark(model.MetalsUnfiltered, true, 240, 283);
+            DrawMetalsMark(model.MetalsUnfiltered, true, 244, 283);
             DrawMetalsMark(model.MetalsUnfiltered, false, 303, 282);
             DrawMetalsMark(model.MetalsAcidified, true, 444, 283);
             DrawMetalsMark(model.MetalsAcidified, false, 492, 283);
-            DrawText(model.SampleDate.ToString("MM/dd/yyyy"), 132, 309, 110);
-            DrawText(model.LabName, 450, 308);
-            DrawText(model.LabCertificationNumber, 740, 308);
-            DrawText(model.TDS?.ToString("F2"), 160, 400);
-            DrawText(model.TOC?.ToString("F2"), 165, 430);
-            DrawText(model.Chloride?.ToString("F2"), 165, 446);
-            DrawText(model.NH3N?.ToString("F2"), 165, 538);
-            DrawText(model.TKN?.ToString("F2"), 165, 571);
-            DrawText(model.NO3N?.ToString("F2"), 440, 352);
-            DrawText(model.Calcium?.ToString("F2"), 440, 430);
-            DrawText(model.Magnesium?.ToString("F2"), 440, 538);
-            DrawText(model.FecalColiform?.ToString("F0"), 165, 352);
-            DrawText(model.TotalColiform?.ToString("F0"), 165, 369);
-            DrawText(model.LabReportAttached ? "X" : string.Empty, 684, 509);
-            DrawText(!model.LabReportAttached ? "X" : string.Empty, 752, 509);
-            DrawText(model.VOCMethodNumber, 750, 525);
+            DrawLabText(model.SampleDate.ToString("MM/dd/yyyy"), 205, 317, 90);
+            DrawLabText(model.LabName, 450, 316);
+            DrawLabText(model.LabCertificationNumber, 740, 316);
+
+            var drawnNamedSlots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var snapshot in model.ParameterSnapshots
+                         .Where(x => x.IsGw59 && x.Value.HasValue)
+                         .OrderBy(x => x.SortOrder)
+                         .ThenBy(x => x.PcsCode, StringComparer.OrdinalIgnoreCase))
+            {
+                if (!Gw59LabPdfCalibration.TryGetNamedSlot(snapshot.PcsCode, out var slot))
+                {
+                    continue;
+                }
+
+                var slotKey = Gw59LabPdfCalibration.GetSlotPositionKey(slot);
+                if (!drawnNamedSlots.Add(slotKey))
+                {
+                    continue;
+                }
+
+                DrawLabText(
+                    Gw59LabPdfCalibration.FormatSlotValue(snapshot.Value!.Value, slot),
+                    slot.X,
+                    slot.Y,
+                    slot.Width);
+            }
+
+            DrawText(model.LabReportAttached ? "X" : string.Empty, 684, 510);
+            DrawText(!model.LabReportAttached ? "X" : string.Empty, 752, 510);
+            DrawLabText(model.VOCMethodNumber, 750, 530);
             if (model.GwOperationLagoon)
             {
                 DrawTick(555, 121);
@@ -2262,11 +2296,15 @@ public class ReportsController : BaseController
                 DrawTick(555, 136);
             }
 
-            var otherLineY = 382d;
-            foreach (var otherLine in model.OtherParameterLines.Take(4))
+            var otherLineIndex = 0;
+            foreach (var otherLine in model.OtherParameterLines.Take(Gw59LabPdfCalibration.OtherLineLimit))
             {
-                DrawText(FormatGw59OtherLine(otherLine), 540, otherLineY, 250);
-                otherLineY += 16;
+                var otherSlot = Gw59LabPdfCalibration.GetOtherSlot(otherLineIndex++);
+                DrawLabText(
+                    Gw59LabPdfCalibration.FormatOtherLine(otherLine),
+                    otherSlot.X,
+                    otherSlot.Y,
+                    otherSlot.Width);
             }
             DrawText($"{model.CertificationName} - {model.CertificationTitle}", 40, 649, 340);
             DrawText(model.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726);
@@ -2365,12 +2403,6 @@ public class ReportsController : BaseController
         await source.CopyToAsync(buffer);
         buffer.Position = 0;
         return buffer;
-    }
-
-    private static string FormatGw59OtherLine(Gw59OtherParameterLine line)
-    {
-        var units = string.IsNullOrWhiteSpace(line.Units) ? string.Empty : $" [{line.Units}]";
-        return $"{line.ParameterName} {line.Value:0.######}{units}";
     }
 
     private async Task<byte[]> RenderNdar1PdfAsync(NDAR1 report, bool showGrid = false)

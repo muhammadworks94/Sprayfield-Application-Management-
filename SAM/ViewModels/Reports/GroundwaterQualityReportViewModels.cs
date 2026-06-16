@@ -109,6 +109,8 @@ public sealed class Gw59ExportModel
     public decimal? Magnesium { get; set; }
     public decimal? FecalColiform { get; set; }
     public decimal? TotalColiform { get; set; }
+    public decimal? PHLab { get; set; }
+    public decimal? PhosphorusTotal { get; set; }
     public string LabName { get; set; } = string.Empty;
     public string LabCertificationNumber { get; set; } = string.Empty;
     public string CollectedBy { get; set; } = string.Empty;

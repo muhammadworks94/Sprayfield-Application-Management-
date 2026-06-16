@@ -2251,6 +2251,7 @@ namespace SAM.Controllers;
             _context,
             gwMonit.MonitoringWellId,
             well);
+        var wellData = Gw59WellDataFields.FromMonitoringWell(well);
         var templateValues = await _context.GWMonitTemplateValues
             .AsNoTracking()
             .Where(x => x.GWMonitId == gwMonitId)
@@ -2300,17 +2301,17 @@ namespace SAM.Controllers;
             MonitoringWellId = gwMonit.MonitoringWellId,
             WellId = well?.WellId ?? string.Empty,
             WellLocation = wellLocation,
-            WellDepthFeet = well?.WellDepthFeet,
-            DiameterInches = well?.DiameterInches,
-            ScreenedIntervalFromFeet = well?.ScreenedIntervalFromFeet,
-            ScreenedIntervalToFeet = well?.ScreenedIntervalToFeet,
+            WellDepthFeet = wellData.WellDepthFeet,
+            DiameterInches = wellData.DiameterInches,
+            ScreenedIntervalFromFeet = wellData.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = wellData.ScreenedIntervalToFeet,
             NumberOfWellsToBeSampled = facilityWellCount,
 
             SampleDate = gwMonit.SampleDate,
             SampleDepth = gwMonit.SampleDepth,
-            WaterLevel = gwMonit.WaterLevel,
-            MeasuringPointAboveLandSurface = well?.MeasuringPointAboveLandSurface,
-            RelativeMpElevation = well?.RelativeMpElevation,
+            WaterLevel = Gw59ChemistryResolver.ResolveWaterLevel(gwMonit.WaterLevel, snapshots),
+            MeasuringPointAboveLandSurface = wellData.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = wellData.RelativeMpElevation,
             GallonsPumped = gwMonit.GallonsPumped,
             PHField = gwMonit.PH,
             TemperatureField = gwMonit.Temperature,
@@ -2329,6 +2330,8 @@ namespace SAM.Controllers;
             Magnesium = chemistry.Magnesium,
             FecalColiform = chemistry.FecalColiform,
             TotalColiform = chemistry.TotalColiform,
+            PHLab = chemistry.PHLab,
+            PhosphorusTotal = chemistry.PhosphorusTotal,
 
             LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
                 ? (facility?.CertifiedLaboratory1Name ?? string.Empty)

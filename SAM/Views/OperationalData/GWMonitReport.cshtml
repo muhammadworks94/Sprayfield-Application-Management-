@@ -1,7 +1,12 @@
 @model SAM.ViewModels.OperationalData.GW59ReportViewModel
+@using SAM.Utilities
 
 @{
     ViewData["Title"] = "GW-59 Groundwater Monitoring Report";
+    var namedLabSnapshots = Gw59LabPdfCalibration.SelectNamedSnapshots(Model.ParameterSnapshots);
+    var otherLines = Model.OtherParameterLines.Take(Gw59LabPdfCalibration.OtherLineLimit).ToList();
+    var leftOtherLines = otherLines.Take(5).ToList();
+    var rightOtherLines = otherLines.Skip(5).Take(5).ToList();
 }
 
 <style>
@@ -111,17 +116,25 @@
                 <dl class="gw-kv">
                     <dt>Laboratory Name</dt><dd>@Model.LabName</dd>
                     <dt>Certification No.</dt><dd>@Model.LabCertificationNumber</dd>
-                    <dt>Dissolved Solids: Total</dt><dd>@(Model.TDS?.ToString("F2") ?? "N/A") mg/L</dd>
-                    <dt>TOC</dt><dd>@(Model.TOC?.ToString("F2") ?? "N/A") mg/L</dd>
-                    <dt>Chloride</dt><dd>@(Model.Chloride?.ToString("F2") ?? "N/A") mg/L</dd>
-                    <dt>NH3-N (Total Ammonia)</dt><dd>@(Model.NH3N?.ToString("F2") ?? "N/A") mg/L</dd>
-                    <dt>NO3-N</dt><dd>@(Model.NO3N?.ToString("F2") ?? "N/A") mg/L</dd>
-                    <dt>TKN as N</dt><dd>@(Model.TKN?.ToString("F2") ?? "N/A") mg/L</dd>
-                    <dt>Calcium</dt><dd>@(Model.Calcium?.ToString("F2") ?? "N/A") mg/L</dd>
-                    <dt>Magnesium</dt><dd>@(Model.Magnesium?.ToString("F2") ?? "N/A") mg/L</dd>
-                    <dt>Fecal Coliform</dt><dd>@(Model.FecalColiform?.ToString("F0") ?? "N/A") /100mL</dd>
-                    <dt>Total Coliform</dt><dd>@(Model.TotalColiform?.ToString("F0") ?? "N/A") /100mL</dd>
                 </dl>
+                @if (namedLabSnapshots.Any())
+                {
+                    <div class="mt-3">
+                        <div class="fw-semibold mb-2">Named Laboratory Parameters</div>
+                        <dl class="gw-kv">
+                            @foreach (var snapshot in namedLabSnapshots)
+                            {
+                                var units = string.IsNullOrWhiteSpace(snapshot.Units) ? string.Empty : $" {snapshot.Units}";
+                                <dt>@snapshot.ParameterName (@snapshot.PcsCode)</dt>
+                                <dd>@snapshot.Value!.Value.ToString("0.######")@units</dd>
+                            }
+                        </dl>
+                    </div>
+                }
+                else
+                {
+                    <div class="mt-3 text-muted">No named laboratory parameter values for this record.</div>
+                }
             </div>
         </div>
     </div>
@@ -148,14 +161,42 @@
                 </dl>
                 <div class="mt-3">
                     <div class="fw-semibold mb-2">Other (Specify Compounds and Concentration Units)</div>
-                    @if (Model.OtherParameterLines.Any())
+                    @if (otherLines.Any())
                     {
-                        <ul class="mb-0 ps-3">
-                            @foreach (var line in Model.OtherParameterLines)
-                            {
-                                <li>@line.ParameterName: @line.Value.ToString("0.######") @line.Units</li>
-                            }
-                        </ul>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="text-muted small mb-1">#1–#5</div>
+                                @if (leftOtherLines.Any())
+                                {
+                                    <ol class="mb-0 ps-3" start="1">
+                                        @foreach (var line in leftOtherLines)
+                                        {
+                                            <li>@Gw59LabPdfCalibration.FormatOtherLine(line)</li>
+                                        }
+                                    </ol>
+                                }
+                                else
+                                {
+                                    <div class="text-muted">—</div>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted small mb-1">#6–#10</div>
+                                @if (rightOtherLines.Any())
+                                {
+                                    <ol class="mb-0 ps-3" start="6">
+                                        @foreach (var line in rightOtherLines)
+                                        {
+                                            <li>@Gw59LabPdfCalibration.FormatOtherLine(line)</li>
+                                        }
+                                    </ol>
+                                }
+                                else
+                                {
+                                    <div class="text-muted">—</div>
+                                }
+                            </div>
+                        </div>
                     }
                     else
                     {

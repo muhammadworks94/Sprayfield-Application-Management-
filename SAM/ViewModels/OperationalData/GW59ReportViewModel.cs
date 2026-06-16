@@ -139,6 +139,12 @@ public class GW59ReportViewModel
     [Display(Name = "Total Coliform (CFU/100mL)")]
     public decimal? TotalColiform { get; set; }
 
+    [Display(Name = "pH (Lab)")]
+    public decimal? PHLab { get; set; }
+
+    [Display(Name = "Phosphorus: Total as P (mg/L)")]
+    public decimal? PhosphorusTotal { get; set; }
+
     // Laboratory identity
 
     [Display(Name = "Laboratory Name")]

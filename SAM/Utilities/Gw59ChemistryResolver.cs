@@ -15,17 +15,20 @@ public sealed class Gw59ResolvedChemistry
     public decimal? Magnesium { get; init; }
     public decimal? FecalColiform { get; init; }
     public decimal? TotalColiform { get; init; }
+    public decimal? PHLab { get; init; }
+    public decimal? PhosphorusTotal { get; init; }
 }
 
 public static class Gw59ChemistryResolver
 {
     private const string VocPcsCode = "78732";
-    private const int Gw59OtherLineLimit = 4;
+    private const int Gw59OtherLineLimit = Gw59LabPdfCalibration.OtherLineLimit;
     private static readonly string[] TdsPcsCodes = ["70300", "70295"];
     private static readonly string[] TurbidityPcsCodes = ["00076"];
     private static readonly string[] CodPcsCodes = ["00340"];
-    private static readonly string[] PhLabPcsCodes = ["00400"];
-    private static readonly string[] TocPcsCodes = ["00680", "00665"];
+    private static readonly string[] PhLabPcsCodes = ["00403", "00400"];
+    private static readonly string[] WaterLevelPcsCodes = ["82546"];
+    private static readonly string[] TocPcsCodes = ["00680"];
     private static readonly string[] ChloridePcsCodes = ["00940"];
     private static readonly string[] ArsenicPcsCodes = ["01002"];
     private static readonly string[] GreaseAndOilsPcsCodes = ["00552"];
@@ -51,7 +54,6 @@ public static class Gw59ChemistryResolver
     private static readonly string[] ZincPcsCodes = ["01092"];
     private static readonly string[] FecalColiformPcsCodes = ["31613", "31616"];
     private static readonly string[] TotalColiformPcsCodes = ["31504", "31505"];
-    private static readonly HashSet<string> DedicatedGw59PcsCodes = BuildDedicatedGw59PcsCodes();
 
     public static Gw59ResolvedChemistry Resolve(IEnumerable<Gw59ParameterSnapshot>? snapshots)
     {
@@ -69,7 +71,9 @@ public static class Gw59ChemistryResolver
             Calcium = ResolveValue(rows, CalciumPcsCodes),
             Magnesium = ResolveValue(rows, MagnesiumPcsCodes),
             FecalColiform = ResolveValue(rows, FecalColiformPcsCodes),
-            TotalColiform = ResolveValue(rows, TotalColiformPcsCodes)
+            TotalColiform = ResolveValue(rows, TotalColiformPcsCodes),
+            PHLab = ResolveValue(rows, PhLabPcsCodes),
+            PhosphorusTotal = ResolveValue(rows, PhosphorusTotalPcsCodes)
         };
     }
 
@@ -79,7 +83,8 @@ public static class Gw59ChemistryResolver
         return rows
             .Where(x => x.Value.HasValue)
             .Where(x => !string.Equals(x.PcsCode, VocPcsCode, StringComparison.OrdinalIgnoreCase))
-            .Where(x => !DedicatedGw59PcsCodes.Contains(x.PcsCode))
+            .Where(x => !string.Equals(x.PcsCode, WaterLevelPcsCodes[0], StringComparison.OrdinalIgnoreCase))
+            .Where(x => !Gw59LabPdfCalibration.HasNamedSlot(x.PcsCode))
             .Where(x => !x.ParameterName.Contains("recoverable", StringComparison.OrdinalIgnoreCase))
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.PcsCode, StringComparer.OrdinalIgnoreCase)
@@ -92,6 +97,17 @@ public static class Gw59ChemistryResolver
                 Value = x.Value!.Value
             })
             .ToList();
+    }
+
+    public static decimal? ResolveWaterLevel(decimal? gwMonitWaterLevel, IEnumerable<Gw59ParameterSnapshot>? snapshots)
+    {
+        if (gwMonitWaterLevel.HasValue)
+        {
+            return gwMonitWaterLevel.Value;
+        }
+
+        var rows = snapshots?.Where(x => x.IsGw59).ToList() ?? [];
+        return ResolveValue(rows, WaterLevelPcsCodes);
     }
 
     private static decimal? ResolveValue(IReadOnlyCollection<Gw59ParameterSnapshot> rows, IEnumerable<string> pcsCodes)
@@ -108,46 +124,5 @@ public static class Gw59ChemistryResolver
         }
 
         return null;
-    }
-
-    private static HashSet<string> BuildDedicatedGw59PcsCodes()
-    {
-        var allCodes = new[]
-        {
-            TdsPcsCodes,
-            TurbidityPcsCodes,
-            CodPcsCodes,
-            PhLabPcsCodes,
-            TocPcsCodes,
-            ChloridePcsCodes,
-            ArsenicPcsCodes,
-            GreaseAndOilsPcsCodes,
-            PhenolPcsCodes,
-            SulfatePcsCodes,
-            Nh3nPcsCodes,
-            No3nPcsCodes,
-            TknPcsCodes,
-            OrthophosphatePcsCodes,
-            PhosphorusTotalPcsCodes,
-            CalciumPcsCodes,
-            MagnesiumPcsCodes,
-            BariumPcsCodes,
-            CadmiumPcsCodes,
-            ChromiumPcsCodes,
-            CopperPcsCodes,
-            IronPcsCodes,
-            MercuryPcsCodes,
-            PotassiumPcsCodes,
-            ManganesePcsCodes,
-            NickelPcsCodes,
-            LeadPcsCodes,
-            ZincPcsCodes,
-            FecalColiformPcsCodes,
-            TotalColiformPcsCodes
-        };
-
-        return allCodes
-            .SelectMany(x => x)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 }

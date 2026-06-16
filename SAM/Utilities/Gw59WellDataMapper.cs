@@ -25,10 +25,10 @@ public sealed class Gw59WellDataFields
         {
             WellDepthFeet = well.WellDepthFeet,
             DiameterInches = well.DiameterInches,
-            ScreenedIntervalFromFeet = well.ScreenedIntervalFromFeet,
-            ScreenedIntervalToFeet = well.ScreenedIntervalToFeet,
+            ScreenedIntervalFromFeet = well.ScreenedIntervalFromFeet ?? well.LowScreenDepthFeet,
+            ScreenedIntervalToFeet = well.ScreenedIntervalToFeet ?? well.HighScreenDepthFeet,
             MeasuringPointAboveLandSurface = well.MeasuringPointAboveLandSurface,
-            RelativeMpElevation = well.RelativeMpElevation
+            RelativeMpElevation = well.RelativeMpElevation ?? well.TopOfCasingElevationMsl
         };
     }
 
