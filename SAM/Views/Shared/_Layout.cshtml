@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+@inject SAM.Services.Interfaces.IBreadcrumbService BreadcrumbService
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
     <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/SAM.styles.css" asp-append-version="true" />
@@ -23,26 +25,37 @@
             {
                 <header class="app-header">
                     <div class="header-content">
-                        <div class="d-flex align-items-center">
+                        <div class="header-left">
                             <button class="btn btn-link d-md-none me-3" type="button" id="sidebarToggle" aria-label="Toggle sidebar">
                                 <i class="bi bi-list"></i>
                             </button>
+                            @await Html.PartialAsync("Partials/_CompanySelector")
                         </div>
                         <div class="user-menu">
-                            @await Html.PartialAsync("Partials/_CompanySelector")
                             @await Html.PartialAsync("Partials/_UserMenu")
                         </div>
                     </div>
                 </header>
             }
             
-            <main role="main" class="p-4 app-main-shell">
+            <main role="main" class="p-4 app-main-shell responsive-page-shell">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    var breadcrumbs = BreadcrumbService.Build(ViewContext);
+                    if (breadcrumbs.Count > 1)
+                    {
+                        @await Html.PartialAsync("Partials/_Breadcrumbs", breadcrumbs)
+                    }
+                }
                 @if (ViewData["Title"] != null)
                 {
                     <div class="page-title-header mb-4">
                         <div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
                             <div>
-                                <h1 class="h3 fw-bold mb-1">@ViewData["Title"]</h1>
+                                <h1 class="h3 fw-bold mb-1 d-inline-flex align-items-center gap-2">
+                                    @ViewData["Title"]
+                                    @await RenderSectionAsync("PageTitleInline", required: false)
+                                </h1>
                                 @if (ViewData["PageSubtitle"] != null)
                                 {
                                     <p class="text-muted mb-0 small">@ViewData["PageSubtitle"]</p>
@@ -52,28 +65,6 @@
                         </div>
                     </div>
                 }
-                @if (TempData["SuccessMessage"] != null)
-                {
-                    <div class="alert alert-success alert-dismissible fade show app-alert app-alert-success" role="alert">
-                        <div class="d-flex align-items-start gap-2">
-                            <i class="bi bi-check-circle-fill mt-1" aria-hidden="true"></i>
-                            <span>@TempData["SuccessMessage"]</span>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
-                @if (TempData["ErrorMessage"] != null)
-                {
-                    <div class="alert alert-danger alert-dismissible fade show app-alert app-alert-danger" role="alert">
-                        <div class="d-flex align-items-start gap-2">
-                            <i class="bi bi-exclamation-octagon-fill mt-1" aria-hidden="true"></i>
-                            <span>@TempData["ErrorMessage"]</span>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
                 @RenderBody()
             </main>
             
@@ -85,13 +76,295 @@
         </div>
     </div>
 
+    <div id="globalLoadingOverlay" class="global-loading-overlay d-none" role="status" aria-live="polite" aria-atomic="true">
+        <div class="global-loading-content text-center">
+            <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+            <div id="globalLoadingMessage" class="fw-semibold">Loading, please wait...</div>
+            <span class="visually-hidden">Loading in progress</span>
+        </div>
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <style>
+        .global-loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .global-loading-content {
+            background: #fff;
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            min-width: 260px;
+        }
+    </style>
+    <script>
+        window.SAMLoading = (function () {
+            const overlay = document.getElementById('globalLoadingOverlay');
+            const messageEl = document.getElementById('globalLoadingMessage');
+
+            function show(message) {
+                if (!overlay) return;
+                if (messageEl && message) {
+                    messageEl.textContent = message;
+                }
+                overlay.classList.remove('d-none');
+            }
+
+            function hide() {
+                if (!overlay) return;
+                overlay.classList.add('d-none');
+            }
+
+            function bindFormSubmit(formSelector, options) {
+                const form = document.querySelector(formSelector);
+                if (!form) return;
+
+                const submitButton = form.querySelector('button[type="submit"]');
+                const originalButtonHtml = submitButton ? submitButton.innerHTML : '';
+                const loadingButtonHtml = (options && options.loadingButtonHtml) ||
+                    '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Loading...';
+                const loadingMessage = (options && options.loadingMessage) || 'Loading, please wait...';
+
+                form.addEventListener('submit', function (event) {
+                    if (form.dataset.submitted === 'true') {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    form.dataset.submitted = 'true';
+                    show(loadingMessage);
+
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.innerHTML = loadingButtonHtml;
+                        submitButton.setAttribute('aria-disabled', 'true');
+                    }
+                });
+
+                window.addEventListener('pageshow', function () {
+                    if (form.dataset.submitted === 'true') {
+                        form.dataset.submitted = 'false';
+                        hide();
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalButtonHtml;
+                            submitButton.removeAttribute('aria-disabled');
+                        }
+                    }
+                });
+            }
+
+            function bindLinkClicks(linkSelector, options) {
+                const links = document.querySelectorAll(linkSelector);
+                if (!links || links.length === 0) return;
+
+                const loadingMessage = (options && options.loadingMessage) || 'Loading, please wait...';
+                const disableOnClick = !options || options.disableOnClick !== false;
+                const useFetchDownload = !!(options && options.useFetchDownload);
+                const autoHideMs = (options && typeof options.autoHideMs === 'number') ? options.autoHideMs : 12000;
+                let hideTimer = null;
+
+                function enableLinks() {
+                    links.forEach(function (l) {
+                        l.classList.remove('disabled');
+                        l.removeAttribute('aria-disabled');
+                        l.style.pointerEvents = '';
+                    });
+                }
+
+                function scheduleHide() {
+                    if (hideTimer) {
+                        clearTimeout(hideTimer);
+                    }
+
+                    hideTimer = setTimeout(function () {
+                        hide();
+                        enableLinks();
+                        hideTimer = null;
+                    }, autoHideMs);
+                }
+
+                function getFilenameFromDisposition(disposition) {
+                    if (!disposition) return null;
+
+                    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+                    if (utf8Match && utf8Match[1]) {
+                        try {
+                            return decodeURIComponent(utf8Match[1]);
+                        } catch {
+                            return utf8Match[1];
+                        }
+                    }
+
+                    const quotedMatch = disposition.match(/filename="([^"]+)"/i);
+                    if (quotedMatch && quotedMatch[1]) {
+                        return quotedMatch[1];
+                    }
+
+                    const plainMatch = disposition.match(/filename=([^;]+)/i);
+                    return plainMatch && plainMatch[1] ? plainMatch[1].trim() : null;
+                }
+
+                async function downloadUsingFetch(link) {
+                    const url = link.getAttribute('href');
+                    if (!url) return;
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        let message = 'Download failed';
+                        const responseType = (response.headers.get('Content-Type') || '').toLowerCase();
+                        if (responseType.includes('application/json') || responseType.includes('application/problem+json')) {
+                            const payload = await response.json().catch(() => null);
+                            message = payload?.detail || payload?.message || payload?.title || message;
+                        } else {
+                            const text = await response.text().catch(() => '');
+                            if (text && text.trim().length > 0) {
+                                message = text.trim().slice(0, 300);
+                            }
+                        }
+                        throw new Error(message);
+                    }
+
+                    const responseType = (response.headers.get('Content-Type') || '').toLowerCase();
+                    const disposition = response.headers.get('Content-Disposition') || '';
+                    const isExcelType = responseType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    const hasAttachmentDisposition = disposition.toLowerCase().includes('attachment');
+
+                    if (responseType.includes('application/json') || responseType.includes('application/problem+json')) {
+                        const payload = await response.json().catch(() => null);
+                        const message = payload?.detail || payload?.message || payload?.title || 'Export failed.';
+                        throw new Error(message);
+                    }
+
+                    if (responseType.includes('text/html') || responseType.includes('text/plain')) {
+                        throw new Error('Export failed and returned non-report content.');
+                    }
+
+                    if (!isExcelType && !hasAttachmentDisposition) {
+                        throw new Error('Unexpected export response type.');
+                    }
+
+                    const blob = await response.blob();
+                    const filename = getFilenameFromDisposition(disposition) || 'download';
+
+                    const objectUrl = window.URL.createObjectURL(blob);
+                    try {
+                        const tempLink = document.createElement('a');
+                        tempLink.href = objectUrl;
+                        tempLink.download = filename;
+                        tempLink.style.display = 'none';
+                        document.body.appendChild(tempLink);
+                        tempLink.click();
+                        tempLink.remove();
+                    } finally {
+                        window.URL.revokeObjectURL(objectUrl);
+                    }
+                }
+
+                links.forEach(function (link) {
+                    link.addEventListener('click', async function (event) {
+                        if (useFetchDownload) {
+                            event.preventDefault();
+                        }
+
+                        show(loadingMessage);
+
+                        if (disableOnClick) {
+                            links.forEach(function (l) {
+                                l.classList.add('disabled');
+                                l.setAttribute('aria-disabled', 'true');
+                                l.style.pointerEvents = 'none';
+                            });
+                        }
+
+                        if (useFetchDownload) {
+                            try {
+                                await downloadUsingFetch(link);
+                            } catch (error) {
+                                console.error(error);
+                                const message = error && error.message ? error.message : 'Export failed.';
+                                if (window.toastr) {
+                                    window.toastr.error(message);
+                                } else {
+                                    alert(message);
+                                }
+                            } finally {
+                                hide();
+                                enableLinks();
+                            }
+                        } else {
+                            scheduleHide();
+                        }
+                    });
+                });
+            }
+
+            return {
+                show: show,
+                hide: hide,
+                bindFormSubmit: bindFormSubmit,
+                bindLinkClicks: bindLinkClicks
+            };
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
     
     <script src="~/js/layout-navigation.js" asp-append-version="true"></script>
+    @{
+        var successMessage = TempData["SuccessMessage"]?.ToString();
+        var errorMessage = TempData["ErrorMessage"]?.ToString();
+        var warningMessage = TempData["WarningMessage"]?.ToString();
+        var infoMessage = TempData["InfoMessage"]?.ToString();
+    }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof toastr === 'undefined') return;
+
+            toastr.options = {
+                closeButton: true,
+                progressBar: true,
+                newestOnTop: true,
+                preventDuplicates: true,
+                positionClass: 'toast-top-right',
+                timeOut: 4500,
+                extendedTimeOut: 1500,
+                showDuration: 220,
+                hideDuration: 180,
+                showMethod: 'fadeIn',
+                hideMethod: 'fadeOut'
+            };
+
+            const successMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(successMessage));
+            const errorMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(errorMessage));
+            const warningMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(warningMessage));
+            const infoMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(infoMessage));
+
+            if (successMessage) toastr.success(successMessage);
+            if (errorMessage) toastr.error(errorMessage);
+            if (warningMessage) toastr.warning(warningMessage);
+            if (infoMessage) toastr.info(infoMessage);
+        });
+    </script>
 </body>
 </html>
+
 

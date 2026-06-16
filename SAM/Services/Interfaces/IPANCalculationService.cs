@@ -7,7 +7,7 @@ public record PANCalculationResult(decimal PanLbs, decimal PanLoadingLbsPerAcre)
 
 /// <summary>
 /// Service for calculating PAN (Plant Available Nitrogen) and PAN Loading from wastewater chemistry and application data.
-/// Formula: PAN (lbs) = { [MR×(TKN−NH₃)] + (1-VR)×NH₃ + NO₂ + NO₃ } × 8.34 × (volumeGallons/1_000_000);
+/// Formula: PAN (lbs) = { [MR x (TKN - NH3)] + (1 - VR) x NH3 + NO2 + NO3 } x 8.34 x (volumeGallons/1_000_000);
 /// PAN Loading (lbs/acre) = PAN (lbs) / acres.
 /// </summary>
 public interface IPANCalculationService
@@ -34,3 +34,4 @@ public interface IPANCalculationService
         decimal volumeGallons = 0m,
         decimal acres = 0m);
 }
+

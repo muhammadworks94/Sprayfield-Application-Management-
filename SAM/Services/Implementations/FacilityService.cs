@@ -86,6 +86,24 @@ public class FacilityService : IFacilityService
         existing.City = facility.City;
         existing.State = facility.State;
         existing.ZipCode = facility.ZipCode;
+        existing.County = facility.County;
+        existing.PermitExpirationDate = facility.PermitExpirationDate;
+        existing.PermitPhone = facility.PermitPhone;
+        existing.FacilityPhone = facility.FacilityPhone;
+        existing.OrcName = facility.OrcName;
+        existing.OperatorGrade = facility.OperatorGrade;
+        existing.OperatorNumber = facility.OperatorNumber;
+        existing.OperatorPhone = facility.OperatorPhone;
+        existing.ChangeInOrc = facility.ChangeInOrc;
+        existing.TotalNumberOfSprayfields = facility.TotalNumberOfSprayfields;
+        existing.CertifiedLaboratory1Name = facility.CertifiedLaboratory1Name;
+        existing.CertifiedLaboratory2Name = facility.CertifiedLaboratory2Name;
+        existing.LabCertificationNumber1 = facility.LabCertificationNumber1;
+        existing.LabCertificationNumber2 = facility.LabCertificationNumber2;
+        existing.PersonsCollectingSamples = facility.PersonsCollectingSamples;
+        existing.PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet;
+        existing.MineralizationRatePercent = facility.MineralizationRatePercent;
+        existing.VolatilizationRatePercent = facility.VolatilizationRatePercent;
 
         await _context.SaveChangesAsync();
 
@@ -103,7 +121,7 @@ public class FacilityService : IFacilityService
         // Check if facility is referenced
         var hasReferences = await _context.WWChars.AnyAsync(w => w.FacilityId == id) ||
                            await _context.GWMonits.AnyAsync(g => g.FacilityId == id) ||
-                           await _context.Irrigates.AnyAsync(i => i.FacilityId == id) ||
+                           await _context.MonthlyApplications.AnyAsync(i => i.FacilityId == id) ||
                            await _context.IrrRprts.AnyAsync(r => r.FacilityId == id) ||
                            await _context.OperatorLogs.AnyAsync(o => o.FacilityId == id) ||
                            await _context.Sprayfields.AnyAsync(s => s.FacilityId == id);

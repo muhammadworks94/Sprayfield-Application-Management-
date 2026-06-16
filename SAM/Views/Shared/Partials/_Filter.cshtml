@@ -6,8 +6,8 @@
 
 @if (showFilter)
 {
-    <div class="card mb-3 filter-card">
-        <div class="card-body">
+    <div class="card mb-3 filter-card responsive-filter-card">
+        <div class="card-body responsive-filter-body">
             @{
                 var formAction = !string.IsNullOrEmpty(Model.ActionName) && !string.IsNullOrEmpty(Model.ControllerName)
                     ? Url.Action(Model.ActionName, Model.ControllerName)
@@ -15,7 +15,7 @@
             }
             <form method="get" 
                   id="filterForm" 
-                  class="row g-3 filter-form"
+                  class="row g-3 filter-form responsive-filter-form"
                   role="search"
                   action="@(string.IsNullOrEmpty(formAction) ? "" : formAction)">
                 @if (hasFields)
@@ -86,7 +86,7 @@
 
                 @if (Model.EnableSearch)
                 {
-                    <div class="col-md-4">
+                    <div class="col-md-4 responsive-filter-search">
                         <label for="searchTerm" class="form-label">
                             <i class="bi bi-search me-1"></i>Search:
                         </label>

@@ -2,10 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
+using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 using SAM.ViewModels.Common;
 using SAM.ViewModels.SystemAdmin;
 
@@ -22,8 +25,13 @@ public partial class SystemAdminController : BaseController
     private readonly INozzleService _nozzleService;
     private readonly ICropService _cropService;
     private readonly ISprayfieldService _sprayfieldService;
+    private readonly IMonthlyApplicationService _monthlyApplicationService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly ILookupQueryService _lookupQueryService;
+    private readonly ApplicationDbContext _context;
+    private readonly IPcsCatalogService _pcsCatalogService;
+    private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
 
     public SystemAdminController(
         IFacilityService facilityService,
@@ -31,8 +39,13 @@ public partial class SystemAdminController : BaseController
         INozzleService nozzleService,
         ICropService cropService,
         ISprayfieldService sprayfieldService,
+        IMonthlyApplicationService monthlyApplicationService,
         IMonitoringWellService monitoringWellService,
         ILookupQueryService lookupQueryService,
+        ApplicationDbContext context,
+        IPcsCatalogService pcsCatalogService,
+        IWebHostEnvironment environment,
+        IConfiguration configuration,
         UserManager<ApplicationUser> userManager,
         ILogger<SystemAdminController> logger)
         : base(userManager, logger)
@@ -42,8 +55,13 @@ public partial class SystemAdminController : BaseController
         _nozzleService = nozzleService;
         _cropService = cropService;
         _sprayfieldService = sprayfieldService;
+        _monthlyApplicationService = monthlyApplicationService;
         _monitoringWellService = monitoringWellService;
         _lookupQueryService = lookupQueryService;
+        _context = context;
+        _pcsCatalogService = pcsCatalogService;
+        _environment = environment;
+        _configuration = configuration;
     }
 
 
@@ -148,25 +166,31 @@ public partial class SystemAdminController : BaseController
                 break;
             case "sprayfields":
                 var sprayfields = await _sprayfieldService.GetAllAsync(companyId);
-                viewModel.Sprayfields = sprayfields.Select(s => new SprayfieldViewModel
+                viewModel.Sprayfields = sprayfields
+                    .OrderBy(s => BuildNaturalSortKey(s.FieldId))
+                    .ThenBy(s => s.FieldId)
+                    .Select(s => new SprayfieldViewModel
                 {
                     Id = s.Id,
                     CompanyId = s.CompanyId,
                     CompanyName = s.Company?.Name,
                     FieldId = s.FieldId,
                     SizeAcres = s.SizeAcres,
-                    SoilId = s.SoilId,
-                    SoilName = s.Soil?.TypeName,
-                    CropId = s.CropId,
-                    CropName = s.Crop?.Name,
-                    NozzleId = s.NozzleId,
-                    NozzleName = $"{s.Nozzle?.Manufacturer} {s.Nozzle?.Model}",
+                    SoilName = SprayfieldZoneSummaryHelper.GetSoilSummary(s),
+                    CropName = SprayfieldZoneSummaryHelper.GetCropSummary(s),
+                    NozzleName = SprayfieldZoneSummaryHelper.GetNozzleSummary(s),
                     FacilityId = s.FacilityId,
                     FacilityName = s.Facility?.Name,
                     HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr,
                     HourlyRateInches = s.HourlyRateInches,
+                    AnnualRateInches = s.AnnualRateInches,
                     WeeklyRateInches = s.WeeklyRateInches
                 });
+                var facilitiesForBulkEdit = (await _facilityService.GetAllAsync(companyId))
+                    .OrderBy(f => f.Name)
+                    .ToList();
+
+                viewModel.SprayfieldFacilities = new SelectList(facilitiesForBulkEdit, "Id", "Name");
                 viewModel.SprayfieldsFilter = await CreateSprayfieldsFilterViewModelAsync(isGlobalAdmin, companyId);
                 break;
             case "monitoringwells":
@@ -412,6 +436,11 @@ public partial class SystemAdminController : BaseController
         
         ViewBag.Facilities = new SelectList(facilities, "Id", "Name");
         ViewBag.Companies = await GetCompanySelectListAsync();
+    }
+
+    private static string BuildNaturalSortKey(string? input)
+    {
+        return Regex.Replace(input ?? string.Empty, @"\d+", match => match.Value.PadLeft(10, '0'));
     }
 
     #endregion

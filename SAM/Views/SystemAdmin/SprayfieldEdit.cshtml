@@ -22,12 +22,12 @@
         <form asp-action="SprayfieldEdit" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
-            
+
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
             <div class="form-section">
                 <div class="form-section-title">Company Information</div>
-                
+
                 <div class="mb-3">
                     <label asp-for="CompanyId" class="form-label required"></label>
                     @if (isGlobalAdmin && companies != null)
@@ -47,71 +47,64 @@
 
             <div class="form-section">
                 <div class="form-section-title">Sprayfield Information</div>
-                
-                <div class="mb-3">
-                    <label asp-for="FieldId" class="form-label required"></label>
-                    <input asp-for="FieldId" class="form-control" />
-                    <span asp-validation-for="FieldId" class="text-danger"></span>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label asp-for="FieldId" class="form-label required"></label>
+                        <input asp-for="FieldId" class="form-control" />
+                        <span asp-validation-for="FieldId" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-6">
+                        <label asp-for="SizeAcres" class="form-label required"></label>
+                        <input asp-for="SizeAcres" type="number" step="0.001" min="0" class="form-control" />
+                        <span asp-validation-for="SizeAcres" class="text-danger"></span>
+                        <small class="form-text text-muted">Size of wetted area in acres.</small>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label asp-for="SizeAcres" class="form-label required"></label>
-                    <input asp-for="SizeAcres" type="number" step="0.01" min="0" class="form-control" />
-                    <span asp-validation-for="SizeAcres" class="text-danger"></span>
-                    <small class="form-text text-muted">Size of wetted area in acres.</small>
+                <div class="row mb-3">
+                    <div class="col-4">
+                        <label asp-for="SoilId" class="form-label required"></label>
+                        <select asp-for="SoilId" asp-items="soils" class="form-select">
+                            <option value="">-- Select Soil --</option>
+                        </select>
+                        <span asp-validation-for="SoilId" class="text-danger"></span>
+                    </div>
+                    <div class="col-4">
+                        <label asp-for="NozzleId" class="form-label required"></label>
+                        <select asp-for="NozzleId" asp-items="nozzles" class="form-select">
+                            <option value="">-- Select Nozzle --</option>
+                        </select>
+                        <span asp-validation-for="NozzleId" class="text-danger"></span>
+                    </div>
+                    <div class="col-4">
+                        <label asp-for="CropId" class="form-label"></label>
+                        <select asp-for="CropId" asp-items="crops" class="form-select">
+                            <option value="">-- Select Crop (Optional) --</option>
+                        </select>
+                        <span asp-validation-for="CropId" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label asp-for="FacilityId" class="form-label"></label>
+                        <select asp-for="FacilityId" asp-items="facilities" class="form-select">
+                            <option value="">-- Select Facility (Optional) --</option>
+                        </select>
+                        <span asp-validation-for="FacilityId" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-6">
+                        <label asp-for="HydraulicLoadingLimitInPerYr" class="form-label required"></label>
+                        <input asp-for="HydraulicLoadingLimitInPerYr" type="number" step="0.01" min="0" class="form-control" />
+                        <span asp-validation-for="HydraulicLoadingLimitInPerYr" class="text-danger"></span>
+                        <small class="form-text text-muted">Fallback annual value for NDAR (in/yr) when Annual Rate is not provided.</small>
+                    </div>
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="SoilId" class="form-label required"></label>
-                            <select asp-for="SoilId" asp-items="soils" class="form-select">
-                                <option value="">-- Select Soil --</option>
-                            </select>
-                            <span asp-validation-for="SoilId" class="text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="CropId" class="form-label required"></label>
-                            <select asp-for="CropId" asp-items="crops" class="form-select">
-                                <option value="">-- Select Crop --</option>
-                            </select>
-                            <span asp-validation-for="CropId" class="text-danger"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="NozzleId" class="form-label required"></label>
-                            <select asp-for="NozzleId" asp-items="nozzles" class="form-select">
-                                <option value="">-- Select Nozzle --</option>
-                            </select>
-                            <span asp-validation-for="NozzleId" class="text-danger"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="FacilityId" class="form-label"></label>
-                            <select asp-for="FacilityId" asp-items="facilities" class="form-select">
-                                <option value="">-- Select Facility (Optional) --</option>
-                            </select>
-                            <span asp-validation-for="FacilityId" class="text-danger"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="HydraulicLoadingLimitInPerYr" class="form-label required"></label>
-                    <input asp-for="HydraulicLoadingLimitInPerYr" type="number" step="0.01" min="0" class="form-control" />
-                    <span asp-validation-for="HydraulicLoadingLimitInPerYr" class="text-danger"></span>
-                    <small class="form-text text-muted">Annual hydraulic loading limit in inches per year</small>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label asp-for="HourlyRateInches" class="form-label"></label>
                             <input asp-for="HourlyRateInches" type="number" step="0.01" min="0" class="form-control" />
@@ -119,18 +112,26 @@
                             <small class="form-text text-muted">Design hourly application rate in inches per hour.</small>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="AnnualRateInches" class="form-label"></label>
+                            <input asp-for="AnnualRateInches" type="number" step="0.01" min="0" class="form-control" />
+                            <span asp-validation-for="AnnualRateInches" class="text-danger"></span>
+                            <small class="form-text text-muted">Primary NDAR annual value (in/yr). If empty, NDAR uses Hydraulic Loading Limit fallback.</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label asp-for="WeeklyRateInches" class="form-label"></label>
                             <input asp-for="WeeklyRateInches" type="number" step="0.01" min="0" class="form-control" />
                             <span asp-validation-for="WeeklyRateInches" class="text-danger"></span>
-                            <small class="form-text text-muted">Design weekly application rate in inches per week.</small>
+                            <small class="form-text text-muted">Planning-only weekly value (in/week). Not used as NDAR annual fallback.</small>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="d-flex justify-content-end gap-2">
+            <div class="d-flex justify-content-end gap-2 responsive-form-actions">
                 <a asp-action="SprayfieldDetails" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> Update Sprayfield
@@ -141,20 +142,19 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    
-    @if (isGlobalAdmin)
-    {
-        <script>
-            // Reload dropdowns when company changes
-            document.getElementById('companySelect')?.addEventListener('change', function() {
-                var companyId = this.value;
-                if (companyId) {
-                    // Reload page with companyId to refresh dropdowns
-                    window.location.href = '@Url.Action("SprayfieldEdit", new { id = Model.Id })' + '&companyId=' + companyId;
-                }
-            });
-        </script>
-    }
-}
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const isGlobalAdmin = @(isGlobalAdmin.ToString().ToLower());
+            if (isGlobalAdmin) {
+                document.getElementById('companySelect')?.addEventListener('change', function () {
+                    const companyId = this.value;
+                    if (companyId) {
+                        window.location.href = '@Url.Action("SprayfieldEdit", new { id = Model.Id })' + '?companyId=' + companyId;
+                    }
+                });
+            }
+        });
+    </script>
+}

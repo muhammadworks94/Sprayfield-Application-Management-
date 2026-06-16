@@ -1,0 +1,681 @@
+@model SAM.ViewModels.Admin.ProjectKnowledgeViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="knowledge-page">
+    <div class="mb-3">
+        <p class="text-muted mb-0">@Model.Summary</p>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-7">
+            <input id="knowledgeSearch" type="text" class="form-control form-control-lg" placeholder="Search by module, entity, report, formula, fallback..." />
+        </div>
+        <div class="col-lg-3">
+            <select id="knowledgeJump" class="form-select form-select-lg" aria-label="Jump to section">
+                <option value="">Jump To Section...</option>
+                <option value="diagrams">Diagrams</option>
+                @foreach (var sec in Model.Sections)
+                {
+                    <option value="@sec.Id">@sec.Title</option>
+                }
+            </select>
+        </div>
+        
+    </div>
+
+    <div>
+            <div class="accordion" id="knowledgeAccordion">
+                <div class="accordion-item mb-2 knowledge-item" id="diagrams">
+                    <h2 class="accordion-header" id="heading-diagrams">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-diagrams" aria-expanded="false" aria-controls="collapse-diagrams">
+                            System Diagrams
+                        </button>
+                    </h2>
+                    <div id="collapse-diagrams" class="accordion-collapse collapse" aria-labelledby="heading-diagrams" data-bs-parent="#knowledgeAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                @for (var i = 0; i < Model.MermaidDiagrams.Count; i++)
+                                {
+                                    <div class="col-12">
+                                        <div class="diagram-box">
+                                            <div class="mermaid-host"></div>
+                                            <pre class="diagram-source d-none">@Model.MermaidDiagrams[i]</pre>
+                                            <div class="diagram-fallback d-none mt-2">
+                                                <pre class="mb-0">@Model.MermaidDiagrams[i]</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @for (var i = 0; i < Model.Sections.Count; i++)
+                {
+                    var sec = Model.Sections[i];
+                    var collapseId = $"collapse-{sec.Id}";
+                    var headingId = $"heading-{sec.Id}";
+                    <div class="accordion-item mb-2 knowledge-item" id="@sec.Id">
+                        <h2 class="accordion-header" id="@headingId">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
+                                @sec.Title
+                            </button>
+                        </h2>
+                        <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#knowledgeAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted">@sec.Intro</p>
+
+                                @if (sec.TraceabilityItems.Any())
+                                {
+                                    <div class="trace-toolbar mb-3">
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-lg-4">
+                                                <label class="form-label trace-label mb-1">Search Property or Keyword</label>
+                                                <input id="traceSearch" type="text" class="form-control" placeholder="BOD5, TKN, 50050, DailyLoading..." />
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <label class="form-label trace-label mb-1">Entity</label>
+                                                <select id="traceEntityFilter" class="form-select">
+                                                    <option value="">All Entities</option>
+                                                    @foreach (var entity in Model.TraceabilityEntityFilters)
+                                                    {
+                                                        <option value="@entity.ToLowerInvariant()">@entity</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <label class="form-label trace-label mb-1">Report</label>
+                                                <select id="traceReportFilter" class="form-select">
+                                                    <option value="">All Reports</option>
+                                                    @foreach (var report in Model.TraceabilityReportFilters)
+                                                    {
+                                                        <option value="@report.ToLowerInvariant()">@report</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="col-lg-2">
+                                                <button type="button" id="traceResetFilters" class="btn btn-outline-secondary w-100">Reset</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="table-responsive mb-3 trace-table-container">
+                                        <table class="table table-bordered table-striped align-middle trace-table">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Keyword / Property</th>
+                                                    <th>Entity</th>
+                                                    <th>Storage Field</th>
+                                                    <th>Used In Module</th>
+                                                    <th>Formula / Transformation</th>
+                                                    <th>Report Output</th>
+                                                    <th>Fallback / Validation</th>
+                                                    <th>Reference</th>
+                                                    <th>Details</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="traceabilityRows">
+                                                @foreach (var trace in sec.TraceabilityItems)
+                                                {
+                                                    var searchBlob = string.Join(" ", new[]
+                                                    {
+                                                        trace.KeywordOrProperty,
+                                                        trace.Entity,
+                                                        trace.StorageField,
+                                                        trace.UsedInModule,
+                                                        trace.FormulaOrTransformation,
+                                                        trace.ReportOutput,
+                                                        trace.FallbackOrValidation,
+                                                        trace.Reference.Label,
+                                                        trace.Reference.Location,
+                                                        string.Join(" ", trace.Aliases),
+                                                        string.Join(" ", trace.UsedByReports)
+                                                    }).ToLowerInvariant();
+                                                    var reportsBlob = string.Join(" ", trace.UsedByReports).ToLowerInvariant();
+                                                    <tr class="trace-row"
+                                                        data-search="@searchBlob"
+                                                        data-entity="@trace.Entity.ToLowerInvariant()"
+                                                        data-reports="@reportsBlob">
+                                                        <td>
+                                                            <div class="fw-semibold">@trace.KeywordOrProperty</div>
+                                                            @if (trace.Aliases.Any())
+                                                            {
+                                                                <div class="small text-muted">@string.Join(", ", trace.Aliases)</div>
+                                                            }
+                                                        </td>
+                                                        <td><span class="badge trace-badge-entity">@trace.Entity</span></td>
+                                                        <td>@trace.StorageField</td>
+                                                        <td>@trace.UsedInModule</td>
+                                                        <td><span class="badge trace-badge-formula me-1">Formula</span>@trace.FormulaOrTransformation</td>
+                                                        <td>
+                                                            @trace.ReportOutput
+                                                            <div class="mt-1">
+                                                                @foreach (var report in trace.UsedByReports)
+                                                                {
+                                                                    <button type="button" class="btn btn-link btn-sm p-0 me-2 trace-report-chip" data-report-filter="@report.ToLowerInvariant()">@report</button>
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                        <td><span class="badge trace-badge-fallback me-1">Fallback</span>@trace.FallbackOrValidation</td>
+                                                        <td>
+                                                            <div class="fw-semibold">@trace.Reference.Label</div>
+                                                            <div class="small text-muted">@trace.Reference.Location</div>
+                                                        </td>
+                                                        <td>
+                                                            <button type="button"
+                                                                    class="btn btn-outline-primary btn-sm trace-detail-btn"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#traceDetailModal"
+                                                                    data-trace-id="@trace.Id">
+                                                                View Chain
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="small text-muted mb-3" id="traceEmptyState" style="display:none;">
+                                        No traceability matches found for the selected search and filters.
+                                    </div>
+                                }
+
+                                @if (sec.Cards.Any())
+                                {
+                                    <div class="row g-3 mb-3">
+                                        @foreach (var card in sec.Cards)
+                                        {
+                                            <div class="col-lg-6">
+                                                <div class="card h-100 logic-card">
+                                                    <div class="card-body">
+                                                        <h6 class="mb-2">@card.Heading</h6>
+                                                        @if (!string.IsNullOrWhiteSpace(card.Body))
+                                                        {
+                                                            <p class="mb-2 text-muted">@card.Body</p>
+                                                        }
+                                                        @if (card.Bullets.Any())
+                                                        {
+                                                            <ul class="mb-0">
+                                                                @foreach (var bullet in card.Bullets)
+                                                                {
+                                                                    <li>@bullet</li>
+                                                                }
+                                                            </ul>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                @foreach (var flow in sec.Flows)
+                                {
+                                    <div class="mb-3">
+                                        <h6>@flow.Name</h6>
+                                        <ol class="mb-0">
+                                            @foreach (var step in flow.Steps)
+                                            {
+                                                <li>@step</li>
+                                            }
+                                        </ol>
+                                    </div>
+                                }
+
+                                @foreach (var table in sec.Tables)
+                                {
+                                    <div class="table-responsive mb-3">
+                                        <table class="table table-bordered table-striped table-sm align-middle">
+                                            <caption class="caption-top fw-semibold">@table.Caption</caption>
+                                            <thead class="table-light">
+                                                <tr>
+                                                    @foreach (var header in table.Headers)
+                                                    {
+                                                        <th>@header</th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var row in table.Rows)
+                                                {
+                                                    <tr>
+                                                        @for (var cellIdx = 0; cellIdx < row.Count; cellIdx++)
+                                                        {
+                                                            var cell = row[cellIdx];
+                                                            <td>
+                                                                @cell
+                                                                @if (cellIdx == 0 && string.Equals(table.Caption, "Core Entities and Usage", StringComparison.OrdinalIgnoreCase))
+                                                                {
+                                                                    <button type="button" class="btn btn-link btn-sm p-0 ms-2 trace-entity-jump" data-entity-filter="@cell.ToLowerInvariant()">View mapped properties</button>
+                                                                }
+                                                                @if (cellIdx == 0 && string.Equals(table.Caption, "Report Source Mapping", StringComparison.OrdinalIgnoreCase))
+                                                                {
+                                                                    <button type="button" class="btn btn-link btn-sm p-0 ms-2 trace-report-jump" data-report-filter="@cell.ToLowerInvariant()">Open in Traceability</button>
+                                                                }
+                                                            </td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+    </div>
+</div>
+
+<div class="modal fade" id="traceDetailModal" tabindex="-1" aria-labelledby="traceDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="traceDetailModalLabel">Property Trace Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="traceDetailContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .knowledge-page {
+        --pkc-title: #0b2447;
+        --pkc-heading: #133c78;
+        --pkc-text: #1f2937;
+        --pkc-muted: #5b6b7f;
+        --pkc-border: #d7dfeb;
+        --pkc-soft: #f4f8ff;
+        --pkc-accent: #0d6efd;
+    }
+    .knowledge-page .text-muted {
+        color: var(--pkc-muted) !important;
+        font-size: 1rem;
+        line-height: 1.55;
+    }
+    .knowledge-page .accordion-item {
+        border: 1px solid var(--pkc-border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(13, 45, 90, 0.05);
+    }
+    .knowledge-page .accordion-button {
+        font-size: 1.08rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        color: var(--pkc-title);
+        background: #fff;
+        padding-top: 0.8rem;
+        padding-bottom: 0.8rem;
+    }
+    .knowledge-page .accordion-button:not(.collapsed) {
+        color: var(--pkc-heading);
+        background: linear-gradient(90deg, #edf4ff 0%, #f7faff 100%);
+        border-bottom: 1px solid var(--pkc-border);
+        box-shadow: inset 4px 0 0 var(--pkc-accent);
+    }
+    .knowledge-page .accordion-body {
+        background: #fff;
+    }
+    .knowledge-page .accordion-body > h6,
+    .knowledge-page .accordion-body > .mb-3 > h6 {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: var(--pkc-heading);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .knowledge-page ol li,
+    .knowledge-page ul li {
+        color: var(--pkc-text);
+        line-height: 1.5;
+        margin-bottom: 0.35rem;
+    }
+    .logic-card { border-left: 4px solid #0d6efd; }
+    .knowledge-page .logic-card {
+        border: 1px solid var(--pkc-border);
+        border-left: 5px solid var(--pkc-accent);
+        border-radius: 12px;
+        background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+    }
+    .knowledge-page .logic-card h6 {
+        font-size: 1.02rem;
+        font-weight: 700;
+        color: var(--pkc-title);
+        margin-bottom: 0.65rem;
+    }
+    .knowledge-page .logic-card p {
+        color: var(--pkc-muted);
+        margin-bottom: 0.5rem;
+    }
+    .knowledge-page .table {
+        border: 1px solid var(--pkc-border);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 0;
+    }
+    .knowledge-page .table caption {
+        background: var(--pkc-soft);
+        border: 1px solid var(--pkc-border);
+        border-bottom: 0;
+        border-radius: 10px 10px 0 0;
+        padding: 0.65rem 0.9rem;
+        color: var(--pkc-heading);
+        font-weight: 700;
+        font-size: 1.05rem;
+    }
+    .knowledge-page .table thead th {
+        background: #f3f7ff;
+        color: #344861;
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border-color: var(--pkc-border);
+    }
+    .knowledge-page .table tbody td {
+        color: var(--pkc-text);
+        border-color: #e4e9f2;
+        vertical-align: top;
+    }
+    .knowledge-page #knowledgeJump {
+        border-color: #9ab6e8;
+        color: #163a73;
+        font-weight: 600;
+        background-color: #f5f9ff;
+    }
+    .knowledge-page #knowledgeSearch {
+        border-color: #cdd8ea;
+    }
+    .diagram-box {
+        border: 1px solid #dbe3ef;
+        border-radius: 10px;
+        padding: 12px;
+        background: linear-gradient(180deg, #fbfdff 0%, #f6f9ff 100%);
+    }
+    .knowledge-page .alert-info {
+        border: 1px solid #8ccde7;
+        background: #e8f7ff;
+        color: #0b5f7f;
+        font-weight: 600;
+    }
+    .trace-label {
+        font-weight: 700;
+        color: var(--pkc-heading);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .trace-toolbar {
+        position: sticky;
+        top: 72px;
+        z-index: 8;
+        background: #f7faff;
+        border: 1px solid var(--pkc-border);
+        border-radius: 12px;
+        padding: 0.9rem;
+    }
+    .trace-table th, .trace-table td {
+        font-size: 0.93rem;
+    }
+    .trace-table-container {
+        max-height: 520px;
+        overflow: auto;
+        border: 1px solid var(--pkc-border);
+        border-radius: 12px;
+        background: #fff;
+    }
+    .trace-table-container .trace-table {
+        margin-bottom: 0;
+        border: 0;
+    }
+    .trace-table-container .trace-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f3f7ff;
+    }
+    .trace-badge-entity {
+        background: #e8f2ff;
+        color: #124a90;
+        border: 1px solid #b7d1f3;
+    }
+    .trace-badge-formula {
+        background: #ebfff4;
+        color: #0b7a3b;
+        border: 1px solid #b7e9cc;
+    }
+    .trace-badge-fallback {
+        background: #fff3e5;
+        color: #9d4b00;
+        border: 1px solid #f3d3ad;
+    }
+    .trace-detail-block {
+        border: 1px solid #dde5f2;
+        border-radius: 12px;
+        padding: 0.8rem;
+        background: #fafcff;
+        margin-bottom: 0.8rem;
+    }
+    .knowledge-item.hidden-by-search { display: none; }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        (function () {
+            const search = document.getElementById('knowledgeSearch');
+            const jump = document.getElementById('knowledgeJump');
+            const items = Array.from(document.querySelectorAll('.knowledge-item'));
+            const traceSearch = document.getElementById('traceSearch');
+            const traceEntityFilter = document.getElementById('traceEntityFilter');
+            const traceReportFilter = document.getElementById('traceReportFilter');
+            const traceReset = document.getElementById('traceResetFilters');
+            const traceRows = Array.from(document.querySelectorAll('.trace-row'));
+            const traceEmpty = document.getElementById('traceEmptyState');
+            const traceDetails = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.Sections.SelectMany(s => s.TraceabilityItems).ToDictionary(
+                    t => t.Id,
+                    t => new
+                    {
+                        t.KeywordOrProperty,
+                        t.Entity,
+                        t.StorageField,
+                        t.UsedInModule,
+                        t.FormulaOrTransformation,
+                        t.ReportOutput,
+                        t.FallbackOrValidation,
+                        ReferenceLabel = t.Reference.Label,
+                        ReferenceLocation = t.Reference.Location,
+                        UsedByReports = t.UsedByReports,
+                        Steps = t.Steps,
+                        Formulas = t.Formulas,
+                        Usages = t.Usages,
+                        FallbackRules = t.FallbackRules
+                    }
+                )));
+            const diagramsCollapse = document.getElementById('collapse-diagrams');
+            if (search) {
+                search.addEventListener('input', function () {
+                    const term = (search.value || '').toLowerCase().trim();
+                    items.forEach(function (el) {
+                        const match = !term || (el.innerText || '').toLowerCase().includes(term);
+                        el.classList.toggle('hidden-by-search', !match);
+                    });
+                });
+            }
+            if (jump) {
+                jump.addEventListener('change', function () {
+                    const targetId = jump.value;
+                    if (!targetId) return;
+                    const el = document.getElementById(targetId);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            }
+            const applyTraceFilters = function () {
+                if (!traceRows.length) return;
+                const term = (traceSearch && traceSearch.value ? traceSearch.value : '').toLowerCase().trim();
+                const entity = (traceEntityFilter && traceEntityFilter.value ? traceEntityFilter.value : '').toLowerCase().trim();
+                const report = (traceReportFilter && traceReportFilter.value ? traceReportFilter.value : '').toLowerCase().trim();
+                let visibleCount = 0;
+
+                traceRows.forEach(function (row) {
+                    const rowSearch = row.dataset.search || '';
+                    const rowEntity = row.dataset.entity || '';
+                    const rowReports = row.dataset.reports || '';
+                    const termMatch = !term || rowSearch.includes(term);
+                    const entityMatch = !entity || rowEntity.includes(entity);
+                    const reportMatch = !report || rowReports.includes(report);
+                    const show = termMatch && entityMatch && reportMatch;
+                    row.style.display = show ? '' : 'none';
+                    if (show) visibleCount += 1;
+                });
+
+                if (traceEmpty) {
+                    traceEmpty.style.display = visibleCount === 0 ? 'block' : 'none';
+                }
+            };
+
+            if (traceSearch) traceSearch.addEventListener('input', applyTraceFilters);
+            if (traceEntityFilter) traceEntityFilter.addEventListener('change', applyTraceFilters);
+            if (traceReportFilter) traceReportFilter.addEventListener('change', applyTraceFilters);
+            if (traceReset) {
+                traceReset.addEventListener('click', function () {
+                    if (traceSearch) traceSearch.value = '';
+                    if (traceEntityFilter) traceEntityFilter.value = '';
+                    if (traceReportFilter) traceReportFilter.value = '';
+                    applyTraceFilters();
+                });
+            }
+
+            document.querySelectorAll('.trace-report-chip, .trace-report-jump').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const reportFilter = (btn.dataset.reportFilter || '').toLowerCase();
+                    const traceSection = document.getElementById('property-traceability');
+                    const traceAccordion = document.getElementById('collapse-property-traceability');
+                    if (traceReportFilter) {
+                        const matchOption = Array.from(traceReportFilter.options).find(function (o) {
+                            return (o.value || '').toLowerCase() === reportFilter;
+                        });
+                        if (matchOption) traceReportFilter.value = matchOption.value;
+                    }
+                    if (traceAccordion && !traceAccordion.classList.contains('show')) {
+                        const button = document.querySelector('[data-bs-target="#collapse-property-traceability"]');
+                        if (button) button.click();
+                    }
+                    if (traceSection) traceSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    applyTraceFilters();
+                });
+            });
+
+            document.querySelectorAll('.trace-entity-jump').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const entityFilter = (btn.dataset.entityFilter || '').toLowerCase();
+                    const traceSection = document.getElementById('property-traceability');
+                    const traceAccordion = document.getElementById('collapse-property-traceability');
+                    if (traceEntityFilter) {
+                        const matchOption = Array.from(traceEntityFilter.options).find(function (o) {
+                            return (o.value || '').toLowerCase() === entityFilter;
+                        });
+                        if (matchOption) traceEntityFilter.value = matchOption.value;
+                    }
+                    if (traceAccordion && !traceAccordion.classList.contains('show')) {
+                        const button = document.querySelector('[data-bs-target="#collapse-property-traceability"]');
+                        if (button) button.click();
+                    }
+                    if (traceSection) traceSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    applyTraceFilters();
+                });
+            });
+
+            document.querySelectorAll('.trace-detail-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const traceId = btn.dataset.traceId;
+                    const data = traceId ? traceDetails[traceId] : null;
+                    const container = document.getElementById('traceDetailContent');
+                    if (!container || !data) return;
+
+                    const stepsHtml = (data.Steps || [])
+                        .sort(function (a, b) { return (a.Order || 0) - (b.Order || 0); })
+                        .map(function (s) {
+                            return '<li><strong>' + (s.Label || '') + ':</strong> ' + (s.Detail || '') + '</li>';
+                        }).join('');
+
+                    const formulasHtml = (data.Formulas || []).map(function (f) {
+                        return '<div class="trace-detail-block"><div class="fw-semibold">' + (f.Name || '') + '</div><div><code>' + (f.Expression || '') + '</code></div><div class="small text-muted">' + (f.Notes || '') + '</div></div>';
+                    }).join('');
+
+                    const usageHtml = (data.Usages || []).map(function (u) {
+                        return '<li><strong>' + (u.Report || '') + '</strong> (' + (u.Module || '') + '): ' + (u.Destination || '') + '</li>';
+                    }).join('');
+
+                    const fallbackHtml = (data.FallbackRules || []).map(function (f) {
+                        return '<li><strong>' + (f.Condition || '') + ':</strong> ' + (f.Behavior || '') + '</li>';
+                    }).join('');
+
+                    container.innerHTML =
+                        '<h5 class="mb-1">' + (data.KeywordOrProperty || '') + '</h5>' +
+                        '<p class="text-muted mb-3">Entity: ' + (data.Entity || '') + ' | Storage: ' + (data.StorageField || '') + '</p>' +
+                        '<div class="trace-detail-block"><strong>Source to Report Chain</strong><ol class="mb-0 mt-2">' + stepsHtml + '</ol></div>' +
+                        '<h6>Formulas / Transformations</h6>' + formulasHtml +
+                        '<h6>Report Usage</h6><ul>' + usageHtml + '</ul>' +
+                        '<h6>Fallback / Validation Rules</h6><ul>' + fallbackHtml + '</ul>' +
+                        '<div class="trace-detail-block mb-0"><strong>Reference</strong><div class="small">' + (data.ReferenceLabel || '') + '</div><div class="small text-muted">' + (data.ReferenceLocation || '') + '</div></div>';
+                });
+            });
+
+            applyTraceFilters();
+
+            let mermaidInitialized = false;
+            let mermaidRenderCounter = 0;
+            async function renderDiagramBoxes(scopeEl) {
+                if (!scopeEl) return;
+                const boxes = Array.from(scopeEl.querySelectorAll('.diagram-box'));
+                if (!boxes.length) return;
+                if (!mermaidInitialized) {
+                    mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: 'default' });
+                    mermaidInitialized = true;
+                }
+                for (const box of boxes) {
+                    if (box.dataset.rendered === 'true') continue;
+                    const sourceEl = box.querySelector('.diagram-source');
+                    const hostEl = box.querySelector('.mermaid-host');
+                    const fallback = box.querySelector('.diagram-fallback');
+                    const source = sourceEl ? (sourceEl.textContent || '').trim() : '';
+                    if (!source || !hostEl) {
+                        if (fallback) fallback.classList.remove('d-none');
+                        continue;
+                    }
+                    try {
+                        mermaidRenderCounter += 1;
+                        const renderId = 'pkc-mermaid-' + mermaidRenderCounter;
+                        const result = await mermaid.render(renderId, source);
+                        hostEl.innerHTML = result.svg;
+                        box.dataset.rendered = 'true';
+                    } catch (err) {
+                        if (fallback) fallback.classList.remove('d-none');
+                    }
+                }
+            }
+
+            if (diagramsCollapse) {
+                diagramsCollapse.addEventListener('shown.bs.collapse', function () {
+                    renderDiagramBoxes(diagramsCollapse);
+                });
+                if (diagramsCollapse.classList.contains('show')) {
+                    renderDiagramBoxes(diagramsCollapse);
+                }
+            }
+        })();
+    </script>
+}

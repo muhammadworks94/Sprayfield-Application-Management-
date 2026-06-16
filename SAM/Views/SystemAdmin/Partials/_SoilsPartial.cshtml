@@ -14,9 +14,9 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-5 page-section-header">
             <h4 class="mb-0">Soils</h4>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
                             class="btn btn-outline-secondary btn-sm active"
@@ -39,17 +39,13 @@
         </div>
         @if (Model.Soils.Any())
         {
-            <div id="soilsTableView" class="table-responsive">
-                <table class="table table-hover irrigates-table">
+            <div id="soilsTableView" class="table-responsive responsive-table">
+                <table class="table table-hover ">
                     <thead>
                         <tr>
                             <th><i class="bi bi-tag"></i> Type Name</th>
                             <th><i class="bi bi-file-text"></i> Description</th>
                             <th><i class="bi bi-speedometer"></i> Permeability (in/hr)</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             @if (canManageRecords)
                             {
                                 <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
@@ -63,10 +59,6 @@
                                 <td>@soil.TypeName</td>
                                 <td>@(string.IsNullOrEmpty(soil.Description) ? "-" : soil.Description)</td>
                                 <td>@soil.Permeability.ToString("F2")</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@soil.CompanyName</td>
-                                }
                                 @if (canManageRecords)
                                 {
                                     <td class="table-actions">
@@ -88,7 +80,7 @@
                 </table>
             </div>
 
-            <div id="soilsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+            <div id="soilsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
                 @foreach (var soil in Model.Soils)
                 {
                     <div class="col">
@@ -103,11 +95,6 @@
                                     <dt class="col-6"><i class="bi bi-speedometer me-1"></i>Permeability</dt>
                                     <dd class="col-6 mb-1">@soil.Permeability.ToString("F2") in/hr</dd>
 
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@soil.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">

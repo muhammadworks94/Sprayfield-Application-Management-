@@ -22,6 +22,16 @@ public class Soil : CompanyScopedEntity
     /// </summary>
     public decimal Permeability { get; set; }
 
+    /// <summary>
+    /// Infiltration rate in inches/hour.
+    /// </summary>
+    public decimal? InfiltrationRate { get; set; }
+
+    /// <summary>
+    /// PAN factor used in nitrogen calculations.
+    /// </summary>
+    public decimal? PANFactor { get; set; }
+
     // Navigation properties
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
 }

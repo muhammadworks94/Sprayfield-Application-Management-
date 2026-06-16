@@ -1,0 +1,20 @@
+@model IReadOnlyList<SAM.Services.Models.BreadcrumbItem>
+
+<nav class="app-breadcrumb-nav responsive-breadcrumbs" aria-label="Breadcrumb">
+    <ol class="app-breadcrumb-list">
+        @for (var i = 0; i < Model.Count; i++)
+        {
+            var item = Model[i];
+            <li class="app-breadcrumb-item @(item.IsCurrent ? "is-current" : string.Empty)">
+                @if (item.HasLink)
+                {
+                    <a class="app-breadcrumb-link" href="@Url.Action(item.Action, item.Controller, item.RouteValues)">@item.Text</a>
+                }
+                else
+                {
+                    <span class="app-breadcrumb-current" aria-current="page">@item.Text</span>
+                }
+            </li>
+        }
+    </ol>
+</nav>

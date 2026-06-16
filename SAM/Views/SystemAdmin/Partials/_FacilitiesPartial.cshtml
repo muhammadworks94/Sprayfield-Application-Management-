@@ -15,9 +15,9 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-5 page-section-header">
             <h4 class="mb-0">Facilities</h4>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
                             class="btn btn-outline-secondary btn-sm active"
@@ -40,17 +40,13 @@
         </div>
         @if (Model.Facilities.Any())
         {
-            <div id="facilitiesTableView" class="table-responsive">
-                <table class="table table-hover irrigates-table">
+            <div id="facilitiesTableView" class="table-responsive responsive-table">
+                <table class="table table-hover">
                     <thead>
                         <tr>
                             <th><i class="bi bi-building"></i> Facility Name</th>
                             <th><i class="bi bi-file-text"></i> Permit #</th>
                             <th><i class="bi bi-person"></i> Permittee</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             <th><i class="bi bi-geo-alt"></i> City, State</th>
                             <th><i class="bi bi-map"></i> County</th>
                             @if (canManageRecords)
@@ -70,10 +66,6 @@
                                 </td>
                                 <td>@facility.PermitNumber</td>
                                 <td>@facility.Permittee</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@facility.CompanyName</td>
-                                }
                                 <td>@facility.City, @facility.State</td>
                                 <td>@facility.County</td>
                                 @if (canManageRecords)
@@ -97,7 +89,7 @@
                 </table>
             </div>
 
-            <div id="facilitiesCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+            <div id="facilitiesCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
                 @foreach (var facility in Model.Facilities)
                 {
                     <div class="col">
@@ -115,18 +107,13 @@
                             </div>
                             <div class="card-body d-flex flex-column">
 
-                                <dl class="row small mb-3">
+                                <dl class="row small mb-3 responsive-detail-list">
                                     <dt class="col-5"><i class="bi bi-person me-1"></i>Permittee</dt>
                                     <dd class="col-7 mb-1">@facility.Permittee</dd>
 
                                     <dt class="col-5"><i class="bi bi-geo-alt me-1"></i>Location</dt>
                                     <dd class="col-7 mb-1">@facility.City, @facility.State</dd>
 
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-7 mb-1">@facility.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using SAM.Data;
 using SAM.Domain.Entities;
@@ -26,6 +27,7 @@ public class WWCharService : IWWCharService
         var query = _context.WWChars
             .Include(w => w.Company)
             .Include(w => w.Facility)
+            .Include(w => w.FacilityPermit)
             .AsQueryable();
 
         if (companyId.HasValue)
@@ -49,6 +51,7 @@ public class WWCharService : IWWCharService
         return await _context.WWChars
             .Include(w => w.Company)
             .Include(w => w.Facility)
+            .Include(w => w.FacilityPermit)
             .FirstOrDefaultAsync(w => w.Id == id);
     }
 
@@ -69,11 +72,6 @@ public class WWCharService : IWWCharService
         if (facility.CompanyId != wwChar.CompanyId)
             throw new BusinessRuleException("Facility must belong to the same company.");
 
-        // Check if record already exists for this facility/month/year
-        var existing = await GetByFacilityMonthYearAsync(wwChar.FacilityId, (int)wwChar.Month, wwChar.Year);
-        if (existing != null)
-            throw new BusinessRuleException($"A wastewater characteristics record already exists for facility {facility.Name} for {wwChar.Month} {wwChar.Year}.");
-
         // Validate daily arrays don't exceed 31 items
         ValidateDailyArray(wwChar.BOD5Daily, "BOD5Daily");
         ValidateDailyArray(wwChar.TSSDaily, "TSSDaily");
@@ -88,13 +86,65 @@ public class WWCharService : IWWCharService
         ValidateDailyArray(wwChar.SARDaily, "SARDaily");
         ValidateDailyArray(wwChar.TNDaily, "TNDaily");
         ValidateDailyArray(wwChar.CompositeTime, "CompositeTime");
-        ValidateDailyArray(wwChar.ORCOnSite, "ORCOnSite");
-        ValidateDailyArray(wwChar.LagoonFreeboard, "LagoonFreeboard");
 
-        _context.WWChars.Add(wwChar);
-        await _context.SaveChangesAsync();
+        // Query including soft-deleted rows because the unique index also includes them.
+        var existingAnyState = await _context.WWChars
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(w => w.FacilityId == wwChar.FacilityId && w.Month == wwChar.Month && w.Year == wwChar.Year);
 
-        _logger.LogInformation("Wastewater characteristics record created for facility '{FacilityName}' for {Month} {Year} (ID: {WWCharId})", 
+        if (existingAnyState != null)
+        {
+            if (!existingAnyState.IsDeleted)
+            {
+                throw new BusinessRuleException($"A wastewater characteristics record already exists for facility {facility.Name} for {wwChar.Month} {wwChar.Year}.");
+            }
+
+            // Restore soft-deleted record by updating it with the new payload.
+            existingAnyState.IsDeleted = false;
+            existingAnyState.CompanyId = wwChar.CompanyId;
+            existingAnyState.FacilityId = wwChar.FacilityId;
+            existingAnyState.Month = wwChar.Month;
+            existingAnyState.Year = wwChar.Year;
+            existingAnyState.BOD5Daily = wwChar.BOD5Daily;
+            existingAnyState.TSSDaily = wwChar.TSSDaily;
+            existingAnyState.FlowRateDaily = wwChar.FlowRateDaily;
+            existingAnyState.PHDaily = wwChar.PHDaily;
+            existingAnyState.NH3NDaily = wwChar.NH3NDaily;
+            existingAnyState.FecalColiformDaily = wwChar.FecalColiformDaily;
+            existingAnyState.ChlorideDaily = wwChar.ChlorideDaily;
+            existingAnyState.CaDaily = wwChar.CaDaily;
+            existingAnyState.MgDaily = wwChar.MgDaily;
+            existingAnyState.NaDaily = wwChar.NaDaily;
+            existingAnyState.SARDaily = wwChar.SARDaily;
+            existingAnyState.TNDaily = wwChar.TNDaily;
+            existingAnyState.CompositeTime = wwChar.CompositeTime;
+            existingAnyState.LabCertification = wwChar.LabCertification;
+            existingAnyState.CollectedBy = wwChar.CollectedBy;
+            existingAnyState.AnalyzedBy = wwChar.AnalyzedBy;
+            existingAnyState.NO2N = wwChar.NO2N;
+            existingAnyState.TKNN = wwChar.TKNN;
+            existingAnyState.NO3N = wwChar.NO3N;
+            existingAnyState.FlowMeasuringPoint = wwChar.FlowMeasuringPoint;
+            existingAnyState.ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint;
+            existingAnyState.FacilityPermitId = wwChar.FacilityPermitId;
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Soft-deleted wastewater characteristics record restored for facility '{FacilityName}' for {Month} {Year} (ID: {WWCharId})",
+                facility.Name, existingAnyState.Month, existingAnyState.Year, existingAnyState.Id);
+            return existingAnyState;
+        }
+
+        try
+        {
+            _context.WWChars.Add(wwChar);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx && (sqlEx.Number == 2601 || sqlEx.Number == 2627))
+        {
+            throw new BusinessRuleException($"A wastewater characteristics record already exists for facility {facility.Name} for {wwChar.Month} {wwChar.Year}.");
+        }
+
+        _logger.LogInformation("Wastewater characteristics record created for facility '{FacilityName}' for {Month} {Year} (ID: {WWCharId})",
             facility.Name, wwChar.Month, wwChar.Year, wwChar.Id);
         return wwChar;
     }
@@ -140,8 +190,6 @@ public class WWCharService : IWWCharService
         ValidateDailyArray(wwChar.SARDaily, "SARDaily");
         ValidateDailyArray(wwChar.TNDaily, "TNDaily");
         ValidateDailyArray(wwChar.CompositeTime, "CompositeTime");
-        ValidateDailyArray(wwChar.ORCOnSite, "ORCOnSite");
-        ValidateDailyArray(wwChar.LagoonFreeboard, "LagoonFreeboard");
 
         existing.Month = wwChar.Month;
         existing.Year = wwChar.Year;
@@ -158,11 +206,15 @@ public class WWCharService : IWWCharService
         existing.SARDaily = wwChar.SARDaily;
         existing.TNDaily = wwChar.TNDaily;
         existing.CompositeTime = wwChar.CompositeTime;
-        existing.ORCOnSite = wwChar.ORCOnSite;
-        existing.LagoonFreeboard = wwChar.LagoonFreeboard;
         existing.LabCertification = wwChar.LabCertification;
         existing.CollectedBy = wwChar.CollectedBy;
         existing.AnalyzedBy = wwChar.AnalyzedBy;
+        existing.NO2N = wwChar.NO2N;
+        existing.TKNN = wwChar.TKNN;
+        existing.NO3N = wwChar.NO3N;
+        existing.FlowMeasuringPoint = wwChar.FlowMeasuringPoint;
+        existing.ParameterMonitoringPoint = wwChar.ParameterMonitoringPoint;
+        existing.FacilityPermitId = wwChar.FacilityPermitId;
 
         await _context.SaveChangesAsync();
 

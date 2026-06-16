@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
+using SAM.Services.Helpers;
 using SAM.ViewModels.SystemAdmin;
 
 namespace SAM.Controllers;
@@ -63,7 +64,8 @@ public partial class SystemAdminController
             {
                 CompanyId = viewModel.CompanyId,
                 Name = viewModel.Name,
-                NUptake = viewModel.NUptake
+                NUptake = viewModel.NUptake,
+                PANLimit = PanLimitDerivation.DeriveFromNUptake(viewModel.NUptake)
             };
 
             await _cropService.CreateAsync(crop);
@@ -134,6 +136,7 @@ public partial class SystemAdminController
             crop.CompanyId = viewModel.CompanyId;
             crop.Name = viewModel.Name;
             crop.NUptake = viewModel.NUptake;
+            crop.PANLimit = PanLimitDerivation.DeriveFromNUptake(viewModel.NUptake);
 
             await _cropService.UpdateAsync(crop);
             TempData["SuccessMessage"] = $"Crop '{crop.Name}' updated successfully.";

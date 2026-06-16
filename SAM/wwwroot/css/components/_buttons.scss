@@ -104,6 +104,29 @@
     }
   }
 
+  &.btn-outline-secondary {
+    color: #495057;
+    border-color: #6c757d;
+    background-color: transparent;
+
+    &:hover {
+      background-color: #6c757d;
+      border-color: #6c757d;
+      color: $white;
+    }
+
+    &:active,
+    &:focus,
+    &.active,
+    &.show,
+    .show > & {
+      color: $white;
+      background-color: #6c757d;
+      border-color: #6c757d;
+      box-shadow: none;
+    }
+  }
+
   &:disabled, &.disabled {
     opacity: 0.65;
     cursor: not-allowed;

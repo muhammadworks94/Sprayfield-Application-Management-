@@ -4,6 +4,7 @@ using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 
 namespace SAM.Services.Implementations;
 
@@ -14,11 +15,13 @@ public class OperatorLogService : IOperatorLogService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<OperatorLogService> _logger;
+    private readonly INDAR1Service _ndar1Service;
 
-    public OperatorLogService(ApplicationDbContext context, ILogger<OperatorLogService> logger)
+    public OperatorLogService(ApplicationDbContext context, ILogger<OperatorLogService> logger, INDAR1Service ndar1Service)
     {
         _context = context;
         _logger = logger;
+        _ndar1Service = ndar1Service;
     }
 
     public async Task<IEnumerable<OperatorLog>> GetAllAsync(Guid? companyId = null, Guid? facilityId = null)
@@ -56,6 +59,12 @@ public class OperatorLogService : IOperatorLogService
 
     public async Task<OperatorLog> CreateAsync(OperatorLog operatorLog)
     {
+        var result = await CreateWithNdarRefreshAsync(operatorLog);
+        return result.OperatorLog;
+    }
+
+    public async Task<OperatorLogMutationResult> CreateWithNdarRefreshAsync(OperatorLog operatorLog)
+    {
         if (operatorLog == null)
             throw new ArgumentNullException(nameof(operatorLog));
 
@@ -73,13 +82,24 @@ public class OperatorLogService : IOperatorLogService
 
         _context.OperatorLogs.Add(operatorLog);
         await _context.SaveChangesAsync();
+        var outcome = await RefreshNdar1ForMonthAsync(operatorLog.FacilityId, operatorLog.LogDate);
 
         _logger.LogInformation("Operator log created for facility '{FacilityName}' on {LogDate} (ID: {LogId})", 
             facility.Name, operatorLog.LogDate, operatorLog.Id);
-        return operatorLog;
+        return new OperatorLogMutationResult
+        {
+            OperatorLog = operatorLog,
+            NdarRefreshOutcomes = new List<NdarRefreshOutcome> { outcome }
+        };
     }
 
     public async Task<OperatorLog> UpdateAsync(OperatorLog operatorLog)
+    {
+        var result = await UpdateWithNdarRefreshAsync(operatorLog);
+        return result.OperatorLog;
+    }
+
+    public async Task<OperatorLogMutationResult> UpdateWithNdarRefreshAsync(OperatorLog operatorLog)
     {
         if (operatorLog == null)
             throw new ArgumentNullException(nameof(operatorLog));
@@ -88,6 +108,8 @@ public class OperatorLogService : IOperatorLogService
             .FirstOrDefaultAsync(o => o.Id == operatorLog.Id);
         if (existing == null)
             throw new EntityNotFoundException(nameof(OperatorLog), operatorLog.Id);
+        var oldFacilityId = existing.FacilityId;
+        var oldLogDate = existing.LogDate;
 
         // Validate company exists
         var companyExists = await _context.Companies.AnyAsync(c => c.Id == operatorLog.CompanyId);
@@ -104,6 +126,11 @@ public class OperatorLogService : IOperatorLogService
         existing.LogDate = operatorLog.LogDate;
         existing.OperatorName = operatorLog.OperatorName;
         existing.WeatherConditions = operatorLog.WeatherConditions;
+        existing.TemperatureF = operatorLog.TemperatureF;
+        existing.PrecipitationIn = operatorLog.PrecipitationIn;
+        existing.ORCOnSite = operatorLog.ORCOnSite;
+        existing.StorageFt = operatorLog.StorageFt;
+        existing.FiveDayUpsetFt = operatorLog.FiveDayUpsetFt;
         existing.ArrivalTime = operatorLog.ArrivalTime;
         existing.TimeOnSiteHours = operatorLog.TimeOnSiteHours;
         existing.MaintenancePerformed = operatorLog.MaintenancePerformed;
@@ -113,12 +140,33 @@ public class OperatorLogService : IOperatorLogService
         existing.NextShiftNotes = operatorLog.NextShiftNotes;
 
         await _context.SaveChangesAsync();
+        var outcomes = new List<NdarRefreshOutcome>
+        {
+            await RefreshNdar1ForMonthAsync(oldFacilityId, oldLogDate)
+        };
+
+        if (oldFacilityId != existing.FacilityId ||
+            oldLogDate.Month != existing.LogDate.Month ||
+            oldLogDate.Year != existing.LogDate.Year)
+        {
+            outcomes.Add(await RefreshNdar1ForMonthAsync(existing.FacilityId, existing.LogDate));
+        }
 
         _logger.LogInformation("Operator log updated (ID: {LogId})", operatorLog.Id);
-        return existing;
+        return new OperatorLogMutationResult
+        {
+            OperatorLog = existing,
+            NdarRefreshOutcomes = outcomes
+        };
     }
 
     public async Task<bool> DeleteAsync(Guid id)
+    {
+        var result = await DeleteWithNdarRefreshAsync(id);
+        return result.Deleted;
+    }
+
+    public async Task<(bool Deleted, List<NdarRefreshOutcome> NdarRefreshOutcomes)> DeleteWithNdarRefreshAsync(Guid id)
     {
         var operatorLog = await _context.OperatorLogs
             .FirstOrDefaultAsync(o => o.Id == id);
@@ -128,9 +176,10 @@ public class OperatorLogService : IOperatorLogService
         // Soft delete
         operatorLog.IsDeleted = true;
         await _context.SaveChangesAsync();
+        var outcome = await RefreshNdar1ForMonthAsync(operatorLog.FacilityId, operatorLog.LogDate);
 
         _logger.LogInformation("Operator log soft-deleted (ID: {LogId})", id);
-        return true;
+        return (true, new List<NdarRefreshOutcome> { outcome });
     }
 
     public async Task<bool> ExistsAsync(Guid id)
@@ -162,6 +211,28 @@ public class OperatorLogService : IOperatorLogService
             .Where(o => o.LogDate >= startDate && o.LogDate <= endDate)
             .OrderByDescending(o => o.LogDate)
             .ToListAsync();
+    }
+
+    private async Task<NdarRefreshOutcome> RefreshNdar1ForMonthAsync(Guid facilityId, DateTime date)
+    {
+        try
+        {
+            return await _ndar1Service.RefreshExistingReportForMonthAsync(facilityId, date.Month, date.Year);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "NDAR-1 refresh failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
+                facilityId, date.Month, date.Year);
+            return new NdarRefreshOutcome
+            {
+                FacilityId = facilityId,
+                Month = date.Month,
+                Year = date.Year,
+                Status = NdarRefreshStatus.Failed,
+                Message = $"NDAR-1 refresh for {new DateTime(date.Year, date.Month, 1):MMM yyyy} failed."
+            };
+        }
     }
 }
 

@@ -2,33 +2,33 @@
 @{
     var isGlobalAdmin = Model.IsGlobalAdmin;
     var canManageRecords = Model.CanManageRecords;
-    var companies = Model.Companies;
     var selectedCompanyId = Model.SelectedCompanyId;
+    var facilities = Model.Facilities;
+    var duplicateSprayfieldId = TempData["DuplicateSprayfieldId"] as string;
+    var duplicateSprayfieldFieldId = TempData["DuplicateSprayfieldFieldId"] as string;
 }
-
-
-@* @if (Model.Filter != null)
-{
-    @await Html.PartialAsync("Partials/_Filter", Model.Filter)
-} *@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-5">
+        <div id="sprayfieldBulkEditFlash" class="d-none alert mb-4" role="alert"></div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4 page-section-header">
             <h4 class="mb-0">Sprayfield</h4>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-                    <button type="button"
-                            class="btn btn-outline-secondary btn-sm active"
-                            id="sprayfieldsTableViewBtn">
+                    <button type="button" class="btn btn-outline-secondary btn-sm active" id="sprayfieldsTableViewBtn">
                         <i class="bi bi-table"></i> Table
                     </button>
-                    <button type="button"
-                            class="btn btn-outline-secondary btn-sm"
-                            id="sprayfieldsCardViewBtn">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="sprayfieldsCardViewBtn">
                         <i class="bi bi-grid-3x3-gap"></i> Cards
                     </button>
                 </div>
+                @if (isGlobalAdmin)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="sprayfieldsBulkEditBtn" data-bs-toggle="modal" data-bs-target="#bulkEditSprayfieldsModal" disabled>
+                        <i class="bi bi-check2-square"></i> Multi Edit
+                    </button>
+                }
                 @if (canManageRecords)
                 {
                     <a asp-action="SprayfieldCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-sm btn-primary">
@@ -37,60 +37,57 @@
                 }
             </div>
         </div>
+
         @if (Model.Sprayfields.Any())
         {
-            <div id="sprayfieldsTableView" class="table-responsive">
-                <table class="table table-hover irrigates-table">
+            <div id="sprayfieldsTableView" class="table-responsive responsive-table wide-data-table sprayfields-table-wrapper fixed-height-table-wrapper">
+                <table class="table table-hover sprayfields-table">
                     <thead>
                         <tr>
-                            <th><i class="bi bi-hash"></i> Field ID</th>
-                            <th><i class="bi bi-rulers"></i> Size (Wetted Acres)</th>
-                            <th><i class="bi bi-droplet-half"></i> Hourly Rate (in/hr)</th>
-                            <th><i class="bi bi-droplet"></i> Weekly Rate (in/week)</th>
-                            <th><i class="bi bi-moisture"></i> Soil</th>
-                            <th><i class="bi bi-flower1"></i> Crop</th>
-                            <th><i class="bi bi-droplet"></i> Nozzle</th>
-                            <th><i class="bi bi-building"></i> Facility</th>
                             @if (isGlobalAdmin)
                             {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
+                                <th class="sprayfield-select-col">
+                                    <input class="form-check-input" type="checkbox" id="selectAllSprayfields" aria-label="Select all sprayfields" />
+                                </th>
                             }
-                            <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
+                            <th>Field</th>
+                            <th>Size (Wetted)</th>
+                            <th>Permitted (Max) Hourly Rate</th>
+                            <th>Permitted (Max) Annual Rate</th>
+                            <th>Weekly Rate (Planning)</th>
+                            <th class="table-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var sprayfield in Model.Sprayfields)
                         {
                             <tr>
-                                <td>
-                                    <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id">@sprayfield.FieldId</a>
-                                </td>
-                                <td>@sprayfield.SizeAcres.ToString("F2")</td>
-                                <td>@(sprayfield.HourlyRateInches?.ToString("F2") ?? "-")</td>
-                                <td>@(sprayfield.WeeklyRateInches?.ToString("F2") ?? "-")</td>
-                                <td>@sprayfield.SoilName</td>
-                                <td>@sprayfield.CropName</td>
-                                <td>@sprayfield.NozzleName</td>
-                                <td>@(sprayfield.FacilityName ?? "-")</td>
                                 @if (isGlobalAdmin)
                                 {
-                                    <td>@sprayfield.CompanyName</td>
+                                    <td class="sprayfield-select-col">
+                                        <input class="form-check-input sprayfield-select" type="checkbox" value="@sprayfield.Id" data-field-id="@sprayfield.FieldId" />
+                                    </td>
                                 }
+                                <td><a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id">@sprayfield.FieldId</a></td>
+                                <td>@sprayfield.SizeAcres.ToString("F2") Acres</td>
+                                <td>@(sprayfield.HourlyRateInches.HasValue ? $"{sprayfield.HourlyRateInches.Value:F2} in/hr" : "-")</td>
+                                <td>@(sprayfield.AnnualRateInches.HasValue ? $"{sprayfield.AnnualRateInches.Value:F2} in/yr" : "-")</td>
+                                <td>@(sprayfield.WeeklyRateInches.HasValue ? $"{sprayfield.WeeklyRateInches.Value:F2} in/week" : "-")</td>
                                 <td class="table-actions">
-                                    <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
                                     @if (canManageRecords)
                                     {
-                                        <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil"></i> Edit
+                                        <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i>
                                         </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                data-bs-toggle="modal" data-bs-target="#duplicateSprayfieldModal"
+                                                data-sprayfield-id="@sprayfield.Id" data-sprayfield-name="@sprayfield.FieldId" title="Duplicate">
+                                            <i class="bi bi-copy"></i>
+                                        </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteSprayfieldModal"
-                                                data-sprayfield-id="@sprayfield.Id"
-                                                data-sprayfield-name="@sprayfield.FieldId">
-                                            <i class="bi bi-trash"></i> Delete
+                                                data-bs-toggle="modal" data-bs-target="#deleteSprayfieldModal"
+                                                data-sprayfield-id="@sprayfield.Id" data-sprayfield-name="@sprayfield.FieldId" title="Delete">
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     }
                                 </td>
@@ -100,63 +97,30 @@
                 </table>
             </div>
 
-            <div id="sprayfieldsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+            <div id="sprayfieldsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
                 @foreach (var sprayfield in Model.Sprayfields)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
                             <h6 class="mb-0 card-header-light">
-                                <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="text-decoration-none">
-                                    @sprayfield.FieldId
-                                </a>
+                                <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="text-decoration-none">@sprayfield.FieldId</a>
                             </h6>
                             <div class="card-body d-flex flex-column">
-
-                                <dl class="row small mb-3">
-                                    <dt class="col-6"><i class="bi bi-rulers me-1"></i>Size (Wetted Acres)</dt>
-                                    <dd class="col-6 mb-1">@sprayfield.SizeAcres.ToString("F2") acres</dd>
-
-                                    <dt class="col-6"><i class="bi bi-droplet-half me-1"></i>Hourly Rate</dt>
-                                    <dd class="col-6 mb-1">@((sprayfield.HourlyRateInches?.ToString("F2") ?? "-")) in/hr</dd>
-
-                                    <dt class="col-6"><i class="bi bi-droplet me-1"></i>Weekly Rate</dt>
-                                    <dd class="col-6 mb-1">@((sprayfield.WeeklyRateInches?.ToString("F2") ?? "-")) in/week</dd>
-
-                                    <dt class="col-6"><i class="bi bi-moisture me-1"></i>Soil</dt>
-                                    <dd class="col-6 mb-1">@sprayfield.SoilName</dd>
-
-                                    <dt class="col-6"><i class="bi bi-flower1 me-1"></i>Crop</dt>
-                                    <dd class="col-6 mb-1">@sprayfield.CropName</dd>
-
-                                    <dt class="col-6"><i class="bi bi-droplet me-1"></i>Nozzle</dt>
-                                    <dd class="col-6 mb-1">@sprayfield.NozzleName</dd>
-
-                                    <dt class="col-6"><i class="bi bi-building me-1"></i>Facility</dt>
-                                    <dd class="col-6 mb-1">@((sprayfield.FacilityName ?? "-"))</dd>
-
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@sprayfield.CompanyName</dd>
-                                    }
+                                <dl class="row small mb-3 responsive-detail-list">
+                                    <dt class="col-6">Size</dt><dd class="col-6 mb-1">@sprayfield.SizeAcres.ToString("F2") acres</dd>
+                                    <dt class="col-6">Permitted (Max) Hourly</dt><dd class="col-6 mb-1">@((sprayfield.HourlyRateInches?.ToString("F2") ?? "-")) in/hr</dd>
+                                    <dt class="col-6">Permitted (Max) Annual</dt><dd class="col-6 mb-1">@((sprayfield.AnnualRateInches?.ToString("F2") ?? "-")) in/yr</dd>
+                                    <dt class="col-6">Weekly</dt><dd class="col-6 mb-1">@((sprayfield.WeeklyRateInches?.ToString("F2") ?? "-")) in/week</dd>
+                                    <dt class="col-6">Soil</dt><dd class="col-6 mb-1">@(sprayfield.SoilName ?? "-")</dd>
+                                    <dt class="col-6">Crop</dt><dd class="col-6 mb-1">@(sprayfield.CropName ?? "-")</dd>
+                                    <dt class="col-6">Nozzle</dt><dd class="col-6 mb-1">@(sprayfield.NozzleName ?? "-")</dd>
+                                    <dt class="col-6">Facility</dt><dd class="col-6 mb-1">@(sprayfield.FacilityName ?? "-")</dd>
                                 </dl>
-
-                                <div class="mt-auto d-flex justify-content-end">
-                                    <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-secondary me-2">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
+                                <div class="mt-auto d-flex justify-content-end gap-2">
+                                    <a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
                                     @if (canManageRecords)
                                     {
-                                        <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary me-2">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteSprayfieldModal"
-                                                data-sprayfield-id="@sprayfield.Id"
-                                                data-sprayfield-name="@sprayfield.FieldId">
-                                            <i class="bi bi-trash"></i> Delete
-                                        </button>
+                                        <a asp-action="SprayfieldEdit" asp-route-id="@sprayfield.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                                     }
                                 </div>
                             </div>
@@ -170,18 +134,97 @@
             <div class="text-center py-5">
                 <i class="bi bi-inbox ui-empty-icon"></i>
                 <p class="text-muted mt-3">No sprayfields found.</p>
-                @if (canManageRecords)
-                {
-                    <a asp-action="SprayfieldCreate" asp-route-companyId="@selectedCompanyId" class="btn btn-primary mt-2">
-                        <i class="bi bi-plus-circle"></i> Create First Sprayfield
-                    </a>
-                }
             </div>
         }
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="duplicateSprayfieldModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Duplicate Sprayfield</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="duplicateSprayfieldForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p class="mb-2">Create a copy of <strong id="duplicateSprayfieldName"></strong>.</p>
+                    <div class="mb-0">
+                        <label class="form-label" for="duplicateNewFieldId">New Field ID</label>
+                        <input type="text" class="form-control" id="duplicateNewFieldId" name="newFieldId" autocomplete="off" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Duplicate Sprayfield</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (isGlobalAdmin)
+{
+    <div class="modal fade" id="bulkEditSprayfieldsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Edit Sprayfields</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form asp-action="SprayfieldBulkEdit" method="post" id="bulkEditSprayfieldsForm">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3"><span id="bulkEditSelectionCount">0</span> sprayfield(s) selected.</p>
+                        <div id="bulkEditSelectedIds"></div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="bulkSizeAcres">Size (Wetted)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="bulkSizeAcres" name="SizeAcres" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="bulkHourlyRate">Permitted (Max) Hourly Rate</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="bulkHourlyRate" name="HourlyRateInches" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="bulkWeeklyRate">Weekly Rate (Planning)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="bulkWeeklyRate" name="WeeklyRateInches" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="bulkAnnualRate">Permitted (Max) Annual Rate</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="bulkAnnualRate" name="AnnualRateInches" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="bulkFacilityId">Facility</label>
+                                <select class="form-select" id="bulkFacilityId" name="FacilityId" asp-items="facilities">
+                                    <option value="">-- No Change --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="bulkSoilId">Soil</label>
+                                <input type="text" class="form-control" id="bulkSoilId" name="SoilId" placeholder="GUID" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="bulkNozzleId">Nozzle</label>
+                                <input type="text" class="form-control" id="bulkNozzleId" name="NozzleId" placeholder="GUID" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="bulkCropId">Crop</label>
+                                <input type="text" class="form-control" id="bulkCropId" name="CropId" placeholder="GUID or empty" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Apply Updates</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="modal fade" id="deleteSprayfieldModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -204,65 +247,84 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const deleteModal = document.getElementById('deleteSprayfieldModal');
-        if (deleteModal) {
-            deleteModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                const sprayfieldId = button.getAttribute('data-sprayfield-id');
-                const sprayfieldName = button.getAttribute('data-sprayfield-name');
-
-                const sprayfieldNameElement = deleteModal.querySelector('#deleteSprayfieldName');
-                if (sprayfieldNameElement) {
-                    sprayfieldNameElement.textContent = sprayfieldName;
-                }
-
-                const form = deleteModal.querySelector('#deleteSprayfieldForm');
-                if (form) {
-                    const baseUrl = '@Url.Action("SprayfieldDelete", "SystemAdmin")';
-                    form.action = baseUrl + '/' + sprayfieldId;
-                }
-            });
-        }
-
-        const tableBtn = document.getElementById('sprayfieldsTableViewBtn');
-        const cardBtn = document.getElementById('sprayfieldsCardViewBtn');
+    document.addEventListener('DOMContentLoaded', function () {
+        const tableViewBtn = document.getElementById('sprayfieldsTableViewBtn');
+        const cardViewBtn = document.getElementById('sprayfieldsCardViewBtn');
         const tableView = document.getElementById('sprayfieldsTableView');
         const cardView = document.getElementById('sprayfieldsCardView');
-        const storageKey = 'viewMode';
+        const selectAllCheckbox = document.getElementById('selectAllSprayfields');
+        const rowCheckboxes = document.querySelectorAll('.sprayfield-select');
+        const bulkEditBtn = document.getElementById('sprayfieldsBulkEditBtn');
 
-        function setViewMode(mode) {
-            const isTable = mode === 'table';
+        tableViewBtn?.addEventListener('click', function () {
+            tableView?.classList.remove('d-none');
+            cardView?.classList.add('d-none');
+            tableViewBtn.classList.add('active');
+            cardViewBtn?.classList.remove('active');
+        });
 
-            if (isTable) {
-                tableView?.classList.remove('d-none');
-                cardView?.classList.add('d-none');
-                tableBtn?.classList.add('active');
-                cardBtn?.classList.remove('active');
-            } else {
-                tableView?.classList.add('d-none');
-                cardView?.classList.remove('d-none');
-                tableBtn?.classList.remove('active');
-                cardBtn?.classList.add('active');
-            }
+        cardViewBtn?.addEventListener('click', function () {
+            cardView?.classList.remove('d-none');
+            tableView?.classList.add('d-none');
+            cardViewBtn.classList.add('active');
+            tableViewBtn?.classList.remove('active');
+        });
 
-            if (window.localStorage) {
-                localStorage.setItem(storageKey, mode);
-            }
+        function selectedIds() {
+            return Array.from(rowCheckboxes).filter(x => x.checked).map(x => x.value);
         }
 
-        const savedMode = window.localStorage ? localStorage.getItem(storageKey) : null;
-        setViewMode(savedMode === 'card' ? 'card' : 'table');
+        function updateBulkState() {
+            if (bulkEditBtn) bulkEditBtn.disabled = selectedIds().length === 0;
+        }
 
-        tableBtn?.addEventListener('click', function () {
-            setViewMode('table');
+        selectAllCheckbox?.addEventListener('change', function () {
+            rowCheckboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+            updateBulkState();
         });
 
-        cardBtn?.addEventListener('click', function () {
-            setViewMode('card');
+        rowCheckboxes.forEach(cb => cb.addEventListener('change', updateBulkState));
+
+        const duplicateModal = document.getElementById('duplicateSprayfieldModal');
+        const duplicateForm = document.getElementById('duplicateSprayfieldForm');
+        const duplicateName = document.getElementById('duplicateSprayfieldName');
+        duplicateModal?.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const id = button?.getAttribute('data-sprayfield-id') || '@duplicateSprayfieldId';
+            const name = button?.getAttribute('data-sprayfield-name') || '@duplicateSprayfieldFieldId';
+            if (duplicateName) duplicateName.textContent = name || '';
+            if (duplicateForm && id) duplicateForm.action = '@Url.Action("SprayfieldDuplicate", "SystemAdmin")/' + id;
         });
+
+        const deleteModal = document.getElementById('deleteSprayfieldModal');
+        const deleteForm = document.getElementById('deleteSprayfieldForm');
+        const deleteName = document.getElementById('deleteSprayfieldName');
+        deleteModal?.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const id = button?.getAttribute('data-sprayfield-id');
+            const name = button?.getAttribute('data-sprayfield-name');
+            if (deleteName) deleteName.textContent = name || '';
+            if (deleteForm && id) deleteForm.action = '@Url.Action("SprayfieldDelete", "SystemAdmin")/' + id;
+        });
+
+        const bulkModal = document.getElementById('bulkEditSprayfieldsModal');
+        const bulkSelected = document.getElementById('bulkEditSelectedIds');
+        const bulkCount = document.getElementById('bulkEditSelectionCount');
+        bulkModal?.addEventListener('show.bs.modal', function () {
+            const ids = selectedIds();
+            if (bulkCount) bulkCount.textContent = ids.length;
+            if (bulkSelected) {
+                bulkSelected.innerHTML = '';
+                ids.forEach(id => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'SelectedSprayfieldIds';
+                    input.value = id;
+                    bulkSelected.appendChild(input);
+                });
+            }
+        });
+
+        updateBulkState();
     });
 </script>
-
-
-

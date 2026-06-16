@@ -14,9 +14,9 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-5 page-section-header">
             <h4 class="mb-0">Crops</h4>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
                             class="btn btn-outline-secondary btn-sm active"
@@ -39,16 +39,12 @@
         </div>
         @if (Model.Crops.Any())
         {
-            <div id="cropsTableView" class="table-responsive">
-                <table class="table table-hover irrigates-table">
+            <div id="cropsTableView" class="table-responsive responsive-table">
+                <table class="table table-hover ">
                     <thead>
                         <tr>
                             <th><i class="bi bi-flower1"></i> Crop Name</th>
                             <th><i class="bi bi-graph-up"></i> N Uptake (lbs/acre/year)</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             @if (canManageRecords)
                             {
                                 <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
@@ -61,10 +57,6 @@
                             <tr>
                                 <td>@crop.Name</td>
                                 <td>@crop.NUptake.ToString("F2")</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@crop.CompanyName</td>
-                                }
                                 @if (canManageRecords)
                                 {
                                     <td class="table-actions">
@@ -86,7 +78,7 @@
                 </table>
             </div>
 
-            <div id="cropsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+            <div id="cropsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
                 @foreach (var crop in Model.Crops)
                 {
                     <div class="col">
@@ -100,11 +92,6 @@
                                     <dt class="col-6"><i class="bi bi-graph-up me-1"></i>N Uptake</dt>
                                     <dd class="col-6 mb-1">@crop.NUptake.ToString("F2") lbs/acre/year</dd>
 
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@crop.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">

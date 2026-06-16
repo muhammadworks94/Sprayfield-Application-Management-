@@ -29,6 +29,31 @@ public class OperatorLog : CompanyScopedEntity
     public string WeatherConditions { get; set; } = string.Empty;
 
     /// <summary>
+    /// Daily temperature in degrees Fahrenheit.
+    /// </summary>
+    public decimal? TemperatureF { get; set; }
+
+    /// <summary>
+    /// Daily precipitation in inches.
+    /// </summary>
+    public decimal? PrecipitationIn { get; set; }
+
+    /// <summary>
+    /// ORC on-site status for this date.
+    /// </summary>
+    public ORCOnSiteEnum? ORCOnSite { get; set; }
+
+    /// <summary>
+    /// Daily storage/freeboard value in feet.
+    /// </summary>
+    public decimal? StorageFt { get; set; }
+
+    /// <summary>
+    /// Daily 5-day upset value in feet.
+    /// </summary>
+    public decimal? FiveDayUpsetFt { get; set; }
+
+    /// <summary>
     /// 24-hour arrival time of the operator.
     /// </summary>
     public TimeSpan ArrivalTime { get; set; }

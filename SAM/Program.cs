@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using SAM.Data;
 using SAM.Data.Seeders;
@@ -14,6 +16,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.ValueCountLimit = 10000;
+});
 
 // Add Session support
 builder.Services.AddSession(options =>
@@ -96,12 +102,16 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ICropService, CropService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISprayfieldService,SprayfieldService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IMonitoringWellService, MonitoringWellService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IOperatorLogService, OperatorLogService>();
-builder.Services.AddScoped<SAM.Services.Interfaces.IIrrigateService, IrrigateService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IApplicationComplianceService, ApplicationComplianceService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IMonthlyApplicationService, MonthlyApplicationService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ILoadCalculationService, LoadCalculationService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IFieldAggregationService, FieldAggregationService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IWWCharService, WWCharService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IGWMonitService, GWMonitService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IIrrRprtService, IrrRprtService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IPANCalculationService, PANCalculationService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDAR1Service, NDAR1Service>();
+builder.Services.AddScoped<SAM.Services.Interfaces.INDAR1RowEditService, NDAR1RowEditService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDMRService, NDMRService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INDMLRService, NDMLRService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserService, UserService>();
@@ -114,7 +124,16 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ISmtpSettingsService, SmtpSet
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserActivityLogService, UserActivityLogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IErrorLogService, ErrorLogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ILookupQueryService, LookupQueryService>();
-builder.Services.AddDataProtection();
+builder.Services.AddScoped<SAM.Services.Interfaces.IBreadcrumbService, BreadcrumbService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IFacilityPermitResolver, FacilityPermitResolver>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IPcsCatalogService, PcsCatalogService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IProjectKnowledgeService, ProjectKnowledgeService>();
+var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("SAM");
 builder.Services.Configure<ActivityLogOptions>(builder.Configuration.GetSection(ActivityLogOptions.SectionName));
 builder.Services.AddHostedService<UserActivityLogRetentionService>();
 
@@ -197,3 +216,5 @@ app.MapControllerRoute(
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.Run();
+
+

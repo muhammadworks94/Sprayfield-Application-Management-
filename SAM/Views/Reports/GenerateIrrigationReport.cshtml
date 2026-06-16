@@ -3,7 +3,7 @@
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Generate Irrigation Report";
+    ViewData["Title"] = "Generate NDMR Report";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
@@ -14,13 +14,13 @@
     <div>
         <p class="text-muted mb-0">Create a new compliance report for facilities</p>
     </div>
-    <a asp-action="IrrigationReports" class="btn btn-secondary">
+    <a asp-action="NDMRReports" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Back to List
     </a>
 </div>
 
 <div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> This will generate a monthly irrigation report by aggregating all irrigation records for the selected facility, month, and year.
+    <i class="bi bi-info-circle"></i> This will generate a monthly NDMR report by aggregating all irrigation records for the selected facility, month, and year.
 </div>
 
 <div class="card">
@@ -28,7 +28,7 @@
         <h5 class="mb-0"><i class="bi bi-info-circle"></i> Report Parameters</h5>
     </div>
     <div class="card-body">
-        <form asp-action="GenerateIrrigationReport" method="post">
+        <form asp-action="GenerateNDMRReport" method="post">
             @Html.AntiForgeryToken()
             
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
@@ -65,7 +65,7 @@
             <input type="hidden" asp-for="CompanyId" />
 
             <div class="d-flex justify-content-end gap-2">
-                <a asp-action="IrrigationReports" class="btn btn-secondary">Cancel</a>
+                <a asp-action="NDMRReports" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-file-earmark-text"></i> Generate Report
                 </button>
@@ -76,5 +76,18 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            if (!window.SAMLoading || !window.SAMLoading.bindFormSubmit) {
+                return;
+            }
+
+            window.SAMLoading.bindFormSubmit('form[action*="GenerateNDMRReport"]', {
+                loadingMessage: 'Generating report, please wait...',
+                loadingButtonHtml: '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Generating...'
+            });
+        })();
+    </script>
 }
+
 

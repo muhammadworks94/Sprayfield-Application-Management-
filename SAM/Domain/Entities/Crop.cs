@@ -17,6 +17,11 @@ public class Crop : CompanyScopedEntity
     /// </summary>
     public decimal NUptake { get; set; }
 
+    /// <summary>
+    /// Annual PAN load limit (lbs/acre/year).
+    /// </summary>
+    public decimal? PANLimit { get; set; }
+
     // Navigation properties
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
 }

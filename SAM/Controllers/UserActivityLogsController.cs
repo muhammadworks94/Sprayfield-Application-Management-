@@ -33,8 +33,8 @@ public class UserActivityLogsController : BaseController
     [HttpGet]
     public async Task<IActionResult> Index([FromQuery] UserActivityLogFilterViewModel filter)
     {
-        // Always use header company context for this page.
-        filter.CompanyId = GetSelectedCompanyIdFromSession();
+        // Global admin logs are always all-company scope.
+        filter.CompanyId = null;
 
         var result = await _userActivityLogService.QueryAsync(new UserActivityLogQueryModel
         {

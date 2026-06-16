@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SAM.ViewModels.Reports;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -30,6 +31,9 @@ public class GW59ReportViewModel
     public string ZipCode { get; set; } = string.Empty;
     public string County { get; set; } = string.Empty;
 
+    [Display(Name = "Contact Person")]
+    public string ContactPerson { get; set; } = string.Empty;
+
     [Display(Name = "Facility Phone")]
     public string FacilityPhone { get; set; } = string.Empty;
 
@@ -53,10 +57,10 @@ public class GW59ReportViewModel
     public decimal? DiameterInches { get; set; }
 
     [Display(Name = "Screened Interval Low (ft)")]
-    public decimal? LowScreenDepthFeet { get; set; }
+    public decimal? ScreenedIntervalFromFeet { get; set; }
 
     [Display(Name = "Screened Interval High (ft)")]
-    public decimal? HighScreenDepthFeet { get; set; }
+    public decimal? ScreenedIntervalToFeet { get; set; }
 
     [Display(Name = "Number of Wells to be Sampled")]
     public int? NumberOfWellsToBeSampled { get; set; }
@@ -72,6 +76,12 @@ public class GW59ReportViewModel
 
     [Display(Name = "Depth to Water Level (ft)")]
     public decimal? WaterLevel { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
 
     [Display(Name = "Gallons Pumped")]
     public decimal? GallonsPumped { get; set; }
@@ -143,6 +153,10 @@ public class GW59ReportViewModel
     [Display(Name = "VOC Method #")]
     public string VOCMethodNumber { get; set; } = string.Empty;
 
+    public bool GwOperationLagoon { get; set; }
+    public bool GwOperationSprayField { get; set; }
+    public List<Gw59OtherParameterLine> OtherParameterLines { get; set; } = new();
+
     // Certification block (signature area)
 
     [Display(Name = "Certification Name")]
@@ -154,5 +168,17 @@ public class GW59ReportViewModel
     [Display(Name = "Certification Date")]
     [DataType(DataType.Date)]
     public DateTime? CertificationDate { get; set; }
+
+    [Display(Name = "GW-59A Signer Name")]
+    public string GW59ASignerName { get; set; } = string.Empty;
+
+    [Display(Name = "GW-59A Signer Title")]
+    public string GW59ASignerTitle { get; set; } = string.Empty;
+
+    [Display(Name = "GW-59A Signed Date")]
+    [DataType(DataType.Date)]
+    public DateTime? GW59ASignedDate { get; set; }
+
+    public List<Gw59ParameterSnapshot> ParameterSnapshots { get; set; } = new();
 }
 

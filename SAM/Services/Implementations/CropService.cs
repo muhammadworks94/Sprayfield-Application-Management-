@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
+using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
 
 namespace SAM.Services.Implementations;
@@ -49,6 +50,8 @@ public class CropService : ICropService
         if (crop == null)
             throw new ArgumentNullException(nameof(crop));
 
+        crop.PANLimit = PanLimitDerivation.DeriveFromNUptake(crop.NUptake);
+
         // Validate company exists
         var companyExists = await _context.Companies.AnyAsync(c => c.Id == crop.CompanyId);
         if (!companyExists)
@@ -77,6 +80,7 @@ public class CropService : ICropService
 
         existing.Name = crop.Name;
         existing.NUptake = crop.NUptake;
+        existing.PANLimit = PanLimitDerivation.DeriveFromNUptake(crop.NUptake);
 
         await _context.SaveChangesAsync();
 

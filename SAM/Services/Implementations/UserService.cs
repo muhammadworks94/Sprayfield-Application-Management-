@@ -266,13 +266,28 @@ public class UserService : IUserService
 
     public string GenerateTemporaryPassword()
     {
-        // Generate a secure temporary password
-        // In production, this should be more sophisticated
-        const string chars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        const string uppercase = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+        const string lowercase = "abcdefghijklmnopqrstuvwxyz";
+        const string digits = "0123456789";
+        const string symbols = "!@#$%^&*";
+        const string allChars = uppercase + lowercase + digits + symbols;
+
         var random = new Random();
-        var password = new string(Enumerable.Repeat(chars, 12)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
-        return password + "1"; // Ensure at least one digit
+        var password = new string(Enumerable.Repeat(allChars, 12)
+            .Select(s => s[random.Next(s.Length)])
+            .ToArray());
+
+        // Ensure password always satisfies common Identity requirements.
+        if (!password.Any(char.IsUpper))
+            password += uppercase[random.Next(uppercase.Length)];
+        if (!password.Any(char.IsLower))
+            password += lowercase[random.Next(lowercase.Length)];
+        if (!password.Any(char.IsDigit))
+            password += digits[random.Next(digits.Length)];
+        if (!password.Any(c => !char.IsLetterOrDigit(c)))
+            password += symbols[random.Next(symbols.Length)];
+
+        return password;
     }
 
     /// <summary>

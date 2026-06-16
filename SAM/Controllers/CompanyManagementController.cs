@@ -5,6 +5,7 @@ using SAM.Controllers.Base;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 using SAM.ViewModels.Common;
 using SAM.ViewModels.SystemAdmin;
 using SAM.ViewModels.UserManagement;
@@ -64,7 +65,6 @@ public class CompanyManagementController : BaseController
     public async Task<IActionResult> Index(string? searchTerm = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
         // Load companies data
         IEnumerable<Company> companies;
@@ -76,12 +76,6 @@ public class CompanyManagementController : BaseController
         else
         {
             companies = await _companyService.GetAllAsync();
-        }
-
-        // Filter by company if session has a selection (for admins) or user has a company
-        if (effectiveCompanyId.HasValue)
-        {
-            companies = companies.Where(c => c.Id == effectiveCompanyId.Value);
         }
 
         var companyViewModels = companies.Select(c => new CompanyViewModel
@@ -353,12 +347,9 @@ public class CompanyManagementController : BaseController
             CompanyName = s.Company?.Name,
             FieldId = s.FieldId,
             SizeAcres = s.SizeAcres,
-            SoilId = s.SoilId,
-            SoilName = s.Soil?.TypeName,
-            CropId = s.CropId,
-            CropName = s.Crop?.Name,
-            NozzleId = s.NozzleId,
-            NozzleName = $"{s.Nozzle?.Manufacturer} {s.Nozzle?.Model}",
+            SoilName = SprayfieldZoneSummaryHelper.GetSoilSummary(s),
+            CropName = SprayfieldZoneSummaryHelper.GetCropSummary(s),
+            NozzleName = SprayfieldZoneSummaryHelper.GetNozzleSummary(s),
             FacilityId = s.FacilityId,
             FacilityName = s.Facility?.Name,
             HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr

@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "Create Operator Log";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var orcOnSiteOptions = ViewBag.OperatorLogOrcOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
     var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
@@ -52,6 +53,15 @@
                                     <span asp-validation-for="ArrivalTime" class="text-danger"></span>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="ORCOnSite" class="form-label"></label>
+                                    <select asp-for="ORCOnSite" asp-items="orcOnSiteOptions" class="form-select">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                    <span asp-validation-for="ORCOnSite" class="text-danger"></span>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="row">
@@ -87,6 +97,37 @@
                                     <input asp-for="TimeOnSiteHours" type="number" step="0.01" class="form-control" />
                                     <span asp-validation-for="TimeOnSiteHours" class="text-danger"></span>
                                     <small class="form-text text-muted">Enter total time on site as hours in decimal format (e.g., 1.5 for 1½ hours).</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="TemperatureF" class="form-label"></label>
+                                    <input asp-for="TemperatureF" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TemperatureF" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="PrecipitationIn" class="form-label"></label>
+                                    <input asp-for="PrecipitationIn" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="PrecipitationIn" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="StorageFt" class="form-label"></label>
+                                    <input asp-for="StorageFt" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="StorageFt" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="FiveDayUpsetFt" class="form-label"></label>
+                                    <input asp-for="FiveDayUpsetFt" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="FiveDayUpsetFt" class="text-danger"></span>
                                 </div>
                             </div>
                         </div>
@@ -184,4 +225,3 @@
         })();
     </script>
 }
-
