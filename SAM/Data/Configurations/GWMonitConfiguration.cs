@@ -90,6 +90,8 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
         builder.Property(g => g.AnalyzedBy)
             .HasMaxLength(200);
 
+        builder.Property(g => g.LabSampleAnalyzedDate);
+
         builder.Property(g => g.Comments)
             .HasMaxLength(2000);
 

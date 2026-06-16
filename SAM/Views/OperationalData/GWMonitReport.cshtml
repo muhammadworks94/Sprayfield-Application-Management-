@@ -114,6 +114,7 @@
             <div class="card-header"><h6 class="mb-0">Laboratory Information &amp; Parameters</h6></div>
             <div class="card-body small">
                 <dl class="gw-kv">
+                    <dt>Date Sample Analyzed</dt><dd>@(Model.LabSampleAnalyzedDate?.ToString("MM/dd/yyyy") ?? "N/A")</dd>
                     <dt>Laboratory Name</dt><dd>@Model.LabName</dd>
                     <dt>Certification No.</dt><dd>@Model.LabCertificationNumber</dd>
                 </dl>

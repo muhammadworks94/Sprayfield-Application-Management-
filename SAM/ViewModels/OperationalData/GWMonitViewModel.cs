@@ -141,6 +141,10 @@ public class GWMonitViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string? AnalyzedBy { get; set; }
+
+    [Display(Name = "Lab Date Sample Analyzed")]
+    [DataType(DataType.Date)]
+    public DateTime? LabSampleAnalyzedDate { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]
@@ -330,6 +334,10 @@ public class GWMonitCreateViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string? AnalyzedBy { get; set; }
+
+    [Display(Name = "Lab Date Sample Analyzed")]
+    [DataType(DataType.Date)]
+    public DateTime? LabSampleAnalyzedDate { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]
@@ -527,6 +535,10 @@ public class GWMonitEditViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string? AnalyzedBy { get; set; }
+
+    [Display(Name = "Lab Date Sample Analyzed")]
+    [DataType(DataType.Date)]
+    public DateTime? LabSampleAnalyzedDate { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]

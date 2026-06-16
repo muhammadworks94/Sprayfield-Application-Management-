@@ -1899,6 +1899,7 @@ public class ReportsController : BaseController
             ScreenedIntervalToFeet = model.ScreenedIntervalToFeet,
             NumberOfWellsToBeSampled = model.NumberOfWellsToBeSampled,
             SampleDate = model.SampleDate,
+            LabSampleAnalyzedDate = model.LabSampleAnalyzedDate,
             SampleDepth = model.SampleDepth,
             WaterLevel = model.WaterLevel,
             MeasuringPointAboveLandSurface = model.MeasuringPointAboveLandSurface,
@@ -2116,6 +2117,7 @@ public class ReportsController : BaseController
             RelativeMpElevation = wellData.RelativeMpElevation,
             NumberOfWellsToBeSampled = facilityWellCount,
             SampleDate = gwMonit.SampleDate,
+            LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = Gw59ChemistryResolver.ResolveWaterLevel(gwMonit.WaterLevel, snapshots),
             MeasuringPointAboveLandSurface = wellData.MeasuringPointAboveLandSurface,
@@ -2255,7 +2257,11 @@ public class ReportsController : BaseController
             DrawMetalsMark(model.MetalsUnfiltered, false, 303, 282);
             DrawMetalsMark(model.MetalsAcidified, true, 444, 283);
             DrawMetalsMark(model.MetalsAcidified, false, 492, 283);
-            DrawLabText(model.SampleDate.ToString("MM/dd/yyyy"), 205, 317, 90);
+            DrawLabText(
+                model.LabSampleAnalyzedDate?.ToString("MM/dd/yyyy"),
+                205,
+                317,
+                90);
             DrawLabText(model.LabName, 450, 316);
             DrawLabText(model.LabCertificationNumber, 740, 316);
 

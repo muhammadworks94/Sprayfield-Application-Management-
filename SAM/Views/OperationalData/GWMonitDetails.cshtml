@@ -231,6 +231,9 @@
             <div class="col-12">
                 <h5 class="detail-section-label mb-4">Lab Information</h5>
                 <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-event me-1"></i>Lab Date Sample Analyzed:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.LabSampleAnalyzedDate?.ToString("MM/dd/yyyy") ?? "N/A")</dd>
+
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-clipboard-check me-1"></i>Lab Certification:</dt>
                     <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.LabCertification) ? "N/A" : Model.LabCertification)</dd>
 

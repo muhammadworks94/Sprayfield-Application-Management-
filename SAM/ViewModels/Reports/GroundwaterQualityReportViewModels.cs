@@ -88,6 +88,7 @@ public sealed class Gw59ExportModel
     public decimal? RelativeMpElevation { get; set; }
     public int? NumberOfWellsToBeSampled { get; set; }
     public DateTime SampleDate { get; set; }
+    public DateTime? LabSampleAnalyzedDate { get; set; }
     public decimal? SampleDepth { get; set; }
     public decimal? WaterLevel { get; set; }
     public decimal? MeasuringPointAboveLandSurface { get; set; }

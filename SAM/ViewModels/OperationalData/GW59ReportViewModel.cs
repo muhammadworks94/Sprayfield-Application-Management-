@@ -71,6 +71,10 @@ public class GW59ReportViewModel
     [DataType(DataType.Date)]
     public DateTime SampleDate { get; set; }
 
+    [Display(Name = "Lab Date Sample Analyzed")]
+    [DataType(DataType.Date)]
+    public DateTime? LabSampleAnalyzedDate { get; set; }
+
     [Display(Name = "Sample Depth (ft)")]
     public decimal? SampleDepth { get; set; }
 

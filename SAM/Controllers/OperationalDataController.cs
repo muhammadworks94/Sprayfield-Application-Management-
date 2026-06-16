@@ -2052,6 +2052,7 @@ namespace SAM.Controllers;
             LabCertification = g.LabCertification,
             CollectedBy = g.CollectedBy,
             AnalyzedBy = g.AnalyzedBy,
+            LabSampleAnalyzedDate = g.LabSampleAnalyzedDate,
             Comments = g.Comments,
             GW59AQuestion1Response = g.GW59AQuestion1Response,
             GW59AQuestion2Response = g.GW59AQuestion2Response,
@@ -2152,6 +2153,7 @@ namespace SAM.Controllers;
             LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
             AnalyzedBy = gwMonit.AnalyzedBy,
+            LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate,
             Comments = gwMonit.Comments,
             GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
             GW59AQuestion2Response = gwMonit.GW59AQuestion2Response,
@@ -2308,6 +2310,7 @@ namespace SAM.Controllers;
             NumberOfWellsToBeSampled = facilityWellCount,
 
             SampleDate = gwMonit.SampleDate,
+            LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate,
             SampleDepth = gwMonit.SampleDepth,
             WaterLevel = Gw59ChemistryResolver.ResolveWaterLevel(gwMonit.WaterLevel, snapshots),
             MeasuringPointAboveLandSurface = wellData.MeasuringPointAboveLandSurface,
@@ -2543,6 +2546,7 @@ namespace SAM.Controllers;
                 LabCertification = viewModel.LabCertification ?? string.Empty,
                 CollectedBy = viewModel.CollectedBy ?? string.Empty,
                 AnalyzedBy = viewModel.AnalyzedBy ?? string.Empty,
+                LabSampleAnalyzedDate = viewModel.LabSampleAnalyzedDate,
                 Comments = viewModel.Comments ?? string.Empty,
                 GW59AQuestion1Response = viewModel.GW59AQuestion1Response,
                 GW59AQuestion2Response = viewModel.GW59AQuestion2Response,
@@ -2641,6 +2645,7 @@ namespace SAM.Controllers;
             LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
             AnalyzedBy = gwMonit.AnalyzedBy,
+            LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate,
             Comments = gwMonit.Comments,
             GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
             GW59AQuestion2Response = gwMonit.GW59AQuestion2Response,
@@ -2837,6 +2842,7 @@ namespace SAM.Controllers;
             gwMonit.LabCertification = viewModel.LabCertification ?? string.Empty;
             gwMonit.CollectedBy = viewModel.CollectedBy ?? string.Empty;
             gwMonit.AnalyzedBy = viewModel.AnalyzedBy ?? string.Empty;
+            gwMonit.LabSampleAnalyzedDate = viewModel.LabSampleAnalyzedDate;
             gwMonit.Comments = viewModel.Comments ?? string.Empty;
             gwMonit.GW59AQuestion1Response = viewModel.GW59AQuestion1Response;
             gwMonit.GW59AQuestion2Response = viewModel.GW59AQuestion2Response;

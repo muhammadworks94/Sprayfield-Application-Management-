@@ -163,6 +163,11 @@ public class GWMonit : CompanyScopedEntity
     public string AnalyzedBy { get; set; } = string.Empty;
 
     /// <summary>
+    /// Date the laboratory analyzed the sample (GW-59 Laboratory Information).
+    /// </summary>
+    public DateTime? LabSampleAnalyzedDate { get; set; }
+
+    /// <summary>
     /// Additional comments.
     /// </summary>
     public string Comments { get; set; } = string.Empty;

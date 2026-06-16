@@ -150,6 +150,7 @@ public class GWMonitService : IGWMonitService
         existing.LabCertification = gwMonit.LabCertification;
         existing.CollectedBy = gwMonit.CollectedBy;
         existing.AnalyzedBy = gwMonit.AnalyzedBy;
+        existing.LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate;
         existing.Comments = gwMonit.Comments;
         existing.GW59AQuestion1Response = gwMonit.GW59AQuestion1Response;
         existing.GW59AQuestion2Response = gwMonit.GW59AQuestion2Response;
