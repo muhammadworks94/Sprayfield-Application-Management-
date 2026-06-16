@@ -1,0 +1,139 @@
+@model SAM.ViewModels.Reports.NDMLRDetailsViewModel
+@using Microsoft.AspNetCore.Identity
+@using SAM.Domain.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Non-Discharge Mass Loading Report Details";
+    var user = await UserManager.GetUserAsync(User);
+    var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <p class="text-muted mb-0">View NDMLR details through @Model.Month @Model.Year (rolling 12-month window)</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-success js-report-export-link" asp-action="ExportNDMLRReportPdf" asp-route-id="@Model.Id">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+        </a>
+        <div class="dropdown">
+            <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                More...
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item js-report-export-link" asp-action="ExportNDMLRReport" asp-route-id="@Model.Id">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <a asp-action="NDMLRReports" asp-route-companyId="@Model.CompanyId" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            if (!window.SAMLoading || !window.SAMLoading.bindLinkClicks) {
+                return;
+            }
+
+            window.SAMLoading.bindLinkClicks('.js-report-export-link', {
+                loadingMessage: 'Generating export, please wait...',
+                useFetchDownload: true
+            });
+        })();
+    </script>
+}
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="mb-4"><i class="bi bi-file-earmark-bar-graph me-2"></i>@(Model.FacilityName ?? "Facility") - Through @Model.Month @Model.Year</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-4">Record Context</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-briefcase me-1"></i>Company:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.CompanyName ?? "N/A")</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-building me-1"></i>Facility:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.FacilityName ?? "N/A")</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar3 me-1"></i>Annual Period:</dt>
+                    <dd class="col-sm-7 mb-2">Rolling 12 months ending @Model.Month @Model.Year</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <h5 class="detail-section-label mb-4">Report Metadata</h5>
+                <dl class="row">
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-person me-1"></i>Created By:</dt>
+                    <dd class="col-sm-7 mb-2">@(string.IsNullOrWhiteSpace(Model.CreatedBy) ? "-" : Model.CreatedBy)</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-plus me-1"></i>Created:</dt>
+                    <dd class="col-sm-7 mb-2">@Model.CreatedDate.ToString("MM/dd/yyyy HH:mm") UTC</dd>
+                    @if (Model.UpdatedDate.HasValue)
+                    {
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-check me-1"></i>Updated:</dt>
+                        <dd class="col-sm-7 mb-2">@Model.UpdatedDate.Value.ToString("MM/dd/yyyy HH:mm") UTC</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="border-top pt-3 mt-3">
+            <h5 class="detail-section-label mb-4">Field Information</h5>
+            @if (Model.Fields.Any())
+            {
+                <div class="row">
+                    @foreach (var field in Model.Fields)
+                    {
+                        <div class="col-md-6 mb-4">
+                            <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field: @(string.IsNullOrWhiteSpace(field.FieldCode) ? "N/A" : field.FieldCode)</h6>
+                            <dl class="row small">
+                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
+                                <dd class="col-sm-7 mb-2">@field.AreaAcres.ToString("F2") acres</dd>
+
+                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
+                                <dd class="col-sm-7 mb-2">@(string.IsNullOrWhiteSpace(field.CropSummary) ? "N/A" : field.CropSummary)</dd>
+
+                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-half me-1"></i>Annual Volume:</dt>
+                                <dd class="col-sm-7 mb-2">@field.AnnualVolumeGallons.ToString("N0") gal</dd>
+
+                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up-arrow me-1"></i>Avg Concentration:</dt>
+                                <dd class="col-sm-7 mb-2">@(field.AverageConcentrationMgL.HasValue ? field.AverageConcentrationMgL.Value.ToString("F2") : "-") mg/L</dd>
+
+                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-speedometer2 me-1"></i>Annual Load:</dt>
+                                <dd class="col-sm-7 mb-2">@field.AnnualLoadLbsPerAcre.ToString("F2") lbs/ac</dd>
+
+                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart-steps me-1"></i>12-Month Floating PAN:</dt>
+                                <dd class="col-sm-7 mb-2">@field.PanFloatingLbsPerAcre.ToString("F2") lbs/ac/yr</dd>
+
+                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-sliders me-1"></i>Annual PAN Limit:</dt>
+                                <dd class="col-sm-7 mb-2">@(field.PanLimitLbsPerAcre.HasValue ? field.PanLimitLbsPerAcre.Value.ToString("F2") : "-") lbs/ac/yr</dd>
+
+                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-check-circle me-1"></i>Field Loaded:</dt>
+                                <dd class="col-sm-7 mb-2">
+                                    @if (field.FieldLoaded)
+                                    {
+                                        <span class="badge bg-success">Yes</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">No</span>
+                                    }
+                                </dd>
+                            </dl>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    No NDAR-1 field source data is available for this year yet.
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using SAM.Domain.Enums;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.Reports;
 
@@ -27,6 +29,124 @@ public class NDAR1ViewModel
     
     [Display(Name = "Updated Date")]
     public DateTime? UpdatedDate { get; set; }
+
+    [Display(Name = "Operator")]
+    public string? CreatedBy { get; set; }
+}
+
+public class NDAR1FilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public string? OperatorName { get; set; }
+    public DateTime? LogDate { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class NDAR1SortViewModel
+{
+    public string SortBy { get; set; } = "period";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class NDAR1ReportsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public SelectList? Operators { get; set; }
+    public NDAR1FilterViewModel Filter { get; set; } = new();
+    public NDAR1SortViewModel Sort { get; set; } = new();
+    public PagedResult<NDAR1ViewModel> Reports { get; set; } = new();
+}
+
+public class NDMLRFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public int? Year { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class NDMLRSortViewModel
+{
+    public string SortBy { get; set; } = "period";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class NDMLRReportsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public NDMLRFilterViewModel Filter { get; set; } = new();
+    public NDMLRSortViewModel Sort { get; set; } = new();
+    public PagedResult<NDMLRViewModel> Reports { get; set; } = new();
+    public NDMLRCreateViewModel GenerateForm { get; set; } = new();
+    public bool OpenGenerateModalOnLoad { get; set; }
+}
+
+public class NDMLRViewModel
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string? CompanyName { get; set; }
+    public Guid FacilityId { get; set; }
+    public string? FacilityName { get; set; }
+    public MonthEnum Month { get; set; }
+    public int Year { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime? UpdatedDate { get; set; }
+    public string? CreatedBy { get; set; }
+}
+
+public class NDMLRCreateViewModel
+{
+    [Required]
+    [Display(Name = "Company")]
+    public Guid CompanyId { get; set; }
+
+    [Required]
+    [Display(Name = "Facility")]
+    public Guid FacilityId { get; set; }
+
+    [Required]
+    [Display(Name = "Month")]
+    public MonthEnum Month { get; set; } = MonthEnum.December;
+
+    [Required]
+    [Display(Name = "Year")]
+    [Range(2000, 2100)]
+    public int Year { get; set; } = DateTime.Now.Year;
+}
+
+public class NDMLRDetailsViewModel
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string? CompanyName { get; set; }
+    public Guid FacilityId { get; set; }
+    public string? FacilityName { get; set; }
+    public MonthEnum Month { get; set; }
+    public int Year { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime? UpdatedDate { get; set; }
+    public string? CreatedBy { get; set; }
+    public List<NDMLRFieldDetailsViewModel> Fields { get; set; } = new();
+}
+
+public class NDMLRFieldDetailsViewModel
+{
+    public Guid SprayfieldId { get; set; }
+    public string FieldCode { get; set; } = string.Empty;
+    public decimal AreaAcres { get; set; }
+    public string CropSummary { get; set; } = string.Empty;
+    public decimal AnnualVolumeGallons { get; set; }
+    public decimal? AverageConcentrationMgL { get; set; }
+    public decimal AnnualLoadLbsPerAcre { get; set; }
+    public decimal PanFloatingLbsPerAcre { get; set; }
+    public decimal? PanLimitLbsPerAcre { get; set; }
+    public bool FieldLoaded { get; set; }
 }
 
 public class NDAR1CreateViewModel
@@ -82,9 +202,6 @@ public class NDAR1EditViewModel
     
     [Display(Name = "Precipitation Daily (in)")]
     public List<decimal?> PrecipitationDaily { get; set; } = new List<decimal?>();
-    
-    [Display(Name = "Storage Daily (ft)")]
-    public List<decimal?> StorageDaily { get; set; } = new List<decimal?>();
     
     [Display(Name = "5-Day Upset Daily (ft)")]
     public List<decimal?> FiveDayUpsetDaily { get; set; } = new List<decimal?>();
@@ -200,5 +317,127 @@ public class NDAR1EditViewModel
     [Display(Name = "Field 4 12-Month Floating Total (in)")]
     [DisplayFormat(DataFormatString = "{0:F2}")]
     public decimal Field4TwelveMonthFloatingTotal { get; set; }
+
+    public List<NDAR1FieldEditViewModel> Fields { get; set; } = new();
+}
+
+public class NDAR1FieldEditViewModel
+{
+    public Guid? Id { get; set; }
+    public Guid SprayfieldId { get; set; }
+    public string FieldCode { get; set; } = string.Empty;
+    public decimal? Acres { get; set; }
+    public string CropSummary { get; set; } = string.Empty;
+    public decimal MonthlyLoading { get; set; }
+    public decimal MaxHourlyLoading { get; set; }
+    public decimal TwelveMonthFloatingTotal { get; set; }
+    public List<NDAR1FieldDailyEditViewModel> DailyValues { get; set; } = new();
+}
+
+public class NDAR1FieldDailyEditViewModel
+{
+    public int DayNo { get; set; }
+    public decimal? VolumeApplied { get; set; }
+    public decimal? TimeIrrigated { get; set; }
+    public decimal? DailyLoading { get; set; }
+    public decimal? MaxHourlyLoading { get; set; }
+}
+
+public class NDAR1EditGridViewModel
+{
+    public Guid NDAR1Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid FacilityId { get; set; }
+    public string FacilityName { get; set; } = string.Empty;
+    public MonthEnum Month { get; set; }
+    public int Year { get; set; }
+    public List<NDAR1GridFieldColumnViewModel> FieldColumns { get; set; } = new();
+    public List<NDAR1GridDayRowViewModel> Rows { get; set; } = new();
+}
+
+public class NDAR1GridFieldColumnViewModel
+{
+    public Guid SprayfieldId { get; set; }
+    public string FieldCode { get; set; } = string.Empty;
+    public decimal? Acres { get; set; }
+    public decimal MonthlyVolumeTotalGallons { get; set; }
+    public decimal MonthlyDailyLoadingTotalInches { get; set; }
+    public decimal TwelveMonthFloatingTotalInches { get; set; }
+}
+
+public class NDAR1GridDayRowViewModel
+{
+    public int DayNo { get; set; }
+    public DateTime Date { get; set; }
+    public string? WeatherCode { get; set; }
+    public decimal? TemperatureF { get; set; }
+    public decimal? PrecipitationIn { get; set; }
+    public decimal? StorageFt { get; set; }
+    public decimal? FiveDayUpsetFt { get; set; }
+    public Guid? LockToken { get; set; }
+    public string? LockedBy { get; set; }
+    public bool IsLockedByCurrentUser { get; set; }
+    public List<NDAR1GridApplicationCellViewModel> Applications { get; set; } = new();
+}
+
+public class NDAR1GridApplicationCellViewModel
+{
+    public Guid SprayfieldId { get; set; }
+    public decimal? VolumeGallons { get; set; }
+    public decimal? TimeIrrigatedMinutes { get; set; }
+    public decimal? MaximumHourlyLoadingInchesPerAcre { get; set; }
+    public decimal? DailyLoadingInches { get; set; }
+}
+
+public class NDAR1DayRowUpdateRequest
+{
+    public int DayNo { get; set; }
+    public Guid LockToken { get; set; }
+    public string? WeatherCode { get; set; }
+    public decimal? TemperatureF { get; set; }
+    public decimal? PrecipitationIn { get; set; }
+    public decimal? StorageFt { get; set; }
+    public decimal? FiveDayUpsetFt { get; set; }
+    public List<NDAR1GridApplicationCellViewModel> Applications { get; set; } = new();
+}
+
+public class NDAR1RowEditLockResult
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public Guid? LockToken { get; set; }
+    public int DayNo { get; set; }
+    public string? LockedBy { get; set; }
+    public int? RemainingSeconds { get; set; }
+}
+
+public class NDAR1RowEditResult
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public bool IsValidationError { get; set; }
+    public NDAR1GridDayRowViewModel? Row { get; set; }
+    public NDAR1RowSaveSummaryViewModel? SaveSummary { get; set; }
+}
+
+public class NDAR1RowSaveSummaryViewModel
+{
+    public int DayNo { get; set; }
+    public DateTime Date { get; set; }
+    public string OperatorLogAction { get; set; } = "None";
+    public List<NDAR1RowEntityChangeViewModel> MonthlyApplicationsCreated { get; set; } = new();
+    public List<NDAR1RowEntityChangeViewModel> MonthlyApplicationsUpdated { get; set; } = new();
+    public List<NDAR1RowEntityChangeViewModel> MonthlyApplicationsBackfilled { get; set; } = new();
+    public List<string> WeatherFieldsChanged { get; set; } = new();
+    public bool IrrigationFlagAfterSave { get; set; }
+    public List<string> Warnings { get; set; } = new();
+    public string NdarRefreshStatus { get; set; } = "None";
+    public string? NdarRefreshMessage { get; set; }
+}
+
+public class NDAR1RowEntityChangeViewModel
+{
+    public Guid SprayfieldId { get; set; }
+    public string SprayfieldCode { get; set; } = string.Empty;
 }
 

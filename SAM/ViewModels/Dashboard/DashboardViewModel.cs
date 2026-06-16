@@ -47,6 +47,9 @@ public class DashboardViewModel
 
     // Chart data: Groundwater Quality Overview (avg pH, avg conductivity, values by well)
     public GroundwaterOverviewViewModel GroundwaterOverview { get; set; } = new();
+
+    // Phase 2: NDAR operator decision support (live-source, field-wise)
+    public List<FieldLoadingProgressViewModel> FieldLoadingProgress { get; set; } = new();
 }
 
 public class IrrigationCompliancePieViewModel
@@ -108,6 +111,22 @@ public class SystemStatusViewModel
     public string Status { get; set; } = string.Empty;
     /// <summary>True for Normal/Operational (dark tag), false for Attention Required (light tag).</summary>
     public bool IsNormalOrOperational { get; set; }
+}
+
+public class FieldLoadingProgressViewModel
+{
+    public Guid FacilityId { get; set; }
+    public string FacilityName { get; set; } = string.Empty;
+    public Guid SprayfieldId { get; set; }
+    public string FieldCode { get; set; } = string.Empty;
+    public decimal AnnualLimitInches { get; set; }
+    public decimal CurrentMonthLoadingInches { get; set; }
+    public decimal Rolling12MonthLoadingInches { get; set; }
+    public decimal CurrentMonthUtilizationPercent { get; set; }
+    public decimal Rolling12MonthUtilizationPercent { get; set; }
+    public string CurrentMonthStatus { get; set; } = "Normal";
+    public string Rolling12MonthStatus { get; set; } = "Normal";
+    public string AnnualStatus { get; set; } = "Normal";
 }
 
 

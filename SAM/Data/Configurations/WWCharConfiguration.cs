@@ -1,8 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SAM.Domain.Entities;
-using SAM.Domain.Enums;
 using System.Text.Json;
 
 namespace SAM.Data.Configurations;
@@ -135,24 +133,18 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
         builder.Property(w => w.NO3N)
             .HasPrecision(18, 4);
 
+        builder.Property(w => w.FlowMeasuringPoint)
+            .HasConversion<int?>();
+
+        builder.Property(w => w.ParameterMonitoringPoint)
+            .HasConversion<int?>();
+
         builder.Property(w => w.CompositeTime)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),
                 v => string.IsNullOrWhiteSpace(v)
                     ? new List<string?>()
                     : JsonSerializer.Deserialize<List<string?>>(v, jsonOptions) ?? new List<string?>())
-            .HasColumnType("nvarchar(max)");
-
-        builder.Property(w => w.ORCOnSite)
-            .HasConversion(new ORCOnSiteConverter())
-            .HasColumnType("nvarchar(max)");
-
-        builder.Property(w => w.LagoonFreeboard)
-            .HasConversion(
-                v => JsonSerializer.Serialize(v, jsonOptions),
-                v => string.IsNullOrWhiteSpace(v)
-                    ? new List<decimal?>()
-                    : JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
         builder.Property(w => w.LabCertification)
@@ -166,11 +158,17 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
 
         builder.HasIndex(w => w.CompanyId);
         builder.HasIndex(w => w.FacilityId);
+        builder.HasIndex(w => w.FacilityPermitId);
         builder.HasIndex(w => new { w.FacilityId, w.Month, w.Year }).IsUnique();
 
         builder.HasOne(w => w.Facility)
             .WithMany(f => f.WWChars)
             .HasForeignKey(w => w.FacilityId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(w => w.FacilityPermit)
+            .WithMany(p => p.WWChars)
+            .HasForeignKey(w => w.FacilityPermitId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

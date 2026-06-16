@@ -192,8 +192,8 @@ public static class CompanySeeder
             FieldId = "SF-001",
             SizeAcres = 25.5m,
             SoilId = soil1.Id,
-            CropId = crop1.Id,
             NozzleId = nozzle1.Id,
+            CropId = crop1.Id,
             HydraulicLoadingLimitInPerYr = 48.0m,
             WeeklyRateInches = 1.0m,
             CreatedDate = DateTime.UtcNow,
@@ -209,8 +209,8 @@ public static class CompanySeeder
             FieldId = "SF-002",
             SizeAcres = 30.0m,
             SoilId = soil2.Id,
-            CropId = crop2.Id,
             NozzleId = nozzle2.Id,
+            CropId = crop2.Id,
             HydraulicLoadingLimitInPerYr = 45.0m,
             WeeklyRateInches = 0.9m,
             CreatedDate = DateTime.UtcNow,
@@ -326,8 +326,8 @@ public static class CompanySeeder
             FieldId = "SF-101",
             SizeAcres = 20.0m,
             SoilId = soil3.Id,
-            CropId = crop3.Id,
             NozzleId = nozzle3.Id,
+            CropId = crop3.Id,
             HydraulicLoadingLimitInPerYr = 50.0m,
             WeeklyRateInches = 1.1m,
             CreatedDate = DateTime.UtcNow,
@@ -349,5 +349,3 @@ public static class CompanySeeder
         logger.LogInformation("Successfully seeded 2 companies with reference data.");
     }
 }
-
-

@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SAM.Data;
 using SAM.Domain.Entities;
+using SAM.Domain.Extensions;
+using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
 
@@ -14,18 +16,35 @@ namespace SAM.Services.Implementations;
 /// </summary>
 public class NDMRService : INDMRService
 {
+    private sealed class NdmrParameterRow
+    {
+        public required FacilityPermitTemplateParameter TemplateRow { get; init; }
+        public required string PcsCode { get; init; }
+        public required string DisplayName { get; init; }
+        public required string Units { get; init; }
+    }
+
+    private sealed class SamplingMetadata
+    {
+        public string SamplingType { get; init; } = "Grab";
+        public string SampleFrequency { get; init; } = string.Empty;
+    }
+
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<NDMRService> _logger;
+    private readonly IFacilityPermitResolver _facilityPermitResolver;
 
     public NDMRService(
         ApplicationDbContext context,
         IWebHostEnvironment environment,
-        ILogger<NDMRService> logger)
+        ILogger<NDMRService> logger,
+        IFacilityPermitResolver facilityPermitResolver)
     {
         _context = context;
         _environment = environment;
         _logger = logger;
+        _facilityPermitResolver = facilityPermitResolver;
     }
 
     /// <summary>
@@ -41,7 +60,8 @@ public class NDMRService : INDMRService
         string ppiLabel,
         string parameterCode,
         string parameterName,
-        string measuringPointLabel)
+        FlowMeasuringPointEnum? flowMeasuringPoint,
+        ParameterMonitoringPointEnum? parameterMonitoringPoint)
     {
         // Core report identification
         worksheet.Cell("C1").Value = facility.PermitNumber;              // Permit number
@@ -52,8 +72,14 @@ public class NDMRService : INDMRService
 
         // PPI and parameter identification
         worksheet.Cell("C2").Value = ppiLabel;                           // PPI label
-        worksheet.Cell("D2").Value = measuringPointLabel;                // Flow / parameter measuring point
-        worksheet.Cell("K2").Value = "Parameter Monitoring Point";       // Generic text; can be edited in Excel
+        WriteMonitoringPointOptions(
+            worksheet.Cell("D2"),
+            "Flow Measuring Point",
+            BuildFlowMonitoringPointOptions(flowMeasuringPoint));
+        WriteMonitoringPointOptions(
+            worksheet.Cell("K2"),
+            "Parameter Monitoring Point",
+            BuildParameterMonitoringPointOptions(parameterMonitoringPoint));
 
         // Parameter code: label in B3, value in D3 (match template layout; avoid duplicate code in F3)
         worksheet.Cell("B3").Value = "Parameter Code";                   // Label
@@ -76,7 +102,8 @@ public class NDMRService : INDMRService
         string ppiLabel,
         string parameterCode,
         string parameterName,
-        string measuringPointLabel,
+        FlowMeasuringPointEnum? flowMeasuringPoint,
+        ParameterMonitoringPointEnum? parameterMonitoringPoint,
         IReadOnlyList<GWMonit> gwMonits,
         int daysInMonth,
         int startRow,
@@ -92,7 +119,16 @@ public class NDMRService : INDMRService
             return;
         }
 
-        WriteStandardHeader(worksheet, facility, monthEnum, year, ppiLabel, parameterCode, parameterName, measuringPointLabel);
+        WriteStandardHeader(
+            worksheet,
+            facility,
+            monthEnum,
+            year,
+            ppiLabel,
+            parameterCode,
+            parameterName,
+            flowMeasuringPoint,
+            parameterMonitoringPoint);
 
         for (int day = 1; day <= daysInMonth; day++)
         {
@@ -132,6 +168,271 @@ public class NDMRService : INDMRService
         }
     }
 
+    private static IReadOnlyList<(string Text, bool Selected)> BuildFlowMonitoringPointOptions(FlowMeasuringPointEnum? selected)
+    {
+        return new List<(string Text, bool Selected)>
+        {
+            ("Influent", selected == FlowMeasuringPointEnum.Influent),
+            ("Effluent", selected == FlowMeasuringPointEnum.Effluent),
+            ("No flow generated", selected == FlowMeasuringPointEnum.NoFlowGenerated)
+        };
+    }
+
+    private static IReadOnlyList<(string Text, bool Selected)> BuildParameterMonitoringPointOptions(ParameterMonitoringPointEnum? selected)
+    {
+        return new List<(string Text, bool Selected)>
+        {
+            ("Influent", selected == ParameterMonitoringPointEnum.Influent),
+            ("Effluent", selected == ParameterMonitoringPointEnum.Effluent),
+            ("Groundwater Lowering", selected == ParameterMonitoringPointEnum.GroundwaterLowering),
+            ("Surface Water", selected == ParameterMonitoringPointEnum.SurfaceWater)
+        };
+    }
+
+    private static void WriteMonitoringPointOptions(
+        IXLCell cell,
+        string label,
+        IReadOnlyList<(string Text, bool Selected)> options)
+    {
+        var richText = cell.GetRichText();
+        richText.ClearText();
+
+        richText.AddText($"{label}: ");
+
+        for (var i = 0; i < options.Count; i++)
+        {
+            var option = options[i];
+            var marker = option.Selected ? "\u2611" : "\u2610";
+            richText.AddText($"{marker} {option.Text}")
+                .SetFontSize(9)
+                .SetBold(false);
+
+            if (i < options.Count - 1)
+            {
+                richText.AddText("    ");
+            }
+        }
+    }
+
+    private static void PopulateSamplingFooterRows(IXLWorksheet worksheet, IReadOnlyDictionary<string, SamplingMetadata> samplingMetadataByParameterCode)
+    {
+        const int parameterCodeRow = 3;
+        const int samplingTypeRow = 40;
+        const int sampleFrequencyRow = 43;
+        const double footerFontSize = 9;
+
+        var startCol = XLHelper.GetColumnNumberFromLetter("D");
+        var endCol = XLHelper.GetColumnNumberFromLetter("S");
+
+        for (var colNum = startCol; colNum <= endCol; colNum++)
+        {
+            var col = XLHelper.GetColumnLetterFromNumber(colNum);
+            var parameterCode = worksheet.Cell($"{col}{parameterCodeRow}").GetString().Trim();
+
+            var samplingTypeCell = worksheet.Cell($"{col}{samplingTypeRow}");
+            var sampleFrequencyCell = worksheet.Cell($"{col}{sampleFrequencyRow}");
+
+            if (string.IsNullOrWhiteSpace(parameterCode) ||
+                !samplingMetadataByParameterCode.TryGetValue(parameterCode, out var metadata))
+            {
+                samplingTypeCell.Clear(XLClearOptions.Contents);
+                sampleFrequencyCell.Clear(XLClearOptions.Contents);
+                continue;
+            }
+
+            samplingTypeCell.Value = metadata.SamplingType;
+            samplingTypeCell.Style.Font.FontSize = footerFontSize;
+
+            sampleFrequencyCell.Value = metadata.SampleFrequency;
+            sampleFrequencyCell.Style.Font.FontSize = footerFontSize;
+        }
+    }
+
+    private static bool IsTemplateRowApplicableForMonth(FacilityPermitTemplateParameter row, int month)
+    {
+        var alwaysInclude = row.MeasurementFrequency is MeasurementFrequencyEnum.Daily
+            or MeasurementFrequencyEnum.Weekly
+            or MeasurementFrequencyEnum.Monthly
+            or MeasurementFrequencyEnum.Continuous;
+        if (alwaysInclude)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(row.ScheduledMonthsCsv))
+        {
+            return false;
+        }
+
+        var months = row.ScheduledMonthsCsv
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => int.TryParse(value, out var parsed) ? parsed : -1);
+        return months.Any(m => m == month);
+    }
+
+    private static string BuildDailyLimitText(FacilityPermitTemplateParameter row)
+    {
+        if (row.DailyMaximumLimit.HasValue)
+        {
+            return row.DailyMaximumLimit.Value.ToString("0.##");
+        }
+
+        if (row.DailyMinimumLimit.HasValue)
+        {
+            return row.DailyMinimumLimit.Value.ToString("0.##");
+        }
+
+        return string.Empty;
+    }
+
+    private static string BuildMonthlyLimitText(FacilityPermitTemplateParameter row)
+    {
+        if (row.MonthlyAverageLimit.HasValue)
+        {
+            return row.MonthlyAverageLimit.Value.ToString("0.##");
+        }
+
+        if (row.MonthlyGeometricMeanLimit.HasValue)
+        {
+            return row.MonthlyGeometricMeanLimit.Value.ToString("0.##");
+        }
+
+        return string.Empty;
+    }
+
+    private static decimal? AverageSampleForDay(IReadOnlyList<GWMonit> gwMonits, DateTime currentDate, Func<GWMonit, decimal?> selector)
+    {
+        var values = gwMonits
+            .Where(g => g.SampleDate.Date == currentDate.Date)
+            .Select(selector)
+            .Where(v => v.HasValue)
+            .Select(v => v!.Value)
+            .ToList();
+
+        return values.Count == 0 ? null : values.Average();
+    }
+
+    private static decimal? ResolveFallbackDailyValue(
+        string pcsCode,
+        DateTime currentDate,
+        WWChar? wwChar,
+        IReadOnlyList<GWMonit> gwMonits)
+    {
+        decimal? WwAt(IReadOnlyList<decimal?>? values)
+        {
+            if (values == null) return null;
+            var dayIndex = currentDate.Day - 1;
+            return dayIndex >= 0 && dayIndex < values.Count ? values[dayIndex] : null;
+        }
+
+        return pcsCode switch
+        {
+            "00310" => WwAt(wwChar?.BOD5Daily),
+            "00620" => AverageSampleForDay(gwMonits, currentDate, g => g.NO3N),
+            "00610" => AverageSampleForDay(gwMonits, currentDate, g => g.NH3N),
+            "00625" => AverageSampleForDay(gwMonits, currentDate, g => g.TKN),
+            "00400" => AverageSampleForDay(gwMonits, currentDate, g => g.PH),
+            "31616" => AverageSampleForDay(gwMonits, currentDate, g => g.FecalColiform),
+            "00940" => AverageSampleForDay(gwMonits, currentDate, g => g.Chloride),
+            "00665" => AverageSampleForDay(gwMonits, currentDate, g => g.TOC),
+            "00530" => AverageSampleForDay(gwMonits, currentDate, g => g.TSS),
+            "00600" => AverageSampleForDay(gwMonits, currentDate, g =>
+                (!g.TKN.HasValue && !g.NO3N.HasValue) ? null : (g.TKN ?? 0m) + (g.NO3N ?? 0m)),
+            _ => null
+        };
+    }
+
+    private static void SanitizeErrorCells(IXLWorksheet worksheet)
+    {
+        foreach (var cell in worksheet.RangeUsed()?.CellsUsed() ?? Enumerable.Empty<IXLCell>())
+        {
+            if (cell.DataType == XLDataType.Error)
+            {
+                cell.Clear(XLClearOptions.Contents);
+                continue;
+            }
+
+            if (cell.HasFormula)
+            {
+                var formula = cell.FormulaA1?.Trim();
+                if (string.IsNullOrWhiteSpace(formula))
+                {
+                    continue;
+                }
+
+                if (!formula.StartsWith("IFERROR(", StringComparison.OrdinalIgnoreCase))
+                {
+                    cell.FormulaA1 = $"IFERROR({formula},\"\")";
+                }
+            }
+        }
+    }
+
+    private static void PopulateSummaryRowsForChunk(
+        IXLWorksheet worksheet,
+        IReadOnlyList<NdmrParameterRow> chunk,
+        IReadOnlyList<string> codeSlots,
+        int daysInMonth,
+        int startRow)
+    {
+        const int averageRow = 37;
+        const int dailyMaxRow = 38;
+        const int dailyMinRow = 39;
+
+        for (var slot = 0; slot < codeSlots.Count; slot++)
+        {
+            var col = codeSlots[slot];
+            var avgCell = worksheet.Cell($"{col}{averageRow}");
+            var maxCell = worksheet.Cell($"{col}{dailyMaxRow}");
+            var minCell = worksheet.Cell($"{col}{dailyMinRow}");
+
+            avgCell.Clear(XLClearOptions.Contents);
+            maxCell.Clear(XLClearOptions.Contents);
+            minCell.Clear(XLClearOptions.Contents);
+
+            if (slot >= chunk.Count)
+            {
+                continue;
+            }
+
+            var values = new List<decimal>();
+            for (var day = 0; day < daysInMonth; day++)
+            {
+                var cell = worksheet.Cell($"{col}{startRow + day}");
+                if (!cell.TryGetValue<decimal>(out var numericValue))
+                {
+                    continue;
+                }
+                values.Add(numericValue);
+            }
+
+            if (values.Count == 0)
+            {
+                continue;
+            }
+
+            var parameter = chunk[slot];
+            decimal averageValue;
+            if (string.Equals(parameter.PcsCode, "31616", StringComparison.OrdinalIgnoreCase) && values.All(v => v > 0m))
+            {
+                // Fecal coliform average is represented as geometric mean when daily values are positive.
+                var logAverage = values.Select(v => Math.Log((double)v)).Average();
+                averageValue = (decimal)Math.Exp(logAverage);
+            }
+            else
+            {
+                averageValue = values.Average();
+            }
+
+            avgCell.Value = averageValue;
+            maxCell.Value = values.Max();
+            minCell.Value = values.Min();
+            avgCell.Style.NumberFormat.Format = "0.00";
+            maxCell.Style.NumberFormat.Format = "0.00";
+            minCell.Style.NumberFormat.Format = "0.00";
+        }
+    }
+
     /// <summary>
     /// Exports an NDMR Excel file for the specified NDAR-1 report.
     /// The NDAR-1 report is used only as a convenient way to select
@@ -166,132 +467,305 @@ public class NDMRService : INDMRService
         if (!File.Exists(templatePath))
             throw new FileNotFoundException($"Template file not found: {templatePath}");
 
+        var wwChar = await _context.WWChars
+            .Where(w => w.FacilityId == facility.Id &&
+                        (int)w.Month == month &&
+                        w.Year == year)
+            .FirstOrDefaultAsync();
+
         using var workbook = new XLWorkbook(templatePath);
 
         // PPI 001 worksheet (daily flow monitoring)
         var flowWorksheet = workbook.Worksheet("PPI 001");
+        var reportDate = new DateTime(year, month, 1);
+        var permit = await _facilityPermitResolver.ResolveForDateAsync(facility.Id, reportDate);
 
-        // Always write a consistent header for the flow sheet.
+        // Always write a consistent header for the master PPI sheet.
         WriteStandardHeader(
             flowWorksheet,
             facility,
             ndar1.Month,
             year,
-            "PPI 001",
-            "50050",
-            "Flow (GPD)",
-            "Flow Measuring Point");
+            "002",
+            "00310",
+            "BOD5 (mg/L)",
+            wwChar?.FlowMeasuringPoint,
+            wwChar?.ParameterMonitoringPoint);
+
+        if (permit != null)
+        {
+            flowWorksheet.Cell("C1").Value = $"{permit.PermitNumber} v{permit.PermitVersion}";
+        }
+
+        var permitTemplateRows = permit == null
+            ? new List<FacilityPermitTemplateParameter>()
+            : await _context.FacilityPermitTemplateParameters
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
+                .OrderBy(x => x.SortOrder)
+                .ThenBy(x => x.CreatedDate)
+                .ThenBy(x => x.Id)
+                .ToListAsync();
+        permitTemplateRows = permitTemplateRows
+            .Where(row => IsTemplateRowApplicableForMonth(row, month))
+            .ToList();
+        permitTemplateRows = permitTemplateRows
+            .Where(row => IsTemplateRowApplicableForMonth(row, month))
+            .ToList();
+
+        if (permitTemplateRows.Any())
+        {
+            var hasFlow = permitTemplateRows.Any(x =>
+                string.Equals(x.PcsParameterCatalog?.PcsCode, "50050", StringComparison.OrdinalIgnoreCase));
+            if (!hasFlow)
+            {
+                throw new BusinessRuleException("Permit template must include PCS code 50050 (Flow) for NDMR export.");
+            }
+        }
+
+        var parameterRows = permitTemplateRows
+            .Select(row =>
+            {
+                var code = row.PcsParameterCatalog?.PcsCode ?? string.Empty;
+                var name = row.ParameterDisplayOverride
+                    ?? row.PcsParameterCatalog?.UserFriendlyName
+                    ?? row.PcsParameterCatalog?.OfficialParameterName
+                    ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    name = string.IsNullOrWhiteSpace(code) ? string.Empty : $"PCS {code}";
+                }
+
+                var units = row.UnitsOverride
+                    ?? row.PcsParameterCatalog?.AcceptedUnits
+                    ?? string.Empty;
+
+                return new NdmrParameterRow
+                {
+                    TemplateRow = row,
+                    PcsCode = code,
+                    DisplayName = name,
+                    Units = units
+                };
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.PcsCode))
+            .ToList();
+
+        var defaultCodes = new List<string> { "50050", "00680", "78732", "82546", "00400", "00310", "00940", "50060", "31616", "00610", "00625", "00620", "00600", "00665", "70300", "00530" };
+        if (parameterRows.Count == 0)
+        {
+            parameterRows = defaultCodes.Select(code => new NdmrParameterRow
+            {
+                TemplateRow = new FacilityPermitTemplateParameter
+                {
+                    SampleType = SampleTypeEnum.Grab,
+                    MeasurementFrequency = MeasurementFrequencyEnum.Monthly
+                },
+                PcsCode = code,
+                DisplayName = $"PCS {code}",
+                Units = string.Empty
+            }).ToList();
+        }
+
+        var wwCharTemplateValues = wwChar == null
+            ? new List<WWCharTemplateValue>()
+            : await _context.WWCharTemplateValues
+                .Where(x => x.WWCharId == wwChar.Id && x.DayNo >= 1 && x.DayNo <= 31)
+                .ToListAsync();
+        var wwDailyValueByKey = wwCharTemplateValues
+            .GroupBy(x => (x.FacilityPermitTemplateParameterId, x.DayNo))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First().NumericValue);
 
         // Preload irrigation events and groundwater samples for the month
-        var irrigations = await _context.Irrigates
-            .Where(i => i.FacilityId == facility.Id &&
-                        i.IrrigationDate >= startDate &&
-                        i.IrrigationDate <= endDate)
-            .ToListAsync();
-
         var gwMonits = await _context.GWMonits
             .Where(g => g.FacilityId == facility.Id &&
                         g.SampleDate >= startDate &&
                         g.SampleDate <= endDate)
             .ToListAsync();
 
-        // Daily grid starts at row 6 (Day 1)
-        const int startRow = 6;
+        var operatorLogs = await _context.OperatorLogs
+            .Where(o => o.FacilityId == facility.Id &&
+                        o.LogDate >= startDate &&
+                        o.LogDate <= endDate)
+            .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+            .ThenByDescending(o => o.CreatedDate)
+            .ToListAsync();
 
-        // Populate flow values on PPI 001
-        for (int day = 1; day <= daysInMonth; day++)
+        var irrigationReport = await _context.IrrRprts
+            .Where(i => i.FacilityId == facility.Id &&
+                        (int)i.Month == month &&
+                        i.Year == year)
+            .OrderByDescending(i => i.UpdatedDate)
+            .FirstOrDefaultAsync();
+
+        var parameterChunks = parameterRows
+            .Select((row, idx) => new { row, idx })
+            .GroupBy(x => x.idx / 16)
+            .Select(g => g.Select(x => x.row).ToList())
+            .ToList();
+        if (parameterChunks.Count == 0)
         {
-            var currentDate = new DateTime(year, month, day);
-            var row = startRow + (day - 1);
-
-            // Column A: Day number
-            flowWorksheet.Cell($"A{row}").Value = day;
-
-            // Column D: Flow (GPD)
-            var dayIrrigations = irrigations
-                .Where(i => i.IrrigationDate.Date == currentDate.Date)
-                .ToList();
-
-            if (dayIrrigations.Any())
-            {
-                // Sum of total volume applied in gallons during the day.
-                // Interpreted as daily total flow (GPD) for NDMR purposes.
-                var totalGallons = dayIrrigations.Sum(i => i.TotalVolumeGallons);
-                flowWorksheet.Cell($"D{row}").Value = totalGallons;
-            }
-            else
-            {
-                // Leave blank if no flow recorded, but preserve template formatting.
-                flowWorksheet.Cell($"D{row}").Clear(XLClearOptions.Contents);
-            }
+            parameterChunks.Add(new List<NdmrParameterRow>());
         }
 
-        // Populate nitrogen PPIs (one parameter per sheet) using GWMonit data.
-        PopulateNitrogenPpi(
-            workbook,
-            sheetName: "PPI_TKN",
-            facility: facility,
-            monthEnum: ndar1.Month,
-            year: year,
-            ppiLabel: "PPI TKN",
-            parameterCode: "00625",
-            parameterName: "Total Kjeldahl Nitrogen (TKN) (mg/L)",
-            measuringPointLabel: "TKN Sample Point",
-            gwMonits: gwMonits,
-            daysInMonth: daysInMonth,
-            startRow: startRow,
-            selector: g => g.TKN);
+        var allPpiSheets = new List<IXLWorksheet>();
+        var firstSheet = flowWorksheet;
+        firstSheet.Name = "PPI 001";
+        allPpiSheets.Add(firstSheet);
+        for (var chunkIndex = 1; chunkIndex < parameterChunks.Count; chunkIndex++)
+        {
+            var nextSheet = firstSheet.CopyTo($"PPI 001 ({chunkIndex + 1})");
+            allPpiSheets.Add(nextSheet);
+        }
 
-        PopulateNitrogenPpi(
-            workbook,
-            sheetName: "PPI_NH3N",
-            facility: facility,
-            monthEnum: ndar1.Month,
-            year: year,
-            ppiLabel: "PPI NH3-N",
-            parameterCode: "00610",
-            parameterName: "Ammonia Nitrogen (NH3-N) (mg/L)",
-            measuringPointLabel: "NH3-N Sample Point",
-            gwMonits: gwMonits,
-            daysInMonth: daysInMonth,
-            startRow: startRow,
-            selector: g => g.NH3N);
+        var codeSlots = new[] { "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S" };
+        const int startRow = 6;
+        const int codeRow = 3;
+        const int nameRow = 4;
+        const int unitsRow = 5;
+        const int samplingTypeRow = 40;
+        const int monthlyLimitRow = 41;
+        const int dailyLimitRow = 42;
+        const int sampleFrequencyRow = 43;
 
-        PopulateNitrogenPpi(
-            workbook,
-            sheetName: "PPI_NO3N",
-            facility: facility,
-            monthEnum: ndar1.Month,
-            year: year,
-            ppiLabel: "PPI NO3-N",
-            parameterCode: "00620",
-            parameterName: "Nitrate Nitrogen (NO3-N) (mg/L)",
-            measuringPointLabel: "NO3-N Sample Point",
-            gwMonits: gwMonits,
-            daysInMonth: daysInMonth,
-            startRow: startRow,
-            selector: g => g.NO3N);
+        for (var chunkIndex = 0; chunkIndex < parameterChunks.Count; chunkIndex++)
+        {
+            var worksheet = allPpiSheets[chunkIndex];
+            var chunk = parameterChunks[chunkIndex];
 
-        // Total Nitrogen (as N) approximated as TKN + NO3-N
-        PopulateNitrogenPpi(
-            workbook,
-            sheetName: "PPI_TN",
-            facility: facility,
-            monthEnum: ndar1.Month,
-            year: year,
-            ppiLabel: "PPI TN",
-            parameterCode: "00600",
-            parameterName: "Total Nitrogen (as N) (mg/L)",
-            measuringPointLabel: "Total Nitrogen Sample Point",
-            gwMonits: gwMonits,
-            daysInMonth: daysInMonth,
-            startRow: startRow,
-            selector: g =>
+            WriteStandardHeader(
+                worksheet,
+                facility,
+                ndar1.Month,
+                year,
+                "002",
+                chunk.FirstOrDefault()?.PcsCode ?? "50050",
+                chunk.FirstOrDefault()?.DisplayName ?? "Flow",
+                wwChar?.FlowMeasuringPoint,
+                wwChar?.ParameterMonitoringPoint);
+
+            if (permit != null)
             {
-                if (!g.TKN.HasValue && !g.NO3N.HasValue)
-                    return null;
-                return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
-            });
+                worksheet.Cell("C1").Value = $"{permit.PermitNumber} v{permit.PermitVersion}";
+            }
+
+            for (var slot = 0; slot < codeSlots.Length; slot++)
+            {
+                var col = codeSlots[slot];
+                var codeCell = worksheet.Cell($"{col}{codeRow}");
+                var nameCell = worksheet.Cell($"{col}{nameRow}");
+                var unitCell = worksheet.Cell($"{col}{unitsRow}");
+                var samplingCell = worksheet.Cell($"{col}{samplingTypeRow}");
+                var monthlyLimitCell = worksheet.Cell($"{col}{monthlyLimitRow}");
+                var dailyLimitCell = worksheet.Cell($"{col}{dailyLimitRow}");
+                var frequencyCell = worksheet.Cell($"{col}{sampleFrequencyRow}");
+
+                codeCell.Clear(XLClearOptions.Contents);
+                nameCell.Clear(XLClearOptions.Contents);
+                unitCell.Clear(XLClearOptions.Contents);
+                samplingCell.Clear(XLClearOptions.Contents);
+                monthlyLimitCell.Clear(XLClearOptions.Contents);
+                dailyLimitCell.Clear(XLClearOptions.Contents);
+                frequencyCell.Clear(XLClearOptions.Contents);
+
+                if (slot >= chunk.Count)
+                {
+                    continue;
+                }
+
+                var parameter = chunk[slot];
+                codeCell.Value = parameter.PcsCode;
+                nameCell.Value = parameter.DisplayName;
+                unitCell.Value = parameter.Units;
+                samplingCell.Value = parameter.TemplateRow.SampleType.ToString();
+                frequencyCell.Value = parameter.TemplateRow.MeasurementFrequency.ToDisplayLabel();
+                monthlyLimitCell.Value = BuildMonthlyLimitText(parameter.TemplateRow);
+                dailyLimitCell.Value = BuildDailyLimitText(parameter.TemplateRow);
+            }
+
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                var currentDate = new DateTime(year, month, day);
+                var row = startRow + (day - 1);
+                worksheet.Cell($"A{row}").Value = day;
+
+                var dayOperatorLogs = operatorLogs
+                    .Where(o => o.LogDate.Date == currentDate.Date)
+                    .ToList();
+
+                if (dayOperatorLogs.Any())
+                {
+                    var firstLog = dayOperatorLogs
+                        .OrderBy(o => o.ArrivalTime)
+                        .First();
+                    var canonicalLog = dayOperatorLogs
+                        .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+                        .ThenByDescending(o => o.CreatedDate)
+                        .First();
+
+                    worksheet.Cell($"B{row}").Value = firstLog.ArrivalTime;
+                    worksheet.Cell($"B{row}").Style.NumberFormat.Format = "hh:mm";
+
+                    worksheet.Cell($"C{row}").Value = canonicalLog.TimeOnSiteHours;
+                    worksheet.Cell($"C{row}").Style.NumberFormat.Format = "0.00";
+                }
+                else
+                {
+                    worksheet.Cell($"B{row}").Clear(XLClearOptions.Contents);
+                    worksheet.Cell($"C{row}").Clear(XLClearOptions.Contents);
+                }
+
+                for (var slot = 0; slot < codeSlots.Length; slot++)
+                {
+                    var col = codeSlots[slot];
+                    var valueCell = worksheet.Cell($"{col}{row}");
+                    valueCell.Clear(XLClearOptions.Contents);
+
+                    if (slot >= chunk.Count)
+                    {
+                        continue;
+                    }
+
+                    var parameter = chunk[slot];
+                    decimal? value = null;
+                    if (parameter.TemplateRow.Id != Guid.Empty &&
+                        wwDailyValueByKey.TryGetValue((parameter.TemplateRow.Id, day), out var wwValue))
+                    {
+                        value = wwValue;
+                    }
+
+                    value ??= ResolveFallbackDailyValue(parameter.PcsCode, currentDate, wwChar, gwMonits);
+                    if (value.HasValue)
+                    {
+                        valueCell.Value = value.Value;
+                        valueCell.Style.NumberFormat.Format = "0.00";
+                    }
+                }
+            }
+
+            PopulateSummaryRowsForChunk(worksheet, chunk, codeSlots, daysInMonth, startRow);
+            SanitizeErrorCells(worksheet);
+        }
+
+        // Prevent ###### for high-count fecal values in summary cells.
+        if (flowWorksheet.Column("F").Width < 11)
+        {
+            flowWorksheet.Column("F").Width = 11;
+        }
+
+        WriteCertificationPage(workbook, facility, irrigationReport?.ComplianceStatus);
+
+        // Keep NDMR output focused on PPI 001 chunk pages + required supporting sheets.
+        // Remove legacy nitrogen PPI worksheets that are not part of the consolidated layout.
+        foreach (var sheetName in new[] { "PPI_TKN", "PPI_NH3N", "PPI_NO3N", "PPI_TN" })
+        {
+            var legacySheet = workbook.Worksheets.FirstOrDefault(ws =>
+                string.Equals(ws.Name, sheetName, StringComparison.OrdinalIgnoreCase));
+            if (legacySheet != null)
+            {
+                workbook.Worksheets.Delete(legacySheet.Name);
+            }
+        }
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -306,5 +780,64 @@ public class NDMRService : INDMRService
 
         return stream.ToArray();
     }
-}
 
+    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility, ComplianceStatusEnum? complianceStatus)
+    {
+        var certificationWorksheet = workbook.Worksheets
+            .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
+
+        if (certificationWorksheet == null && workbook.Worksheets.Count >= 2)
+        {
+            certificationWorksheet = workbook.Worksheet(2);
+        }
+
+        if (certificationWorksheet == null)
+        {
+            return;
+        }
+
+        var complianceSelectionText = complianceStatus switch
+        {
+            ComplianceStatusEnum.Compliant => "☑ Compliant    ☐ Non-Compliant",
+            ComplianceStatusEnum.NonCompliant => "☐ Compliant    ☑ Non-Compliant",
+            _ => "☐ Compliant    ☐ Non-Compliant"
+        };
+
+        var complianceQuestionText = certificationWorksheet.Cell("A4").GetString().Trim();
+        if (string.IsNullOrWhiteSpace(complianceQuestionText))
+        {
+            complianceQuestionText = "Does all monitoring data and sampling frequencies meet the requirements in Attachment A of your permit?";
+        }
+
+        var complianceCell = certificationWorksheet.Cell("A4");
+        var complianceRichText = complianceCell.GetRichText();
+        complianceRichText.ClearText();
+        complianceRichText.AddText($"{complianceQuestionText}    ");
+        complianceRichText.AddText(complianceSelectionText)
+            .SetFontSize(11)
+            .SetBold(false);
+
+        certificationWorksheet.Cell("C9").Value = facility.OrcName ?? string.Empty;
+        certificationWorksheet.Cell("D10").Value = facility.OperatorNumber ?? string.Empty;
+        certificationWorksheet.Cell("C11").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("G11").Value = facility.OperatorPhone ?? string.Empty;
+        certificationWorksheet.Cell("A12").Value = $"Has the ORC changed since the previous NDMR? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
+        certificationWorksheet.Cell("I13").Value = DateTime.Today.ToString("MM/dd/yyyy");
+
+        // Permittee certification section
+        certificationWorksheet.Cell("M9").Value = facility.Permittee ?? string.Empty;
+        certificationWorksheet.Cell("M10").Value = facility.OrcName ?? string.Empty;
+        certificationWorksheet.Cell("N11").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("M12").Value = facility.PermitPhone ?? string.Empty;
+        certificationWorksheet.Cell("R12").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
+        certificationWorksheet.Cell("R13").Value = DateTime.Today.ToString("MM/dd/yyyy");
+
+        // Sampling Person(s) and Certified Laboratories
+        var samplerNames = (facility.PersonsCollectingSamples ?? string.Empty)
+            .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        certificationWorksheet.Cell("C2").Value = samplerNames.Length > 0 ? samplerNames[0] : string.Empty;
+        certificationWorksheet.Cell("C3").Value = samplerNames.Length > 1 ? samplerNames[1] : string.Empty;
+        certificationWorksheet.Cell("L2").Value = facility.CertifiedLaboratory1Name ?? string.Empty;
+        certificationWorksheet.Cell("L3").Value = facility.CertifiedLaboratory2Name ?? string.Empty;
+    }
+}

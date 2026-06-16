@@ -76,8 +76,12 @@ public class FacilityViewModel
     [Display(Name = "Operator Number")]
     public string OperatorNumber { get; set; } = string.Empty;
 
+    [StringLength(50)]
+    [Display(Name = "Operator Phone")]
+    public string OperatorPhone { get; set; } = string.Empty;
+
     [Display(Name = "Change in ORC?")]
-    public bool? ChangeInOrc { get; set; }
+    public bool ChangeInOrc { get; set; }
 
     [Display(Name = "Total Number of Sprayfields")]
     public int? TotalNumberOfSprayfields { get; set; }
@@ -188,6 +192,10 @@ public class FacilityCreateViewModel
     [StringLength(50)]
     [Display(Name = "Operator Number")]
     public string? OperatorNumber { get; set; }
+
+    [StringLength(50)]
+    [Display(Name = "Operator Phone")]
+    public string? OperatorPhone { get; set; }
 
     [Display(Name = "Change in ORC?")]
     public bool ChangeInOrc { get; set; }
@@ -304,8 +312,12 @@ public class FacilityEditViewModel
     [Display(Name = "Operator Number")]
     public string? OperatorNumber { get; set; }
 
+    [StringLength(50)]
+    [Display(Name = "Operator Phone")]
+    public string? OperatorPhone { get; set; }
+
     [Display(Name = "Change in ORC?")]
-    public bool? ChangeInOrc { get; set; }
+    public bool ChangeInOrc { get; set; }
 
     [Display(Name = "Total Number of Sprayfields")]
     public int? TotalNumberOfSprayfields { get; set; }

@@ -16,13 +16,17 @@ namespace SAM.Controllers;
 [Authorize]
 public class DashboardController : BaseController
 {
+    private const decimal GallonsPerAcreInch = 27152m;
+    private const decimal WarningThresholdPercent = 75m;
+    private const decimal CriticalThresholdPercent = 90m;
+
     private readonly IFacilityService _facilityService;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly ICompanyService _companyService;
     private readonly IUserRequestService _userRequestService;
     private readonly IOperatorLogService _operatorLogService;
-    private readonly IIrrigateService _irrigateService;
+    private readonly IMonthlyApplicationService _monthlyApplicationService;
     private readonly IWWCharService _wwCharService;
     private readonly IGWMonitService _gwMonitService;
     private readonly IIrrRprtService _irrRprtService;
@@ -34,7 +38,7 @@ public class DashboardController : BaseController
         ICompanyService companyService,
         IUserRequestService userRequestService,
         IOperatorLogService operatorLogService,
-        IIrrigateService irrigateService,
+        IMonthlyApplicationService monthlyApplicationService,
         IWWCharService wwCharService,
         IGWMonitService gwMonitService,
         IIrrRprtService irrRprtService,
@@ -48,7 +52,7 @@ public class DashboardController : BaseController
         _companyService = companyService;
         _userRequestService = userRequestService;
         _operatorLogService = operatorLogService;
-        _irrigateService = irrigateService;
+        _monthlyApplicationService = monthlyApplicationService;
         _wwCharService = wwCharService;
         _gwMonitService = gwMonitService;
         _irrRprtService = irrRprtService;
@@ -97,10 +101,22 @@ public class DashboardController : BaseController
         var sprayfields = (await _sprayfieldService.GetAllAsync(companyId)).ToList();
         var monitoringWells = (await _monitoringWellService.GetAllAsync(companyId)).ToList();
         var recentLogs = (await _operatorLogService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
-        var recentIrrigations = (await _irrigateService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
+        var recentIrrigations = (await _monthlyApplicationService.GetAllAsync(companyId)).Where(a => a.ApplicationDate >= thirtyDaysAgo).ToList();
         var allWWChars = (await _wwCharService.GetAllAsync(companyId)).ToList();
         var recentGWMonits = (await _gwMonitService.GetByDateRangeAsync(companyId, thirtyDaysAgo, DateTime.UtcNow)).ToList();
         var reports = (await _irrRprtService.GetAllAsync(companyId)).ToList();
+
+        if (companyId.HasValue)
+        {
+            facilities = facilities.Where(f => f.CompanyId == companyId.Value).ToList();
+            sprayfields = sprayfields.Where(s => s.CompanyId == companyId.Value).ToList();
+            monitoringWells = monitoringWells.Where(w => w.CompanyId == companyId.Value).ToList();
+            recentLogs = recentLogs.Where(l => l.CompanyId == companyId.Value).ToList();
+            recentIrrigations = recentIrrigations.Where(a => a.CompanyId == companyId.Value).ToList();
+            allWWChars = allWWChars.Where(w => w.CompanyId == companyId.Value).ToList();
+            recentGWMonits = recentGWMonits.Where(g => g.CompanyId == companyId.Value).ToList();
+            reports = reports.Where(r => r.CompanyId == companyId.Value).ToList();
+        }
 
         viewModel.TotalFacilities = facilities.Count;
         viewModel.TotalSprayfields = sprayfields.Count;
@@ -219,7 +235,7 @@ public class DashboardController : BaseController
         }
         foreach (var irrigation in recentIrrigations.Take(5))
         {
-            activities.Add(new RecentActivityViewModel { Type = "Irrigation", Description = $"Irrigation completed on field {irrigation.Sprayfield?.FieldId ?? irrigation.SprayfieldId.ToString("N")}", Date = irrigation.CreatedDate, User = irrigation.CreatedBy });
+            activities.Add(new RecentActivityViewModel { Type = "Application", Description = "Zone application logged", Date = irrigation.CreatedDate, User = irrigation.CreatedBy });
         }
         foreach (var report in recentReports.Take(5))
         {
@@ -251,8 +267,85 @@ public class DashboardController : BaseController
         }
         viewModel.ComplianceSummaries = complianceSummaries;
 
+        // Phase 2: live field-wise NDAR decision support from canonical operational data.
+        var now = DateTime.UtcNow;
+        var currentMonthStart = new DateTime(now.Year, now.Month, 1);
+        var nextMonthStart = currentMonthStart.AddMonths(1);
+        var rollingWindowStart = currentMonthStart.AddMonths(-11);
+        var rollingWindowEndExclusive = nextMonthStart;
+
+        var visibleFacilityIds = facilities.Select(f => f.Id).ToHashSet();
+        sprayfields = sprayfields.Where(s => s.FacilityId.HasValue && visibleFacilityIds.Contains(s.FacilityId.Value)).ToList();
+
+        var applicationsForRollingWindow = (await _monthlyApplicationService.GetAllAsync(companyId))
+            .Where(a => !companyId.HasValue || a.CompanyId == companyId.Value)
+            .Where(a => visibleFacilityIds.Contains(a.FacilityId))
+            .Where(a => a.ApplicationDate >= rollingWindowStart && a.ApplicationDate < rollingWindowEndExclusive)
+            .ToList();
+
+        var sprayfieldById = sprayfields.ToDictionary(s => s.Id, s => s);
+        var facilityNameById = facilities.ToDictionary(f => f.Id, f => f.Name);
+
+        var currentMonthInchesByField = applicationsForRollingWindow
+            .Where(a => a.ApplicationDate >= currentMonthStart && a.ApplicationDate < nextMonthStart)
+            .GroupBy(a => a.SprayfieldId)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    if (!sprayfieldById.TryGetValue(g.Key, out var sf) || sf.SizeAcres <= 0m)
+                    {
+                        return 0m;
+                    }
+
+                    return g.Sum(a => a.VolumeGallons / (sf.SizeAcres * GallonsPerAcreInch));
+                });
+
+        var rolling12MonthInchesByField = applicationsForRollingWindow
+            .GroupBy(a => a.SprayfieldId)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    if (!sprayfieldById.TryGetValue(g.Key, out var sf) || sf.SizeAcres <= 0m)
+                    {
+                        return 0m;
+                    }
+
+                    return g.Sum(a => a.VolumeGallons / (sf.SizeAcres * GallonsPerAcreInch));
+                });
+
+        foreach (var sf in sprayfields.OrderBy(s => s.FacilityId).ThenBy(s => s.FieldId))
+        {
+            var annualLimit = sf.AnnualRateInches ?? sf.HydraulicLoadingLimitInPerYr;
+            var currentMonthInches = currentMonthInchesByField.TryGetValue(sf.Id, out var monthVal) ? monthVal : 0m;
+            var rolling12MonthInches = rolling12MonthInchesByField.TryGetValue(sf.Id, out var rollingVal) ? rollingVal : 0m;
+
+            var currentMonthUtilPct = annualLimit > 0m ? (currentMonthInches / annualLimit) * 100m : 0m;
+            var rolling12UtilPct = annualLimit > 0m ? (rolling12MonthInches / annualLimit) * 100m : 0m;
+            var annualUtilPct = rolling12UtilPct;
+
+            viewModel.FieldLoadingProgress.Add(new FieldLoadingProgressViewModel
+            {
+                FacilityId = sf.FacilityId ?? Guid.Empty,
+                FacilityName = sf.FacilityId.HasValue && facilityNameById.TryGetValue(sf.FacilityId.Value, out var facilityName)
+                    ? facilityName
+                    : "Unknown Facility",
+                SprayfieldId = sf.Id,
+                FieldCode = sf.FieldId,
+                AnnualLimitInches = annualLimit,
+                CurrentMonthLoadingInches = currentMonthInches,
+                Rolling12MonthLoadingInches = rolling12MonthInches,
+                CurrentMonthUtilizationPercent = currentMonthUtilPct,
+                Rolling12MonthUtilizationPercent = rolling12UtilPct,
+                CurrentMonthStatus = ToThresholdStatus(currentMonthUtilPct),
+                Rolling12MonthStatus = ToThresholdStatus(rolling12UtilPct),
+                AnnualStatus = ToThresholdStatus(annualUtilPct)
+            });
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.SelectedCompanyId = selectedCompanyId;
+        ViewBag.SelectedCompanyId = companyId;
 
         var companyName = "All Companies";
         if (companyId.HasValue)
@@ -263,8 +356,23 @@ public class DashboardController : BaseController
 
         viewModel.SelectedCompanyName = companyName;
         ViewData["TitleIcon"] = "speedometer2";
-        ViewData["PageSubtitle"] = $"{companyName} - Environmental Monitoring Overview";
+        ViewData["PageSubtitle"] = "Environmental Monitoring Overview";
 
         return View(viewModel);
+    }
+
+    private static string ToThresholdStatus(decimal utilizationPercent)
+    {
+        if (utilizationPercent >= CriticalThresholdPercent)
+        {
+            return "Critical";
+        }
+
+        if (utilizationPercent >= WarningThresholdPercent)
+        {
+            return "Warning";
+        }
+
+        return "Normal";
     }
 }

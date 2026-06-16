@@ -6,6 +6,13 @@
     ViewData["Title"] = "Groundwater Monitoring Details";
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
+    string Yn(bool? v) => !v.HasValue ? "Unanswered" : (v.Value ? "Yes" : "No");
+    var hasVocFile = !string.IsNullOrWhiteSpace(Model.VOCReportFileName);
+    var vocFileStatus = !hasVocFile
+        ? "No VOC PDF uploaded."
+        : Model.VOCReportAttached
+            ? "VOC PDF is uploaded and attached to the GW-59 report."
+            : "VOC PDF is uploaded but not attached to the GW-59 report.";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -15,23 +22,6 @@
     <div class="d-flex align-items-center gap-2">
         @if (canEdit)
         {
-            <div class="dropdown">
-                <button class="btn btn-success dropdown-toggle" type="button" id="gwMonitReportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-download"></i> Generate Report
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="gwMonitReportDropdown">
-                    <li>
-                        <a class="dropdown-item" asp-action="GWMonitReport" asp-route-id="@Model.Id">
-                            <i class="bi bi-file-earmark-text me-1"></i> GW-59 Report
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" asp-action="GWMonitReportPdf" asp-route-id="@Model.Id">
-                            <i class="bi bi-file-earmark-pdf me-1"></i> GW-59 PDF
-                        </a>
-                    </li>
-                </ul>
-            </div>
             <a asp-action="GWMonitEdit" asp-route-id="@Model.Id" class="btn btn-primary">
                 <i class="bi bi-pencil"></i> Edit
             </a>
@@ -41,6 +31,27 @@
         </a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                var tooltipContainer = el.closest('.fixed-height-table-wrapper') || el.closest('.card-body') || document.body;
+                var existing = bootstrap.Tooltip.getInstance(el);
+                if (existing) {
+                    existing.dispose();
+                }
+
+                new bootstrap.Tooltip(el, {
+                    container: tooltipContainer,
+                    trigger: 'hover focus',
+                    boundary: 'viewport',
+                    fallbackPlacements: ['top', 'bottom', 'right', 'left']
+                });
+            });
+        });
+    </script>
+}
 
 <div class="card">
     <div class="card-body">
@@ -60,16 +71,45 @@
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-briefcase me-1"></i>Company:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.CompanyName ?? "N/A")</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-collection me-1"></i>Metals Unfiltered:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.MetalsSamplesCollectedUnfiltered switch { true => "Yes", false => "No", _ => "Not set" })</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-fill me-1"></i>Metal Samples Field Acidified:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.MetalSamplesFieldAcidified switch { true => "Yes", false => "No", _ => "Not set" })</dd>
                 </dl>
             </div>
             <div class="col-md-6">
                 <h5 class="detail-section-label mb-4">Sample Information</h5>
                 <dl class="row">
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-arrows-vertical me-1"></i>Sample Depth:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.SampleDepth?.ToString("F2") ?? "N/A") feet</dd>
+                    @* <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-arrows-vertical me-1"></i>Sample Depth:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.SampleDepth?.ToString("F2") ?? "N/A") feet</dd> *@
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-half me-1"></i>Water Level:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.WaterLevel?.ToString("F2") ?? "N/A") feet</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-layers me-1"></i>Well Depth:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.WellDepthFeet?.ToString("F2") ?? "N/A") ft</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-circle me-1"></i>Well Diameter:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.DiameterInches?.ToString("F2") ?? "N/A") in</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Measuring Point:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.MeasuringPointAboveLandSurface?.ToString("F2") ?? "N/A") ft above land surface</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-arrows-collapse-vertical me-1"></i>Relative M.P. Elevation:</dt>
+                    <dd class="col-sm-7 mb-2">@(Model.RelativeMpElevation?.ToString("F2") ?? "N/A") ft</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-distribute-horizontal me-1"></i>Screened Interval:</dt>
+                    <dd class="col-sm-7 mb-2">
+                        @if (Model.ScreenedIntervalFromFeet.HasValue || Model.ScreenedIntervalToFeet.HasValue)
+                        {
+                            @($"{Model.ScreenedIntervalFromFeet?.ToString("F2") ?? "?"} to {Model.ScreenedIntervalToFeet?.ToString("F2") ?? "?"} ft")
+                        }
+                        else
+                        {
+                            @:N/A
+                        }
+                    </dd>
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-thermometer-half me-1"></i>Temperature:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.Temperature?.ToString("F1") ?? "N/A") °C</dd>
@@ -96,47 +136,41 @@
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-lightning-charge me-1"></i>Specific Conductance:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.Conductivity?.ToString("F2") ?? "N/A") μS/cm</dd>
 
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-cloud me-1"></i>Turbidity:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.Turbidity?.ToString("F2") ?? "N/A") NTU</dd>
                 </dl>
             </div>
             <div class="col-md-6">
-                <h5 class="detail-section-label mb-4">Chemical Parameters</h5>
+                <h5 class="detail-section-label mb-4">Permit Template Parameters</h5>
                 <div class="rounded p-3 bg-light">
-                <dl class="row">
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>TSS:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.TSS?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>NH3-N:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.NH3N?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>NO3-N:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.NO3N?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>TKN:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.TKN?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>TDS:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.TDS?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>Chloride:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.Chloride?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>TOC:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.TOC?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>Calcium:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.Calcium?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet me-1"></i>Magnesium:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.Magnesium?.ToString("F2") ?? "N/A") mg/L</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-collection me-1"></i>Metals Unfiltered:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.MetalsSamplesCollectedUnfiltered ? "Yes" : "No")</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-droplet-fill me-1"></i>Metal Samples Field Acidified:</dt>
-                    <dd class="col-sm-7 mb-2">@(Model.MetalSamplesFieldAcidified ? "Yes" : "No")</dd>
-                </dl>
+                    @if (Model.TemplateParameters.Any(p => p.EnteredValue.HasValue))
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>PCS</th>
+                                        <th>Parameter</th>
+                                        <th>Units</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var parameter in Model.TemplateParameters.Where(p => p.EnteredValue.HasValue))
+                                {
+                                    <tr>
+                                        <td>@parameter.PcsCode</td>
+                                        <td>@parameter.ParameterName</td>
+                                        <td>@parameter.Units</td>
+                                        <td>@parameter.EnteredValue?.ToString("0.######")</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No permit-template chemistry values were saved for this record.</span>
+                    }
                 </div>
             </div>
         </div>
@@ -151,6 +185,33 @@
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-upc me-1"></i>VOC Method #:</dt>
                     <dd class="col-sm-7 mb-2">@(!string.IsNullOrWhiteSpace(Model.VOCMethodNumber) ? Model.VOCMethodNumber : "N/A")</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-paperclip me-1"></i>VOC File:</dt>
+                    <dd class="col-sm-7 mb-2">@(hasVocFile ? Model.VOCReportFileName : "N/A")</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-info-circle me-1"></i>VOC File Status:</dt>
+                    <dd class="col-sm-7 mb-2">@vocFileStatus</dd>
+
+                    @if (hasVocFile)
+                    {
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-download me-1"></i>VOC File Access:</dt>
+                        <dd class="col-sm-7 mb-2">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a class="btn btn-outline-secondary btn-sm"
+                                   asp-action="GWMonitVocReportPdf"
+                                   asp-route-id="@Model.Id"
+                                   target="_blank" rel="noopener">
+                                    View VOC PDF
+                                </a>
+                                <a class="btn btn-outline-primary btn-sm"
+                                   asp-action="GWMonitVocReportPdf"
+                                   asp-route-id="@Model.Id"
+                                   asp-route-download="true">
+                                    Download VOC PDF
+                                </a>
+                            </div>
+                        </dd>
+                    }
                 </dl>
             </div>
             <div class="col-md-6">
@@ -178,6 +239,67 @@
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-person-badge me-1"></i>Analyzed By:</dt>
                     <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.AnalyzedBy) ? "N/A" : Model.AnalyzedBy)</dd>
+                </dl>
+            </div>
+        </div>
+        </div>
+        <div class="border-top pt-3 mt-3">
+        <div class="row">
+            <div class="col-12">
+                <h5 class="detail-section-label mb-4">GW-59A Compliance</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-5 mb-2 text-muted">Due Date (Q1):</dt>
+                            <dd class="col-sm-7 mb-2">@(Model.GW59ADueDate?.ToString("MM/dd/yyyy") ?? "N/A")</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">Q1 Response:</dt>
+                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion1Response)</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">Q2 Response:</dt>
+                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion2Response)</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">Q3 Response:</dt>
+                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion3Response)</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">Q4 Response:</dt>
+                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion4Response)</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">Q5 Response:</dt>
+                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion5Response)</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">Q6 Response:</dt>
+                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion6Response)</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">Q7 Response:</dt>
+                            <dd class="col-sm-7 mb-2">@Yn(Model.GW59AQuestion7Response)</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-5 mb-2 text-muted">GW-59A Signer Name:</dt>
+                            <dd class="col-sm-7 mb-2">@(string.IsNullOrWhiteSpace(Model.GW59ASignerName) ? "N/A" : Model.GW59ASignerName)</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">GW-59A Signer Title:</dt>
+                            <dd class="col-sm-7 mb-2">@(string.IsNullOrWhiteSpace(Model.GW59ASignerTitle) ? "N/A" : Model.GW59ASignerTitle)</dd>
+
+                            <dt class="col-sm-5 mb-2 text-muted">GW-59A Signed Date:</dt>
+                            <dd class="col-sm-7 mb-2">@(Model.GW59ASignedDate?.ToString("MM/dd/yyyy") ?? "N/A")</dd>
+                        </dl>
+                    </div>
+                </div>
+                <dl class="row">
+                    <dt class="col-sm-2 mb-2 text-muted">Q2 Details:</dt>
+                    <dd class="col-sm-10 mb-2 text-break">@(string.IsNullOrWhiteSpace(Model.GW59AQuestion2Details) ? "N/A" : Model.GW59AQuestion2Details)</dd>
+
+                    <dt class="col-sm-2 mb-2 text-muted">Q4 Details:</dt>
+                    <dd class="col-sm-10 mb-2 text-break">@(string.IsNullOrWhiteSpace(Model.GW59AQuestion4Details) ? "N/A" : Model.GW59AQuestion4Details)</dd>
+
+                    <dt class="col-sm-2 mb-2 text-muted">Q5 Details:</dt>
+                    <dd class="col-sm-10 mb-2 text-break">@(string.IsNullOrWhiteSpace(Model.GW59AQuestion5Details) ? "N/A" : Model.GW59AQuestion5Details)</dd>
+
+                    <dt class="col-sm-2 mb-2 text-muted">Q7 Details:</dt>
+                    <dd class="col-sm-10 mb-2 text-break">@(string.IsNullOrWhiteSpace(Model.GW59AQuestion7Details) ? "N/A" : Model.GW59AQuestion7Details)</dd>
                 </dl>
             </div>
         </div>

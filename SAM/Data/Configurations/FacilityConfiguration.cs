@@ -58,6 +58,9 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
         builder.Property(f => f.OperatorNumber)
             .HasMaxLength(50);
 
+        builder.Property(f => f.OperatorPhone)
+            .HasMaxLength(50);
+
         builder.Property(f => f.CertifiedLaboratory1Name)
             .HasMaxLength(200);
 

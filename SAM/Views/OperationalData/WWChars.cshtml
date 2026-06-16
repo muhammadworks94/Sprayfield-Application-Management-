@@ -1,62 +1,133 @@
-@model IEnumerable<SAM.ViewModels.OperationalData.WWCharViewModel>
+@model SAM.ViewModels.OperationalData.WWCharsIndexViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Wastewater Characteristics";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
+    var facilities = Model.Facilities;
+    var selectedFacilityId = Model.Filter.FacilityId;
+    var selectedMonth = Model.Filter.Month;
+    var selectedYear = Model.Filter.Year;
+    var items = Model.WWChars.Items;
+    var totalPages = Model.WWChars.TotalPages;
+    var currentPage = Model.WWChars.Page;
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
+
+    string NextSortDir(string column) =>
+        string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(Model.Sort.SortDir, "asc", StringComparison.OrdinalIgnoreCase)
+            ? "desc"
+            : "asc";
+
+    bool IsActiveSort(string column) => string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase);
+
+    var periodNextSortDir = NextSortDir("period");
+    var facilityNextSortDir = NextSortDir("facility");
+    var monthNextSortDir = NextSortDir("month");
+    var yearNextSortDir = NextSortDir("year");
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+@section PageTitleExtra {
+    <button class="btn btn-sm btn-outline-secondary"
+            type="button"
+            id="toggleWwCharFilters"
+            data-bs-toggle="collapse"
+            data-bs-target="#wwCharFiltersCollapse"
+            aria-expanded="false"
+            aria-controls="wwCharFiltersCollapse">
+        <i class="bi bi-funnel me-1"></i><span>Show Filters</span>
+    </button>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">Record and monitor wastewater characteristics</p>
     </div>
-   
 </div>
-<div class="card mb-3">
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
-                <select name="facilityId" id="facilityId" class="form-select" data-auto-submit="true">
-                    <option value="">All Facilities</option>
-                    @if (facilities != null)
-                    {
-                        @foreach (var facility in facilities)
+
+<div class="collapse mb-3" id="wwCharFiltersCollapse">
+    <div class="card">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
+                    <select name="facilityId" id="facilityId" class="form-select">
+                        <option value="">All Facilities</option>
+                        @if (facilities != null)
                         {
-                            <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
-                                @facility.Text
-                            </option>
+                            @foreach (var facility in facilities)
+                            {
+                                <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
+                                    @facility.Text
+                                </option>
+                            }
                         }
-                    }
-                </select>
-            </div>
-        </form>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="month" class="form-label"><i class="bi bi-calendar-month me-1"></i>Month:</label>
+                    <select name="month" id="month" class="form-select">
+                        <option value="">All Months</option>
+                        @for (var m = 1; m <= 12; m++)
+                        {
+                            var monthName = new DateTime(2000, m, 1).ToString("MMMM");
+                            <option value="@m" selected="@(selectedMonth.HasValue && selectedMonth.Value == m)">@monthName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="year" class="form-label"><i class="bi bi-calendar3 me-1"></i>Year:</label>
+                    <input type="number" placeholder="Year" id="year" name="year" min="2000" max="2100" class="form-control" value="@(selectedYear?.ToString() ?? string.Empty)" />
+                </div>
+                <div class="col-md-2">
+                    <label for="pageSize" class="form-label">Size:</label>
+                    <select name="pageSize" id="pageSize" class="form-select">
+                        @foreach (var size in new[] { 25, 50, 100, 200 })
+                        {
+                            if (Model.Filter.PageSize == size)
+                            {
+                                <option value="@size" selected>@size</option>
+                            }
+                            else
+                            {
+                                <option value="@size">@size</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
+                    <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
+                    <input type="hidden" name="page" value="1" />
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> Apply
+                    </button>
+                    <a asp-action="WWChars" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-5">
+        <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
             <h4 class="mb-0"> Wastewater Characteristics List</h4>
-            <div class="d-flex">
+            <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-                    <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-                        <button type="button"
-                                class="btn btn-outline-secondary btn-sm active"
-                                id="wwcharsTableViewBtn">
-                            <i class="bi bi-table"></i> Table
-                        </button>
-                        <button type="button"
-                                class="btn btn-outline-secondary btn-sm"
-                                id="wwcharsCardViewBtn">
-                            <i class="bi bi-grid-3x3-gap"></i> Cards
-                        </button>
-                    </div>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm active"
+                            id="wwcharsTableViewBtn">
+                        <i class="bi bi-table"></i> Table
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="wwcharsCardViewBtn">
+                        <i class="bi bi-grid-3x3-gap"></i> Cards
+                    </button>
                 </div>
                 @if (canEdit)
                 {
@@ -66,43 +137,74 @@
                 }
             </div>
         </div>
-        @if (Model.Any())
+        @if (items.Any())
         {
-            <div id="wwcharsTableView" class="table-responsive">
+            <div id="wwcharsTableView" class="table-responsive responsive-table">
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th> Facility</th>
-                            <th>Month</th>
-                            <th>Year</th>
-                            @* <th><i class="bi bi-award"></i> Lab Certification</th> *@
-                            @* <th><i class="bi bi-person"></i> Collected By</th> *@
-                            @* <th><i class="bi bi-person-check"></i> Analyzed By</th> *@
-                            @if (isGlobalAdmin)
-                            {
-                                <th> Company</th>
-                            }
+                            <th>
+                                <a asp-action="WWChars"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="facility"
+                                   asp-route-sortDir="@facilityNextSortDir">Facility
+                                    @if (IsActiveSort("facility"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="WWChars"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="month"
+                                   asp-route-sortDir="@monthNextSortDir">Month
+                                    @if (IsActiveSort("month"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="WWChars"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="year"
+                                   asp-route-sortDir="@yearNextSortDir">Year
+                                    @if (IsActiveSort("year"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
                             <th class="table-actions"> Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var wwChar in Model)
+                        @foreach (var wwChar in items)
                         {
                             <tr>
-                                <td>@wwChar.FacilityName</td>
+                                <td>
+                                    <a asp-action="WWCharDetails"
+                                       asp-route-id="@wwChar.Id"
+                                       style="color: #0d6efd; cursor: pointer; text-decoration: none;">
+                                        @wwChar.FacilityName
+                                    </a>
+                                </td>
                                 <td>@wwChar.Month</td>
                                 <td>@wwChar.Year</td>
-                                @* <td>@(string.IsNullOrEmpty(wwChar.LabCertification) ? "-" : wwChar.LabCertification)</td> *@
-                                @* <td>@(string.IsNullOrEmpty(wwChar.CollectedBy) ? "-" : wwChar.CollectedBy)</td> *@
-                                @* <td>@(string.IsNullOrEmpty(wwChar.AnalyzedBy) ? "-" : wwChar.AnalyzedBy)</td> *@
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@wwChar.CompanyName</td>
-                                }
                                 <td class="table-actions">
-                                    <a asp-action="WWCharDetails" asp-route-id="@wwChar.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
                                     @if (canEdit)
                                     {
                                         <a asp-action="WWCharEdit" asp-route-id="@wwChar.Id" class="btn btn-sm btn-outline-secondary">
@@ -111,7 +213,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(wwChar.Id.ToString().Replace("-", ""))">
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
-                                        
+
                                         <div class="modal fade" id="deleteModal@(wwChar.Id.ToString().Replace("-", ""))" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog">
                                                 <div class="modal-content">
@@ -120,8 +222,8 @@
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                     </div>
                                                     <div class="modal-body">
-                                                        <p>Are you sure you want to delete this wastewater characteristics record?</p>
-                                                        <p class="text-muted small">Facility: @wwChar.FacilityName<br />
+                                                        <p class="text-break mb-2" style="white-space: normal;">Are you sure you want to delete this wastewater characteristics record?</p>
+                                                        <p class="text-muted small text-break mb-0" style="white-space: normal;">Facility: @wwChar.FacilityName<br />
                                                         Period: @wwChar.Month @wwChar.Year</p>
                                                     </div>
                                                     <div class="modal-footer">
@@ -142,8 +244,8 @@
                 </table>
             </div>
 
-            <div id="wwcharsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var wwChar in Model)
+            <div id="wwcharsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
+                @foreach (var wwChar in items)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
@@ -156,9 +258,8 @@
                                 </div>
                             </div>
                             <div class="card-body d-flex flex-column">
-                                
 
-                                <dl class="row small mb-3">
+                                <dl class="row small mb-3 responsive-detail-list">
                                     <dt class="col-5"><i class="bi bi-award me-1"></i>Lab Cert.</dt>
                                     <dd class="col-7 mb-1">@((string.IsNullOrEmpty(wwChar.LabCertification) ? "-" : wwChar.LabCertification))</dd>
 
@@ -167,12 +268,6 @@
 
                                     <dt class="col-5"><i class="bi bi-person-check me-1"></i>Analyzed By</dt>
                                     <dd class="col-7 mb-1">@((string.IsNullOrEmpty(wwChar.AnalyzedBy) ? "-" : wwChar.AnalyzedBy))</dd>
-
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-7 mb-1">@wwChar.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-between">
@@ -196,6 +291,28 @@
                     </div>
                 }
             </div>
+
+            @if (totalPages > 1)
+            {
+                <nav class="mt-3">
+                    <ul class="pagination">
+                        @for (var pageNumber = 1; pageNumber <= totalPages; pageNumber++)
+                        {
+                            <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                                <a class="page-link"
+                                   asp-action="WWChars"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-month="@Model.Filter.Month"
+                                   asp-route-year="@Model.Filter.Year"
+                                   asp-route-page="@pageNumber"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="@Model.Sort.SortBy"
+                                   asp-route-sortDir="@Model.Sort.SortDir">@pageNumber</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
         }
         else
         {
@@ -237,7 +354,7 @@
             const cardBtn = document.getElementById('wwcharsCardViewBtn');
             const tableView = document.getElementById('wwcharsTableView');
             const cardView = document.getElementById('wwcharsCardView');
-            const storageKey = 'viewMode';
+            const storageKey = 'wwcharsViewMode';
 
             function setViewMode(mode) {
                 const isTable = mode === 'table';
@@ -269,7 +386,31 @@
             cardBtn?.addEventListener('click', function () {
                 setViewMode('card');
             });
+
+            const filterToggleBtn = document.getElementById('toggleWwCharFilters');
+            const filterCollapseElement = document.getElementById('wwCharFiltersCollapse');
+            if (filterToggleBtn && filterCollapseElement && typeof bootstrap !== 'undefined') {
+                const filterCollapse = bootstrap.Collapse.getOrCreateInstance(filterCollapseElement, { toggle: false });
+                const label = filterToggleBtn.querySelector('span');
+
+                function setFilterToggleState(isExpanded) {
+                    filterToggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                    if (label) {
+                        label.textContent = isExpanded ? 'Hide Filters' : 'Show Filters';
+                    }
+                }
+
+                filterCollapse.hide();
+                setFilterToggleState(false);
+
+                filterCollapseElement.addEventListener('shown.bs.collapse', function () {
+                    setFilterToggleState(true);
+                });
+
+                filterCollapseElement.addEventListener('hidden.bs.collapse', function () {
+                    setFilterToggleState(false);
+                });
+            }
         });
     </script>
 }
-

@@ -5,7 +5,9 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 using SAM.Domain.Entities.Base;
+using SAM.Services.Helpers;
 
 namespace SAM.Services.Implementations;
 
@@ -16,20 +18,17 @@ public class IrrRprtService : IIrrRprtService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<IrrRprtService> _logger;
-    private readonly IIrrigateService _irrigateService;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IPANCalculationService _panCalculationService;
 
     public IrrRprtService(
         ApplicationDbContext context,
         ILogger<IrrRprtService> logger,
-        IIrrigateService irrigateService,
         ISprayfieldService sprayfieldService,
         IPANCalculationService panCalculationService)
     {
         _context = context;
         _logger = logger;
-        _irrigateService = irrigateService;
         _sprayfieldService = sprayfieldService;
         _panCalculationService = panCalculationService;
     }
@@ -190,15 +189,14 @@ public class IrrRprtService : IIrrRprtService
         var startDate = new DateTime(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
-        var irrigations = await _context.Irrigates
-            .Include(i => i.Sprayfield)
-            .ThenInclude(s => s.Crop)
-            .Where(i => i.FacilityId == facilityId &&
-                       i.IrrigationDate >= startDate &&
-                       i.IrrigationDate <= endDate)
+        var applications = await _context.MonthlyApplications
+            .Include(a => a.Sprayfield)
+            .Where(a => a.FacilityId == facilityId &&
+                       a.ApplicationDate >= startDate &&
+                       a.ApplicationDate <= endDate)
             .ToListAsync();
 
-        if (!irrigations.Any())
+        if (!applications.Any())
             throw new BusinessRuleException($"No irrigation records found for facility {facility.Name} for {((MonthEnum)month)} {year}.");
 
         // Get sprayfields for this facility
@@ -206,8 +204,8 @@ public class IrrRprtService : IIrrRprtService
         var sprayfieldList = sprayfields.ToList();
 
         // Calculate aggregations
-        var totalVolumeApplied = irrigations.Sum(i => i.TotalVolumeGallons);
-        var totalAcres = sprayfieldList.Sum(s => s.SizeAcres);
+        var totalVolumeApplied = applications.Sum(i => i.VolumeGallons);
+        var totalAcres = sprayfieldList.Sum(SprayfieldReportHelper.GetReportAcres);
         var totalApplicationRate = totalAcres > 0 ? totalVolumeApplied / (totalAcres * 27152m) : 0; // Convert gallons to inches (1 acre-inch = 27,152 gallons)
 
         // Calculate hydraulic loading rate (inches per year, annualized from monthly)
@@ -216,20 +214,46 @@ public class IrrRprtService : IIrrRprtService
         // Calculate nitrogen loading rate from WWChar data if available
         var wwChar = await _context.WWChars
             .FirstOrDefaultAsync(w => w.FacilityId == facilityId && (int)w.Month == month && w.Year == year);
+        List<WWCharTemplateValue> wwCharTemplateValues = new();
+        Dictionary<Guid, string> pcsByTemplateParameterId = new();
+        if (wwChar != null)
+        {
+            wwCharTemplateValues = await _context.WWCharTemplateValues
+                .Where(x => x.WWCharId == wwChar.Id)
+                .ToListAsync();
+
+            var templateParameterIds = wwCharTemplateValues
+                .Select(x => x.FacilityPermitTemplateParameterId)
+                .Distinct()
+                .ToList();
+            if (templateParameterIds.Count > 0)
+            {
+                pcsByTemplateParameterId = await _context.FacilityPermitTemplateParameters
+                    .Include(x => x.PcsParameterCatalog)
+                    .Where(x => templateParameterIds.Contains(x.Id))
+                    .ToDictionaryAsync(
+                        x => x.Id,
+                        x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty);
+            }
+        }
 
         decimal nitrogenLoadingRate = 0m;
         decimal panUptakeRate = 0m;
 
-        if (wwChar != null && wwChar.NH3NDaily != null && wwChar.NH3NDaily.Any())
+        var nh3Values = wwChar?.NH3NDaily?
+            .Where(v => v.HasValue)
+            .Select(v => v!.Value)
+            .ToList() ?? new List<decimal>();
+
+        var avgNH3N = nh3Values.Count > 0 ? nh3Values.Average() : (decimal?)null;
+
+        if (avgNH3N.HasValue)
         {
-            // Calculate average NH3N concentration (mg/L)
-            var avgNH3N = wwChar.NH3NDaily.Where(v => v.HasValue).Average(v => v.Value);
-            
             // Convert to lbs/acre/year: (mg/L * gallons * 8.34) / (acres * 1,000,000) * 12 months
             // Simplified: assuming average concentration applies to all applied volume
             if (totalAcres > 0)
             {
-                nitrogenLoadingRate = (avgNH3N * totalVolumeApplied * 8.34m) / (totalAcres * 1000000m) * 12m;
+                nitrogenLoadingRate = (avgNH3N.Value * totalVolumeApplied * 8.34m) / (totalAcres * 1000000m) * 12m;
             }
         }
 
@@ -238,23 +262,34 @@ public class IrrRprtService : IIrrRprtService
         {
             var mr = (facility.MineralizationRatePercent ?? 40m) / 100m;
             var vr = (facility.VolatilizationRatePercent ?? 50m) / 100m;
-            var tkn = wwChar?.TKNN ?? 0m;
-            var nh3 = wwChar?.NH3NDaily != null && wwChar.NH3NDaily.Any(v => v.HasValue)
-                ? wwChar.NH3NDaily.Where(v => v.HasValue).Average(v => v!.Value)
-                : 0m;
-            var no2 = wwChar?.NO2N ?? 0m;
-            var no3 = wwChar?.NO3N ?? 0m;
+            var tkn = wwChar == null
+                ? 0m
+                : WWCharChemistryResolver.AverageTemplateValueForPcs(
+                    wwChar.Id,
+                    WWCharChemistryResolver.TknPcsCode,
+                    wwCharTemplateValues,
+                    pcsByTemplateParameterId) ?? wwChar.TKNN ?? 0m;
+            var nh3 = avgNH3N ?? 0m;
+            var no2 = 0m;
+            var no3 = wwChar == null
+                ? 0m
+                : WWCharChemistryResolver.AverageTemplateValueForPcs(
+                    wwChar.Id,
+                    WWCharChemistryResolver.No3PcsCode,
+                    wwCharTemplateValues,
+                    pcsByTemplateParameterId) ?? wwChar.NO3N ?? 0m;
 
-            var volumeBySprayfield = irrigations
+            var volumeBySprayfield = applications
                 .GroupBy(i => i.SprayfieldId)
-                .ToDictionary(g => g.Key, g => g.Sum(i => i.TotalVolumeGallons));
+                .ToDictionary(g => g.Key, g => g.Sum(i => i.VolumeGallons));
 
             decimal totalPanLbs = 0m;
             foreach (var sprayfield in sprayfieldList)
             {
                 var volume = volumeBySprayfield.GetValueOrDefault(sprayfield.Id, 0m);
-                if (volume <= 0 || sprayfield.SizeAcres <= 0) continue;
-                var result = _panCalculationService.Calculate(tkn, nh3, no2, no3, mr, vr, volume, sprayfield.SizeAcres);
+                var sprayfieldAcres = SprayfieldReportHelper.GetReportAcres(sprayfield);
+                if (volume <= 0 || sprayfieldAcres <= 0) continue;
+                var result = _panCalculationService.Calculate(tkn, nh3, no2, no3, mr, vr, volume, sprayfieldAcres);
                 totalPanLbs += result.PanLbs;
             }
 
@@ -279,11 +314,7 @@ public class IrrRprtService : IIrrRprtService
             applicationEfficiency);
 
         // Aggregate weather conditions
-        var weatherConditions = irrigations
-            .Where(i => !string.IsNullOrEmpty(i.WeatherConditions))
-            .Select(i => i.WeatherConditions)
-            .Distinct()
-            .ToList();
+        var weatherConditions = new List<string>();
 
         var weatherSummary = string.Join("; ", weatherConditions.Take(5)); // Limit to 5 most common
 
@@ -301,7 +332,7 @@ public class IrrRprtService : IIrrRprtService
             PanUptakeRate = panUptakeRate,
             ApplicationEfficiency = applicationEfficiency,
             WeatherSummary = weatherSummary,
-            OperationalNotes = $"Generated from {irrigations.Count} irrigation record(s).",
+            OperationalNotes = $"Generated from {applications.Count} monthly application record(s).",
             ComplianceStatus = complianceStatus
         };
 

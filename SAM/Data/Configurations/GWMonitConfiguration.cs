@@ -33,12 +33,6 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
         builder.Property(g => g.Conductivity)
             .HasColumnType("decimal(18,2)");
 
-        builder.Property(g => g.TDS)
-            .HasColumnType("decimal(18,2)");
-
-        builder.Property(g => g.Turbidity)
-            .HasColumnType("decimal(18,2)");
-
         builder.Property(g => g.TSS)
             .HasColumnType("decimal(18,2)");
 
@@ -77,6 +71,15 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
 
         builder.Property(g => g.VOCMethodNumber)
             .HasMaxLength(200);
+        
+        builder.Property(g => g.VOCReportFileStoragePath)
+            .HasMaxLength(500);
+
+        builder.Property(g => g.VOCReportFileName)
+            .HasMaxLength(260);
+
+        builder.Property(g => g.VOCReportContentType)
+            .HasMaxLength(120);
 
         builder.Property(g => g.LabCertification)
             .HasMaxLength(500);
@@ -89,6 +92,24 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
 
         builder.Property(g => g.Comments)
             .HasMaxLength(2000);
+
+        builder.Property(g => g.GW59AQuestion2Details)
+            .HasMaxLength(4000);
+
+        builder.Property(g => g.GW59AQuestion4Details)
+            .HasMaxLength(4000);
+
+        builder.Property(g => g.GW59AQuestion5Details)
+            .HasMaxLength(4000);
+
+        builder.Property(g => g.GW59AQuestion7Details)
+            .HasMaxLength(4000);
+
+        builder.Property(g => g.GW59ASignerName)
+            .HasMaxLength(200);
+
+        builder.Property(g => g.GW59ASignerTitle)
+            .HasMaxLength(200);
 
         builder.HasIndex(g => g.CompanyId);
         builder.HasIndex(g => g.FacilityId);

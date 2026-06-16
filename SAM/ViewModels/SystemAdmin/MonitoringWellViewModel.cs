@@ -42,6 +42,21 @@ public class MonitoringWellViewModel
     [Range(0, double.MaxValue, ErrorMessage = "High screen depth must be a positive number.")]
     public decimal? HighScreenDepthFeet { get; set; }
 
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
+
     [Display(Name = "Top of Casing Elevation (msl)")]
     public decimal? TopOfCasingElevationMsl { get; set; }
 
@@ -99,6 +114,21 @@ public class MonitoringWellCreateViewModel
     [Display(Name = "High Screen Depth (feet)")]
     [Range(0, double.MaxValue, ErrorMessage = "High screen depth must be a positive number.")]
     public decimal? HighScreenDepthFeet { get; set; }
+
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
 
     [Display(Name = "Top of Casing Elevation (msl)")]
     public decimal? TopOfCasingElevationMsl { get; set; }
@@ -159,6 +189,21 @@ public class MonitoringWellEditViewModel
     [Display(Name = "High Screen Depth (feet)")]
     [Range(0, double.MaxValue, ErrorMessage = "High screen depth must be a positive number.")]
     public decimal? HighScreenDepthFeet { get; set; }
+
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
 
     [Display(Name = "Top of Casing Elevation (msl)")]
     public decimal? TopOfCasingElevationMsl { get; set; }

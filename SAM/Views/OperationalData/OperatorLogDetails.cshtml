@@ -56,6 +56,21 @@
                         <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-cloud-sun me-1"></i>Weather Conditions:</dt>
                         <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.WeatherConditions) ? "N/A" : Model.WeatherConditions)</dd>
 
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-thermometer-half me-1"></i>Temperature (°F):</dt>
+                        <dd class="col-sm-7 mb-2">@(Model.TemperatureF?.ToString("F2") ?? "N/A")</dd>
+
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-cloud-rain me-1"></i>Precipitation (in):</dt>
+                        <dd class="col-sm-7 mb-2">@(Model.PrecipitationIn?.ToString("F2") ?? "N/A")</dd>
+
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-person-check me-1"></i>ORC On Site:</dt>
+                        <dd class="col-sm-7 mb-2">@(Model.ORCOnSite.HasValue ? (Model.ORCOnSite.Value == SAM.Domain.Enums.ORCOnSiteEnum.Y ? "Yes" : "No") : "N/A")</dd>
+
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Storage Lagoon Freeboard (ft):</dt>
+                        <dd class="col-sm-7 mb-2">@(Model.StorageFt?.ToString("F2") ?? "N/A")</dd>
+
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-arrow-up-right-square me-1"></i>5-Day Upset (ft):</dt>
+                        <dd class="col-sm-7 mb-2">@(Model.FiveDayUpsetFt?.ToString("F2") ?? "N/A")</dd>
+
                         <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-tools me-1"></i>Maintenance Performed:</dt>
                         <dd class="col-sm-7 mb-2 text-break">@(string.IsNullOrEmpty(Model.MaintenancePerformed) ? "N/A" : Model.MaintenancePerformed)</dd>
 

@@ -1,4 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -21,9 +24,32 @@ public class GWMonitViewModel
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (ft)")]
+    [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
+
+    [Display(Name = "Well Depth (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? WellDepthFeet { get; set; }
+
+    [Display(Name = "Well Diameter (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? DiameterInches { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
+
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
@@ -43,20 +69,12 @@ public class GWMonitViewModel
 
     [StringLength(100)]
     [Display(Name = "Odor")]
-    public string Odor { get; set; } = string.Empty;
+    public string? Odor { get; set; }
 
     [StringLength(100)]
     [Display(Name = "Appearance")]
-    public string Appearance { get; set; } = string.Empty;
+    public string? Appearance { get; set; }
 
-    [Display(Name = "TDS (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TDS { get; set; }
-    
-    [Display(Name = "Turbidity (NTU)")]
-    [Range(0, double.MaxValue)]
-    public decimal? Turbidity { get; set; }
-    
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TSS { get; set; }
@@ -90,10 +108,10 @@ public class GWMonitViewModel
     public decimal? Magnesium { get; set; }
 
     [Display(Name = "Metals Samples Collected Unfiltered")]
-    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+    public bool? MetalsSamplesCollectedUnfiltered { get; set; }
 
     [Display(Name = "Metal Samples Field Acidified")]
-    public bool MetalSamplesFieldAcidified { get; set; }
+    public bool? MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
@@ -106,25 +124,68 @@ public class GWMonitViewModel
     [Display(Name = "VOC Report Attached")]
     public bool VOCReportAttached { get; set; }
 
+    public string? VOCReportFileName { get; set; }
+
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
-    public string VOCMethodNumber { get; set; } = string.Empty;
+    public string? VOCMethodNumber { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+    public string? LabCertification { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
-    public string CollectedBy { get; set; } = string.Empty;
+    public string? CollectedBy { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
-    public string AnalyzedBy { get; set; } = string.Empty;
+    public string? AnalyzedBy { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]
-    public string Comments { get; set; } = string.Empty;
+    public string? Comments { get; set; }
+
+    [Display(Name = "Q1 Response")]
+    public bool? GW59AQuestion1Response { get; set; }
+    [Display(Name = "Q2 Response")]
+    public bool? GW59AQuestion2Response { get; set; }
+    [Display(Name = "Q3 Response")]
+    public bool? GW59AQuestion3Response { get; set; }
+    [Display(Name = "Q4 Response")]
+    public bool? GW59AQuestion4Response { get; set; }
+    [Display(Name = "Q5 Response")]
+    public bool? GW59AQuestion5Response { get; set; }
+    [Display(Name = "Q6 Response")]
+    public bool? GW59AQuestion6Response { get; set; }
+    [Display(Name = "Q7 Response")]
+    public bool? GW59AQuestion7Response { get; set; }
+    [Display(Name = "GW-59A Due Date")]
+    [DataType(DataType.Date)]
+    public DateTime? GW59ADueDate { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "Q2 Details")]
+    public string? GW59AQuestion2Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "Q4 Details")]
+    public string? GW59AQuestion4Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "Q5 Details")]
+    public string? GW59AQuestion5Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "Q7 Details")]
+    public string? GW59AQuestion7Details { get; set; }
+    [StringLength(200)]
+    [Display(Name = "GW-59A Signer Name")]
+    public string? GW59ASignerName { get; set; }
+    [StringLength(200)]
+    [Display(Name = "GW-59A Signer Title")]
+    public string? GW59ASignerTitle { get; set; }
+    [Display(Name = "GW-59A Signed Date")]
+    [DataType(DataType.Date)]
+    public DateTime? GW59ASignedDate { get; set; }
+
+    public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
 }
 
 public class GWMonitCreateViewModel
@@ -150,9 +211,32 @@ public class GWMonitCreateViewModel
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (ft)")]
+    [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
+
+    [Display(Name = "Well Depth (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? WellDepthFeet { get; set; }
+
+    [Display(Name = "Well Diameter (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? DiameterInches { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
+
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
@@ -172,19 +256,11 @@ public class GWMonitCreateViewModel
 
     [StringLength(100)]
     [Display(Name = "Odor")]
-    public string Odor { get; set; } = string.Empty;
+    public string? Odor { get; set; }
 
     [StringLength(100)]
     [Display(Name = "Appearance")]
-    public string Appearance { get; set; } = string.Empty;
-    [Display(Name = "TDS (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TDS { get; set; }
-    
-    [Display(Name = "Turbidity (NTU)")]
-    [Range(0, double.MaxValue)]
-    public decimal? Turbidity { get; set; }
-    
+    public string? Appearance { get; set; }
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TSS { get; set; }
@@ -218,10 +294,10 @@ public class GWMonitCreateViewModel
     public decimal? Magnesium { get; set; }
 
     [Display(Name = "Metals Samples Collected Unfiltered")]
-    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+    public bool? MetalsSamplesCollectedUnfiltered { get; set; }
 
     [Display(Name = "Metal Samples Field Acidified")]
-    public bool MetalSamplesFieldAcidified { get; set; }
+    public bool? MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
@@ -234,25 +310,74 @@ public class GWMonitCreateViewModel
     [Display(Name = "VOC Report Attached")]
     public bool VOCReportAttached { get; set; }
 
+    [Display(Name = "VOC Report (PDF)")]
+    public IFormFile? VOCReportFile { get; set; }
+
+    public string? VOCReportFileName { get; set; }
+
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
-    public string VOCMethodNumber { get; set; } = string.Empty;
+    public string? VOCMethodNumber { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+    public string? LabCertification { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
-    public string CollectedBy { get; set; } = string.Empty;
+    public string? CollectedBy { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
-    public string AnalyzedBy { get; set; } = string.Empty;
+    public string? AnalyzedBy { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]
-    public string Comments { get; set; } = string.Empty;
+    public string? Comments { get; set; }
+
+    [Display(Name = "GW-59A Q1")]
+    public bool? GW59AQuestion1Response { get; set; }
+    [Display(Name = "GW-59A Q2")]
+    public bool? GW59AQuestion2Response { get; set; }
+    [Display(Name = "GW-59A Q3")]
+    public bool? GW59AQuestion3Response { get; set; }
+    [Display(Name = "GW-59A Q4")]
+    public bool? GW59AQuestion4Response { get; set; }
+    [Display(Name = "GW-59A Q5")]
+    public bool? GW59AQuestion5Response { get; set; }
+    [Display(Name = "GW-59A Q6")]
+    public bool? GW59AQuestion6Response { get; set; }
+    [Display(Name = "GW-59A Q7")]
+    public bool? GW59AQuestion7Response { get; set; }
+    [Display(Name = "GW-59A Due Date")]
+    [DataType(DataType.Date)]
+    public DateTime? GW59ADueDate { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "GW-59A Q2 Details")]
+    public string? GW59AQuestion2Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "GW-59A Q4 Details")]
+    public string? GW59AQuestion4Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "GW-59A Q5 Details")]
+    public string? GW59AQuestion5Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "GW-59A Q7 Details")]
+    public string? GW59AQuestion7Details { get; set; }
+    [StringLength(200)]
+    [Display(Name = "GW-59A Signer Name")]
+    public string? GW59ASignerName { get; set; }
+    [StringLength(200)]
+    [Display(Name = "GW-59A Signer Title")]
+    public string? GW59ASignerTitle { get; set; }
+    [Display(Name = "GW-59A Signed Date")]
+    [DataType(DataType.Date)]
+    public DateTime? GW59ASignedDate { get; set; }
+
+    public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
+    public string? TemplateParametersStatusMessage { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
 }
 
 public class GWMonitEditViewModel
@@ -280,9 +405,32 @@ public class GWMonitEditViewModel
     [Range(0, double.MaxValue)]
     public decimal? SampleDepth { get; set; }
     
-    [Display(Name = "Water Level (ft)")]
+    [Display(Name = "Depth to Water Level (ft)")]
     [Range(0, double.MaxValue)]
     public decimal? WaterLevel { get; set; }
+
+    [Display(Name = "Well Depth (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? WellDepthFeet { get; set; }
+
+    [Display(Name = "Well Diameter (in)")]
+    [Range(0, double.MaxValue)]
+    public decimal? DiameterInches { get; set; }
+
+    [Display(Name = "Measuring Point (ft above land surface)")]
+    [Range(0, double.MaxValue)]
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    [Display(Name = "Relative M.P. Elevation (ft)")]
+    public decimal? RelativeMpElevation { get; set; }
+
+    [Display(Name = "Screened Interval From (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    [Display(Name = "Screened Interval To (ft)")]
+    [Range(0, double.MaxValue)]
+    public decimal? ScreenedIntervalToFeet { get; set; }
     
     [Display(Name = "Temperature (°F)")]
     [Range(0, double.MaxValue)]
@@ -302,19 +450,11 @@ public class GWMonitEditViewModel
 
     [StringLength(100)]
     [Display(Name = "Odor")]
-    public string Odor { get; set; } = string.Empty;
+    public string? Odor { get; set; }
 
     [StringLength(100)]
     [Display(Name = "Appearance")]
-    public string Appearance { get; set; } = string.Empty;
-    [Display(Name = "TDS (mg/L)")]
-    [Range(0, double.MaxValue)]
-    public decimal? TDS { get; set; }
-    
-    [Display(Name = "Turbidity (NTU)")]
-    [Range(0, double.MaxValue)]
-    public decimal? Turbidity { get; set; }
-    
+    public string? Appearance { get; set; }
     [Display(Name = "TSS (mg/L)")]
     [Range(0, double.MaxValue)]
     public decimal? TSS { get; set; }
@@ -348,10 +488,10 @@ public class GWMonitEditViewModel
     public decimal? Magnesium { get; set; }
 
     [Display(Name = "Metals Samples Collected Unfiltered")]
-    public bool MetalsSamplesCollectedUnfiltered { get; set; }
+    public bool? MetalsSamplesCollectedUnfiltered { get; set; }
 
     [Display(Name = "Metal Samples Field Acidified")]
-    public bool MetalSamplesFieldAcidified { get; set; }
+    public bool? MetalSamplesFieldAcidified { get; set; }
     
     [Display(Name = "Fecal Coliform (CFU/100mL)")]
     [Range(0, double.MaxValue)]
@@ -364,25 +504,128 @@ public class GWMonitEditViewModel
     [Display(Name = "VOC Report Attached")]
     public bool VOCReportAttached { get; set; }
 
+    [Display(Name = "VOC Report (PDF)")]
+    public IFormFile? VOCReportFile { get; set; }
+
+    public string? VOCReportFileName { get; set; }
+
+    [Display(Name = "Remove Current VOC File")]
+    public bool RemoveVocReportFile { get; set; }
+
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
-    public string VOCMethodNumber { get; set; } = string.Empty;
+    public string? VOCMethodNumber { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+    public string? LabCertification { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
-    public string CollectedBy { get; set; } = string.Empty;
+    public string? CollectedBy { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
-    public string AnalyzedBy { get; set; } = string.Empty;
+    public string? AnalyzedBy { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Comments")]
-    public string Comments { get; set; } = string.Empty;
+    public string? Comments { get; set; }
+
+    [Display(Name = "GW-59A Q1")]
+    public bool? GW59AQuestion1Response { get; set; }
+    [Display(Name = "GW-59A Q2")]
+    public bool? GW59AQuestion2Response { get; set; }
+    [Display(Name = "GW-59A Q3")]
+    public bool? GW59AQuestion3Response { get; set; }
+    [Display(Name = "GW-59A Q4")]
+    public bool? GW59AQuestion4Response { get; set; }
+    [Display(Name = "GW-59A Q5")]
+    public bool? GW59AQuestion5Response { get; set; }
+    [Display(Name = "GW-59A Q6")]
+    public bool? GW59AQuestion6Response { get; set; }
+    [Display(Name = "GW-59A Q7")]
+    public bool? GW59AQuestion7Response { get; set; }
+    [Display(Name = "GW-59A Due Date")]
+    [DataType(DataType.Date)]
+    public DateTime? GW59ADueDate { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "GW-59A Q2 Details")]
+    public string? GW59AQuestion2Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "GW-59A Q4 Details")]
+    public string? GW59AQuestion4Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "GW-59A Q5 Details")]
+    public string? GW59AQuestion5Details { get; set; }
+    [StringLength(4000)]
+    [Display(Name = "GW-59A Q7 Details")]
+    public string? GW59AQuestion7Details { get; set; }
+    [StringLength(200)]
+    [Display(Name = "GW-59A Signer Name")]
+    public string? GW59ASignerName { get; set; }
+    [StringLength(200)]
+    [Display(Name = "GW-59A Signer Title")]
+    public string? GW59ASignerTitle { get; set; }
+    [Display(Name = "GW-59A Signed Date")]
+    [DataType(DataType.Date)]
+    public DateTime? GW59ASignedDate { get; set; }
+
+    public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
+    public string? TemplateParametersStatusMessage { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
 }
 
+public class GWMonitTemplateParameterViewModel
+{
+    public Guid FacilityPermitTemplateParameterId { get; set; }
+    public string PcsCode { get; set; } = string.Empty;
+    public string ParameterName { get; set; } = string.Empty;
+    public string Units { get; set; } = string.Empty;
+    public string MeasurementFrequency { get; set; } = string.Empty;
+    public string SampleType { get; set; } = string.Empty;
+    public string? ScheduledMonthsCsv { get; set; }
+    public decimal? DailyMaximumLimit { get; set; }
+    public string? Notes { get; set; }
+    public decimal? EnteredValue { get; set; }
+    public bool IsRequiredForSelectedMonth { get; set; }
+    public string? RequirementMessage { get; set; }
+}
 
+public class GWMonitTemplateSectionViewModel
+{
+    public Guid FacilityId { get; set; }
+    public DateTime SampleDate { get; set; }
+    public Guid? RecordId { get; set; }
+    public bool IsEdit { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
+    public List<GWMonitTemplateParameterViewModel> TemplateParameters { get; set; } = new();
+}
+
+public class GWMonitFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public Guid? MonitoringWellId { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class GWMonitSortViewModel
+{
+    public string SortBy { get; set; } = "sampleDate";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class GWMonitsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public SelectList? MonitoringWells { get; set; }
+    public GWMonitFilterViewModel Filter { get; set; } = new();
+    public GWMonitSortViewModel Sort { get; set; } = new();
+    public PagedResult<GWMonitViewModel> GWMonits { get; set; } = new();
+}

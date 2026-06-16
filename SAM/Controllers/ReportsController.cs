@@ -2,10 +2,24 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using Azure.Storage.Blobs;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
+using System.Security.Claims;
+using System.Text;
+using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
+using SAM.Data;
 using SAM.Domain.Entities;
+using SAM.Domain.Extensions;
+using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
+using SAM.Utilities;
+using SAM.ViewModels.OperationalData;
 using SAM.ViewModels.Reports;
 
 namespace SAM.Controllers;
@@ -19,17 +33,29 @@ public class ReportsController : BaseController
     private readonly IIrrRprtService _irrRprtService;
     private readonly IFacilityService _facilityService;
     private readonly INDAR1Service _ndar1Service;
+    private readonly INDAR1RowEditService _ndar1RowEditService;
     private readonly ISprayfieldService _sprayfieldService;
     private readonly INDMRService _ndmrService;
     private readonly INDMLRService _ndmlrService;
+    private readonly IGWMonitService _gwMonitService;
+    private readonly IApplicationComplianceService _applicationComplianceService;
+    private readonly ApplicationDbContext _context;
+    private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
 
     public ReportsController(
         IIrrRprtService irrRprtService,
         IFacilityService facilityService,
         INDAR1Service ndar1Service,
+        INDAR1RowEditService ndar1RowEditService,
         ISprayfieldService sprayfieldService,
         INDMRService ndmrService,
         INDMLRService ndmlrService,
+        IGWMonitService gwMonitService,
+        IApplicationComplianceService applicationComplianceService,
+        ApplicationDbContext context,
+        IWebHostEnvironment environment,
+        IConfiguration configuration,
         UserManager<ApplicationUser> userManager,
         ILogger<ReportsController> logger)
         : base(userManager, logger)
@@ -37,15 +63,29 @@ public class ReportsController : BaseController
         _irrRprtService = irrRprtService;
         _facilityService = facilityService;
         _ndar1Service = ndar1Service;
+        _ndar1RowEditService = ndar1RowEditService;
         _sprayfieldService = sprayfieldService;
         _ndmrService = ndmrService;
         _ndmlrService = ndmlrService;
+        _gwMonitService = gwMonitService;
+        _applicationComplianceService = applicationComplianceService;
+        _context = context;
+        _environment = environment;
+        _configuration = configuration;
     }
 
-    #region Irrigation Reports
+    #region NDMR Reports
 
     [HttpGet]
-    public async Task<IActionResult> IrrigationReports(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> NDMRReports(
+        Guid? companyId = null,
+        Guid? facilityId = null,
+        int? month = null,
+        int? year = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -61,9 +101,63 @@ public class ReportsController : BaseController
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var reports = await _irrRprtService.GetAllAsync(companyId, facilityId);
-        
-        var viewModels = reports.Select(r => new IrrRprtViewModel
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "period" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+        var normalizedMonth = month.HasValue && month.Value >= 1 && month.Value <= 12 ? month : null;
+        var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
+
+        var query = _context.IrrRprts
+            .Include(r => r.Company)
+            .Include(r => r.Facility)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(r => r.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(r => r.FacilityId == facilityId.Value);
+        }
+
+        if (normalizedMonth.HasValue)
+        {
+            var monthValue = (MonthEnum)normalizedMonth.Value;
+            query = query.Where(r => r.Month == monthValue);
+        }
+
+        if (normalizedYear.HasValue)
+        {
+            query = query.Where(r => r.Year == normalizedYear.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Facility!.Name).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Facility!.Name).ThenByDescending(r => r.CreatedDate),
+            "totalvolume" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.TotalVolumeApplied).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.TotalVolumeApplied).ThenByDescending(r => r.CreatedDate),
+            "compliance" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.ComplianceStatus).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.ComplianceStatus).ThenByDescending(r => r.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Year).ThenBy(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Year).ThenByDescending(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var viewModels = items.Select(r => new IrrRprtViewModel
         {
             Id = r.Id,
             CompanyId = r.CompanyId,
@@ -83,17 +177,40 @@ public class ReportsController : BaseController
             ComplianceStatus = r.ComplianceStatus,
             CreatedDate = r.CreatedDate,
             UpdatedDate = r.UpdatedDate
-        });
+        }).ToList();
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.SelectedFacilityId = facilityId;
+        var model = new IrrRprtReportsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Filter = new IrrRprtFilterViewModel
+            {
+                FacilityId = facilityId,
+                Month = normalizedMonth,
+                Year = normalizedYear,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new IrrRprtSortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Reports = new PagedResult<IrrRprtViewModel>
+            {
+                Items = viewModels,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
 
-        return View(viewModels);
+        return View("IrrigationReports", model);
     }
 
     [HttpGet]
-    public async Task<IActionResult> IrrigationReportDetails(Guid id)
+    public async Task<IActionResult> NDMRReportDetails(Guid id)
     {
         var report = await _irrRprtService.GetByIdAsync(id);
         if (report == null)
@@ -123,12 +240,12 @@ public class ReportsController : BaseController
             UpdatedDate = report.UpdatedDate
         };
 
-        return View(viewModel);
+        return View("IrrigationReportDetails", viewModel);
     }
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> GenerateIrrigationReport(Guid? companyId = null, Guid? facilityId = null)
+    public async Task<IActionResult> GenerateNDMRReport(Guid? companyId = null, Guid? facilityId = null)
     {
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
@@ -153,13 +270,13 @@ public class ReportsController : BaseController
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.Months = GetMonthSelectList();
 
-        return View(viewModel);
+        return View("GenerateIrrigationReport", viewModel);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> GenerateIrrigationReport(IrrRprtCreateViewModel viewModel)
+    public async Task<IActionResult> GenerateNDMRReport(IrrRprtCreateViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
@@ -167,7 +284,7 @@ public class ReportsController : BaseController
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
-            return View(viewModel);
+            return View("GenerateIrrigationReport", viewModel);
         }
 
         try
@@ -181,21 +298,21 @@ public class ReportsController : BaseController
             // Save the generated report
             var savedReport = await _irrRprtService.CreateAsync(report);
 
-            TempData["SuccessMessage"] = $"Monthly irrigation report generated successfully for {viewModel.Month} {viewModel.Year}.";
-            return RedirectToAction(nameof(IrrigationReportDetails), new { id = savedReport.Id });
+            TempData["SuccessMessage"] = $"Monthly NDMR report generated successfully for {viewModel.Month} {viewModel.Year}.";
+            return RedirectToAction(nameof(NDMRReportDetails), new { id = savedReport.Id });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
-            return View(viewModel);
+            return View("GenerateIrrigationReport", viewModel);
         }
     }
 
     [HttpGet]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> IrrigationReportEdit(Guid id)
+    public async Task<IActionResult> NDMRReportEdit(Guid id)
     {
         var report = await _irrRprtService.GetByIdAsync(id);
         if (report == null)
@@ -225,13 +342,13 @@ public class ReportsController : BaseController
         ViewBag.Months = GetMonthSelectList();
         ViewBag.ComplianceStatuses = GetComplianceStatusSelectList();
 
-        return View(viewModel);
+        return View("IrrigationReportEdit", viewModel);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> IrrigationReportEdit(IrrRprtEditViewModel viewModel)
+    public async Task<IActionResult> NDMRReportEdit(IrrRprtEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
@@ -240,7 +357,7 @@ public class ReportsController : BaseController
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ComplianceStatuses = GetComplianceStatusSelectList();
-            return View(viewModel);
+            return View("IrrigationReportEdit", viewModel);
         }
 
         try
@@ -262,8 +379,8 @@ public class ReportsController : BaseController
             report.ComplianceStatus = viewModel.ComplianceStatus;
 
             await _irrRprtService.UpdateAsync(report);
-            TempData["SuccessMessage"] = $"Monthly irrigation report updated successfully.";
-            return RedirectToAction(nameof(IrrigationReportDetails), new { id = report.Id });
+            TempData["SuccessMessage"] = "Monthly NDMR report updated successfully.";
+            return RedirectToAction(nameof(NDMRReportDetails), new { id = report.Id });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -271,14 +388,14 @@ public class ReportsController : BaseController
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.Months = GetMonthSelectList();
             ViewBag.ComplianceStatuses = GetComplianceStatusSelectList();
-            return View(viewModel);
+            return View("IrrigationReportEdit", viewModel);
         }
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
-    public async Task<IActionResult> IrrigationReportDelete(Guid id)
+    public async Task<IActionResult> NDMRReportDelete(Guid id)
     {
         IrrRprt? report = null;
         try
@@ -290,27 +407,578 @@ public class ReportsController : BaseController
             await EnsureCompanyAccessAsync(report.CompanyId);
 
             await _irrRprtService.DeleteAsync(id);
-            TempData["SuccessMessage"] = "Irrigation report deleted successfully.";
-            return RedirectToAction(nameof(IrrigationReports), new {  facilityId = report.FacilityId });
+            TempData["SuccessMessage"] = "NDMR report deleted successfully.";
+            return RedirectToAction(nameof(NDMRReports), new {  facilityId = report.FacilityId });
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
-            TempData["ErrorMessage"] = "Irrigation report not found.";
+            TempData["ErrorMessage"] = "NDMR report not found.";
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(IrrigationReports), new { facilityId = report?.FacilityId });
+        return RedirectToAction(nameof(NDMRReports), new { facilityId = report?.FacilityId });
     }
+
+    [HttpGet]
+    public async Task<IActionResult> NDMLRReports(
+        Guid? companyId = null,
+        Guid? facilityId = null,
+        int? month = null,
+        int? year = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
+    {
+        var isGlobalAdmin = await IsGlobalAdminAsync();
+        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
+        {
+            companyId = effectiveCompanyId.Value;
+        }
+
+        if (companyId.HasValue)
+        {
+            await EnsureCompanyAccessAsync(companyId.Value);
+        }
+
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "period" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+        var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
+
+        var query = _context.NDMLRs
+            .Include(r => r.Company)
+            .Include(r => r.Facility)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(r => r.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(r => r.FacilityId == facilityId.Value);
+        }
+
+        if (normalizedYear.HasValue)
+        {
+            query = query.Where(r => r.Year == normalizedYear.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.Year).ThenByDescending(r => r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.Year).ThenByDescending(r => r.Month).ThenByDescending(r => r.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Year).ThenBy(r => r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Year).ThenByDescending(r => r.Month).ThenByDescending(r => r.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var reports = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var items = reports.Select(r => new NDMLRViewModel
+        {
+            Id = r.Id,
+            CompanyId = r.CompanyId,
+            CompanyName = r.Company?.Name,
+            FacilityId = r.FacilityId,
+            FacilityName = r.Facility?.Name,
+            Month = r.Month,
+            Year = r.Year,
+            CreatedDate = r.CreatedDate,
+            UpdatedDate = r.UpdatedDate,
+            CreatedBy = r.CreatedBy
+        }).ToList();
+
+        var model = new NDMLRReportsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Filter = new NDMLRFilterViewModel
+            {
+                FacilityId = facilityId,
+                Year = normalizedYear,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new NDMLRSortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Reports = new PagedResult<NDMLRViewModel>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            GenerateForm = new NDMLRCreateViewModel
+            {
+                CompanyId = companyId ?? Guid.Empty,
+                FacilityId = facilityId ?? Guid.Empty,
+                Month = (MonthEnum)DateTime.Now.Month,
+                Year = normalizedYear ?? DateTime.Now.Year
+            }
+        };
+
+        return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> NDMLRReportDetails(Guid id)
+    {
+        var report = await _context.NDMLRs
+            .Include(r => r.Company)
+            .Include(r => r.Facility)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == id);
+        if (report == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var model = new NDMLRDetailsViewModel
+        {
+            Id = report.Id,
+            CompanyId = report.CompanyId,
+            CompanyName = report.Company?.Name,
+            FacilityId = report.FacilityId,
+            FacilityName = report.Facility?.Name,
+            Month = report.Month,
+            Year = report.Year,
+            CreatedDate = report.CreatedDate,
+            UpdatedDate = report.UpdatedDate,
+            CreatedBy = report.CreatedBy,
+            Fields = await BuildNdmlrDetailFieldsAsync(report)
+        };
+
+        return View(model);
+    }
+
+    private async Task<List<NDMLRFieldDetailsViewModel>> BuildNdmlrDetailFieldsAsync(NDMLR report)
+    {
+        const decimal monthlyLoadConversionFactor = 8.34e-6m;
+        var (windowStart, windowEnd) = GetNdmlrWindow(report.Year, report.Month);
+        var monthKeys = BuildDescendingNdmlrWindowMonthKeys(report.Year, report.Month);
+        var startYear = windowStart.Year;
+        var startMonth = windowStart.Month;
+        var endYear = windowEnd.Year;
+        var endMonth = windowEnd.Month;
+
+        var ndarReports = await _context.NDAR1s
+            .Where(r => r.CompanyId == report.CompanyId &&
+                        r.FacilityId == report.FacilityId &&
+                        (r.Year > startYear || (r.Year == startYear && (int)r.Month >= startMonth)) &&
+                        (r.Year < endYear || (r.Year == endYear && (int)r.Month <= endMonth)))
+            .Include(r => r.Field1).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field2).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field3).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field4).ThenInclude(f => f!.Crop)
+            .Include(r => r.Fields)
+                .ThenInclude(f => f.Sprayfield)
+                    .ThenInclude(s => s!.Crop)
+            .Include(r => r.Fields)
+                .ThenInclude(f => f.DailyValues)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var reportsByMonth = ndarReports
+            .GroupBy(r => BuildMonthKey(r.Year, (int)r.Month))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
+
+        var gwMonits = await _context.GWMonits
+            .Where(g => g.FacilityId == report.FacilityId &&
+                        g.SampleDate >= windowStart &&
+                        g.SampleDate <= windowEnd)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var fieldMetaById = new Dictionary<Guid, (Sprayfield Sprayfield, int? PreferredOrder)>();
+
+        foreach (var ndar in ndarReports)
+        {
+            if (ndar.Fields.Any())
+            {
+                foreach (var field in ndar.Fields.OrderBy(f => f.FieldOrder))
+                {
+                    if (field.Sprayfield == null)
+                    {
+                        continue;
+                    }
+
+                    var sprayfieldId = field.Sprayfield.Id;
+                    if (!fieldMetaById.TryGetValue(sprayfieldId, out var existing))
+                    {
+                        fieldMetaById[sprayfieldId] = (field.Sprayfield, field.FieldOrder);
+                        continue;
+                    }
+
+                    var selectedOrder = existing.PreferredOrder;
+                    if (!selectedOrder.HasValue || field.FieldOrder < selectedOrder.Value)
+                    {
+                        fieldMetaById[sprayfieldId] = (existing.Sprayfield, field.FieldOrder);
+                    }
+                }
+
+                continue;
+            }
+
+            foreach (var legacy in new[] { ndar.Field1, ndar.Field2, ndar.Field3, ndar.Field4 })
+            {
+                if (legacy == null || fieldMetaById.ContainsKey(legacy.Id))
+                {
+                    continue;
+                }
+
+                fieldMetaById[legacy.Id] = (legacy, null);
+            }
+        }
+
+        var orderedFields = fieldMetaById.Values
+            .OrderBy(x => x.PreferredOrder.HasValue ? 0 : 1)
+            .ThenBy(x => x.PreferredOrder ?? int.MaxValue)
+            .ThenBy(x => x.Sprayfield.FieldId)
+            .Select(x => x.Sprayfield)
+            .ToList();
+
+        if (!orderedFields.Any())
+        {
+            return new List<NDMLRFieldDetailsViewModel>();
+        }
+
+        var monthlyVolumesByFieldByMonth = BuildMonthlyFieldVolumesByMonth(reportsByMonth);
+
+        var annualVolumesByFieldId = new Dictionary<Guid, decimal>();
+        foreach (var monthly in monthlyVolumesByFieldByMonth.Values)
+        {
+            foreach (var kvp in monthly)
+            {
+                if (!annualVolumesByFieldId.ContainsKey(kvp.Key))
+                {
+                    annualVolumesByFieldId[kvp.Key] = 0m;
+                }
+
+                annualVolumesByFieldId[kvp.Key] += kvp.Value;
+            }
+        }
+
+        var annualAvgConc = ComputeAverageTotalNMgl(gwMonits);
+        var result = new List<NDMLRFieldDetailsViewModel>();
+
+        foreach (var field in orderedFields)
+        {
+            var annualVolume = annualVolumesByFieldId.TryGetValue(field.Id, out var volume) ? volume : 0m;
+            var area = SprayfieldReportHelper.GetReportAcres(field);
+            var annualLoad = 0m;
+
+            if (area > 0m)
+            {
+                foreach (var monthKey in monthKeys)
+                {
+                    if (!monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes) ||
+                        !monthVolumes.TryGetValue(field.Id, out var monthVolume) ||
+                        monthVolume <= 0m)
+                    {
+                        continue;
+                    }
+
+                    var (monthYear, monthNo) = ParseMonthKey(monthKey);
+                    var monthConc = ComputeAverageTotalNMgl(gwMonits
+                        .Where(g => g.SampleDate.Year == monthYear && g.SampleDate.Month == monthNo)
+                        .ToList());
+                    if (!monthConc.HasValue)
+                    {
+                        continue;
+                    }
+
+                    annualLoad += (monthVolume * monthConc.Value * monthlyLoadConversionFactor) / area;
+                }
+            }
+
+            var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, field.Id, windowEnd);
+
+            result.Add(new NDMLRFieldDetailsViewModel
+            {
+                SprayfieldId = field.Id,
+                FieldCode = field.FieldId ?? string.Empty,
+                AreaAcres = area,
+                CropSummary = SprayfieldZoneSummaryHelper.GetCropSummary(field) ?? string.Empty,
+                AnnualVolumeGallons = annualVolume,
+                AverageConcentrationMgL = annualAvgConc,
+                AnnualLoadLbsPerAcre = annualLoad,
+                PanFloatingLbsPerAcre = metrics.RollingPanLbsPerAcre,
+                PanLimitLbsPerAcre = metrics.PanLimitLbsPerAcre,
+                FieldLoaded = annualVolume > 0m
+            });
+        }
+
+        return result;
+    }
+
+    private static decimal? ComputeAverageTotalNMgl(List<GWMonit> gwMonits)
+    {
+        var values = gwMonits
+            .Select(g =>
+            {
+                if (!g.TKN.HasValue && !g.NO3N.HasValue)
+                {
+                    return (decimal?)null;
+                }
+
+                return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
+            })
+            .Where(v => v.HasValue)
+            .ToList();
+
+        if (values.Count == 0)
+        {
+            return null;
+        }
+
+        return values.Average();
+    }
+
+    private static Dictionary<int, Dictionary<Guid, decimal>> BuildMonthlyFieldVolumesByMonth(Dictionary<int, NDAR1> reportsByMonth)
+    {
+        var result = new Dictionary<int, Dictionary<Guid, decimal>>();
+
+        foreach (var (month, report) in reportsByMonth)
+        {
+            var monthly = new Dictionary<Guid, decimal>();
+
+            if (report.Fields.Any())
+            {
+                foreach (var field in report.Fields.OrderBy(f => f.FieldOrder))
+                {
+                    if (field.SprayfieldId == Guid.Empty)
+                    {
+                        continue;
+                    }
+
+                    var sum = field.DailyValues?.Sum(v => v.VolumeApplied ?? 0m) ?? 0m;
+                    if (!monthly.ContainsKey(field.SprayfieldId))
+                    {
+                        monthly[field.SprayfieldId] = 0m;
+                    }
+
+                    monthly[field.SprayfieldId] += sum;
+                }
+            }
+            else
+            {
+                AccumulateLegacyFieldVolume(monthly, report.Field1Id, report.Field1VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field2Id, report.Field2VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field3Id, report.Field3VolumeAppliedDaily);
+                AccumulateLegacyFieldVolume(monthly, report.Field4Id, report.Field4VolumeAppliedDaily);
+            }
+
+            result[month] = monthly;
+        }
+
+        return result;
+    }
+
+    private static void AccumulateLegacyFieldVolume(Dictionary<Guid, decimal> monthly, Guid? sprayfieldId, List<decimal?> dailyVolumes)
+    {
+        if (!sprayfieldId.HasValue || sprayfieldId.Value == Guid.Empty)
+        {
+            return;
+        }
+
+        var sum = dailyVolumes?.Sum(v => v ?? 0m) ?? 0m;
+        if (!monthly.ContainsKey(sprayfieldId.Value))
+        {
+            monthly[sprayfieldId.Value] = 0m;
+        }
+
+        monthly[sprayfieldId.Value] += sum;
+    }
+
+    private static int BuildMonthKey(int year, int month) => (year * 100) + month;
+
+    private static (int Year, int Month) ParseMonthKey(int monthKey) => (monthKey / 100, monthKey % 100);
+
+    private static List<int> BuildDescendingNdmlrWindowMonthKeys(int year, MonthEnum month)
+    {
+        var result = new List<int>(12);
+        var cursor = new DateTime(year, (int)month, 1);
+        for (var i = 0; i < 12; i++)
+        {
+            result.Add(BuildMonthKey(cursor.Year, cursor.Month));
+            cursor = cursor.AddMonths(-1);
+        }
+
+        return result;
+    }
+
+    private static (DateTime WindowStart, DateTime WindowEnd) GetNdmlrWindow(int year, MonthEnum month)
+    {
+        var endMonthStart = new DateTime(year, (int)month, 1);
+        var windowStart = endMonthStart.AddMonths(-11);
+        var windowEnd = endMonthStart.AddMonths(1).AddDays(-1);
+        return (windowStart, windowEnd);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> GenerateNDMLRReport(Guid? companyId = null, Guid? facilityId = null)
+    {
+        return RedirectToAction(nameof(NDMLRReports), new { companyId, facilityId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> GenerateNDMLRReport(NDMLRCreateViewModel model)
+    {
+        await EnsureCompanyAccessAsync(model.CompanyId);
+
+        if (!ModelState.IsValid)
+        {
+            var listResult = await NDMLRReports(
+                companyId: model.CompanyId,
+                facilityId: model.FacilityId,
+                year: model.Year);
+
+            if (listResult is ViewResult viewResult && viewResult.Model is NDMLRReportsIndexViewModel listModel)
+            {
+                listModel.GenerateForm = model;
+                listModel.OpenGenerateModalOnLoad = true;
+                return View(nameof(NDMLRReports), listModel);
+            }
+
+            return listResult;
+        }
+
+        var existing = await _context.NDMLRs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x =>
+                x.CompanyId == model.CompanyId &&
+                x.FacilityId == model.FacilityId &&
+                x.Year == model.Year &&
+                x.Month == model.Month);
+
+        if (existing != null)
+        {
+            TempData["ErrorMessage"] = $"An NDMLR for {model.Month} {model.Year} already exists for this facility.";
+            return RedirectToAction(nameof(NDMLRReportDetails), new { id = existing.Id });
+        }
+
+        var entity = new NDMLR
+        {
+            CompanyId = model.CompanyId,
+            FacilityId = model.FacilityId,
+            Month = model.Month,
+            Year = model.Year
+        };
+
+        _context.NDMLRs.Add(entity);
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = $"NDMLR report generated successfully through {model.Month} {model.Year}.";
+        return RedirectToAction(nameof(NDMLRReportDetails), new { id = entity.Id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDMLRReportDelete(Guid id)
+    {
+        NDMLR? report = null;
+        try
+        {
+            report = await _context.NDMLRs
+                .FirstOrDefaultAsync(x => x.Id == id);
+            if (report == null)
+            {
+                return NotFound();
+            }
+
+            await EnsureCompanyAccessAsync(report.CompanyId);
+
+            _context.NDMLRs.Remove(report);
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "NDMLR report deleted successfully.";
+            return RedirectToAction(nameof(NDMLRReports), new { facilityId = report.FacilityId });
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"Error deleting NDMLR report: {ex.Message}";
+        }
+
+        return RedirectToAction(nameof(NDMLRReports), new { facilityId = report?.FacilityId });
+    }
+
+    #endregion
+
+    #region Legacy Irrigation Routes
+
+    [HttpGet]
+    public IActionResult IrrigationReports(Guid? companyId = null, Guid? facilityId = null)
+        => RedirectToActionPermanent(nameof(NDMRReports), new { companyId, facilityId });
+
+    [HttpGet]
+    public IActionResult IrrigationReportDetails(Guid id)
+        => RedirectToActionPermanent(nameof(NDMRReportDetails), new { id });
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public IActionResult GenerateIrrigationReport(Guid? companyId = null, Guid? facilityId = null)
+        => RedirectToActionPermanent(nameof(GenerateNDMRReport), new { companyId, facilityId });
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> GenerateIrrigationReport(IrrRprtCreateViewModel viewModel)
+        => await GenerateNDMRReport(viewModel);
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public IActionResult IrrigationReportEdit(Guid id)
+        => RedirectToActionPermanent(nameof(NDMRReportEdit), new { id });
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> IrrigationReportEdit(IrrRprtEditViewModel viewModel)
+        => await NDMRReportEdit(viewModel);
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> IrrigationReportDelete(Guid id)
+        => await NDMRReportDelete(id);
 
     #endregion
 
     #region NDAR-1 Reports
 
     [HttpGet]
-    public async Task<IActionResult> NDAR1Reports( Guid? facilityId = null)
+    public async Task<IActionResult> NDAR1Reports(
+        Guid? facilityId = null,
+        string? operatorName = null,
+        DateTime? logDate = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
     {
         Guid? companyId = null;
         var isGlobalAdmin = await IsGlobalAdminAsync();
@@ -327,9 +995,66 @@ public class ReportsController : BaseController
             await EnsureCompanyAccessAsync(companyId.Value);
         }
 
-        var reports = await _ndar1Service.GetAllAsync(companyId, facilityId);
-        
-        var viewModels = reports.Select(r => new NDAR1ViewModel
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "period" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+        var normalizedOperatorName = string.IsNullOrWhiteSpace(operatorName) ? null : operatorName.Trim();
+
+        var query = _context.NDAR1s
+            .Include(r => r.Company)
+            .Include(r => r.Facility)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(r => r.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(r => r.FacilityId == facilityId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedOperatorName))
+        {
+            var normalizedOperatorLower = normalizedOperatorName.ToLowerInvariant();
+            query = query.Where(r =>
+                !string.IsNullOrWhiteSpace(r.CreatedBy) &&
+                r.CreatedBy.Trim().ToLower() == normalizedOperatorLower);
+        }
+
+        if (logDate.HasValue)
+        {
+            var date = logDate.Value.Date;
+            var nextDate = date.AddDays(1);
+            query = query.Where(r => r.CreatedDate >= date && r.CreatedDate < nextDate);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Facility != null ? r.Facility.Name : string.Empty).ThenByDescending(r => r.CreatedDate),
+            "operator" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.CreatedBy).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.CreatedBy).ThenByDescending(r => r.CreatedDate),
+            "logdate" => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.CreatedDate).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.CreatedDate).ThenByDescending(r => r.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(r => r.Year).ThenBy(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+                : query.OrderByDescending(r => r.Year).ThenByDescending(r => (int)r.Month).ThenByDescending(r => r.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var reports = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var items = reports.Select(r => new NDAR1ViewModel
         {
             Id = r.Id,
             CompanyId = r.CompanyId,
@@ -340,15 +1065,52 @@ public class ReportsController : BaseController
             Year = r.Year,
             DidIrrigationOccur = r.DidIrrigationOccur,
             CreatedDate = r.CreatedDate,
-            UpdatedDate = r.UpdatedDate
-        });
+            UpdatedDate = r.UpdatedDate,
+            CreatedBy = r.CreatedBy
+        }).ToList();
 
-        ViewBag.IsGlobalAdmin = isGlobalAdmin;
-        ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
-        ViewBag.SelectedCompanyId = companyId;
-        ViewBag.SelectedFacilityId = facilityId;
+        var operators = await _context.NDAR1s
+            .AsNoTracking()
+            .Where(r =>
+                (!companyId.HasValue || r.CompanyId == companyId.Value) &&
+                (!facilityId.HasValue || r.FacilityId == facilityId.Value) &&
+                !string.IsNullOrWhiteSpace(r.CreatedBy))
+            .Select(r => r.CreatedBy.Trim())
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
 
-        return View(viewModels);
+        var operatorItems = operators.Select(o => new SelectListItem { Value = o, Text = o }).ToList();
+
+        var model = new NDAR1ReportsIndexViewModel
+        {
+            IsGlobalAdmin = isGlobalAdmin,
+            SelectedCompanyId = companyId,
+            Facilities = await GetFacilitySelectListAsync(companyId),
+            Operators = new SelectList(operatorItems, "Value", "Text", normalizedOperatorName),
+            Filter = new NDAR1FilterViewModel
+            {
+                FacilityId = facilityId,
+                OperatorName = normalizedOperatorName,
+                LogDate = logDate,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new NDAR1SortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Reports = new PagedResult<NDAR1ViewModel>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
+
+        return View(model);
     }
 
     [HttpGet]
@@ -424,6 +1186,18 @@ public class ReportsController : BaseController
 
         try
         {
+            // Reuse an existing monthly report instead of recomputing/overwriting curated data.
+            var existing = await _ndar1Service.GetByFacilityMonthYearAsync(
+                viewModel.FacilityId,
+                (int)viewModel.Month,
+                viewModel.Year);
+
+            if (existing != null)
+            {
+                TempData["SuccessMessage"] = $"NDAR-1 report for {viewModel.Month} {viewModel.Year} already exists. Reusing the existing report. It is automatically synced when related monthly applications or operator logs are updated.";
+                return RedirectToAction(nameof(NDAR1ReportDetails), new { id = existing.Id });
+            }
+
             // Generate the report
             var report = await _ndar1Service.GenerateMonthlyReportAsync(
                 viewModel.FacilityId,
@@ -454,59 +1228,76 @@ public class ReportsController : BaseController
             return NotFound();
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+        var grid = await _ndar1RowEditService.BuildGridAsync(id);
+        return View(grid);
+    }
 
-        var viewModel = new NDAR1EditViewModel
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1BeginRowEdit(Guid ndar1Id, int dayNo)
+    {
+        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+        if (report == null)
         {
-            Id = report.Id,
-            CompanyId = report.CompanyId,
-            FacilityId = report.FacilityId,
-            Month = report.Month,
-            Year = report.Year,
-            DidIrrigationOccur = report.DidIrrigationOccur,
-            WeatherCodeDaily = report.WeatherCodeDaily,
-            TemperatureDaily = report.TemperatureDaily,
-            PrecipitationDaily = report.PrecipitationDaily,
-            StorageDaily = report.StorageDaily,
-            FiveDayUpsetDaily = report.FiveDayUpsetDaily,
-            Field1Id = report.Field1Id,
-            Field1VolumeAppliedDaily = report.Field1VolumeAppliedDaily,
-            Field1TimeIrrigatedDaily = report.Field1TimeIrrigatedDaily,
-            Field1DailyLoadingDaily = report.Field1DailyLoadingDaily,
-            Field1MaxHourlyLoadingDaily = report.Field1MaxHourlyLoadingDaily,
-            Field1MonthlyLoading = report.Field1MonthlyLoading,
-            Field1MaxHourlyLoading = report.Field1MaxHourlyLoading,
-            Field1TwelveMonthFloatingTotal = report.Field1TwelveMonthFloatingTotal,
-            Field2Id = report.Field2Id,
-            Field2VolumeAppliedDaily = report.Field2VolumeAppliedDaily,
-            Field2TimeIrrigatedDaily = report.Field2TimeIrrigatedDaily,
-            Field2DailyLoadingDaily = report.Field2DailyLoadingDaily,
-            Field2MaxHourlyLoadingDaily = report.Field2MaxHourlyLoadingDaily,
-            Field2MonthlyLoading = report.Field2MonthlyLoading,
-            Field2MaxHourlyLoading = report.Field2MaxHourlyLoading,
-            Field2TwelveMonthFloatingTotal = report.Field2TwelveMonthFloatingTotal,
-            Field3Id = report.Field3Id,
-            Field3VolumeAppliedDaily = report.Field3VolumeAppliedDaily,
-            Field3TimeIrrigatedDaily = report.Field3TimeIrrigatedDaily,
-            Field3DailyLoadingDaily = report.Field3DailyLoadingDaily,
-            Field3MaxHourlyLoadingDaily = report.Field3MaxHourlyLoadingDaily,
-            Field3MonthlyLoading = report.Field3MonthlyLoading,
-            Field3MaxHourlyLoading = report.Field3MaxHourlyLoading,
-            Field3TwelveMonthFloatingTotal = report.Field3TwelveMonthFloatingTotal,
-            Field4Id = report.Field4Id,
-            Field4VolumeAppliedDaily = report.Field4VolumeAppliedDaily,
-            Field4TimeIrrigatedDaily = report.Field4TimeIrrigatedDaily,
-            Field4DailyLoadingDaily = report.Field4DailyLoadingDaily,
-            Field4MaxHourlyLoadingDaily = report.Field4MaxHourlyLoadingDaily,
-            Field4MonthlyLoading = report.Field4MonthlyLoading,
-            Field4MaxHourlyLoading = report.Field4MaxHourlyLoading,
-            Field4TwelveMonthFloatingTotal = report.Field4TwelveMonthFloatingTotal
-        };
+            return NotFound();
+        }
 
-        ViewBag.Facilities = await GetFacilitySelectListAsync(report.CompanyId);
-        ViewBag.Months = GetMonthSelectList();
-        ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(report.FacilityId);
+        await EnsureCompanyAccessAsync(report.CompanyId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var userDisplay = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "User";
+        var result = await _ndar1RowEditService.BeginRowEditAsync(ndar1Id, dayNo, userId, userDisplay);
+        return Json(result);
+    }
 
-        return View(viewModel);
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1UpdateRow([FromBody] NDAR1DayRowUpdateRequest request, Guid ndar1Id)
+    {
+        try
+        {
+            var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+            if (report == null)
+            {
+                return NotFound();
+            }
+
+            await EnsureCompanyAccessAsync(report.CompanyId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var result = await _ndar1RowEditService.UpdateRowAsync(ndar1Id, request, userId);
+            if (!result.Success)
+            {
+                Response.StatusCode = result.IsValidationError ? 400 : 409;
+            }
+            return Json(result);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "NDAR1 row update failed for NDAR1 {Ndar1Id}, day {DayNo}", ndar1Id, request?.DayNo);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "We couldn't update this row right now. Please try again."
+            });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1CancelRowEdit(Guid ndar1Id, int dayNo, Guid lockToken)
+    {
+        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+        if (report == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await _ndar1RowEditService.CancelRowEditAsync(ndar1Id, dayNo, lockToken, userId);
+        return Ok(new { success = true });
     }
 
     [HttpPost]
@@ -514,75 +1305,98 @@ public class ReportsController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1ReportEdit(NDAR1EditViewModel viewModel)
     {
-        await EnsureCompanyAccessAsync(viewModel.CompanyId);
-
-        if (!ModelState.IsValid)
+        if (viewModel == null)
         {
-            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Months = GetMonthSelectList();
-            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.FacilityId);
-            return View(viewModel);
+            return BadRequest("Unable to read submitted form data. Please refresh the page and try again.");
         }
 
-        try
-        {
-            var report = await _ndar1Service.GetByIdAsync(viewModel.Id);
-            if (report == null)
-                return NotFound();
+        // Phase 1: legacy full-form NDAR edits are disabled in favor of row-based live-source editing.
+        TempData["ErrorMessage"] = "This edit path is no longer available. Please use the row-based Edit/Update actions in the daily grid.";
+        return RedirectToAction(nameof(NDAR1ReportEdit), new { id = viewModel.Id });
+    }
 
-            report.Month = viewModel.Month;
-            report.Year = viewModel.Year;
-            report.DidIrrigationOccur = viewModel.DidIrrigationOccur;
-            report.WeatherCodeDaily = viewModel.WeatherCodeDaily;
-            report.TemperatureDaily = viewModel.TemperatureDaily;
-            report.PrecipitationDaily = viewModel.PrecipitationDaily;
-            report.StorageDaily = viewModel.StorageDaily;
-            report.FiveDayUpsetDaily = viewModel.FiveDayUpsetDaily;
-            report.Field1Id = viewModel.Field1Id;
-            report.Field1VolumeAppliedDaily = viewModel.Field1VolumeAppliedDaily;
-            report.Field1TimeIrrigatedDaily = viewModel.Field1TimeIrrigatedDaily;
-            report.Field1DailyLoadingDaily = viewModel.Field1DailyLoadingDaily;
-            report.Field1MaxHourlyLoadingDaily = viewModel.Field1MaxHourlyLoadingDaily;
-            report.Field1MonthlyLoading = viewModel.Field1MonthlyLoading;
-            report.Field1MaxHourlyLoading = viewModel.Field1MaxHourlyLoading;
-            report.Field1TwelveMonthFloatingTotal = viewModel.Field1TwelveMonthFloatingTotal;
-            report.Field2Id = viewModel.Field2Id;
-            report.Field2VolumeAppliedDaily = viewModel.Field2VolumeAppliedDaily;
-            report.Field2TimeIrrigatedDaily = viewModel.Field2TimeIrrigatedDaily;
-            report.Field2DailyLoadingDaily = viewModel.Field2DailyLoadingDaily;
-            report.Field2MaxHourlyLoadingDaily = viewModel.Field2MaxHourlyLoadingDaily;
-            report.Field2MonthlyLoading = viewModel.Field2MonthlyLoading;
-            report.Field2MaxHourlyLoading = viewModel.Field2MaxHourlyLoading;
-            report.Field2TwelveMonthFloatingTotal = viewModel.Field2TwelveMonthFloatingTotal;
-            report.Field3Id = viewModel.Field3Id;
-            report.Field3VolumeAppliedDaily = viewModel.Field3VolumeAppliedDaily;
-            report.Field3TimeIrrigatedDaily = viewModel.Field3TimeIrrigatedDaily;
-            report.Field3DailyLoadingDaily = viewModel.Field3DailyLoadingDaily;
-            report.Field3MaxHourlyLoadingDaily = viewModel.Field3MaxHourlyLoadingDaily;
-            report.Field3MonthlyLoading = viewModel.Field3MonthlyLoading;
-            report.Field3MaxHourlyLoading = viewModel.Field3MaxHourlyLoading;
-            report.Field3TwelveMonthFloatingTotal = viewModel.Field3TwelveMonthFloatingTotal;
-            report.Field4Id = viewModel.Field4Id;
-            report.Field4VolumeAppliedDaily = viewModel.Field4VolumeAppliedDaily;
-            report.Field4TimeIrrigatedDaily = viewModel.Field4TimeIrrigatedDaily;
-            report.Field4DailyLoadingDaily = viewModel.Field4DailyLoadingDaily;
-            report.Field4MaxHourlyLoadingDaily = viewModel.Field4MaxHourlyLoadingDaily;
-            report.Field4MonthlyLoading = viewModel.Field4MonthlyLoading;
-            report.Field4MaxHourlyLoading = viewModel.Field4MaxHourlyLoading;
-            report.Field4TwelveMonthFloatingTotal = viewModel.Field4TwelveMonthFloatingTotal;
-
-            await _ndar1Service.UpdateAsync(report);
-            TempData["SuccessMessage"] = "NDAR-1 report updated successfully.";
-            return RedirectToAction(nameof(NDAR1ReportDetails), new { id = report.Id });
-        }
-        catch (Infrastructure.Exceptions.BusinessRuleException ex)
+    private static List<NDAR1FieldEditViewModel> BuildNdarFieldEditModels(NDAR1 report)
+    {
+        if (report.Fields.Any())
         {
-            ModelState.AddModelError("", ex.Message);
-            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
-            ViewBag.Months = GetMonthSelectList();
-            ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.FacilityId);
-            return View(viewModel);
+            return report.Fields
+                .OrderBy(f => f.FieldOrder)
+                .Select(f => new NDAR1FieldEditViewModel
+                {
+                    Id = f.Id,
+                    SprayfieldId = f.SprayfieldId,
+                    FieldCode = f.Sprayfield?.FieldId ?? string.Empty,
+                    Acres = f.Sprayfield?.SizeAcres,
+                    CropSummary = f.Sprayfield != null ? SAM.Utilities.SprayfieldZoneSummaryHelper.GetCropSummary(f.Sprayfield) ?? string.Empty : string.Empty,
+                    MonthlyLoading = f.MonthlyLoading,
+                    MaxHourlyLoading = f.MaxHourlyLoading,
+                    TwelveMonthFloatingTotal = f.TwelveMonthFloatingTotal,
+                    DailyValues = f.DailyValues
+                        .OrderBy(d => d.DayNo)
+                        .Select(d => new NDAR1FieldDailyEditViewModel
+                        {
+                            DayNo = d.DayNo,
+                            VolumeApplied = d.VolumeApplied,
+                            TimeIrrigated = d.TimeIrrigated,
+                            DailyLoading = d.DailyLoading,
+                            MaxHourlyLoading = d.MaxHourlyLoading
+                        })
+                        .ToList()
+                })
+                .ToList();
         }
+
+        var legacy = new List<NDAR1FieldEditViewModel>();
+        AddLegacyFieldModel(legacy, report.Field1Id, report.Field1, 1, report.Field1MonthlyLoading, report.Field1MaxHourlyLoading, report.Field1TwelveMonthFloatingTotal, report.Field1VolumeAppliedDaily, report.Field1TimeIrrigatedDaily, report.Field1DailyLoadingDaily, report.Field1MaxHourlyLoadingDaily);
+        AddLegacyFieldModel(legacy, report.Field2Id, report.Field2, 2, report.Field2MonthlyLoading, report.Field2MaxHourlyLoading, report.Field2TwelveMonthFloatingTotal, report.Field2VolumeAppliedDaily, report.Field2TimeIrrigatedDaily, report.Field2DailyLoadingDaily, report.Field2MaxHourlyLoadingDaily);
+        AddLegacyFieldModel(legacy, report.Field3Id, report.Field3, 3, report.Field3MonthlyLoading, report.Field3MaxHourlyLoading, report.Field3TwelveMonthFloatingTotal, report.Field3VolumeAppliedDaily, report.Field3TimeIrrigatedDaily, report.Field3DailyLoadingDaily, report.Field3MaxHourlyLoadingDaily);
+        AddLegacyFieldModel(legacy, report.Field4Id, report.Field4, 4, report.Field4MonthlyLoading, report.Field4MaxHourlyLoading, report.Field4TwelveMonthFloatingTotal, report.Field4VolumeAppliedDaily, report.Field4TimeIrrigatedDaily, report.Field4DailyLoadingDaily, report.Field4MaxHourlyLoadingDaily);
+        return legacy;
+    }
+
+    private static void AddLegacyFieldModel(
+        List<NDAR1FieldEditViewModel> target,
+        Guid? sprayfieldId,
+        Sprayfield? sprayfield,
+        int order,
+        decimal monthlyLoading,
+        decimal maxHourlyLoading,
+        decimal floatingTotal,
+        List<decimal?> volumeDaily,
+        List<decimal?> timeDaily,
+        List<decimal?> loadingDaily,
+        List<decimal?> maxHourlyDaily)
+    {
+        if (!sprayfieldId.HasValue)
+        {
+            return;
+        }
+
+        var model = new NDAR1FieldEditViewModel
+        {
+            SprayfieldId = sprayfieldId.Value,
+            FieldCode = sprayfield?.FieldId ?? order.ToString(),
+            Acres = sprayfield?.SizeAcres,
+            CropSummary = sprayfield != null ? SAM.Utilities.SprayfieldZoneSummaryHelper.GetCropSummary(sprayfield) ?? string.Empty : string.Empty,
+            MonthlyLoading = monthlyLoading,
+            MaxHourlyLoading = maxHourlyLoading,
+            TwelveMonthFloatingTotal = floatingTotal
+        };
+
+        for (var day = 1; day <= 31; day++)
+        {
+            var idx = day - 1;
+            model.DailyValues.Add(new NDAR1FieldDailyEditViewModel
+            {
+                DayNo = day,
+                VolumeApplied = idx < volumeDaily.Count ? volumeDaily[idx] : null,
+                TimeIrrigated = idx < timeDaily.Count ? timeDaily[idx] : null,
+                DailyLoading = idx < loadingDaily.Count ? loadingDaily[idx] : null,
+                MaxHourlyLoading = idx < maxHourlyDaily.Count ? maxHourlyDaily[idx] : null
+            });
+        }
+
+        target.Add(model);
     }
 
     [HttpPost]
@@ -633,13 +1447,23 @@ public class ReportsController : BaseController
         }
         catch (Exception ex)
         {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDAR-1 export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
             TempData["ErrorMessage"] = $"Error exporting report: {ex.Message}";
             return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
         }
     }
 
     [HttpGet]
-    public async Task<IActionResult> ExportNDMRReport(Guid id)
+    public async Task<IActionResult> ExportNDAR1ReportPdf(Guid id, bool showGrid = false)
     {
         var report = await _ndar1Service.GetByIdAsync(id);
         if (report == null)
@@ -649,21 +1473,169 @@ public class ReportsController : BaseController
 
         try
         {
-            var excelBytes = await _ndmrService.ExportToExcelAsync(id);
+            var pdfBytes = await RenderNdar1PdfAsync(report, showGrid);
+            var safeFacility = Regex.Replace(report.Facility?.Name ?? "Facility", @"[^\w\-]+", "_");
+            var fileName = $"NDAR-1_{safeFacility}_{report.Month}_{report.Year}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDAR-1 PDF export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = $"Error exporting NDAR-1 PDF: {ex.Message}";
+            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportNDMRReport(Guid id)
+    {
+        NDAR1? report;
+        var ndmrReport = await _irrRprtService.GetByIdAsync(id);
+
+        if (ndmrReport != null)
+        {
+            report = await _context.NDAR1s
+                .AsNoTracking()
+                .Include(r => r.Facility)
+                .FirstOrDefaultAsync(r =>
+                    r.CompanyId == ndmrReport.CompanyId &&
+                    r.FacilityId == ndmrReport.FacilityId &&
+                    r.Year == ndmrReport.Year &&
+                    r.Month == ndmrReport.Month);
+        }
+        else
+        {
+            report = await _ndar1Service.GetByIdAsync(id);
+        }
+
+        if (report == null)
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMR export failed",
+                    Detail = "No matching NDAR-1 report exists for this NDMR period.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = "No matching NDAR-1 report exists for this NDMR period.";
+            return ndmrReport != null
+                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
+                : RedirectToAction(nameof(NDAR1Reports));
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        try
+        {
+            var excelBytes = await _ndmrService.ExportToExcelAsync(report.Id);
             var fileName = $"NDMR_{report.Facility?.Name}_{report.Month}_{report.Year}.xlsx";
             return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
         catch (Exception ex)
         {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMR export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
             TempData["ErrorMessage"] = $"Error exporting NDMR report: {ex.Message}";
-            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+            return ndmrReport != null
+                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
+                : RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportNDMRReportPdf(Guid id, bool showGrid = false)
+    {
+        NDAR1? report;
+        var ndmrReport = await _irrRprtService.GetByIdAsync(id);
+
+        if (ndmrReport != null)
+        {
+            report = await _context.NDAR1s
+                .AsNoTracking()
+                .Include(r => r.Facility)
+                .FirstOrDefaultAsync(r =>
+                    r.CompanyId == ndmrReport.CompanyId &&
+                    r.FacilityId == ndmrReport.FacilityId &&
+                    r.Year == ndmrReport.Year &&
+                    r.Month == ndmrReport.Month);
+        }
+        else
+        {
+            report = await _ndar1Service.GetByIdAsync(id);
+        }
+
+        if (report == null)
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMR PDF export failed",
+                    Detail = "No matching NDAR-1 report exists for this NDMR period.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = "No matching NDAR-1 report exists for this NDMR period.";
+            return ndmrReport != null
+                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
+                : RedirectToAction(nameof(NDAR1Reports));
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        try
+        {
+            var pdfBytes = await RenderNdmrPdfAsync(report, showGrid);
+            var safeFacility = Regex.Replace(report.Facility?.Name ?? "Facility", @"[^\w\-]+", "_");
+            var fileName = $"NDMR_{safeFacility}_{report.Month}_{report.Year}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMR PDF export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = $"Error exporting NDMR PDF: {ex.Message}";
+            return ndmrReport != null
+                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
+                : RedirectToAction(nameof(NDAR1ReportDetails), new { id });
         }
     }
 
     [HttpGet]
     public async Task<IActionResult> ExportNDMLRReport(Guid id)
     {
-        var report = await _ndar1Service.GetByIdAsync(id);
+        var report = await _context.NDMLRs
+            .Include(r => r.Facility)
+            .FirstOrDefaultAsync(r => r.Id == id);
         if (report == null)
             return NotFound();
 
@@ -677,9 +1649,300 @@ public class ReportsController : BaseController
         }
         catch (Exception ex)
         {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMLR export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
             TempData["ErrorMessage"] = $"Error exporting NDMLR report: {ex.Message}";
-            return RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+            return RedirectToAction(nameof(NDMLRReportDetails), new { id });
         }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportNDMLRReportPdf(Guid id, bool showGrid = false)
+    {
+        var report = await _context.NDMLRs
+            .Include(r => r.Facility)
+            .FirstOrDefaultAsync(r => r.Id == id);
+        if (report == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+
+        try
+        {
+            var pdfBytes = await RenderNdmlrPdfAsync(report, showGrid);
+            var safeFacility = Regex.Replace(report.Facility?.Name ?? "Facility", @"[^\w\-]+", "_");
+            var fileName = $"NDMLR_{safeFacility}_{report.Month}_{report.Year}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            if (IsFetchRequest())
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "NDMLR PDF export failed",
+                    Detail = ex.Message,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            TempData["ErrorMessage"] = $"Error exporting NDMLR PDF: {ex.Message}";
+            return RedirectToAction(nameof(NDMLRReportDetails), new { id });
+        }
+    }
+
+    #endregion
+
+    #region Groundwater Quality Reports
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> GroundwaterQualityReports(
+        Guid? companyId = null,
+        Guid? facilityId = null,
+        Guid? monitoringWellId = null,
+        int? month = null,
+        int? year = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = 25)
+    {
+        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
+        {
+            companyId = effectiveCompanyId.Value;
+        }
+
+        if (companyId.HasValue)
+        {
+            await EnsureCompanyAccessAsync(companyId.Value);
+        }
+
+        var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "sampledate" : sortBy.Trim().ToLowerInvariant();
+        var normalizedSortDir = string.Equals(sortDir, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+        var normalizedMonth = month.HasValue && month.Value >= 1 && month.Value <= 12 ? month : null;
+        var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
+
+        var query = _context.GWMonits
+            .Include(x => x.Facility)
+            .Include(x => x.MonitoringWell)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(x => x.CompanyId == companyId.Value);
+        }
+
+        if (facilityId.HasValue)
+        {
+            query = query.Where(x => x.FacilityId == facilityId.Value);
+        }
+
+        if (monitoringWellId.HasValue)
+        {
+            query = query.Where(x => x.MonitoringWellId == monitoringWellId.Value);
+        }
+
+        if (normalizedMonth.HasValue)
+        {
+            query = query.Where(x => x.SampleDate.Month == normalizedMonth.Value);
+        }
+
+        if (normalizedYear.HasValue)
+        {
+            query = query.Where(x => x.SampleDate.Year == normalizedYear.Value);
+        }
+
+        query = normalizedSortBy switch
+        {
+            "facility" => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.Facility!.Name).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.Facility!.Name).ThenByDescending(x => x.CreatedDate),
+            "well" => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.MonitoringWell!.WellId).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.MonitoringWell!.WellId).ThenByDescending(x => x.CreatedDate),
+            "collectedby" => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.CollectedBy).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.CollectedBy).ThenByDescending(x => x.CreatedDate),
+            "analyzedby" => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.AnalyzedBy).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.AnalyzedBy).ThenByDescending(x => x.CreatedDate),
+            _ => normalizedSortDir == "asc"
+                ? query.OrderBy(x => x.SampleDate).ThenByDescending(x => x.CreatedDate)
+                : query.OrderByDescending(x => x.SampleDate).ThenByDescending(x => x.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync();
+        var pagedRecords = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync();
+
+        var rows = new List<GroundwaterQualityReportRowViewModel>();
+        foreach (var record in pagedRecords)
+        {
+            var permit = await ResolvePermitForDateAsync(record.FacilityId, record.SampleDate);
+            var permitDisplay = permit == null
+                ? "No active permit"
+                : $"{permit.PermitNumber} v{permit.PermitVersion}";
+
+            rows.Add(new GroundwaterQualityReportRowViewModel
+            {
+                Id = record.Id,
+                FacilityId = record.FacilityId,
+                FacilityName = record.Facility?.Name ?? string.Empty,
+                MonitoringWellName = record.MonitoringWell?.WellId ?? string.Empty,
+                SampleDate = record.SampleDate,
+                PermitDisplay = permitDisplay,
+                CollectedBy = record.CollectedBy,
+                AnalyzedBy = record.AnalyzedBy,
+                UpdatedDate = record.UpdatedDate
+            });
+        }
+
+        var model = new GroundwaterQualityReportsPageViewModel
+        {
+            SelectedCompanyId = companyId,
+            Filter = new GroundwaterQualityFilterViewModel
+            {
+                FacilityId = facilityId,
+                MonitoringWellId = monitoringWellId,
+                Month = normalizedMonth,
+                Year = normalizedYear,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            },
+            Sort = new GroundwaterQualitySortViewModel
+            {
+                SortBy = normalizedSortBy,
+                SortDir = normalizedSortDir
+            },
+            Reports = new PagedResult<GroundwaterQualityReportRowViewModel>
+            {
+                Items = rows,
+                TotalCount = totalCount,
+                Page = normalizedPage,
+                PageSize = normalizedPageSize
+            }
+        };
+
+        var facilities = await _facilityService.GetAllAsync(companyId);
+        model.Facilities = new SelectList(facilities, "Id", "Name", facilityId);
+        var wells = companyId.HasValue
+            ? await _context.MonitoringWells.AsNoTracking()
+                .Where(x => x.CompanyId == companyId.Value)
+                .OrderBy(x => x.WellId)
+                .ToListAsync()
+            : new List<MonitoringWell>();
+        if (facilityId.HasValue)
+        {
+            var wellIdsForFacility = await _context.GWMonits.AsNoTracking()
+                .Where(x => x.FacilityId == facilityId.Value)
+                .Select(x => x.MonitoringWellId)
+                .Distinct()
+                .ToListAsync();
+            wells = wells.Where(x => wellIdsForFacility.Contains(x.Id)).ToList();
+        }
+        model.MonitoringWells = new SelectList(wells, "Id", "WellId", monitoringWellId);
+        model.Months = new SelectList(
+            Enum.GetValues(typeof(MonthEnum)).Cast<MonthEnum>()
+                .Select(e => new SelectListItem { Value = ((int)e).ToString(), Text = e.ToString() }),
+            "Value",
+            "Text",
+            normalizedMonth?.ToString());
+        model.Years = Enumerable.Range(DateTime.UtcNow.Year - 10, 21)
+            .Select(y => new SelectListItem(y.ToString(), y.ToString()))
+            .ToList();
+
+        return View(model);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> PreviewGW59Report(Guid id)
+    {
+        var model = await BuildGw59ExportModelAsync(id);
+        await EnsureCompanyAccessAsync((await _gwMonitService.GetByIdAsync(id))!.CompanyId);
+        var preview = new GW59ReportViewModel
+        {
+            GwMonitId = model.GwMonitId,
+            FacilityName = model.FacilityName,
+            PermitNumber = model.PermitNumber,
+            Permittee = model.Permittee,
+            Address = model.Address,
+            City = model.City,
+            State = model.State,
+            ZipCode = model.ZipCode,
+            County = model.County,
+            ContactPerson = model.ContactPerson,
+            FacilityPhone = model.FacilityPhone,
+            PermitExpirationDate = model.PermitExpirationDate,
+            WellId = model.WellId,
+            WellLocation = model.WellLocation,
+            WellDepthFeet = model.WellDepthFeet,
+            DiameterInches = model.DiameterInches,
+            ScreenedIntervalFromFeet = model.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = model.ScreenedIntervalToFeet,
+            NumberOfWellsToBeSampled = model.NumberOfWellsToBeSampled,
+            SampleDate = model.SampleDate,
+            SampleDepth = model.SampleDepth,
+            WaterLevel = model.WaterLevel,
+            MeasuringPointAboveLandSurface = model.MeasuringPointAboveLandSurface,
+            GallonsPumped = model.GallonsPumped,
+            PHField = model.PHField,
+            TemperatureField = model.TemperatureField,
+            SpecificConductance = model.SpecificConductance,
+            Odor = model.Odor,
+            Appearance = model.Appearance,
+            MetalsUnfiltered = model.MetalsUnfiltered,
+            MetalsAcidified = model.MetalsAcidified,
+            TDS = model.TDS,
+            TOC = model.TOC,
+            Chloride = model.Chloride,
+            NH3N = model.NH3N,
+            NO3N = model.NO3N,
+            TKN = model.TKN,
+            Calcium = model.Calcium,
+            Magnesium = model.Magnesium,
+            FecalColiform = model.FecalColiform,
+            TotalColiform = model.TotalColiform,
+            LabName = model.LabName,
+            LabCertificationNumber = model.LabCertificationNumber,
+            LabReportAttached = model.LabReportAttached,
+            VOCMethodNumber = model.VOCMethodNumber,
+            GwOperationLagoon = model.GwOperationLagoon,
+            GwOperationSprayField = model.GwOperationSprayField,
+            OtherParameterLines = model.OtherParameterLines,
+            CertificationName = model.CertificationName,
+            CertificationTitle = model.CertificationTitle,
+            CertificationDate = model.CertificationDate,
+            ParameterSnapshots = model.ParameterSnapshots
+        };
+        return View("~/Views/OperationalData/GWMonitReport.cshtml", preview);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> ExportGW59Report(Guid id, bool showGrid = false)
+    {
+        var model = await BuildGw59ExportModelAsync(id);
+        var bytes = await RenderCombinedGw59PdfAsync(model, showGrid);
+        var safeFacility = string.IsNullOrWhiteSpace(model.FacilityName) ? "Facility" : model.FacilityName.Replace(' ', '_');
+        return File(bytes, "application/pdf", $"GW59_{safeFacility}_{model.SampleDate:yyyyMMdd}.pdf");
     }
 
     #endregion
@@ -723,8 +1986,1825 @@ public class ReportsController : BaseController
 
     private async Task<SelectList> GetSprayfieldSelectListAsync(Guid facilityId)
     {
-        var sprayfields = await _sprayfieldService.GetByFacilityIdAsync(facilityId);
+        var sprayfields = (await _sprayfieldService.GetByFacilityIdAsync(facilityId))
+            .OrderBy(s => BuildNaturalSortKey(s.FieldId))
+            .ThenBy(s => s.FieldId)
+            .ToList();
         return new SelectList(sprayfields, "Id", "FieldId");
+    }
+
+    private static string BuildNaturalSortKey(string? input)
+    {
+        return Regex.Replace(input ?? string.Empty, @"\d+", match => match.Value.PadLeft(10, '0'));
+    }
+
+    private bool IsFetchRequest()
+    {
+        if (Request.Headers.TryGetValue("X-Requested-With", out var requestedWith) &&
+            string.Equals(requestedWith.ToString(), "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (Request.Headers.TryGetValue("Accept", out var acceptHeader) &&
+            acceptHeader.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task<FacilityPermit?> ResolvePermitForDateAsync(Guid facilityId, DateTime date)
+    {
+        var targetDate = date.Date;
+        return await _context.FacilityPermits
+            .AsNoTracking()
+            .Where(x =>
+                x.FacilityId == facilityId &&
+                x.IsActive &&
+                !x.IsDeleted &&
+                x.EffectiveStartDate <= targetDate &&
+                (!x.EffectiveEndDate.HasValue || x.EffectiveEndDate.Value >= targetDate))
+            .OrderByDescending(x => x.EffectiveStartDate)
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task<Gw59ExportModel> BuildGw59ExportModelAsync(Guid gwMonitId)
+    {
+        var gwMonit = await _context.GWMonits
+            .AsNoTracking()
+            .Include(x => x.Facility)
+            .Include(x => x.MonitoringWell)
+            .FirstOrDefaultAsync(x => x.Id == gwMonitId);
+        if (gwMonit == null)
+        {
+            throw new Infrastructure.Exceptions.EntityNotFoundException(nameof(GWMonit), gwMonitId);
+        }
+
+        await EnsureCompanyAccessAsync(gwMonit.CompanyId);
+        var permit = await ResolvePermitForDateAsync(gwMonit.FacilityId, gwMonit.SampleDate);
+        var templateValues = await _context.GWMonitTemplateValues
+            .AsNoTracking()
+            .Where(x => x.GWMonitId == gwMonitId)
+            .Include(x => x.FacilityPermitTemplateParameter)
+                .ThenInclude(p => p!.PcsParameterCatalog)
+            .ToListAsync();
+
+        var snapshots = templateValues
+            .Where(x => x.FacilityPermitTemplateParameter != null)
+            .Select(x => new Gw59ParameterSnapshot
+            {
+                SortOrder = x.FacilityPermitTemplateParameter!.SortOrder,
+                PcsCode = x.FacilityPermitTemplateParameter!.PcsParameterCatalog?.PcsCode ?? string.Empty,
+                ParameterName = x.FacilityPermitTemplateParameter.ParameterDisplayOverride
+                    ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.UserFriendlyName
+                    ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.OfficialParameterName
+                    ?? string.Empty,
+                Units = x.FacilityPermitTemplateParameter.UnitsOverride
+                    ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.AcceptedUnits
+                    ?? string.Empty,
+                Value = x.NumericValue,
+                DailyMaximumLimit = x.FacilityPermitTemplateParameter.DailyMaximumLimit,
+                IsGw59 = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0,
+                IsGw59A = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0
+            })
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.PcsCode)
+            .ToList();
+
+        var hasGw59APermitTemplateRows = permit != null && await _context.FacilityPermitTemplateParameters
+            .AsNoTracking()
+            .AnyAsync(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0);
+
+        var currentUser = await GetCurrentUserAsync();
+        var chemistry = Gw59ChemistryResolver.Resolve(snapshots);
+        var facility = gwMonit.Facility ?? await _context.Facilities
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == gwMonit.FacilityId);
+        var facilityWellCount = await Gw59FacilityFieldResolver.CountMonitoringWellsForFacilityAsync(
+            _context,
+            gwMonit.FacilityId,
+            facility?.CompanyId ?? gwMonit.CompanyId);
+        var wellLocation = await Gw59FacilityFieldResolver.ResolveWellLocationAsync(
+            _context,
+            gwMonit.MonitoringWellId,
+            gwMonit.MonitoringWell);
+        return new Gw59ExportModel
+        {
+            GwMonitId = gwMonit.Id,
+            FacilityName = facility?.Name ?? string.Empty,
+            PermitNumber = permit?.PermitNumber ?? facility?.PermitNumber ?? string.Empty,
+            Permittee = facility?.Permittee ?? string.Empty,
+            Address = facility?.Address ?? string.Empty,
+            City = facility?.City ?? string.Empty,
+            State = facility?.State ?? string.Empty,
+            ZipCode = facility?.ZipCode ?? string.Empty,
+            County = facility?.County ?? string.Empty,
+            ContactPerson = Gw59FacilityFieldResolver.ResolveContactPerson(facility),
+            FacilityPhone = Gw59FacilityFieldResolver.ResolveFacilityPhone(facility),
+            PermitExpirationDate = permit?.EffectiveEndDate ?? facility?.PermitExpirationDate,
+            WellId = gwMonit.MonitoringWell?.WellId ?? string.Empty,
+            WellLocation = wellLocation,
+            WellDepthFeet = gwMonit.MonitoringWell?.WellDepthFeet,
+            DiameterInches = gwMonit.MonitoringWell?.DiameterInches,
+            ScreenedIntervalFromFeet = gwMonit.MonitoringWell?.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = gwMonit.MonitoringWell?.ScreenedIntervalToFeet,
+            RelativeMpElevation = gwMonit.MonitoringWell?.RelativeMpElevation,
+            NumberOfWellsToBeSampled = facilityWellCount,
+            SampleDate = gwMonit.SampleDate,
+            SampleDepth = gwMonit.SampleDepth,
+            WaterLevel = gwMonit.WaterLevel,
+            MeasuringPointAboveLandSurface = gwMonit.MonitoringWell?.MeasuringPointAboveLandSurface,
+            GallonsPumped = gwMonit.GallonsPumped,
+            PHField = gwMonit.PH,
+            TemperatureField = gwMonit.Temperature,
+            SpecificConductance = gwMonit.Conductivity,
+            Odor = gwMonit.Odor,
+            Appearance = gwMonit.Appearance,
+            MetalsUnfiltered = gwMonit.MetalsSamplesCollectedUnfiltered,
+            MetalsAcidified = gwMonit.MetalSamplesFieldAcidified,
+            TDS = chemistry.TDS,
+            TOC = chemistry.TOC,
+            Chloride = chemistry.Chloride,
+            NH3N = chemistry.NH3N,
+            NO3N = chemistry.NO3N,
+            TKN = chemistry.TKN,
+            Calcium = chemistry.Calcium,
+            Magnesium = chemistry.Magnesium,
+            FecalColiform = chemistry.FecalColiform,
+            TotalColiform = chemistry.TotalColiform,
+            LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
+                ? (facility?.CertifiedLaboratory1Name ?? string.Empty)
+                : gwMonit.AnalyzedBy,
+            LabCertificationNumber = string.IsNullOrWhiteSpace(gwMonit.LabCertification)
+                ? (facility?.LabCertificationNumber1 ?? string.Empty)
+                : gwMonit.LabCertification,
+            CollectedBy = gwMonit.CollectedBy,
+            AnalyzedBy = gwMonit.AnalyzedBy,
+            LabReportAttached = gwMonit.VOCReportAttached.GetValueOrDefault(),
+            VOCMethodNumber = gwMonit.VOCMethodNumber,
+            CertificationName = string.IsNullOrWhiteSpace(currentUser?.FullName) ? (currentUser?.UserName ?? string.Empty) : currentUser!.FullName,
+            CertificationTitle = "Authorized Agent",
+            CertificationDate = DateTime.UtcNow.Date,
+            VOCReportFileStoragePath = gwMonit.VOCReportFileStoragePath,
+            HasGw59APermitTemplateRows = hasGw59APermitTemplateRows,
+            GwOperationLagoon = permit?.GwOperationLagoon ?? true,
+            GwOperationSprayField = permit?.GwOperationSprayField ?? true,
+            OtherParameterLines = Gw59ChemistryResolver.ResolveOtherLines(snapshots).ToList(),
+            ParameterSnapshots = snapshots,
+            GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
+            GW59AQuestion2Response = gwMonit.GW59AQuestion2Response,
+            GW59AQuestion3Response = gwMonit.GW59AQuestion3Response,
+            GW59AQuestion4Response = gwMonit.GW59AQuestion4Response,
+            GW59AQuestion5Response = gwMonit.GW59AQuestion5Response,
+            GW59AQuestion6Response = gwMonit.GW59AQuestion6Response,
+            GW59AQuestion7Response = gwMonit.GW59AQuestion7Response,
+            GW59ADueDate = gwMonit.GW59ADueDate,
+            GW59AQuestion2Details = gwMonit.GW59AQuestion2Details,
+            GW59AQuestion4Details = gwMonit.GW59AQuestion4Details,
+            GW59AQuestion5Details = gwMonit.GW59AQuestion5Details,
+            GW59AQuestion7Details = gwMonit.GW59AQuestion7Details,
+            GW59ASignerName = string.IsNullOrWhiteSpace(currentUser?.FullName) ? (currentUser?.UserName ?? string.Empty) : currentUser!.FullName,
+            GW59ASignerTitle = "Authorized Agent",
+            GW59ASignedDate = DateTime.UtcNow.Date
+        };
+    }
+
+    private async Task<byte[]> RenderGw59PdfAsync(Gw59ExportModel model, bool showGrid = false)
+    {
+        var templatePath = Path.Combine(_environment.WebRootPath, "forms", "GW-59 GW-QualityMonitoringReportForm.pdf");
+        if (!System.IO.File.Exists(templatePath))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("GW-59 template PDF not found in wwwroot/forms.");
+        }
+
+        using var outputStream = new MemoryStream();
+        using (var document = PdfReader.Open(templatePath, PdfDocumentOpenMode.Modify))
+        {
+            var page = document.Pages[0];
+            var gfx = XGraphics.FromPdfPage(page);
+            var font = new XFont("Arial", 8, XFontStyle.Regular);
+            void DrawText(string? text, double x, double y, double width = 260) =>
+                gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(x, y, width, font.Height + 2), XStringFormats.TopLeft);
+            void DrawTick(double x, double y)
+            {
+                gfx.DrawLine(XPens.Black, x, y + 5, x + 3, y + 8);
+                gfx.DrawLine(XPens.Black, x + 3, y + 8, x + 9, y + 1);
+            }
+
+            DrawText(model.FacilityName, 120, 74);
+            DrawText(model.PermitNumber, 630, 75);
+            DrawText(model.Permittee, 170, 90);
+            DrawText(model.Address, 120, 106);
+            DrawText(model.City, 80, 122);
+            DrawText(model.ZipCode, 280, 122);
+            DrawText(model.State, 230, 122);
+            DrawText(model.County, 410, 120);
+            DrawText(model.PermitExpirationDate?.ToString("MM/dd/yyyy"), 775, 60);
+            DrawText(model.ContactPerson, 120, 152);
+            DrawText(model.FacilityPhone, 410, 152);
+            DrawText(model.WellLocation, 150, 168);
+            DrawText(model.NumberOfWellsToBeSampled?.ToString(), 495, 168, 60);
+            DrawText(model.WellId, 210, 204);
+            DrawText(model.SampleDate.ToString("MM/dd/yyyy"), 460, 204);
+            DrawText(model.WellDepthFeet?.ToString("F2"), 153, 222);
+            DrawText(model.DiameterInches?.ToString("F2"), 455, 222);
+            if (model.ScreenedIntervalFromFeet.HasValue || model.ScreenedIntervalToFeet.HasValue)
+            {
+                DrawText(model.ScreenedIntervalFromFeet?.ToString("F2"), 450, 239, 55);
+                DrawText(model.ScreenedIntervalToFeet?.ToString("F2"), 520, 239, 55);
+            }
+            DrawText(model.RelativeMpElevation?.ToString("F2"), 450, 250, 75);
+            DrawText(model.WaterLevel?.ToString("F2"), 160, 237);
+            DrawText(model.MeasuringPointAboveLandSurface?.ToString("F2"), 130, 251, 80);
+            DrawText(model.GallonsPumped?.ToString("F2"), 260, 266);
+            DrawText(model.PHField?.ToString("F2"), 610, 220, 45);
+            DrawText(model.TemperatureField?.ToString("F1"), 750, 220);
+            DrawText(model.SpecificConductance?.ToString("F2"), 660, 238);
+            DrawText(model.Odor, 650, 252);
+            DrawText(model.Appearance, 650, 267);
+            void DrawMetalsMark(bool? value, bool yes, double x, double y)
+            {
+                if (value.HasValue && value.Value == yes)
+                {
+                    DrawText("X", x, y);
+                }
+            }
+
+            DrawMetalsMark(model.MetalsUnfiltered, true, 240, 283);
+            DrawMetalsMark(model.MetalsUnfiltered, false, 303, 282);
+            DrawMetalsMark(model.MetalsAcidified, true, 444, 283);
+            DrawMetalsMark(model.MetalsAcidified, false, 492, 283);
+            DrawText(model.SampleDate.ToString("MM/dd/yyyy"), 132, 309, 110);
+            DrawText(model.LabName, 450, 308);
+            DrawText(model.LabCertificationNumber, 740, 308);
+            DrawText(model.TDS?.ToString("F2"), 160, 400);
+            DrawText(model.TOC?.ToString("F2"), 165, 430);
+            DrawText(model.Chloride?.ToString("F2"), 165, 446);
+            DrawText(model.NH3N?.ToString("F2"), 165, 538);
+            DrawText(model.TKN?.ToString("F2"), 165, 571);
+            DrawText(model.NO3N?.ToString("F2"), 440, 352);
+            DrawText(model.Calcium?.ToString("F2"), 440, 430);
+            DrawText(model.Magnesium?.ToString("F2"), 440, 538);
+            DrawText(model.FecalColiform?.ToString("F0"), 165, 352);
+            DrawText(model.TotalColiform?.ToString("F0"), 165, 369);
+            DrawText(model.LabReportAttached ? "X" : string.Empty, 684, 509);
+            DrawText(!model.LabReportAttached ? "X" : string.Empty, 752, 509);
+            DrawText(model.VOCMethodNumber, 750, 525);
+            if (model.GwOperationLagoon)
+            {
+                DrawTick(555, 121);
+            }
+
+            if (model.GwOperationSprayField)
+            {
+                DrawTick(555, 136);
+            }
+
+            var otherLineY = 382d;
+            foreach (var otherLine in model.OtherParameterLines.Take(4))
+            {
+                DrawText(FormatGw59OtherLine(otherLine), 540, otherLineY, 250);
+                otherLineY += 16;
+            }
+            DrawText($"{model.CertificationName} - {model.CertificationTitle}", 40, 649, 340);
+            DrawText(model.CertificationDate?.ToString("MM/dd/yyyy"), 140, 726);
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+            }
+
+            document.Save(outputStream, false);
+        }
+
+        return outputStream.ToArray();
+    }
+
+    private async Task<byte[]> RenderCombinedGw59PdfAsync(Gw59ExportModel model, bool showGrid = false)
+    {
+        var baseGw59Bytes = await RenderGw59PdfAsync(model, showGrid);
+        byte[]? gw59aBytes = null;
+
+        if (!IsGw59AQuestionnaireEmpty(model))
+        {
+            gw59aBytes = await RenderGw59APdfAsync(model, showGrid);
+        }
+
+        using var assembledOutput = new MemoryStream();
+        using (var assembledDoc = new PdfDocument())
+        {
+            ImportPdfBytes(assembledDoc, baseGw59Bytes);
+
+            if (gw59aBytes != null)
+            {
+                ImportPdfBytes(assembledDoc, gw59aBytes);
+            }
+
+            if (model.LabReportAttached && !string.IsNullOrWhiteSpace(model.VOCReportFileStoragePath))
+            {
+                var container = await GetSamBlobContainerClientAsync();
+                var vocBlobClient = container.GetBlobClient(model.VOCReportFileStoragePath);
+                if (await vocBlobClient.ExistsAsync())
+                {
+                    try
+                    {
+                        await using var vocBuffer = await DownloadBlobToMemoryAsync(vocBlobClient);
+                        using var vocDoc = PdfReader.Open(vocBuffer, PdfDocumentOpenMode.Import);
+                        foreach (var page in vocDoc.Pages)
+                        {
+                            assembledDoc.AddPage(page);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "Failed to merge VOC report PDF for GWMonit {GWMonitId}", model.GwMonitId);
+                        throw new Infrastructure.Exceptions.BusinessRuleException(
+                            "VOC report file could not be merged. Ensure the attached VOC report is a valid PDF.",
+                            ex);
+                    }
+                }
+            }
+
+            assembledDoc.Save(assembledOutput, false);
+        }
+
+        return assembledOutput.ToArray();
+    }
+
+    private static void ImportPdfBytes(PdfDocument target, byte[] bytes)
+    {
+        using var sourceStream = new MemoryStream(bytes);
+        using var sourceDoc = PdfReader.Open(sourceStream, PdfDocumentOpenMode.Import);
+        foreach (var page in sourceDoc.Pages)
+        {
+            target.AddPage(page);
+        }
+    }
+
+    private async Task<BlobContainerClient> GetSamBlobContainerClientAsync()
+    {
+        var connectionString = _configuration.GetConnectionString("StorageConnectionString");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("StorageConnectionString is not configured.");
+        }
+
+        var blobServiceClient = new BlobServiceClient(connectionString);
+        var container = blobServiceClient.GetBlobContainerClient("sam-files");
+        await container.CreateIfNotExistsAsync();
+        return container;
+    }
+
+    private static async Task<MemoryStream> DownloadBlobToMemoryAsync(BlobClient blobClient)
+    {
+        var download = await blobClient.DownloadStreamingAsync();
+        var buffer = new MemoryStream();
+        await using var source = download.Value.Content;
+        await source.CopyToAsync(buffer);
+        buffer.Position = 0;
+        return buffer;
+    }
+
+    private static string FormatGw59OtherLine(Gw59OtherParameterLine line)
+    {
+        var units = string.IsNullOrWhiteSpace(line.Units) ? string.Empty : $" [{line.Units}]";
+        return $"{line.ParameterName} {line.Value:0.######}{units}";
+    }
+
+    private async Task<byte[]> RenderNdar1PdfAsync(NDAR1 report, bool showGrid = false)
+    {
+        var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Application Report (NDAR-1) Form 131014.pdf");
+        if (!System.IO.File.Exists(templatePath))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("NDAR-1 template PDF not found in wwwroot/forms.");
+        }
+
+        var irrigationReport = await _context.IrrRprts
+            .Where(i => i.FacilityId == report.FacilityId &&
+                        i.Month == report.Month &&
+                        i.Year == report.Year)
+            .OrderByDescending(i => i.UpdatedDate)
+            .FirstOrDefaultAsync();
+        var operatorLogsForMonth = await _context.OperatorLogs
+            .Where(o => o.FacilityId == report.FacilityId &&
+                        o.LogDate.Year == report.Year &&
+                        o.LogDate.Month == (int)report.Month)
+            .OrderBy(o => o.LogDate)
+            .ThenBy(o => o.Id)
+            .ToListAsync();
+        var storageByDate = new Dictionary<DateTime, decimal?>();
+        foreach (var log in operatorLogsForMonth)
+        {
+            var logDate = log.LogDate.Date;
+            if (!storageByDate.ContainsKey(logDate))
+            {
+                storageByDate[logDate] = log.StorageFt;
+            }
+        }
+
+        var map = BuildNdar1PdfMap();
+        var allFields = report.Fields.OrderBy(f => f.FieldOrder).ToList();
+        if (allFields.Count == 0)
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("No NDAR-1 dynamic fields found for PDF export.");
+        }
+
+        var chunks = allFields
+            .Select((field, idx) => new { field, idx })
+            .GroupBy(x => x.idx / 4)
+            .Select(g => g.Select(x => x.field).ToList())
+            .ToList();
+
+        using var output = new MemoryStream();
+        using var document = new PdfDocument();
+        var templateForm = XPdfForm.FromFile(templatePath);
+        templateForm.PageNumber = 1;
+        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
+        var pageCount = chunks.Count;
+        var totalPages = pageCount * 2;
+        var currentPageNumber = 1;
+        var hasCertificationTemplate = templateDoc.PageCount >= 2;
+
+        for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
+        {
+            var chunk = chunks[pageIndex];
+            var page = document.AddPage();
+            page.Width = templateForm.PointWidth;
+            page.Height = templateForm.PointHeight;
+
+            var gfx = XGraphics.FromPdfPage(page);
+            gfx.DrawImage(templateForm, 0, 0, page.Width, page.Height);
+
+            var font = new XFont("Arial", 8, XFontStyle.Regular);
+            var bold = new XFont("Arial", 8, XFontStyle.Bold);
+            Draw(gfx, report.Facility?.PermitNumber, font, map.Header.PermitValue);
+            Draw(gfx, report.Facility?.Name, font, map.Header.FacilityValue);
+            Draw(gfx, report.Facility?.County, font, map.Header.CountyValue);
+            Draw(gfx, new DateTime(report.Year, (int)report.Month, 1).ToString("MMMM"), font, map.Header.MonthValue);
+            Draw(gfx, report.Year.ToString(), font, map.Header.YearValue);
+            Draw(gfx, report.DidIrrigationOccur ? "X" : string.Empty, font, map.Header.IrrigationYes);
+            Draw(gfx, report.DidIrrigationOccur ? string.Empty : "X", font, map.Header.IrrigationNo);
+            Draw(gfx, currentPageNumber.ToString(), font, map.Header.PageNumber);
+            Draw(gfx, totalPages.ToString(), font, map.Header.TotalPages);
+
+            for (var i = 0; i < chunk.Count; i++)
+            {
+                var field = chunk[i];
+                var x = map.FieldBlocks[i];
+                Draw(gfx, field.Sprayfield?.FieldId ?? $"Field {field.FieldOrder}", font, new NdarPdfPoint(x.FieldNameX, map.FieldMetaY.FieldNameY));
+                Draw(gfx, (field.Sprayfield != null ? SAM.Utilities.SprayfieldReportHelper.GetReportAcres(field.Sprayfield).ToString("F2") : string.Empty), font, new NdarPdfPoint(x.AreaX, map.FieldMetaY.AreaY));
+                Draw(gfx, field.Sprayfield != null ? SAM.Utilities.SprayfieldZoneSummaryHelper.GetCropSummary(field.Sprayfield) ?? string.Empty : string.Empty, font, new NdarPdfPoint(x.CoverCropX, map.FieldMetaY.CoverCropY));
+                Draw(gfx, field.Sprayfield?.HourlyRateInches?.ToString("F2"), font, new NdarPdfPoint(x.HourlyRateX, map.FieldMetaY.HourlyRateY));
+                Draw(gfx, (field.Sprayfield?.AnnualRateInches ?? field.Sprayfield?.HydraulicLoadingLimitInPerYr)?.ToString("F2"), font, new NdarPdfPoint(x.AnnualRateX, map.FieldMetaY.AnnualRateY));
+                var irrigated = field.DailyValues.Any(d => (d.TimeIrrigated ?? 0m) > 0m || (d.VolumeApplied ?? 0m) > 0m);
+                Draw(gfx, irrigated ? "X" : string.Empty, font, new NdarPdfPoint(x.FieldIrrigatedYesX, map.FieldMetaY.FieldIrrigatedY));
+                Draw(gfx, irrigated ? string.Empty : "X", font, new NdarPdfPoint(x.FieldIrrigatedNoX, map.FieldMetaY.FieldIrrigatedY));
+            }
+
+            var daysInMonth = Math.Min(DateTime.DaysInMonth(report.Year, (int)report.Month), map.Table.MaxRows);
+            for (var day = 1; day <= daysInMonth; day++)
+            {
+                var dayIndex = day - 1;
+                var rowY = map.Table.FirstRowY + (dayIndex * map.Table.RowHeight);
+                Draw(gfx, SafeAt(report.WeatherCodeDaily, dayIndex), font, new NdarPdfPoint(map.Table.WeatherCodeX, rowY));
+                Draw(gfx, FormatNumber(SafeAt(report.TemperatureDaily, dayIndex), "F0"), font, new NdarPdfPoint(map.Table.TemperatureX, rowY));
+                Draw(gfx, FormatNumber(SafeAt(report.PrecipitationDaily, dayIndex), "0.##"), font, new NdarPdfPoint(map.Table.PrecipitationX, rowY));
+                var date = new DateTime(report.Year, (int)report.Month, day);
+                storageByDate.TryGetValue(date.Date, out var storageFt);
+                Draw(gfx, FormatNumber(storageFt, "0.##"), font, new NdarPdfPoint(map.Table.StorageX, rowY));
+                Draw(gfx, FormatNumber(SafeAt(report.FiveDayUpsetDaily, dayIndex), "0.##"), font, new NdarPdfPoint(map.Table.FiveDayUpsetX, rowY));
+
+                for (var fieldIndex = 0; fieldIndex < chunk.Count; fieldIndex++)
+                {
+                    var field = chunk[fieldIndex];
+                    var daily = field.DailyValues.FirstOrDefault(d => d.DayNo == day);
+                    var col = map.FieldBlocks[fieldIndex];
+                    Draw(gfx, FormatNumber(daily?.VolumeApplied, "F0"), font, new NdarPdfPoint(col.VolumeX, rowY));
+                    Draw(gfx, FormatNumber(daily?.TimeIrrigated, "F0"), font, new NdarPdfPoint(col.TimeX, rowY));
+                    Draw(gfx, FormatNumber(daily?.DailyLoading, "F2"), font, new NdarPdfPoint(col.DailyLoadingX, rowY));
+                    Draw(gfx, FormatNumber(daily?.MaxHourlyLoading, "F2"), font, new NdarPdfPoint(col.MaxHourlyLoadingX, rowY));
+                }
+            }
+
+            var monthlyY = map.Table.MonthlyY;
+            var floatingY = map.Table.FloatingY;
+            for (var fieldIndex = 0; fieldIndex < chunk.Count; fieldIndex++)
+            {
+                var field = chunk[fieldIndex];
+                var col = map.FieldBlocks[fieldIndex];
+                var monthlyVolumeSum = field.DailyValues
+                    .Where(d => d.VolumeApplied.HasValue)
+                    .Sum(d => Math.Round(d.VolumeApplied!.Value, 0, MidpointRounding.AwayFromZero));
+                Draw(gfx, monthlyVolumeSum.ToString("F0"), font, new NdarPdfPoint(col.VolumeX, monthlyY));
+                Draw(gfx, FormatNumber(field.MonthlyLoading, "F2"), font, new NdarPdfPoint(col.DailyLoadingX, monthlyY));
+                Draw(gfx, FormatNumber(field.TwelveMonthFloatingTotal, "F2"), font, new NdarPdfPoint(col.DailyLoadingX, floatingY));
+            }
+
+            // Restore missing top border on the second-last footer cell block.
+            gfx.DrawLine(new XPen(XColors.Black, 1.6), 730, 550, 770, 550);
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+            }
+            currentPageNumber++;
+
+            if (hasCertificationTemplate)
+            {
+                document.AddPage(templateDoc.Pages[1]);
+                var certPage = document.Pages[document.PageCount - 1];
+                var certGfx = XGraphics.FromPdfPage(certPage);
+                var certFont = new XFont("Arial", 8, XFontStyle.Regular);
+                Draw(certGfx, currentPageNumber.ToString(), certFont, map.Header.PageNumber);
+                Draw(certGfx, totalPages.ToString(), certFont, map.Header.TotalPages);
+
+                var markCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant;
+                var markNonCompliant = irrigationReport?.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant;
+
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q1Compliant);
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q2Compliant);
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q3Compliant);
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q4Compliant);
+                Draw(certGfx, markCompliant ? "X" : string.Empty, certFont, map.Certification.Q5Compliant);
+
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q1NonCompliant);
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q2NonCompliant);
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q3NonCompliant);
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q4NonCompliant);
+                Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q5NonCompliant);
+
+                Draw(certGfx, string.Empty, certFont, map.Certification.NonComplianceReasonStart);
+                Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.OrcName);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcCertificationNo);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcGrade);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcPhone);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedYes);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedNo);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcSignature);
+                Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.OrcDate);
+
+                Draw(certGfx, report.Facility?.Permittee, certFont, map.Certification.PermitteeName);
+                Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.SigningOfficial);
+                Draw(certGfx, "Authorized Agent", certFont, map.Certification.SigningOfficialTitle);
+                Draw(certGfx, string.Empty, certFont, map.Certification.PermitteePhone);
+                Draw(certGfx, report.Facility?.PermitExpirationDate?.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitExp);
+                Draw(certGfx, string.Empty, certFont, map.Certification.PermitteeSignature);
+                Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitteeDate);
+
+                if (showGrid)
+                {
+                    DrawCoordinateGrid(certGfx, certPage.Width.Point, certPage.Height.Point);
+                }
+            }
+
+            currentPageNumber++;
+        }
+
+        document.Save(output, false);
+        return output.ToArray();
+    }
+
+    private async Task<byte[]> RenderNdmlrPdfAsync(NDMLR report, bool showGrid = false)
+    {
+        var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Mass Loading Report (NDMLR) Form 131014.pdf");
+        if (!System.IO.File.Exists(templatePath))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("NDMLR template PDF not found in wwwroot/forms.");
+        }
+
+        const decimal monthlyLoadConversionFactor = 8.34e-6m;
+        var (windowStart, windowEnd) = GetNdmlrWindow(report.Year, report.Month);
+        var monthKeys = BuildDescendingNdmlrWindowMonthKeys(report.Year, report.Month);
+        var startYear = windowStart.Year;
+        var startMonth = windowStart.Month;
+        var endYear = windowEnd.Year;
+        var endMonth = windowEnd.Month;
+
+        // Build rolling 12-month field universe and month data (same source logic used by NDMLR Excel path).
+        var ndarReports = await _context.NDAR1s
+            .Where(r => r.CompanyId == report.CompanyId &&
+                        r.FacilityId == report.FacilityId &&
+                        (r.Year > startYear || (r.Year == startYear && (int)r.Month >= startMonth)) &&
+                        (r.Year < endYear || (r.Year == endYear && (int)r.Month <= endMonth)))
+            .Include(r => r.Field1).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field2).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field3).ThenInclude(f => f!.Crop)
+            .Include(r => r.Field4).ThenInclude(f => f!.Crop)
+            .Include(r => r.Fields)
+                .ThenInclude(f => f.Sprayfield)
+                    .ThenInclude(s => s!.Crop)
+            .Include(r => r.Fields)
+                .ThenInclude(f => f.DailyValues)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var gwMonits = await _context.GWMonits
+            .Where(g => g.FacilityId == report.FacilityId &&
+                        g.SampleDate >= windowStart &&
+                        g.SampleDate <= windowEnd)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var reportsByMonth = ndarReports
+            .GroupBy(r => BuildMonthKey(r.Year, (int)r.Month))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
+
+        var fieldMetaById = new Dictionary<Guid, (Sprayfield Sprayfield, int? PreferredOrder)>();
+        foreach (var ndar in ndarReports)
+        {
+            if (ndar.Fields.Any())
+            {
+                foreach (var field in ndar.Fields.OrderBy(f => f.FieldOrder))
+                {
+                    if (field.Sprayfield == null)
+                    {
+                        continue;
+                    }
+
+                    var sprayfieldId = field.Sprayfield.Id;
+                    if (!fieldMetaById.TryGetValue(sprayfieldId, out var existing))
+                    {
+                        fieldMetaById[sprayfieldId] = (field.Sprayfield, field.FieldOrder);
+                        continue;
+                    }
+
+                    if (!existing.PreferredOrder.HasValue || field.FieldOrder < existing.PreferredOrder.Value)
+                    {
+                        fieldMetaById[sprayfieldId] = (existing.Sprayfield, field.FieldOrder);
+                    }
+                }
+                continue;
+            }
+
+            foreach (var legacy in new[] { ndar.Field1, ndar.Field2, ndar.Field3, ndar.Field4 })
+            {
+                if (legacy == null || fieldMetaById.ContainsKey(legacy.Id))
+                {
+                    continue;
+                }
+
+                fieldMetaById[legacy.Id] = (legacy, null);
+            }
+        }
+
+        var orderedFields = fieldMetaById.Values
+            .OrderBy(x => x.PreferredOrder.HasValue ? 0 : 1)
+            .ThenBy(x => x.PreferredOrder ?? int.MaxValue)
+            .ThenBy(x => x.Sprayfield.FieldId)
+            .Select(x => x.Sprayfield)
+            .ToList();
+
+        if (!orderedFields.Any())
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("No NDAR-1 source fields found for this NDMLR year.");
+        }
+
+        var monthlyVolumesByFieldByMonth = BuildMonthlyFieldVolumesByMonth(reportsByMonth);
+        var yearlyVolumeByFieldId = new Dictionary<Guid, decimal>();
+        foreach (var monthVolumes in monthlyVolumesByFieldByMonth.Values)
+        {
+            foreach (var kvp in monthVolumes)
+            {
+                if (!yearlyVolumeByFieldId.ContainsKey(kvp.Key))
+                {
+                    yearlyVolumeByFieldId[kvp.Key] = 0m;
+                }
+
+                yearlyVolumeByFieldId[kvp.Key] += kvp.Value;
+            }
+        }
+
+        var fieldChunks = orderedFields
+            .Select((field, idx) => new { field, idx })
+            .GroupBy(x => x.idx / 5)
+            .Select(g => g.Select(x => x.field).ToList())
+            .ToList();
+
+        using var output = new MemoryStream();
+        using var document = new PdfDocument();
+        var templateForm = XPdfForm.FromFile(templatePath);
+        templateForm.PageNumber = 1;
+        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
+        var hasCertificationTemplate = templateDoc.PageCount >= 2;
+        var totalPages = hasCertificationTemplate ? fieldChunks.Count * 2 : fieldChunks.Count;
+        var currentPageNumber = 1;
+
+        var fieldNameXs = new[] { 158d, 296.8d, 435d, 571d, 710d };
+        var areaXs = new[] { 158d, 296.8d, 435d, 571d, 710d };
+        var cropXs = new[] { 158d, 296.8d, 435d, 571d, 710d };
+        var loadTypeXs = new[] { 158d, 296.8d, 436d, 571d, 710d };
+        var footerValueXs = new[] { 157.5d, 294d, 432d, 570d, 709d };
+
+        for (var chunkIndex = 0; chunkIndex < fieldChunks.Count; chunkIndex++)
+        {
+            var chunk = fieldChunks[chunkIndex];
+            var page = document.AddPage();
+            page.Width = templateForm.PointWidth;
+            page.Height = templateForm.PointHeight;
+
+            var gfx = XGraphics.FromPdfPage(page);
+            gfx.DrawImage(templateForm, 0, 0, page.Width, page.Height);
+            var font = new XFont("Arial", 8, XFontStyle.Regular);
+
+            // Header
+            Draw(gfx, report.Facility?.PermitNumber, font, new NdarPdfPoint(73, 42));
+            Draw(gfx, report.Facility?.Name, font, new NdarPdfPoint(220, 42));
+            Draw(gfx, report.Facility?.County, font, new NdarPdfPoint(480, 42));
+            Draw(gfx, $"{report.Month}", font, new NdarPdfPoint(633, 42));
+            Draw(gfx, report.Year.ToString(), font, new NdarPdfPoint(734, 42));
+            Draw(gfx, currentPageNumber.ToString(), font, new NdarPdfPoint(685, 16));
+            Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
+
+            // Field metadata blocks (5 slots)
+            for (var i = 0; i < 5; i++)
+            {
+                var field = i < chunk.Count ? chunk[i] : null;
+                if (field == null)
+                {
+                    continue;
+                }
+
+                var baseX = fieldNameXs[i];
+                Draw(gfx, field.FieldId, font, new NdarPdfPoint(fieldNameXs[i], 60));
+                Draw(gfx, SprayfieldReportHelper.GetReportAcres(field).ToString("F2"), font, new NdarPdfPoint(areaXs[i], 77));
+                Draw(gfx, SprayfieldZoneSummaryHelper.GetCropSummary(field) ?? string.Empty, font, new NdarPdfPoint(cropXs[i], 90));
+                Draw(gfx, "Wastewater", font, new NdarPdfPoint(loadTypeXs[i], 104));
+
+                var isLoaded = yearlyVolumeByFieldId.TryGetValue(field.Id, out var annualVol) && annualVol > 0m;
+                var yesOffset = i == 1 ? 0d : i == 2 ? -1d : 1d;
+                Draw(gfx, isLoaded ? "X" : string.Empty, font, new NdarPdfPoint(baseX + yesOffset, 118.5));
+                Draw(gfx, isLoaded ? string.Empty : "X", font, new NdarPdfPoint(baseX + 32, 118.5));
+            }
+
+            // Monthly rows (selected month descending for rolling 12-month window)
+            var runningTotals = new decimal[5];
+            for (var rowIndex = 0; rowIndex < monthKeys.Count; rowIndex++)
+            {
+                var monthKey = monthKeys[rowIndex];
+                var (monthYear, monthNo) = ParseMonthKey(monthKey);
+                var rowY = 207d + (rowIndex * 11.6d);
+                var monthDate = new DateTime(monthYear, monthNo, 1);
+                Draw(gfx, monthDate.ToString("MMMM"), font, new NdarPdfPoint(28, rowY));
+
+                var monthAvgConc = ComputeAverageTotalNMgl(gwMonits
+                    .Where(g => g.SampleDate.Year == monthYear && g.SampleDate.Month == monthNo)
+                    .ToList());
+                monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes);
+
+                for (var i = 0; i < 5; i++)
+                {
+                    var field = i < chunk.Count ? chunk[i] : null;
+                    if (field == null)
+                    {
+                        continue;
+                    }
+
+                    var baseX = fieldNameXs[i];
+                    var volX = baseX - 77d;
+                    var concX = baseX - 34d;
+                    var monthlyLoadX = baseX - 1d;
+                    var cumulativeLoadX = baseX + 30d;
+
+                    var volume = 0m;
+                    if (monthVolumes != null && monthVolumes.TryGetValue(field.Id, out var mappedVolume))
+                    {
+                        volume = mappedVolume;
+                    }
+
+                    if (volume > 0m)
+                    {
+                        Draw(gfx, volume.ToString("N0"), font, new NdarPdfPoint(volX, rowY));
+                    }
+
+                    if (monthAvgConc.HasValue && volume > 0m)
+                    {
+                        Draw(gfx, monthAvgConc.Value.ToString("F2"), font, new NdarPdfPoint(concX, rowY));
+                    }
+
+                    var area = SprayfieldReportHelper.GetReportAcres(field);
+                    if (area > 0m && monthAvgConc.HasValue && volume > 0m)
+                    {
+                        var monthlyLoad = (volume * monthAvgConc.Value * monthlyLoadConversionFactor) / area;
+                        runningTotals[i] += monthlyLoad;
+                        Draw(gfx, monthlyLoad.ToString("F2"), font, new NdarPdfPoint(monthlyLoadX, rowY));
+                        Draw(gfx, runningTotals[i].ToString("F2"), font, new NdarPdfPoint(cumulativeLoadX, rowY));
+                    }
+                }
+            }
+
+            // Footer values
+            for (var i = 0; i < 5; i++)
+            {
+                var field = i < chunk.Count ? chunk[i] : null;
+                if (field == null)
+                {
+                    continue;
+                }
+
+                var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, field.Id, windowEnd);
+                Draw(gfx, metrics.RollingPanLbsPerAcre.ToString("F2"), font, new NdarPdfPoint(footerValueXs[i], 350));
+                if (metrics.PanLimitLbsPerAcre.HasValue)
+                {
+                    Draw(gfx, metrics.PanLimitLbsPerAcre.Value.ToString("F2"), font, new NdarPdfPoint(footerValueXs[i], 371.5));
+                }
+            }
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+            }
+            currentPageNumber++;
+
+            if (hasCertificationTemplate)
+            {
+                document.AddPage(templateDoc.Pages[1]);
+                var certPage = document.Pages[document.PageCount - 1];
+                var certGfx = XGraphics.FromPdfPage(certPage);
+                var certFont = new XFont("Arial", 8, XFontStyle.Regular);
+                var facility = report.Facility;
+                var orcName = facility?.OrcName ?? string.Empty;
+                var operatorNumber = facility?.OperatorNumber ?? string.Empty;
+                var operatorGrade = facility?.OperatorGrade ?? string.Empty;
+                var operatorPhone = facility?.OperatorPhone ?? string.Empty;
+                var permittee = facility?.Permittee ?? string.Empty;
+                var permitPhone = facility?.PermitPhone ?? string.Empty;
+                var exportDate = DateTime.Today.ToString("MM/dd/yyyy");
+
+                Draw(certGfx, currentPageNumber.ToString(), certFont, new NdarPdfPoint(685, 16));
+                Draw(certGfx, totalPages.ToString(), certFont, new NdarPdfPoint(720, 16));
+                Draw(certGfx, orcName, certFont, new NdarPdfPoint(50, 315));
+                Draw(certGfx, operatorNumber, certFont, new NdarPdfPoint(110, 338));
+                Draw(certGfx, operatorGrade, certFont, new NdarPdfPoint(60, 360));
+                Draw(certGfx, operatorPhone, certFont, new NdarPdfPoint(250, 360));
+                Draw(certGfx, facility?.ChangeInOrc == true ? "X" : string.Empty, certFont, new NdarPdfPoint(313, 377));
+                Draw(certGfx, facility?.ChangeInOrc == true ? string.Empty : "X", certFont, new NdarPdfPoint(340, 385));
+                Draw(certGfx, exportDate, certFont, new NdarPdfPoint(360, 429));
+
+                Draw(certGfx, permittee, certFont, new NdarPdfPoint(473, 315));
+                Draw(certGfx, orcName, certFont, new NdarPdfPoint(500, 338));
+                Draw(certGfx, operatorGrade, certFont, new NdarPdfPoint(530, 360));
+                Draw(certGfx, permitPhone, certFont, new NdarPdfPoint(480, 383));
+                Draw(certGfx, facility?.PermitExpirationDate?.ToString("MM/dd/yyyy"), certFont, new NdarPdfPoint(650, 387));
+                Draw(certGfx, exportDate, certFont, new NdarPdfPoint(710, 429));
+
+                if (showGrid)
+                {
+                    DrawCoordinateGrid(certGfx, certPage.Width.Point, certPage.Height.Point);
+                }
+                currentPageNumber++;
+            }
+        }
+
+        document.Save(output, false);
+        return output.ToArray();
+    }
+
+    private sealed class NdmrPdfParameter
+    {
+        public required string PcsCode { get; init; }
+        public required string DisplayName { get; init; }
+        public required string Units { get; init; }
+        public required string SampleType { get; init; }
+        public required string SampleFrequency { get; init; }
+        public required string MonthlyLimitText { get; init; }
+        public required string DailyLimitText { get; init; }
+        public required List<decimal?> DailyValues { get; init; }
+        public decimal? Average { get; init; }
+        public decimal? DailyMaximum { get; init; }
+        public decimal? DailyMinimum { get; init; }
+    }
+
+    private sealed class NdmrPdfSnapshot
+    {
+        public required Facility Facility { get; init; }
+        public required MonthEnum Month { get; init; }
+        public required int Year { get; init; }
+        public required int DaysInMonth { get; init; }
+        public required List<TimeSpan?> OrcArrivalByDay { get; init; }
+        public required List<decimal?> OrcTimeOnSiteByDay { get; init; }
+        public required List<List<NdmrPdfParameter>> ParameterChunks { get; init; }
+        public ComplianceStatusEnum? ComplianceStatus { get; init; }
+    }
+
+    private async Task<byte[]> RenderNdmrPdfAsync(NDAR1 report, bool showGrid = false)
+    {
+        _ = report ?? throw new ArgumentNullException(nameof(report));
+        var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Monitoring Report (NDMR) Form 0312.pdf");
+        if (!System.IO.File.Exists(templatePath))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("NDMR template PDF not found in wwwroot/forms.");
+        }
+
+        var snapshot = await BuildNdmrPdfSnapshotAsync(report);
+
+        using var output = new MemoryStream();
+        using var document = new PdfDocument();
+        using var templateDoc = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
+
+        var hasCertificationTemplate = templateDoc.PageCount > 1;
+        var totalPages = snapshot.ParameterChunks.Count + (hasCertificationTemplate ? 1 : 0);
+        var exportDate = DateTime.Today.ToString("MM/dd/yyyy");
+        var font = new XFont("Arial", 8, XFontStyle.Regular);
+        var boldFont = new XFont("Arial", 8, XFontStyle.Bold);
+        var tinyBold = new XFont("Arial", 7, XFontStyle.Bold);
+
+        var currentPage = 1;
+        // Flow (50050) is already a dedicated template column. Dynamic parameters start at next column (E).
+        var parameterXs = Enumerable.Range(0, 15).Select(i => 168d + (i * 43d)).ToArray();
+        const double parameterColumnWidth = 39d;
+        const double day1Y = 154.7d;
+        const double dayRowHeight = 11.66d;
+        const double orcArrivalX = 39d;
+        const double orcTimeOnSiteX = 78d;
+        const double codeY = 75d;
+        const double parameterNameCellTopY = 76d;
+        const double parameterNameCellHeight = 80d;
+        const double parameterNameCellXOffset = -43d;
+        const double unitsY = 145d;
+        const double unitsCellXInset = -14d;
+        const double unitsCellWidth = 34d;
+        // Footer block anchors off daily-grid end so values never collide with day rows.
+        var footerStartY = day1Y + (31 * dayRowHeight) + 2d;
+        const double footerRowStep = 11.5d;
+        var avgY = footerStartY;
+        var maxY = footerStartY + footerRowStep;
+        var minY = footerStartY + (2d * footerRowStep);
+        var sampleTypeY = footerStartY + (3d * footerRowStep);
+        var monthlyLimitY = footerStartY + (4d * footerRowStep);
+        var dailyLimitY = footerStartY + (5d * footerRowStep);
+        var sampleFreqY = footerStartY + (6d * footerRowStep);
+
+        foreach (var chunk in snapshot.ParameterChunks)
+        {
+            document.AddPage(templateDoc.Pages[0]);
+            var page = document.Pages[document.PageCount - 1];
+            var gfx = XGraphics.FromPdfPage(page);
+
+            Draw(gfx, snapshot.Facility.PermitNumber, boldFont, new NdarPdfPoint(73, 41));
+            Draw(gfx, snapshot.Facility.Name, boldFont, new NdarPdfPoint(226, 41));
+            Draw(gfx, snapshot.Facility.County, boldFont, new NdarPdfPoint(482, 41));
+            Draw(gfx, snapshot.Month.ToString(), boldFont, new NdarPdfPoint(608.5, 41));
+            Draw(gfx, snapshot.Year.ToString(), boldFont, new NdarPdfPoint(721, 41));
+            Draw(gfx, currentPage.ToString(), font, new NdarPdfPoint(685, 16));
+            Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
+
+            for (var slot = 0; slot < chunk.Count && slot < parameterXs.Length; slot++)
+            {
+                var p = chunk[slot];
+                var x = parameterXs[slot];
+                Draw(gfx, p.PcsCode, boldFont, new NdarPdfPoint(x, codeY));
+                DrawVerticalInCell(
+                    gfx,
+                    FormatVerticalLabel(p.DisplayName),
+                    tinyBold,
+                    x + parameterNameCellXOffset,
+                    parameterNameCellTopY,
+                    parameterColumnWidth,
+                    parameterNameCellHeight);
+                DrawInCell(gfx, p.Units, boldFont, x + unitsCellXInset, unitsY, unitsCellWidth, bold: true);
+                Draw(gfx, p.SampleType, font, new NdarPdfPoint(x, sampleTypeY));
+                Draw(gfx, p.MonthlyLimitText, font, new NdarPdfPoint(x, monthlyLimitY));
+                Draw(gfx, p.DailyLimitText, font, new NdarPdfPoint(x, dailyLimitY));
+                Draw(gfx, p.SampleFrequency, font, new NdarPdfPoint(x, sampleFreqY));
+                Draw(gfx, p.Average?.ToString("0.00"), font, new NdarPdfPoint(x, avgY));
+                Draw(gfx, p.DailyMaximum?.ToString("0.00"), font, new NdarPdfPoint(x, maxY));
+                Draw(gfx, p.DailyMinimum?.ToString("0.00"), font, new NdarPdfPoint(x, minY));
+            }
+
+            for (var day = 1; day <= snapshot.DaysInMonth; day++)
+            {
+                var y = day1Y + ((day - 1) * dayRowHeight);
+                Draw(gfx, snapshot.OrcArrivalByDay[day - 1]?.ToString(@"hh\:mm"), font, new NdarPdfPoint(orcArrivalX, y));
+                Draw(gfx, snapshot.OrcTimeOnSiteByDay[day - 1]?.ToString("0.00"), font, new NdarPdfPoint(orcTimeOnSiteX, y));
+
+                for (var slot = 0; slot < chunk.Count && slot < parameterXs.Length; slot++)
+                {
+                    var dayValue = chunk[slot].DailyValues[day - 1];
+                    Draw(gfx, dayValue?.ToString("0.00"), font, new NdarPdfPoint(parameterXs[slot], y));
+                }
+            }
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+            }
+            currentPage++;
+        }
+
+        if (hasCertificationTemplate)
+        {
+            document.AddPage(templateDoc.Pages[1]);
+            var certPage = document.Pages[document.PageCount - 1];
+            var certGfx = XGraphics.FromPdfPage(certPage);
+
+            Draw(certGfx, currentPage.ToString(), font, new NdarPdfPoint(685, 16));
+            Draw(certGfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
+
+            // Top certification block parity with Excel values (best-guess coordinates for missing fields).
+            var samplerNames = (snapshot.Facility.PersonsCollectingSamples ?? string.Empty)
+                .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Draw(certGfx, samplerNames.Length > 0 ? samplerNames[0] : string.Empty, font, new NdarPdfPoint(72, 95));
+            Draw(certGfx, samplerNames.Length > 1 ? samplerNames[1] : string.Empty, font, new NdarPdfPoint(72, 116));
+            Draw(certGfx, snapshot.Facility.CertifiedLaboratory1Name, font, new NdarPdfPoint(430, 95));
+            Draw(certGfx, snapshot.Facility.CertifiedLaboratory2Name, font, new NdarPdfPoint(430, 116));
+
+            var complianceText = snapshot.ComplianceStatus switch
+            {
+                ComplianceStatusEnum.Compliant => "X Compliant    Non-Compliant",
+                ComplianceStatusEnum.NonCompliant => "Compliant    X Non-Compliant",
+                _ => "Compliant    Non-Compliant"
+            };
+            Draw(certGfx, complianceText, font, new NdarPdfPoint(540, 136));
+
+            Draw(certGfx, snapshot.Facility.OrcName, font, new NdarPdfPoint(50, 327));
+            Draw(certGfx, snapshot.Facility.OperatorNumber, font, new NdarPdfPoint(95, 350));
+            Draw(certGfx, snapshot.Facility.OperatorGrade, font, new NdarPdfPoint(52.5, 374));
+            Draw(certGfx, snapshot.Facility.OperatorPhone, font, new NdarPdfPoint(220, 374));
+            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? "X" : string.Empty, boldFont, new NdarPdfPoint(245, 395));
+            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? string.Empty : "X", boldFont, new NdarPdfPoint(284, 393));
+            Draw(certGfx, exportDate, font, new NdarPdfPoint(330, 440));
+
+            Draw(certGfx, snapshot.Facility.Permittee, font, new NdarPdfPoint(449, 327));
+            Draw(certGfx, snapshot.Facility.OrcName, font, new NdarPdfPoint(499, 350));
+            Draw(certGfx, snapshot.Facility.OperatorGrade, font, new NdarPdfPoint(530, 374));
+            Draw(certGfx, snapshot.Facility.PermitPhone, font, new NdarPdfPoint(470, 399));
+            Draw(certGfx, snapshot.Facility.PermitExpirationDate?.ToString("MM/dd/yyyy"), font, new NdarPdfPoint(680, 399));
+            Draw(certGfx, exportDate, font, new NdarPdfPoint(700, 440));
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(certGfx, certPage.Width.Point, certPage.Height.Point);
+            }
+        }
+
+        document.Save(output, false);
+        return output.ToArray();
+    }
+
+    private async Task<NdmrPdfSnapshot> BuildNdmrPdfSnapshotAsync(NDAR1 report)
+    {
+        var facility = report.Facility
+            ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId)
+            ?? throw new Infrastructure.Exceptions.BusinessRuleException("Facility not found for this NDMR export.");
+
+        var monthNumber = (int)report.Month;
+        var year = report.Year;
+        var startDate = new DateTime(year, monthNumber, 1);
+        var endDate = startDate.AddMonths(1).AddDays(-1);
+        var daysInMonth = DateTime.DaysInMonth(year, monthNumber);
+        var permit = await ResolvePermitForDateAsync(report.FacilityId, startDate);
+
+        var permitTemplateRows = permit == null
+            ? new List<FacilityPermitTemplateParameter>()
+            : await _context.FacilityPermitTemplateParameters
+                .AsNoTracking()
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => x.FacilityPermitId == permit.Id && (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0)
+                .OrderBy(x => x.SortOrder)
+                .ThenBy(x => x.CreatedDate)
+                .ThenBy(x => x.Id)
+                .ToListAsync();
+        permitTemplateRows = permitTemplateRows
+            .Where(row => IsNdmrTemplateRowApplicableForMonth(row, monthNumber))
+            .ToList();
+
+        if (permitTemplateRows.Any() &&
+            !permitTemplateRows.Any(x => string.Equals(x.PcsParameterCatalog?.PcsCode, "50050", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("Permit template must include PCS code 50050 (Flow) for NDMR export.");
+        }
+
+        var wwChar = await _context.WWChars
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w =>
+                w.FacilityId == report.FacilityId &&
+                (int)w.Month == monthNumber &&
+                w.Year == year);
+
+        var wwCharTemplateValues = wwChar == null
+            ? new List<WWCharTemplateValue>()
+            : await _context.WWCharTemplateValues
+                .AsNoTracking()
+                .Where(x => x.WWCharId == wwChar.Id && x.DayNo >= 1 && x.DayNo <= 31)
+                .ToListAsync();
+        var wwDailyValueByKey = wwCharTemplateValues
+            .GroupBy(x => (x.FacilityPermitTemplateParameterId, x.DayNo))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First().NumericValue);
+
+        var operatorLogs = await _context.OperatorLogs
+            .AsNoTracking()
+            .Where(o => o.FacilityId == report.FacilityId && o.LogDate >= startDate && o.LogDate <= endDate)
+            .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+            .ThenByDescending(o => o.CreatedDate)
+            .ToListAsync();
+
+        var gwMonits = await _context.GWMonits
+            .AsNoTracking()
+            .Where(g => g.FacilityId == report.FacilityId && g.SampleDate >= startDate && g.SampleDate <= endDate)
+            .ToListAsync();
+
+        var irrigationReport = await _context.IrrRprts
+            .AsNoTracking()
+            .Where(i => i.FacilityId == report.FacilityId && (int)i.Month == monthNumber && i.Year == year)
+            .OrderByDescending(i => i.UpdatedDate)
+            .FirstOrDefaultAsync();
+
+        var parameters = permitTemplateRows
+            .Select(row =>
+            {
+                var code = row.PcsParameterCatalog?.PcsCode ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(code)) return null;
+                if (string.Equals(code, "50050", StringComparison.OrdinalIgnoreCase)) return null;
+                var name = row.ParameterDisplayOverride
+                    ?? row.PcsParameterCatalog?.UserFriendlyName
+                    ?? row.PcsParameterCatalog?.OfficialParameterName;
+                if (string.IsNullOrWhiteSpace(name)) name = $"PCS {code}";
+                var units = row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty;
+                var daily = Enumerable.Range(1, 31).Select(day =>
+                {
+                    decimal? value = null;
+                    if (wwDailyValueByKey.TryGetValue((row.Id, day), out var wwValue))
+                    {
+                        value = wwValue;
+                    }
+                    value ??= ResolveNdmrPdfFallbackDailyValue(code, new DateTime(year, monthNumber, day), wwChar, gwMonits);
+                    return value;
+                }).ToList();
+
+                var days = daily.Take(daysInMonth).Where(v => v.HasValue).Select(v => v!.Value).ToList();
+                decimal? average = null;
+                if (days.Count > 0)
+                {
+                    average = string.Equals(code, "31616", StringComparison.OrdinalIgnoreCase) && days.All(v => v > 0m)
+                        ? (decimal)Math.Exp(days.Select(v => Math.Log((double)v)).Average())
+                        : days.Average();
+                }
+
+                return new NdmrPdfParameter
+                {
+                    PcsCode = code,
+                    DisplayName = name ?? string.Empty,
+                    Units = units,
+                    SampleType = row.SampleType.ToString(),
+                    SampleFrequency = row.MeasurementFrequency.ToDisplayLabel(),
+                    MonthlyLimitText = row.MonthlyAverageLimit?.ToString("0.##")
+                        ?? row.MonthlyGeometricMeanLimit?.ToString("0.##")
+                        ?? string.Empty,
+                    DailyLimitText = row.DailyMaximumLimit?.ToString("0.##")
+                        ?? row.DailyMinimumLimit?.ToString("0.##")
+                        ?? string.Empty,
+                    DailyValues = daily,
+                    Average = average,
+                    DailyMaximum = days.Count > 0 ? days.Max() : null,
+                    DailyMinimum = days.Count > 0 ? days.Min() : null
+                };
+            })
+            .Where(x => x != null)
+            .Cast<NdmrPdfParameter>()
+            .ToList();
+
+        if (parameters.Count == 0)
+        {
+            parameters = new List<NdmrPdfParameter>();
+        }
+
+        var chunks = parameters
+            .Select((p, idx) => new { p, idx })
+            .GroupBy(x => x.idx / 15)
+            .Select(g => g.Select(x => x.p).ToList())
+            .ToList();
+        if (chunks.Count == 0)
+        {
+            chunks.Add(new List<NdmrPdfParameter>());
+        }
+
+        var orcArrival = Enumerable.Repeat<TimeSpan?>(null, 31).ToList();
+        var orcTimeOnSite = Enumerable.Repeat<decimal?>(null, 31).ToList();
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(year, monthNumber, day).Date;
+            var dayLogs = operatorLogs.Where(o => o.LogDate.Date == date).ToList();
+            if (dayLogs.Count == 0) continue;
+
+            var firstLog = dayLogs.OrderBy(o => o.ArrivalTime).First();
+            var canonicalLog = dayLogs
+                .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
+                .ThenByDescending(o => o.CreatedDate)
+                .First();
+            orcArrival[day - 1] = firstLog.ArrivalTime;
+            orcTimeOnSite[day - 1] = canonicalLog.TimeOnSiteHours;
+        }
+
+        return new NdmrPdfSnapshot
+        {
+            Facility = facility,
+            Month = report.Month,
+            Year = year,
+            DaysInMonth = daysInMonth,
+            OrcArrivalByDay = orcArrival,
+            OrcTimeOnSiteByDay = orcTimeOnSite,
+            ParameterChunks = chunks,
+            ComplianceStatus = irrigationReport?.ComplianceStatus
+        };
+    }
+
+    private static decimal? ResolveNdmrPdfFallbackDailyValue(
+        string pcsCode,
+        DateTime currentDate,
+        WWChar? wwChar,
+        IReadOnlyList<GWMonit> gwMonits)
+    {
+        decimal? WwAt(IReadOnlyList<decimal?>? values)
+        {
+            if (values == null) return null;
+            var idx = currentDate.Day - 1;
+            return idx >= 0 && idx < values.Count ? values[idx] : null;
+        }
+
+        decimal? Avg(Func<GWMonit, decimal?> selector)
+        {
+            var values = gwMonits
+                .Where(g => g.SampleDate.Date == currentDate.Date)
+                .Select(selector)
+                .Where(v => v.HasValue)
+                .Select(v => v!.Value)
+                .ToList();
+            return values.Count == 0 ? null : values.Average();
+        }
+
+        return pcsCode switch
+        {
+            "00310" => WwAt(wwChar?.BOD5Daily),
+            "00620" => Avg(g => g.NO3N),
+            "00610" => Avg(g => g.NH3N),
+            "00625" => Avg(g => g.TKN),
+            "00400" => Avg(g => g.PH),
+            "31616" => Avg(g => g.FecalColiform),
+            "00940" => Avg(g => g.Chloride),
+            "00665" => Avg(g => g.TOC),
+            "00530" => Avg(g => g.TSS),
+            "00600" => Avg(g => (!g.TKN.HasValue && !g.NO3N.HasValue) ? null : (g.TKN ?? 0m) + (g.NO3N ?? 0m)),
+            _ => null
+        };
+    }
+
+    private static bool IsNdmrTemplateRowApplicableForMonth(FacilityPermitTemplateParameter row, int month)
+    {
+        var alwaysInclude = row.MeasurementFrequency is MeasurementFrequencyEnum.Daily
+            or MeasurementFrequencyEnum.Weekly
+            or MeasurementFrequencyEnum.Monthly
+            or MeasurementFrequencyEnum.Continuous;
+        if (alwaysInclude)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(row.ScheduledMonthsCsv))
+        {
+            return false;
+        }
+
+        var months = row.ScheduledMonthsCsv
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => int.TryParse(value, out var parsed) ? parsed : -1);
+        return months.Any(m => m == month);
+    }
+
+
+    private static string SafeAt(IReadOnlyList<string?> values, int index)
+        => index >= 0 && index < values.Count ? values[index] ?? string.Empty : string.Empty;
+
+    private static decimal? SafeAt(IReadOnlyList<decimal?> values, int index)
+        => index >= 0 && index < values.Count ? values[index] : null;
+
+    private static string FormatNumber(decimal? value, string format)
+        => value.HasValue ? value.Value.ToString(format) : string.Empty;
+
+    private static void Draw(XGraphics gfx, string? text, XFont font, NdarPdfPoint point)
+    {
+        gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(point.X, point.Y, 220, font.Height + 2), XStringFormats.TopLeft);
+    }
+
+    private static void DrawInCell(
+        XGraphics gfx,
+        string? text,
+        XFont font,
+        double x,
+        double y,
+        double width,
+        bool bold = false)
+    {
+        gfx.DrawString(
+            text ?? string.Empty,
+            font,
+            XBrushes.Black,
+            new XRect(x, y, width, font.Height + 2),
+            XStringFormats.TopCenter);
+    }
+
+    private static void DrawVerticalInCell(
+        XGraphics gfx,
+        string? text,
+        XFont font,
+        double cellX,
+        double cellY,
+        double cellWidth,
+        double cellHeight)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        var lines = text
+            .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length == 0)
+        {
+            return;
+        }
+
+        gfx.Save();
+        gfx.TranslateTransform(cellX + (cellWidth / 2d), cellY + (cellHeight / 2d));
+        gfx.RotateTransform(-90);
+
+        const double lineHeight = 7.2d;
+        var totalHeight = lines.Length * lineHeight;
+        var startY = Math.Max(0d, ((cellWidth - 2d) - totalHeight) / 2d);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            gfx.DrawString(
+                lines[i],
+                font,
+                XBrushes.Black,
+                new XRect(-(cellHeight / 2d), startY + (i * lineHeight), cellHeight, 9),
+                XStringFormats.TopCenter);
+        }
+
+        gfx.Restore();
+    }
+
+    private static void DrawVertical(XGraphics gfx, string? text, XFont font, NdarPdfPoint point)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        var lines = text
+            .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length == 0)
+        {
+            return;
+        }
+
+        gfx.Save();
+        gfx.TranslateTransform(point.X, point.Y);
+        gfx.RotateTransform(-90);
+
+        const double lineHeight = 7.2d;
+        var totalHeight = lines.Length * lineHeight;
+        var startY = Math.Max(0d, (34d - totalHeight) / 2d);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            gfx.DrawString(lines[i], font, XBrushes.Black, new XRect(0, startY + (i * lineHeight), 96, 9), XStringFormats.TopCenter);
+        }
+
+        gfx.Restore();
+    }
+
+    private static string FormatVerticalLabel(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+
+        var words = name
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (words.Length <= 1)
+        {
+            return string.Join(' ', words);
+        }
+
+        const int maxCharsPerLine = 10;
+        var lines = new List<string>();
+        var currentLine = new List<string>();
+        var currentLength = 0;
+        foreach (var word in words)
+        {
+            var nextLength = currentLength == 0 ? word.Length : currentLength + 1 + word.Length;
+            if (currentLine.Count > 0 && nextLength > maxCharsPerLine)
+            {
+                lines.Add(string.Join(' ', currentLine));
+                currentLine.Clear();
+                currentLength = 0;
+            }
+
+            currentLine.Add(word);
+            currentLength = currentLength == 0 ? word.Length : currentLength + 1 + word.Length;
+        }
+
+        if (currentLine.Count > 0)
+        {
+            lines.Add(string.Join(' ', currentLine));
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    private static Ndar1PdfMap BuildNdar1PdfMap()
+    {
+        return new Ndar1PdfMap(
+            Header: new NdarHeaderMap(
+                PermitValue: new NdarPdfPoint(80, 40),
+                FacilityValue: new NdarPdfPoint(230, 40),
+                CountyValue: new NdarPdfPoint(510, 40),
+                MonthValue: new NdarPdfPoint(620, 40),
+                YearValue: new NdarPdfPoint(730, 40),
+                IrrigationYes: new NdarPdfPoint(43, 98),
+                IrrigationNo: new NdarPdfPoint(90, 101),
+                PageNumber: new NdarPdfPoint(683, 15.5),
+                TotalPages: new NdarPdfPoint(720, 15.5)),
+            FieldMetaY: new NdarFieldMetaYMap(
+                FieldNameY: 56,
+                AreaY: 72,
+                CoverCropY: 85,
+                HourlyRateY: 100,
+                AnnualRateY: 113,
+                FieldIrrigatedY: 122.5),
+            Table: new NdarTableMap(
+                MaxRows: 31,
+                FirstRowY: 205,
+                RowHeight: 11.18,
+                WeatherCodeX: 40,
+                TemperatureX: 69,
+                PrecipitationX: 90,
+                StorageX: 114,
+                FiveDayUpsetX: 139,
+                MonthlyY: 552,
+                FloatingY: 563),
+            FieldBlocks: new[]
+            {
+                new NdarFieldColumnMap(241, 241, 241, 241, 241, 170, 210, 250, 290, 242, 281),
+                new NdarFieldColumnMap(395, 395, 395, 395, 395, 320, 360, 400, 440, 395, 433),
+                new NdarFieldColumnMap(548, 548, 548, 548, 548, 470, 510, 550, 590, 546, 585),
+                new NdarFieldColumnMap(695, 695, 695, 695, 695, 621, 661, 701, 741, 699, 738)
+            },
+            Certification: new NdarCertificationMap(
+                CertPageNumber: new NdarPdfPoint(683, 15.5),
+                CertTotalPages: new NdarPdfPoint(720, 15.5),
+                Q1Compliant: new NdarPdfPoint(625, 44),
+                Q2Compliant: new NdarPdfPoint(625, 67),
+                Q3Compliant: new NdarPdfPoint(625, 89),
+                Q4Compliant: new NdarPdfPoint(625, 111),
+                Q5Compliant: new NdarPdfPoint(625, 133),
+                Q1NonCompliant: new NdarPdfPoint(679, 44),
+                Q2NonCompliant: new NdarPdfPoint(679, 67),
+                Q3NonCompliant: new NdarPdfPoint(679, 89),
+                Q4NonCompliant: new NdarPdfPoint(679, 111),
+                Q5NonCompliant: new NdarPdfPoint(679, 133),
+                NonComplianceReasonStart: new NdarPdfPoint(30, 180),
+                OrcName: new NdarPdfPoint(50, 313),
+                OrcCertificationNo: new NdarPdfPoint(100, 338),
+                OrcGrade: new NdarPdfPoint(60, 360),
+                OrcPhone: new NdarPdfPoint(200, 362),
+                OrcChangedYes: new NdarPdfPoint(251, 386),
+                OrcChangedNo: new NdarPdfPoint(287, 388),
+                OrcSignature: new NdarPdfPoint(100, 410),
+                OrcDate: new NdarPdfPoint(320, 420),
+                PermitteeName: new NdarPdfPoint(448, 314),
+                SigningOfficial: new NdarPdfPoint(460, 335),
+                SigningOfficialTitle: new NdarPdfPoint(490, 360),
+                PermitteePhone: new NdarPdfPoint(460, 382),
+                PermitExp: new NdarPdfPoint(630, 382),
+                PermitteeSignature: new NdarPdfPoint(490, 411),
+                PermitteeDate: new NdarPdfPoint(700, 420)));
+    }
+
+    private sealed record NdarPdfPoint(double X, double Y);
+    private sealed record Ndar1PdfMap(
+        NdarHeaderMap Header,
+        NdarFieldMetaYMap FieldMetaY,
+        NdarTableMap Table,
+        NdarFieldColumnMap[] FieldBlocks,
+        NdarCertificationMap Certification);
+    private sealed record NdarHeaderMap(
+        NdarPdfPoint PermitValue,
+        NdarPdfPoint FacilityValue,
+        NdarPdfPoint CountyValue,
+        NdarPdfPoint MonthValue,
+        NdarPdfPoint YearValue,
+        NdarPdfPoint IrrigationYes,
+        NdarPdfPoint IrrigationNo,
+        NdarPdfPoint PageNumber,
+        NdarPdfPoint TotalPages);
+    private sealed record NdarFieldMetaYMap(
+        double FieldNameY,
+        double AreaY,
+        double CoverCropY,
+        double HourlyRateY,
+        double AnnualRateY,
+        double FieldIrrigatedY);
+    private sealed record NdarTableMap(
+        int MaxRows,
+        double FirstRowY,
+        double RowHeight,
+        double WeatherCodeX,
+        double TemperatureX,
+        double PrecipitationX,
+        double StorageX,
+        double FiveDayUpsetX,
+        double MonthlyY,
+        double FloatingY);
+    private sealed record NdarFieldColumnMap(
+        double FieldNameX,
+        double AreaX,
+        double CoverCropX,
+        double HourlyRateX,
+        double AnnualRateX,
+        double VolumeX,
+        double TimeX,
+        double DailyLoadingX,
+        double MaxHourlyLoadingX,
+        double FieldIrrigatedYesX,
+        double FieldIrrigatedNoX);
+
+    private sealed record NdarCertificationMap(
+        NdarPdfPoint CertPageNumber,
+        NdarPdfPoint CertTotalPages,
+        NdarPdfPoint Q1Compliant,
+        NdarPdfPoint Q2Compliant,
+        NdarPdfPoint Q3Compliant,
+        NdarPdfPoint Q4Compliant,
+        NdarPdfPoint Q5Compliant,
+        NdarPdfPoint Q1NonCompliant,
+        NdarPdfPoint Q2NonCompliant,
+        NdarPdfPoint Q3NonCompliant,
+        NdarPdfPoint Q4NonCompliant,
+        NdarPdfPoint Q5NonCompliant,
+        NdarPdfPoint NonComplianceReasonStart,
+        NdarPdfPoint OrcName,
+        NdarPdfPoint OrcCertificationNo,
+        NdarPdfPoint OrcGrade,
+        NdarPdfPoint OrcPhone,
+        NdarPdfPoint OrcChangedYes,
+        NdarPdfPoint OrcChangedNo,
+        NdarPdfPoint OrcSignature,
+        NdarPdfPoint OrcDate,
+        NdarPdfPoint PermitteeName,
+        NdarPdfPoint SigningOfficial,
+        NdarPdfPoint SigningOfficialTitle,
+        NdarPdfPoint PermitteePhone,
+        NdarPdfPoint PermitExp,
+        NdarPdfPoint PermitteeSignature,
+        NdarPdfPoint PermitteeDate);
+
+    private async Task<byte[]> RenderGw59APdfAsync(Gw59ExportModel model, bool showGrid = false)
+    {
+        var templatePath = Path.Combine(_environment.WebRootPath, "forms", "GW-59A.pdf");
+        if (!System.IO.File.Exists(templatePath))
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException("GW-59A template PDF not found in wwwroot/forms.");
+        }
+
+        using var output = new MemoryStream();
+        using (var document = new PdfDocument())
+        {
+            var templateForm = XPdfForm.FromFile(templatePath);
+            templateForm.PageNumber = 1;
+
+            var page = document.AddPage();
+            page.Width = templateForm.PointWidth;
+            page.Height = templateForm.PointHeight;
+
+            var gfx = XGraphics.FromPdfPage(page);
+            gfx.DrawImage(templateForm, 0, 0, page.Width, page.Height);
+            var font = new XFont("Arial", 8, XFontStyle.Regular);
+            var bold = new XFont("Arial", 8, XFontStyle.Bold);
+            var map = BuildGw59ACalibrationMap();
+            void Draw(string? text, double x, double y, bool isBold = false) =>
+                gfx.DrawString(text ?? string.Empty, isBold ? bold : font, XBrushes.Black, new XRect(x, y, 320, 11), XStringFormats.TopLeft);
+            void DrawWrapped(string? text, TextBox2D box) =>
+                DrawWrappedText(gfx, text, font, XBrushes.Black, box);
+            void DrawMark(bool? value, bool yes, double x, double y)
+            {
+                if (value.HasValue && value.Value == yes)
+                {
+                    // Draw a tick as vector lines so it renders consistently in all viewers/fonts.
+                    gfx.DrawLine(XPens.Black, x, y + 5, x + 3, y + 8);
+                    gfx.DrawLine(XPens.Black, x + 3, y + 8, x + 9, y + 1);
+                }
+            }
+
+            Draw(model.PermitNumber, map.PermitNumber.X, map.PermitNumber.Y, true);
+            Draw(model.GW59ADueDate?.ToString("MM/dd/yyyy"), map.DueDate.X, map.DueDate.Y);
+
+            DrawMark(model.GW59AQuestion1Response, true, map.Q1Yes.X, map.Q1Yes.Y);
+            DrawMark(model.GW59AQuestion1Response, false, map.Q1No.X, map.Q1No.Y);
+            DrawMark(model.GW59AQuestion2Response, true, map.Q2Yes.X, map.Q2Yes.Y);
+            DrawMark(model.GW59AQuestion2Response, false, map.Q2No.X, map.Q2No.Y);
+            DrawMark(model.GW59AQuestion3Response, true, map.Q3Yes.X, map.Q3Yes.Y);
+            DrawMark(model.GW59AQuestion3Response, false, map.Q3No.X, map.Q3No.Y);
+            DrawMark(model.GW59AQuestion4Response, true, map.Q4Yes.X, map.Q4Yes.Y);
+            DrawMark(model.GW59AQuestion4Response, false, map.Q4No.X, map.Q4No.Y);
+            DrawMark(model.GW59AQuestion5Response, true, map.Q5Yes.X, map.Q5Yes.Y);
+            DrawMark(model.GW59AQuestion5Response, false, map.Q5No.X, map.Q5No.Y);
+            DrawMark(model.GW59AQuestion6Response, true, map.Q6Yes.X, map.Q6Yes.Y);
+            DrawMark(model.GW59AQuestion6Response, false, map.Q6No.X, map.Q6No.Y);
+            DrawMark(model.GW59AQuestion7Response, true, map.Q7Yes.X, map.Q7Yes.Y);
+            DrawMark(model.GW59AQuestion7Response, false, map.Q7No.X, map.Q7No.Y);
+
+            DrawWrapped(model.GW59AQuestion2Details, map.Q2Details);
+            DrawWrapped(model.GW59AQuestion4Details, map.Q4Details);
+            DrawWrapped(model.GW59AQuestion5Details, map.Q5Details);
+            DrawWrapped(model.GW59AQuestion7Details, map.Q7Details);
+
+            Draw(model.GW59ASignerName, map.SignerName.X, map.SignerName.Y);
+            Draw(model.GW59ASignedDate?.ToString("MM/dd/yyyy"), map.SignedDate.X, map.SignedDate.Y);
+
+            if (showGrid)
+            {
+                DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
+            }
+
+            document.Save(output, false);
+        }
+
+        await Task.CompletedTask;
+        return output.ToArray();
+    }
+
+    private static Gw59ACalibrationMap BuildGw59ACalibrationMap()
+    {
+        // Temporary calibration map sourced from the grid screenshot. Keep all coordinates centralized here.
+        return new Gw59ACalibrationMap
+        {
+            PermitNumber = new Point2D(450, 30),
+            DueDate = new Point2D(192, 78),
+
+            Q1Yes = new Point2D(530, 80),
+            Q1No = new Point2D(560, 80),
+            Q2Yes = new Point2D(530, 112),
+            Q2No = new Point2D(560, 113),
+            Q3Yes = new Point2D(530, 190),
+            Q3No = new Point2D(570, 190),
+            Q4Yes = new Point2D(530, 220),
+            Q4No = new Point2D(560, 220),
+            Q5Yes = new Point2D(520, 310),
+            Q5No = new Point2D(560, 310),
+            Q6Yes = new Point2D(530, 429),
+            Q6No = new Point2D(560, 429),
+            Q7Yes = new Point2D(530, 510),
+            Q7No = new Point2D(560, 510),
+
+            Q2Details = new TextBox2D(70, 132, 440, 44),
+            Q4Details = new TextBox2D(70, 254, 440, 44),
+            Q5Details = new TextBox2D(70, 359, 440, 72),
+            Q7Details = new TextBox2D(70, 576, 440, 56),
+
+            SignerName = new Point2D(100, 710),
+            SignedDate = new Point2D(410, 710)
+        };
+    }
+
+    private sealed class Gw59ACalibrationMap
+    {
+        public Point2D PermitNumber { get; set; }
+        public Point2D DueDate { get; set; }
+        public Point2D Q1Yes { get; set; }
+        public Point2D Q1No { get; set; }
+        public Point2D Q2Yes { get; set; }
+        public Point2D Q2No { get; set; }
+        public Point2D Q3Yes { get; set; }
+        public Point2D Q3No { get; set; }
+        public Point2D Q4Yes { get; set; }
+        public Point2D Q4No { get; set; }
+        public Point2D Q5Yes { get; set; }
+        public Point2D Q5No { get; set; }
+        public Point2D Q6Yes { get; set; }
+        public Point2D Q6No { get; set; }
+        public Point2D Q7Yes { get; set; }
+        public Point2D Q7No { get; set; }
+        public TextBox2D Q2Details { get; set; }
+        public TextBox2D Q4Details { get; set; }
+        public TextBox2D Q5Details { get; set; }
+        public TextBox2D Q7Details { get; set; }
+        public Point2D SignerName { get; set; }
+        public Point2D SignedDate { get; set; }
+    }
+
+    private readonly record struct Point2D(double X, double Y);
+    private readonly record struct TextBox2D(double X, double Y, double Width, double Height);
+
+    private static void DrawWrappedText(XGraphics gfx, string? text, XFont font, XBrush brush, TextBox2D box)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        var normalized = Regex.Replace(text.Trim(), @"\s+", " ");
+        var lineHeight = gfx.MeasureString("Ag", font).Height;
+        var words = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var line = new StringBuilder();
+        var y = box.Y;
+
+        foreach (var word in words)
+        {
+            var candidate = line.Length == 0 ? word : $"{line} {word}";
+            var size = gfx.MeasureString(candidate, font);
+            if (size.Width <= box.Width)
+            {
+                line.Clear();
+                line.Append(candidate);
+                continue;
+            }
+
+            if (line.Length > 0)
+            {
+                if (y + lineHeight > box.Y + box.Height)
+                {
+                    return;
+                }
+
+                gfx.DrawString(line.ToString(), font, brush, new XRect(box.X, y, box.Width, lineHeight), XStringFormats.TopLeft);
+                y += lineHeight;
+                line.Clear();
+                line.Append(word);
+            }
+            else
+            {
+                if (y + lineHeight > box.Y + box.Height)
+                {
+                    return;
+                }
+
+                gfx.DrawString(word, font, brush, new XRect(box.X, y, box.Width, lineHeight), XStringFormats.TopLeft);
+                y += lineHeight;
+            }
+        }
+
+        if (line.Length > 0 && y + lineHeight <= box.Y + box.Height)
+        {
+            gfx.DrawString(line.ToString(), font, brush, new XRect(box.X, y, box.Width, lineHeight), XStringFormats.TopLeft);
+        }
+    }
+
+    private static void DrawCoordinateGrid(XGraphics gfx, double pageWidth, double pageHeight)
+    {
+        var gridPen = new XPen(XColor.FromArgb(220, 0, 102, 204), 0.5);
+        var majorPen = new XPen(XColor.FromArgb(240, 220, 0, 0), 1.0);
+        var labelFont = new XFont("Arial", 7, XFontStyle.Bold);
+        var majorLabelFont = new XFont("Arial", 8, XFontStyle.Bold);
+
+        for (int x = 0; x <= (int)pageWidth; x += 10)
+        {
+            var pen = x % 50 == 0 ? majorPen : gridPen;
+            gfx.DrawLine(pen, x, 0, x, pageHeight);
+            if (x % 50 == 0)
+            {
+                gfx.DrawString(x.ToString(), majorLabelFont, XBrushes.Red, new XRect(x + 1, 1, 24, 8), XStringFormats.TopLeft);
+            }
+            else if (x % 10 == 0 && x % 20 == 0)
+            {
+                gfx.DrawString(x.ToString(), labelFont, XBrushes.SteelBlue, new XRect(x + 1, 1, 20, 7), XStringFormats.TopLeft);
+            }
+        }
+
+        for (int y = 0; y <= (int)pageHeight; y += 10)
+        {
+            var pen = y % 50 == 0 ? majorPen : gridPen;
+            gfx.DrawLine(pen, 0, y, pageWidth, y);
+            if (y % 50 == 0)
+            {
+                gfx.DrawString(y.ToString(), majorLabelFont, XBrushes.Red, new XRect(1, y + 1, 24, 8), XStringFormats.TopLeft);
+            }
+            else if (y % 10 == 0 && y % 20 == 0)
+            {
+                gfx.DrawString(y.ToString(), labelFont, XBrushes.SteelBlue, new XRect(1, y + 1, 20, 7), XStringFormats.TopLeft);
+            }
+        }
+    }
+
+    private static bool IsGw59AQuestionnaireEmpty(Gw59ExportModel model)
+    {
+        return !model.GW59ADueDate.HasValue
+               && !model.GW59AQuestion1Response.HasValue
+               && !model.GW59AQuestion2Response.HasValue
+               && !model.GW59AQuestion3Response.HasValue
+               && !model.GW59AQuestion4Response.HasValue
+               && !model.GW59AQuestion5Response.HasValue
+               && !model.GW59AQuestion6Response.HasValue
+               && !model.GW59AQuestion7Response.HasValue
+               && string.IsNullOrWhiteSpace(model.GW59AQuestion2Details)
+               && string.IsNullOrWhiteSpace(model.GW59AQuestion4Details)
+               && string.IsNullOrWhiteSpace(model.GW59AQuestion5Details)
+               && string.IsNullOrWhiteSpace(model.GW59AQuestion7Details)
+               && string.IsNullOrWhiteSpace(model.GW59ASignerName)
+               && string.IsNullOrWhiteSpace(model.GW59ASignerTitle)
+               && !model.GW59ASignedDate.HasValue;
     }
 
     #endregion

@@ -423,6 +423,9 @@ namespace SAM.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<decimal?>("PANLimit")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
@@ -663,6 +666,10 @@ namespace SAM.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("OperatorPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("OrcName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -720,6 +727,179 @@ namespace SAM.Migrations
                     b.ToTable("Facilities", (string)null);
                 });
 
+            modelBuilder.Entity("SAM.Domain.Entities.FacilityPermit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EffectiveEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EffectiveStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("GwOperationLagoon")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("GwOperationSprayField")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PermitNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PermitPdfFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("PermitPdfStoragePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PermitVersion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("FacilityId");
+
+                    b.HasIndex("FacilityId", "EffectiveStartDate", "EffectiveEndDate");
+
+                    b.HasIndex("FacilityId", "PermitNumber", "PermitVersion")
+                        .IsUnique();
+
+                    b.ToTable("FacilityPermits", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.FacilityPermitTemplateParameter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("DailyMaximumLimit")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal?>("DailyMinimumLimit")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<Guid>("FacilityPermitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MeasurementFrequency")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("MonthlyAverageLimit")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal?>("MonthlyGeometricMeanLimit")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ParameterDisplayOverride")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("PcsParameterCatalogId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ReportTypes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<int>("SampleType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ScheduledMonthsCsv")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UnitsOverride")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("FacilityPermitId");
+
+                    b.HasIndex("PcsParameterCatalogId");
+
+                    b.HasIndex("FacilityPermitId", "SortOrder");
+
+                    b.HasIndex("FacilityPermitId", "PcsParameterCatalogId", "ReportTypes")
+                        .IsUnique();
+
+                    b.ToTable("FacilityPermitTemplateParameters", (string)null);
+                });
+
             modelBuilder.Entity("SAM.Domain.Entities.GWMonit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -771,6 +951,63 @@ namespace SAM.Migrations
                     b.Property<decimal?>("FecalColiform")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<DateTime?>("GW59ADueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("GW59AQuestion1Response")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("GW59AQuestion2Details")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<bool?>("GW59AQuestion2Response")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("GW59AQuestion3Response")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("GW59AQuestion4Details")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<bool?>("GW59AQuestion4Response")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("GW59AQuestion5Details")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<bool?>("GW59AQuestion5Response")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("GW59AQuestion6Response")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("GW59AQuestion7Details")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<bool?>("GW59AQuestion7Response")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("GW59ASignedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("GW59ASignerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("GW59ASignerTitle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<decimal?>("GallonsPumped")
                         .HasColumnType("decimal(18,2)");
 
@@ -814,9 +1051,6 @@ namespace SAM.Migrations
                     b.Property<decimal?>("SampleDepth")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("TDS")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal?>("TKN")
                         .HasColumnType("decimal(18,2)");
 
@@ -832,9 +1066,6 @@ namespace SAM.Migrations
                     b.Property<decimal?>("TotalColiform")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal?>("Turbidity")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
@@ -845,6 +1076,18 @@ namespace SAM.Migrations
 
                     b.Property<bool?>("VOCReportAttached")
                         .HasColumnType("bit");
+
+                    b.Property<string>("VOCReportContentType")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("VOCReportFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("VOCReportFileStoragePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<decimal?>("WaterLevel")
                         .HasColumnType("decimal(18,2)");
@@ -860,6 +1103,56 @@ namespace SAM.Migrations
                     b.HasIndex("SampleDate");
 
                     b.ToTable("GWMonits", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.GWMonitTemplateValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FacilityPermitTemplateParameterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GWMonitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("NumericValue")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("TextValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("FacilityPermitTemplateParameterId");
+
+                    b.HasIndex("GWMonitId");
+
+                    b.HasIndex("GWMonitId", "FacilityPermitTemplateParameterId")
+                        .IsUnique();
+
+                    b.ToTable("GWMonitTemplateValues", (string)null);
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.IrrRprt", b =>
@@ -936,22 +1229,17 @@ namespace SAM.Migrations
                     b.ToTable("IrrRprts", (string)null);
                 });
 
-            modelBuilder.Entity("SAM.Domain.Entities.Irrigate", b =>
+            modelBuilder.Entity("SAM.Domain.Entities.LoadCalculation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<decimal>("ApplicationRateInches")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Comments")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<Guid>("CompanyId")
+                    b.Property<Guid>("ApplicationId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CalculatedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -960,62 +1248,36 @@ namespace SAM.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<decimal>("DurationHours")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<TimeSpan>("EndTime")
-                        .HasColumnType("time");
-
-                    b.Property<Guid>("FacilityId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("FlowRateGpm")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("IrrigationDate")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("FormulaVersion")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("ModifiedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<decimal>("LbsApplied")
+                        .HasColumnType("decimal(18,6)");
 
-                    b.Property<decimal?>("PrecipitationIn")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<Guid>("SprayfieldId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<TimeSpan>("StartTime")
-                        .HasColumnType("time");
-
-                    b.Property<decimal?>("TemperatureF")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("TotalVolumeGallons")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<decimal>("LbsPerAcre")
+                        .HasColumnType("decimal(18,6)");
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("WeatherConditions")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<decimal>("ZoneAcresSnapshot")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("ZonePercentSnapshot")
+                        .HasColumnType("decimal(9,4)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
+                    b.HasIndex("ApplicationId");
 
-                    b.HasIndex("FacilityId");
+                    b.HasIndex("CalculatedAtUtc");
 
-                    b.HasIndex("IrrigationDate");
-
-                    b.HasIndex("SprayfieldId");
-
-                    b.ToTable("Irrigates", (string)null);
+                    b.ToTable("LoadCalculations", (string)null);
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.MonitoringWell", b =>
@@ -1060,8 +1322,20 @@ namespace SAM.Migrations
                     b.Property<decimal?>("LowScreenDepthFeet")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal?>("MeasuringPointAboveLandSurface")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int?>("NumberOfWellsToBeSampled")
                         .HasColumnType("int");
+
+                    b.Property<decimal?>("RelativeMpElevation")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ScreenedIntervalFromFeet")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ScreenedIntervalToFeet")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("TopOfCasingElevationMsl")
                         .HasColumnType("decimal(18,2)");
@@ -1092,6 +1366,74 @@ namespace SAM.Migrations
                         .IsUnique();
 
                     b.ToTable("MonitoringWells", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.MonthlyApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ApplicationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Comments")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("MaximumHourlyLoadingInchesPerAcre")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OperatorSnapshotName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OperatorUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("SprayfieldId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("TimeIrrigatedMinutes")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("VolumeGallons")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationDate");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("FacilityId");
+
+                    b.HasIndex("OperatorUserId");
+
+                    b.HasIndex("SprayfieldId");
+
+                    b.ToTable("MonthlyApplications", (string)null);
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.NDAR1", b =>
@@ -1242,10 +1584,6 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("StorageDaily")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("TemperatureDaily")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1278,6 +1616,186 @@ namespace SAM.Migrations
                         .IsUnique();
 
                     b.ToTable("NDAR1s", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NDAR1Field", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("FieldOrder")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MaxHourlyLoading")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("MonthlyLoading")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<Guid>("NDAR1Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SprayfieldId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TwelveMonthFloatingTotal")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SprayfieldId");
+
+                    b.HasIndex("NDAR1Id", "FieldOrder")
+                        .IsUnique();
+
+                    b.HasIndex("NDAR1Id", "SprayfieldId")
+                        .IsUnique();
+
+                    b.ToTable("NDAR1Fields", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NDAR1FieldDaily", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("DailyLoading")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("DayNo")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("MaxHourlyLoading")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<Guid>("NDAR1FieldId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("TimeIrrigated")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal?>("VolumeApplied")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NDAR1FieldId", "DayNo")
+                        .IsUnique();
+
+                    b.ToTable("NDAR1FieldDailies", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NDMLR", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("FacilityId");
+
+                    b.HasIndex("FacilityId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("NDMLRs", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NdarEditLock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EditDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("LockToken")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("LockedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LockedByDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("LockedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ReleasedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("LockedByUserId");
+
+                    b.HasIndex("FacilityId", "EditDate")
+                        .IsUnique();
+
+                    b.ToTable("NdarEditLocks", (string)null);
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.Nozzle", b =>
@@ -1315,6 +1833,9 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal?>("Pressure")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("SprayArc")
                         .HasColumnType("int");
@@ -1361,6 +1882,9 @@ namespace SAM.Migrations
                     b.Property<Guid>("FacilityId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("FiveDayUpsetFt")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -1382,10 +1906,22 @@ namespace SAM.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<int?>("ORCOnSite")
+                        .HasColumnType("int");
+
                     b.Property<string>("OperatorName")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("PrecipitationIn")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal?>("StorageFt")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal?>("TemperatureF")
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<decimal>("TimeOnSiteHours")
                         .HasColumnType("decimal(18,2)");
@@ -1407,6 +1943,56 @@ namespace SAM.Migrations
                     b.HasIndex("LogDate");
 
                     b.ToTable("OperatorLogs", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.PcsParameterCatalog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AcceptedUnits")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OfficialParameterName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PcsCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserFriendlyName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PcsCode")
+                        .IsUnique();
+
+                    b.ToTable("PcsParameterCatalogs", (string)null);
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.SmtpSettings", b =>
@@ -1491,8 +2077,14 @@ namespace SAM.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<decimal?>("InfiltrationRate")
+                        .HasColumnType("decimal(18,3)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<decimal?>("PANFactor")
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("Permeability")
                         .HasColumnType("decimal(18,2)");
@@ -1518,6 +2110,17 @@ namespace SAM.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("AcresTotal")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<bool>("Active")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<decimal?>("AnnualRateInches")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1528,7 +2131,7 @@ namespace SAM.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("CropId")
+                    b.Property<Guid?>("CropId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("FacilityId")
@@ -1551,8 +2154,16 @@ namespace SAM.Migrations
                     b.Property<Guid>("NozzleId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("PermitFieldName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("PermitNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<decimal>("SizeAcres")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18,3)");
 
                     b.Property<Guid>("SoilId")
                         .HasColumnType("uniqueidentifier");
@@ -1771,9 +2382,15 @@ namespace SAM.Migrations
                     b.Property<Guid>("FacilityId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("FacilityPermitId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("FecalColiformDaily")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("FlowMeasuringPoint")
+                        .HasColumnType("int");
 
                     b.Property<string>("FlowRateDaily")
                         .IsRequired()
@@ -1786,10 +2403,6 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("LagoonFreeboard")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MgDaily")
                         .IsRequired()
@@ -1814,13 +2427,12 @@ namespace SAM.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ORCOnSite")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("PHDaily")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ParameterMonitoringPoint")
+                        .HasColumnType("int");
 
                     b.Property<string>("SARDaily")
                         .IsRequired()
@@ -1850,10 +2462,127 @@ namespace SAM.Migrations
 
                     b.HasIndex("FacilityId");
 
+                    b.HasIndex("FacilityPermitId");
+
                     b.HasIndex("FacilityId", "Month", "Year")
                         .IsUnique();
 
                     b.ToTable("WWChars", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.WWCharTemplateValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DayNo")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("FacilityPermitTemplateParameterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("NumericValue")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("TextValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("WWCharId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("FacilityPermitTemplateParameterId");
+
+                    b.HasIndex("WWCharId");
+
+                    b.HasIndex("WWCharId", "FacilityPermitTemplateParameterId", "DayNo")
+                        .IsUnique();
+
+                    b.ToTable("WWCharTemplateValues", (string)null);
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.WWCharTestResultAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileStoragePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<DateTime>("TestDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UploadedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UploadedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("WWCharId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("TestDate");
+
+                    b.HasIndex("WWCharId");
+
+                    b.ToTable("WWCharTestResultAttachments", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1949,6 +2678,52 @@ namespace SAM.Migrations
                     b.Navigation("Company");
                 });
 
+            modelBuilder.Entity("SAM.Domain.Entities.FacilityPermit", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.Facility", "Facility")
+                        .WithMany("FacilityPermits")
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Facility");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.FacilityPermitTemplateParameter", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.FacilityPermit", "FacilityPermit")
+                        .WithMany("TemplateParameters")
+                        .HasForeignKey("FacilityPermitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.PcsParameterCatalog", "PcsParameterCatalog")
+                        .WithMany("PermitTemplateParameters")
+                        .HasForeignKey("PcsParameterCatalogId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("FacilityPermit");
+
+                    b.Navigation("PcsParameterCatalog");
+                });
+
             modelBuilder.Entity("SAM.Domain.Entities.GWMonit", b =>
                 {
                     b.HasOne("SAM.Domain.Entities.Company", "Company")
@@ -1976,6 +2751,33 @@ namespace SAM.Migrations
                     b.Navigation("MonitoringWell");
                 });
 
+            modelBuilder.Entity("SAM.Domain.Entities.GWMonitTemplateValue", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.FacilityPermitTemplateParameter", "FacilityPermitTemplateParameter")
+                        .WithMany("GWMonitTemplateValues")
+                        .HasForeignKey("FacilityPermitTemplateParameterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.GWMonit", "GWMonit")
+                        .WithMany("TemplateValues")
+                        .HasForeignKey("GWMonitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("FacilityPermitTemplateParameter");
+
+                    b.Navigation("GWMonit");
+                });
+
             modelBuilder.Entity("SAM.Domain.Entities.IrrRprt", b =>
                 {
                     b.HasOne("SAM.Domain.Entities.Company", "Company")
@@ -1995,31 +2797,15 @@ namespace SAM.Migrations
                     b.Navigation("Facility");
                 });
 
-            modelBuilder.Entity("SAM.Domain.Entities.Irrigate", b =>
+            modelBuilder.Entity("SAM.Domain.Entities.LoadCalculation", b =>
                 {
-                    b.HasOne("SAM.Domain.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
+                    b.HasOne("SAM.Domain.Entities.MonthlyApplication", "Application")
+                        .WithMany("LoadCalculations")
+                        .HasForeignKey("ApplicationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SAM.Domain.Entities.Facility", "Facility")
-                        .WithMany("Irrigates")
-                        .HasForeignKey("FacilityId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("SAM.Domain.Entities.Sprayfield", "Sprayfield")
-                        .WithMany("Irrigates")
-                        .HasForeignKey("SprayfieldId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Facility");
-
-                    b.Navigation("Sprayfield");
+                    b.Navigation("Application");
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.MonitoringWell", b =>
@@ -2031,6 +2817,40 @@ namespace SAM.Migrations
                         .IsRequired();
 
                     b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.MonthlyApplication", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.Facility", "Facility")
+                        .WithMany("MonthlyApplications")
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.ApplicationUser", "OperatorUser")
+                        .WithMany()
+                        .HasForeignKey("OperatorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SAM.Domain.Entities.Sprayfield", "Sprayfield")
+                        .WithMany("MonthlyApplications")
+                        .HasForeignKey("SprayfieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Facility");
+
+                    b.Navigation("OperatorUser");
+
+                    b.Navigation("Sprayfield");
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.NDAR1", b =>
@@ -2078,6 +2898,82 @@ namespace SAM.Migrations
                     b.Navigation("Field3");
 
                     b.Navigation("Field4");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NDAR1Field", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.NDAR1", "NDAR1")
+                        .WithMany("Fields")
+                        .HasForeignKey("NDAR1Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.Sprayfield", "Sprayfield")
+                        .WithMany()
+                        .HasForeignKey("SprayfieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("NDAR1");
+
+                    b.Navigation("Sprayfield");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NDAR1FieldDaily", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.NDAR1Field", "NDAR1Field")
+                        .WithMany("DailyValues")
+                        .HasForeignKey("NDAR1FieldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NDAR1Field");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NDMLR", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.Facility", "Facility")
+                        .WithMany("NDMLRs")
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Facility");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NdarEditLock", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.Facility", "Facility")
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.ApplicationUser", "LockedByUser")
+                        .WithMany()
+                        .HasForeignKey("LockedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Facility");
+
+                    b.Navigation("LockedByUser");
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.Nozzle", b =>
@@ -2132,8 +3028,7 @@ namespace SAM.Migrations
                     b.HasOne("SAM.Domain.Entities.Crop", "Crop")
                         .WithMany("Sprayfields")
                         .HasForeignKey("CropId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SAM.Domain.Entities.Facility", "Facility")
                         .WithMany("Sprayfields")
@@ -2187,9 +3082,62 @@ namespace SAM.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SAM.Domain.Entities.FacilityPermit", "FacilityPermit")
+                        .WithMany("WWChars")
+                        .HasForeignKey("FacilityPermitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Company");
 
                     b.Navigation("Facility");
+
+                    b.Navigation("FacilityPermit");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.WWCharTemplateValue", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.FacilityPermitTemplateParameter", "FacilityPermitTemplateParameter")
+                        .WithMany("WWCharTemplateValues")
+                        .HasForeignKey("FacilityPermitTemplateParameterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.WWChar", "WWChar")
+                        .WithMany("TemplateValues")
+                        .HasForeignKey("WWCharId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("FacilityPermitTemplateParameter");
+
+                    b.Navigation("WWChar");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.WWCharTestResultAttachment", b =>
+                {
+                    b.HasOne("SAM.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("SAM.Domain.Entities.WWChar", "WWChar")
+                        .WithMany("TestResultAttachments")
+                        .HasForeignKey("WWCharId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("WWChar");
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.Company", b =>
@@ -2216,13 +3164,17 @@ namespace SAM.Migrations
 
             modelBuilder.Entity("SAM.Domain.Entities.Facility", b =>
                 {
+                    b.Navigation("FacilityPermits");
+
                     b.Navigation("GWMonits");
 
                     b.Navigation("IrrRprts");
 
-                    b.Navigation("Irrigates");
+                    b.Navigation("MonthlyApplications");
 
                     b.Navigation("NDAR1s");
+
+                    b.Navigation("NDMLRs");
 
                     b.Navigation("OperatorLogs");
 
@@ -2231,14 +3183,53 @@ namespace SAM.Migrations
                     b.Navigation("WWChars");
                 });
 
+            modelBuilder.Entity("SAM.Domain.Entities.FacilityPermit", b =>
+                {
+                    b.Navigation("TemplateParameters");
+
+                    b.Navigation("WWChars");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.FacilityPermitTemplateParameter", b =>
+                {
+                    b.Navigation("GWMonitTemplateValues");
+
+                    b.Navigation("WWCharTemplateValues");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.GWMonit", b =>
+                {
+                    b.Navigation("TemplateValues");
+                });
+
             modelBuilder.Entity("SAM.Domain.Entities.MonitoringWell", b =>
                 {
                     b.Navigation("GWMonits");
                 });
 
+            modelBuilder.Entity("SAM.Domain.Entities.MonthlyApplication", b =>
+                {
+                    b.Navigation("LoadCalculations");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NDAR1", b =>
+                {
+                    b.Navigation("Fields");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.NDAR1Field", b =>
+                {
+                    b.Navigation("DailyValues");
+                });
+
             modelBuilder.Entity("SAM.Domain.Entities.Nozzle", b =>
                 {
                     b.Navigation("Sprayfields");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.PcsParameterCatalog", b =>
+                {
+                    b.Navigation("PermitTemplateParameters");
                 });
 
             modelBuilder.Entity("SAM.Domain.Entities.Soil", b =>
@@ -2248,7 +3239,14 @@ namespace SAM.Migrations
 
             modelBuilder.Entity("SAM.Domain.Entities.Sprayfield", b =>
                 {
-                    b.Navigation("Irrigates");
+                    b.Navigation("MonthlyApplications");
+                });
+
+            modelBuilder.Entity("SAM.Domain.Entities.WWChar", b =>
+                {
+                    b.Navigation("TemplateValues");
+
+                    b.Navigation("TestResultAttachments");
                 });
 #pragma warning restore 612, 618
         }

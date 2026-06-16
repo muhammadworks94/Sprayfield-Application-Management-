@@ -6,17 +6,24 @@
     ViewData["Title"] = "Wastewater Characteristics Details";
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
-    var nh3Values = Model.NH3NDaily?.Where(x => x.HasValue).Select(x => x!.Value).ToList() ?? new List<decimal>();
-    var bod5Values = Model.BOD5Daily?.Where(x => x.HasValue).Select(x => x!.Value).ToList() ?? new List<decimal>();
-    var tssValues = Model.TSSDaily?.Where(x => x.HasValue).Select(x => x!.Value).ToList() ?? new List<decimal>();
-    var flowValues = Model.FlowRateDaily?.Where(x => x.HasValue).Select(x => x!.Value).ToList() ?? new List<decimal>();
-    var avgNH3 = nh3Values.Any() ? nh3Values.Average() : (decimal?)null;
-    var avgBOD5 = bod5Values.Any() ? bod5Values.Average() : (decimal?)null;
-    var avgTSS = tssValues.Any() ? tssValues.Average() : (decimal?)null;
-    var avgFlow = flowValues.Any() ? flowValues.Average() : (decimal?)null;
+    var flowMeasuringPointDisplay = Model.FlowMeasuringPoint switch
+    {
+        SAM.Domain.Enums.FlowMeasuringPointEnum.NoFlowGenerated => "No flow generated",
+        SAM.Domain.Enums.FlowMeasuringPointEnum.Influent => "Influent",
+        SAM.Domain.Enums.FlowMeasuringPointEnum.Effluent => "Effluent",
+        _ => "N/A"
+    };
+    var parameterMonitoringPointDisplay = Model.ParameterMonitoringPoint switch
+    {
+        SAM.Domain.Enums.ParameterMonitoringPointEnum.GroundwaterLowering => "Groundwater Lowering",
+        SAM.Domain.Enums.ParameterMonitoringPointEnum.SurfaceWater => "Surface Water",
+        SAM.Domain.Enums.ParameterMonitoringPointEnum.Influent => "Influent",
+        SAM.Domain.Enums.ParameterMonitoringPointEnum.Effluent => "Effluent",
+        _ => "N/A"
+    };
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">View detailed information for wastewater characteristics record</p>
     </div>
@@ -35,11 +42,11 @@
 
 <div class="card">
     <div class="card-body">
-        <h4 class="mb-4"><i class="bi bi-droplet-half me-2"></i>@(Model.FacilityName ?? "Wastewater") – @Model.Month @Model.Year</h4>
+        <h4 class="mb-4"><i class="bi bi-droplet-half me-2"></i>@(Model.FacilityName ?? "Wastewater") - @Model.Month @Model.Year</h4>
         <div class="row">
             <div class="col-md-6">
                 <h5 class="detail-section-label mb-3">Record Context</h5>
-                <dl class="row">
+                <dl class="row responsive-detail-list">
                     <dd class="col-sm-5"><i class="bi bi-building me-1"></i>Facility:</dd>
                     <dd class="col-sm-7">@(Model.FacilityName ?? "N/A")</dd>
 
@@ -48,19 +55,25 @@
 
                     <dd class="col-sm-5"><i class="bi bi-calendar3 me-1"></i>Period:</dd>
                     <dd class="col-sm-7">@Model.Month @Model.Year</dd>
+
+                    <dd class="col-sm-5"><i class="bi bi-diagram-3 me-1"></i>Flow Measuring Point:</dd>
+                    <dd class="col-sm-7">@flowMeasuringPointDisplay</dd>
+
+                    <dd class="col-sm-5"><i class="bi bi-geo-alt me-1"></i>Parameter Monitoring Point:</dd>
+                    <dd class="col-sm-7">@parameterMonitoringPointDisplay</dd>
                 </dl>
             </div>
             <div class="col-md-6">
                 <h5 class="detail-section-label mb-3">Nitrogen / PAN Parameters</h5>
-                <dl class="row">
+                <dl class="row responsive-detail-list">
                     <dd class="col-sm-5"><i class="bi bi-droplet me-1"></i>NO2 as N (mg/L):</dd>
-                    <dd class="col-sm-7">@(Model.NO2N.HasValue? Model.NO2N.Value.ToString("F2") : "N/A")</dd>
+                    <dd class="col-sm-7">@(Model.NO2N.HasValue ? Model.NO2N.Value.ToString("F2") : "N/A")</dd>
 
                     <dd class="col-sm-5"><i class="bi bi-droplet me-1"></i>TKN as N (mg/L):</dd>
-                    <dd class="col-sm-7">@(Model.TKNN.HasValue? Model.TKNN.Value.ToString("F2") : "N/A")</dd>
+                    <dd class="col-sm-7">@(Model.TKNN.HasValue ? Model.TKNN.Value.ToString("F2") : "N/A")</dd>
 
                     <dd class="col-sm-5"><i class="bi bi-droplet me-1"></i>NO3 as N (mg/L):</dd>
-                    <dd class="col-sm-7">@(Model.NO3N.HasValue? Model.NO3N.Value.ToString("F2") : "N/A")</dd>
+                    <dd class="col-sm-7">@(Model.NO3N.HasValue ? Model.NO3N.Value.ToString("F2") : "N/A")</dd>
                 </dl>
             </div>
         </div>
@@ -68,123 +81,153 @@
         <div class="row">
             <div class="col-12">
                 <h5 class="detail-section-label mb-3">Lab and Sampling</h5>
-
                 <div class="row g-2">
-
-                    <!-- Lab Certification -->
                     <div class="col-md-4 d-flex">
-                        <div class="fw-semibold me-2">
-                            <i class="bi bi-clipboard-check me-1"></i>Lab Certification:
-                        </div>
-                        <div>
-                            @(string.IsNullOrEmpty(Model.LabCertification) ? "N/A" : Model.LabCertification)
-                        </div>
+                        <div class="fw-semibold me-2"><i class="bi bi-clipboard-check me-1"></i>Lab Certification:</div>
+                        <div>@(string.IsNullOrEmpty(Model.LabCertification) ? "N/A" : Model.LabCertification)</div>
                     </div>
-
-                    <!-- Collected By -->
                     <div class="col-md-4 d-flex">
-                        <div class="fw-semibold me-2">
-                            <i class="bi bi-person me-1"></i>Collected By:
-                        </div>
-                        <div>
-                            @(string.IsNullOrEmpty(Model.CollectedBy) ? "N/A" : Model.CollectedBy)
-                        </div>
+                        <div class="fw-semibold me-2"><i class="bi bi-person me-1"></i>Collected By:</div>
+                        <div>@(string.IsNullOrEmpty(Model.CollectedBy) ? "N/A" : Model.CollectedBy)</div>
                     </div>
-
-                    <!-- Analyzed By -->
                     <div class="col-md-4 d-flex">
-                        <div class="fw-semibold me-2">
-                            <i class="bi bi-person-badge me-1"></i>Analyzed By:
-                        </div>
-                        <div>
-                            @(string.IsNullOrEmpty(Model.AnalyzedBy) ? "N/A" : Model.AnalyzedBy)
-                        </div>
+                        <div class="fw-semibold me-2"><i class="bi bi-person-badge me-1"></i>Analyzed By:</div>
+                        <div>@(string.IsNullOrEmpty(Model.AnalyzedBy) ? "N/A" : Model.AnalyzedBy)</div>
                     </div>
-
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 
 <div class="card mt-3">
     <div class="card-body">
-        <div class="d-flex justify-content-between">
-            <div>
-                <h4 class="mb-0">Daily Data</h4>
-                <p class="text-muted small mb-0 mt-1">Days 1–31</p>
-            </div>
-
-            @if (avgNH3.HasValue || avgBOD5.HasValue || avgTSS.HasValue || avgFlow.HasValue)
-            {
-                <div class="border rounded p-2 mb-3 bg-light">
-                    <span class="small fw-semibold">Monthly summary:</span>
-                    @if (avgNH3.HasValue)
-                    {
-                        <span class="small">Average NH3-N: @avgNH3.Value.ToString("F2") mg/L</span>
-                    }
-                    @if (avgBOD5.HasValue)
-                    {
-                        <span class="small">@(avgNH3.HasValue ? " | " : "")Average BOD5: @avgBOD5.Value.ToString("F2") mg/L</span>
-                    }
-                    @if (avgTSS.HasValue)
-                    {
-                        <span class="small">@(avgNH3.HasValue || avgBOD5.HasValue ? " | " : "")Average TSS: @avgTSS.Value.ToString("F2") mg/L</span>
-                    }
-                    @if (avgFlow.HasValue)
-                    {
-                        <span class="small">@(avgNH3.HasValue || avgBOD5.HasValue || avgTSS.HasValue ? " | " : "")Average Flow: @avgFlow.Value.ToString("F2") GPM</span>
-                    }
-                </div>
-            }
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-bordered table-striped">
-                <thead>
-                    <tr>
-                        <th scope="col">Day</th>
-                        <th scope="col">BOD5<br />(mg/L)</th>
-                        <th scope="col">TSS<br />(mg/L)</th>
-                        <th scope="col">Flow Rate<br />(GPM)</th>
-                        <th scope="col">pH</th>
-                        <th scope="col">NH3-N<br />(mg/L)</th>
-                        <th scope="col">Fecal Coliform<br />(CFU/100mL)</th>
-                        <th scope="col">Residual Chloride<br />(mg/L)</th>
-                        <th scope="col">Ca<br />(mg/L)</th>
-                        <th scope="col">Mg<br />(mg/L)</th>
-                        <th scope="col">Na<br />(mg/L)</th>
-                        <th scope="col">SAR<br />(mg/L)</th>
-                        <th scope="col">TN<br />(mg/L)</th>
-                        <th scope="col">Composite<br />Time</th>
-                        <th scope="col">ORC<br />On Site</th>
-                        <th scope="col">Lagoon<br />Freeboard<br />(inches)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for (int i = 0; i < 31; i++)
-                    {
+        <h4 class="mb-0">Test Result Attachments</h4>
+        @if (Model.TestResultAttachments.Any())
+        {
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead>
                         <tr>
-                            <td><strong>@(i + 1)</strong></td>
-                            <td>@(Model.BOD5Daily != null && i < Model.BOD5Daily.Count && Model.BOD5Daily[i].HasValue ? Model.BOD5Daily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.TSSDaily != null && i < Model.TSSDaily.Count && Model.TSSDaily[i].HasValue ? Model.TSSDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.FlowRateDaily != null && i < Model.FlowRateDaily.Count && Model.FlowRateDaily[i].HasValue ? Model.FlowRateDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.PHDaily != null && i < Model.PHDaily.Count && Model.PHDaily[i].HasValue ? Model.PHDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.NH3NDaily != null && i < Model.NH3NDaily.Count && Model.NH3NDaily[i].HasValue ? Model.NH3NDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.FecalColiformDaily != null && i < Model.FecalColiformDaily.Count && Model.FecalColiformDaily[i].HasValue ? Model.FecalColiformDaily[i].Value.ToString("F0") : "-")</td>
-                            <td>@(Model.ChlorideDaily != null && i < Model.ChlorideDaily.Count && Model.ChlorideDaily[i].HasValue ? Model.ChlorideDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.CaDaily != null && i < Model.CaDaily.Count && Model.CaDaily[i].HasValue ? Model.CaDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.MgDaily != null && i < Model.MgDaily.Count && Model.MgDaily[i].HasValue ? Model.MgDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.NaDaily != null && i < Model.NaDaily.Count && Model.NaDaily[i].HasValue ? Model.NaDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.SARDaily != null && i < Model.SARDaily.Count && Model.SARDaily[i].HasValue ? Model.SARDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.TNDaily != null && i < Model.TNDaily.Count && Model.TNDaily[i].HasValue ? Model.TNDaily[i].Value.ToString("F2") : "-")</td>
-                            <td>@(Model.CompositeTime != null && i < Model.CompositeTime.Count && !string.IsNullOrEmpty(Model.CompositeTime[i]) ? Model.CompositeTime[i] : "-")</td>
-                            <td>@(Model.ORCOnSite != null && i < Model.ORCOnSite.Count && Model.ORCOnSite[i].HasValue ? Model.ORCOnSite[i].Value.ToString() : "-")</td>
-                            <td>@(Model.LagoonFreeboard != null && i < Model.LagoonFreeboard.Count && Model.LagoonFreeboard[i].HasValue ? Model.LagoonFreeboard[i].Value.ToString("F2") : "-")</td>
+                            <th>Test Date</th>
+                            <th>File</th>
+                            <th>Uploaded By</th>
+                            <th>Uploaded At (UTC)</th>
+                            <th>Actions</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        @foreach (var attachment in Model.TestResultAttachments)
+                        {
+                            <tr>
+                                <td>@attachment.TestDate.ToString("MM/dd/yyyy")</td>
+                                <td>@attachment.OriginalFileName</td>
+                                <td>@attachment.UploadedBy</td>
+                                <td>@attachment.UploadedAtUtc.ToString("MM/dd/yyyy HH:mm")</td>
+                                <td class="d-flex gap-1">
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="WWCharTestResultFile" asp-route-attachmentId="@attachment.Id">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a class="btn btn-sm btn-outline-secondary" asp-action="WWCharTestResultFile" asp-route-attachmentId="@attachment.Id" asp-route-download="true">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-muted small mt-2">No test result attachments uploaded for this month.</div>
+        }
     </div>
 </div>
+
+<div class="card mt-3">
+    <div class="card-body">
+        <h4 class="mb-0">Attachment A Template Daily Data</h4>
+        <p class="text-muted small mb-2 mt-1">Days 1-31</p>
+
+        @if (Model.TemplateParameters.Any())
+        {
+            <div class="table-responsive responsive-table wide-data-table wwchar-daily-table-wrapper fixed-height-table-wrapper">
+                <table class="table table-sm table-bordered table-striped wwchar-daily-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>ORC On Site</th>
+                            <th>Storage Lagoon Freeboard (ft)</th>
+                            <th>ORC Arrival Time (24H)</th>
+                            <th>ORC Time on Site (hours)</th>
+                            @for (int p = 0; p < Model.TemplateParameters.Count; p++)
+                            {
+                                <th>
+                                    @Model.TemplateParameters[p].PcsCode
+                                    <div class="small fw-normal">
+                                        @Model.TemplateParameters[p].ParameterName (@Model.TemplateParameters[p].Units)
+                                        <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[p].Notes) ? "No notes." : Model.TemplateParameters[p].Notes)"></i>
+                                    </div>
+                                    <div class="small text-muted">
+                                        @Model.TemplateParameters[p].MeasurementFrequency | @Model.TemplateParameters[p].SampleType | Max: @(Model.TemplateParameters[p].DailyMaximumLimit?.ToString() ?? "-")
+                                    </div>
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int d = 0; d < 31; d++)
+                        {
+                            <tr>
+                                <th scope="row"><strong>@(d + 1)</strong></th>
+                                <td>@(Model.ORCOnSite != null && d < Model.ORCOnSite.Count && Model.ORCOnSite[d].HasValue ? Model.ORCOnSite[d].Value.ToString() : "-")</td>
+                                <td>@(Model.LagoonFreeboard != null && d < Model.LagoonFreeboard.Count && Model.LagoonFreeboard[d].HasValue ? Model.LagoonFreeboard[d].Value.ToString("F2") : "-")</td>
+                                <td>@(Model.ORCArrivalTime != null && d < Model.ORCArrivalTime.Count && Model.ORCArrivalTime[d].HasValue ? Model.ORCArrivalTime[d].Value.ToString(@"hh\:mm") : "-")</td>
+                                <td>@(Model.ORCTimeOnSiteHours != null && d < Model.ORCTimeOnSiteHours.Count && Model.ORCTimeOnSiteHours[d].HasValue ? Model.ORCTimeOnSiteHours[d].Value.ToString("F2") : "-")</td>
+                                @for (int p = 0; p < Model.TemplateParameters.Count; p++)
+                                {
+                                    <td>@(Model.TemplateParameters[p].DailyValues != null && d < Model.TemplateParameters[p].DailyValues.Count && Model.TemplateParameters[p].DailyValues[d].HasValue ? Model.TemplateParameters[p].DailyValues[d]!.Value.ToString("F6") : "-")</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                <span>@(Model.TemplateParametersStatusMessage ?? "No permit template parameters found for this period.")</span>
+                @if (Model.FacilityId != Guid.Empty)
+                {
+                    <a asp-controller="SystemAdmin"
+                       asp-action="FacilityPermits"
+                       asp-route-facilityId="@Model.FacilityId"
+                       asp-route-source="wwchar"
+                       asp-route-month="@((int)Model.Month)"
+                       asp-route-year="@Model.Year"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn btn-sm btn-outline-primary">
+                        Open Permit Versions
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            var tooltipContainer = el.closest('.wwchar-daily-table-wrapper') || el.closest('.card-body') || document.body;
+            new bootstrap.Tooltip(el, {
+                container: tooltipContainer,
+                trigger: 'hover focus',
+                boundary: 'viewport',
+                fallbackPlacements: ['top', 'bottom', 'right', 'left']
+            });
+        });
+    </script>
+}

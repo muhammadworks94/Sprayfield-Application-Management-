@@ -23,6 +23,11 @@ public class Nozzle : CompanyScopedEntity
     public decimal FlowRateGpm { get; set; }
 
     /// <summary>
+    /// Operating pressure value.
+    /// </summary>
+    public decimal? Pressure { get; set; }
+
+    /// <summary>
     /// Spray arc in degrees.
     /// </summary>
     public int SprayArc { get; set; }

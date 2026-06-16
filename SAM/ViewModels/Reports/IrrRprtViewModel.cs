@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using SAM.Domain.Enums;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.Reports;
 
@@ -78,6 +80,31 @@ public class IrrRprtCreateViewModel
     [Display(Name = "Year")]
     [Range(2000, 2100)]
     public int Year { get; set; } = DateTime.Now.Year;
+}
+
+public class IrrRprtFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public int? Month { get; set; }
+    public int? Year { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class IrrRprtSortViewModel
+{
+    public string SortBy { get; set; } = "period";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class IrrRprtReportsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public IrrRprtFilterViewModel Filter { get; set; } = new();
+    public IrrRprtSortViewModel Sort { get; set; } = new();
+    public PagedResult<IrrRprtViewModel> Reports { get; set; } = new();
 }
 
 public class IrrRprtEditViewModel

@@ -1,0 +1,229 @@
+@model SAM.ViewModels.Reports.GroundwaterQualityReportsPageViewModel
+
+@{
+    ViewData["Title"] = "GW-59";
+
+    string NextSortDir(string col) => Model.Sort.SortBy == col && Model.Sort.SortDir == "asc" ? "desc" : "asc";
+    string SortIcon(string col)
+    {
+        if (Model.Sort.SortBy != col) return "bi-arrow-down-up text-muted";
+        return Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down";
+    }
+}
+
+@section PageTitleExtra {
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleGw59Filters" data-bs-toggle="collapse" data-bs-target="#gw59FiltersCollapse" aria-expanded="false" aria-controls="gw59FiltersCollapse">
+        <i class="bi bi-funnel"></i> Show Filters
+    </button>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 page-intro">
+    <div>
+        <p class="text-muted mb-0">Generate and view GW-59 groundwater quality reports</p>
+    </div>
+</div>
+
+<div class="collapse mb-3" id="gw59FiltersCollapse">
+    <div class="card">
+        <div class="card-body">
+            <form method="get" asp-action="GroundwaterQualityReports" class="row g-3 align-items-end">
+                <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
+                <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
+                <input type="hidden" name="page" value="1" />
+
+                <div class="col-md-3">
+                    <label class="form-label">Facility</label>
+                    <select name="facilityId" class="form-select" asp-items="Model.Facilities">
+                        <option value="">All Facilities</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Monitoring Well</label>
+                    <select name="monitoringWellId" class="form-select" asp-items="Model.MonitoringWells">
+                        <option value="">All Wells</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Month</label>
+                    <select name="month" class="form-select" asp-items="Model.Months">
+                        <option value="">All Months</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Year</label>
+                    <input type="number" min="2000" max="2100" name="year" class="form-control" value="@Model.Filter.Year" placeholder="Year" />
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Size</label>
+                    <select name="pageSize" class="form-select">
+                        <option value="25" selected="@(Model.Filter.PageSize == 25)">25</option>
+                        <option value="50" selected="@(Model.Filter.PageSize == 50)">50</option>
+                        <option value="100" selected="@(Model.Filter.PageSize == 100)">100</option>
+                        <option value="200" selected="@(Model.Filter.PageSize == 200)">200</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2 justify-content-end">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Apply</button>
+                    <a asp-action="GroundwaterQualityReports" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card gw-quality-card">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
+            <h4 class="mb-0">GW-59 Report List</h4>
+        </div>
+
+        <div class="table-responsive gw-quality-table">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>
+                            <a class="text-decoration-none" asp-action="GroundwaterQualityReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-monitoringWellId="@Model.Filter.MonitoringWellId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="facility" asp-route-sortDir="@NextSortDir("facility")">Facility <i class="bi @SortIcon("facility")"></i></a>
+                        </th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="GroundwaterQualityReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-monitoringWellId="@Model.Filter.MonitoringWellId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="well" asp-route-sortDir="@NextSortDir("well")">Well <i class="bi @SortIcon("well")"></i></a>
+                        </th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="GroundwaterQualityReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-monitoringWellId="@Model.Filter.MonitoringWellId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="sampledate" asp-route-sortDir="@NextSortDir("sampledate")">Sample Date <i class="bi @SortIcon("sampledate")"></i></a>
+                        </th>
+                        <th>Permit</th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="GroundwaterQualityReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-monitoringWellId="@Model.Filter.MonitoringWellId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="collectedby" asp-route-sortDir="@NextSortDir("collectedby")">Collected By <i class="bi @SortIcon("collectedby")"></i></a>
+                        </th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="GroundwaterQualityReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-monitoringWellId="@Model.Filter.MonitoringWellId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-page="1" asp-route-pageSize="@Model.Filter.PageSize" asp-route-sortBy="analyzedby" asp-route-sortDir="@NextSortDir("analyzedby")">Analyzed By <i class="bi @SortIcon("analyzedby")"></i></a>
+                        </th>
+                        <th class="text-end table-actions"><i class="bi bi-gear"></i> Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Reports.Items.Any())
+                    {
+                        foreach (var row in Model.Reports.Items)
+                        {
+                            <tr>
+                                <td>@row.FacilityName</td>
+                                <td>@row.MonitoringWellName</td>
+                                <td>@row.SampleDate.ToString("MM/dd/yyyy")</td>
+                                <td>
+                                    @if (row.PermitDisplay == "No active permit")
+                                    {
+                                        <span class="badge bg-warning">No active permit</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-success border">@row.PermitDisplay</span>
+                                    }
+                                </td>
+                                <td>@row.CollectedBy</td>
+                                <td>@row.AnalyzedBy</td>
+                                <td class="text-end table-actions">
+                                    <div class="dropdown gw-action-dropdown">
+                                        <button class="btn btn-sm btn-light border dropdown-toggle gw-action-btn" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
+                                            <i class="bi bi-gear me-1"></i> Actions
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" asp-action="PreviewGW59Report" asp-route-id="@row.Id"><i class="bi bi-eye me-2"></i>Preview GW-59</a></li>
+                                            <li><a class="dropdown-item report-download-link" asp-action="ExportGW59Report" asp-route-id="@row.Id"><i class="bi bi-file-earmark-pdf me-2"></i>Download PDF</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">No groundwater monitoring records found for the selected filters.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.Reports.TotalPages > 1)
+        {
+            <nav aria-label="GW-59 reports pagination" class="mt-3">
+                <ul class="pagination justify-content-end mb-0">
+                    <li class="page-item @(Model.Reports.Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="GroundwaterQualityReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-monitoringWellId="@Model.Filter.MonitoringWellId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-sortBy="@Model.Sort.SortBy" asp-route-sortDir="@Model.Sort.SortDir" asp-route-page="@(Model.Reports.Page - 1)" asp-route-pageSize="@Model.Filter.PageSize">Previous</a>
+                    </li>
+                    @for (var p = 1; p <= Model.Reports.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.Reports.Page ? "active" : "")">
+                            <a class="page-link" asp-action="GroundwaterQualityReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-monitoringWellId="@Model.Filter.MonitoringWellId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-sortBy="@Model.Sort.SortBy" asp-route-sortDir="@Model.Sort.SortDir" asp-route-page="@p" asp-route-pageSize="@Model.Filter.PageSize">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Reports.Page >= Model.Reports.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="GroundwaterQualityReports" asp-route-facilityId="@Model.Filter.FacilityId" asp-route-monitoringWellId="@Model.Filter.MonitoringWellId" asp-route-month="@Model.Filter.Month" asp-route-year="@Model.Filter.Year" asp-route-sortBy="@Model.Sort.SortBy" asp-route-sortDir="@Model.Sort.SortDir" asp-route-page="@(Model.Reports.Page + 1)" asp-route-pageSize="@Model.Filter.PageSize">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .gw-quality-card,
+        .gw-quality-card .card-body,
+        .gw-quality-card .table-responsive {
+            overflow: visible !important;
+        }
+
+        .gw-quality-table {
+            overflow-x: auto !important;
+            overflow-y: visible !important;
+        }
+
+        .gw-action-dropdown {
+            position: relative;
+        }
+
+        .gw-quality-table .dropdown-menu {
+            z-index: 1080;
+            min-width: 220px;
+        }
+
+        .gw-action-btn,
+        .gw-action-btn:focus,
+        .gw-action-btn.show,
+        .gw-action-btn:active {
+            color: #1f2937 !important;
+            background-color: #f8f9fa !important;
+            border-color: #ced4da !important;
+            box-shadow: none !important;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SAMLoading) {
+                window.SAMLoading.bindLinkClicks('.report-download-link', {
+                    loadingMessage: 'Generating groundwater quality report...',
+                    useFetchDownload: true,
+                    autoHideMs: 15000
+                });
+            }
+
+            const filterCollapseEl = document.getElementById('gw59FiltersCollapse');
+            const filterToggleBtn = document.getElementById('toggleGw59Filters');
+            if (filterCollapseEl && filterToggleBtn) {
+                const updateFilterButton = (shown) => {
+                    filterToggleBtn.innerHTML = shown
+                        ? '<i class="bi bi-funnel-fill"></i> Hide Filters'
+                        : '<i class="bi bi-funnel"></i> Show Filters';
+                    filterToggleBtn.setAttribute('aria-expanded', shown ? 'true' : 'false');
+                };
+
+                updateFilterButton(false);
+                filterCollapseEl.addEventListener('shown.bs.collapse', () => updateFilterButton(true));
+                filterCollapseEl.addEventListener('hidden.bs.collapse', () => updateFilterButton(false));
+            }
+        });
+    </script>
+}

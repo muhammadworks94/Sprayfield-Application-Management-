@@ -34,6 +34,10 @@ public partial class SystemAdminController
             DepthToScreenFeet = monitoringWell.DepthToScreenFeet,
             LowScreenDepthFeet = monitoringWell.LowScreenDepthFeet,
             HighScreenDepthFeet = monitoringWell.HighScreenDepthFeet,
+            ScreenedIntervalFromFeet = monitoringWell.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = monitoringWell.ScreenedIntervalToFeet,
+            MeasuringPointAboveLandSurface = monitoringWell.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = monitoringWell.RelativeMpElevation,
             TopOfCasingElevationMsl = monitoringWell.TopOfCasingElevationMsl,
             TreatmentSystemLocation = monitoringWell.TreatmentSystemLocation,
             NumberOfWellsToBeSampled = monitoringWell.NumberOfWellsToBeSampled,
@@ -97,6 +101,10 @@ public partial class SystemAdminController
                 DepthToScreenFeet = viewModel.DepthToScreenFeet,
                 LowScreenDepthFeet = viewModel.LowScreenDepthFeet,
                 HighScreenDepthFeet = viewModel.HighScreenDepthFeet,
+                ScreenedIntervalFromFeet = viewModel.ScreenedIntervalFromFeet,
+                ScreenedIntervalToFeet = viewModel.ScreenedIntervalToFeet,
+                MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface,
+                RelativeMpElevation = viewModel.RelativeMpElevation,
                 TopOfCasingElevationMsl = viewModel.TopOfCasingElevationMsl,
                 TreatmentSystemLocation = viewModel.TreatmentSystemLocation,
                 NumberOfWellsToBeSampled = viewModel.NumberOfWellsToBeSampled,
@@ -138,6 +146,10 @@ public partial class SystemAdminController
             DepthToScreenFeet = monitoringWell.DepthToScreenFeet,
             LowScreenDepthFeet = monitoringWell.LowScreenDepthFeet,
             HighScreenDepthFeet = monitoringWell.HighScreenDepthFeet,
+            ScreenedIntervalFromFeet = monitoringWell.ScreenedIntervalFromFeet,
+            ScreenedIntervalToFeet = monitoringWell.ScreenedIntervalToFeet,
+            MeasuringPointAboveLandSurface = monitoringWell.MeasuringPointAboveLandSurface,
+            RelativeMpElevation = monitoringWell.RelativeMpElevation,
             TopOfCasingElevationMsl = monitoringWell.TopOfCasingElevationMsl,
             TreatmentSystemLocation = monitoringWell.TreatmentSystemLocation,
             NumberOfWellsToBeSampled = monitoringWell.NumberOfWellsToBeSampled,
@@ -176,6 +188,10 @@ public partial class SystemAdminController
             monitoringWell.DepthToScreenFeet = viewModel.DepthToScreenFeet;
             monitoringWell.LowScreenDepthFeet = viewModel.LowScreenDepthFeet;
             monitoringWell.HighScreenDepthFeet = viewModel.HighScreenDepthFeet;
+            monitoringWell.ScreenedIntervalFromFeet = viewModel.ScreenedIntervalFromFeet;
+            monitoringWell.ScreenedIntervalToFeet = viewModel.ScreenedIntervalToFeet;
+            monitoringWell.MeasuringPointAboveLandSurface = viewModel.MeasuringPointAboveLandSurface;
+            monitoringWell.RelativeMpElevation = viewModel.RelativeMpElevation;
             monitoringWell.TopOfCasingElevationMsl = viewModel.TopOfCasingElevationMsl;
             monitoringWell.TreatmentSystemLocation = viewModel.TreatmentSystemLocation;
             monitoringWell.NumberOfWellsToBeSampled = viewModel.NumberOfWellsToBeSampled;

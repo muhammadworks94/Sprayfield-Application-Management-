@@ -31,7 +31,8 @@ public class ErrorLogsController : BaseController
     [HttpGet]
     public async Task<IActionResult> Index([FromQuery] ErrorLogFilterViewModel filter, CancellationToken cancellationToken)
     {
-        filter.CompanyId = GetSelectedCompanyIdFromSession();
+        // Global admin logs are always all-company scope.
+        filter.CompanyId = null;
 
         var result = await _errorLogService.QueryAsync(new ErrorLogQueryModel
         {
@@ -102,4 +103,3 @@ public class ErrorLogsController : BaseController
         });
     }
 }
-

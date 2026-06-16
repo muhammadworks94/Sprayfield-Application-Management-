@@ -3,6 +3,8 @@
     ViewData["Title"] = "Create Groundwater Monitoring Record";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var monitoringWells = ViewBag.MonitoringWells as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var hasVocFile = !string.IsNullOrWhiteSpace(Model.VOCReportFileName);
+    var vocScheduledThisMonth = Model.TemplateParameters.Any(p => p.PcsCode == "78732" && p.IsRequiredForSelectedMonth);
 }
 
 <div class="mb-4">
@@ -11,368 +13,610 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="row">
-            <div class="col-lg-8">
-                <form asp-action="GWMonitCreate" method="post">
-                    @Html.AntiForgeryToken()
-                    
-                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <form asp-action="GWMonitCreate" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="CompanyId" />
+            <input type="hidden" asp-for="FacilityPermitId" />
 
-                    <div class="form-section">
-                        <div class="form-section-title">Basic Information</div>
-                        
-                        <input type="hidden" asp-for="CompanyId" />
-                        
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="FacilityId" class="form-label required"></label>
-                                    <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
-                                        <option value=""> Select Facility </option>
-                                    </select>
-                                    <span asp-validation-for="FacilityId" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="MonitoringWellId" class="form-label required"></label>
-                                    <select asp-for="MonitoringWellId" asp-items="monitoringWells" class="form-select">
-                                        <option value=""> Select Monitoring Well </option>
-                                    </select>
-                                    <span asp-validation-for="MonitoringWellId" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="SampleDate" class="form-label required"></label>
-                                    <input asp-for="SampleDate" type="date" class="form-control" />
-                                    <span asp-validation-for="SampleDate" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                    <div class="form-section">
-                        <div class="form-section-title">Sample Information</div>
-                        
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="SampleDepth" class="form-label"></label>
-                                    <input asp-for="SampleDepth" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="SampleDepth" class="text-danger"></span>
-                                    <small class="form-text text-muted">Depth from ground surface to sample point (ft).</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="WaterLevel" class="form-label"></label>
-                                    <input asp-for="WaterLevel" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="WaterLevel" class="text-danger"></span>
-                                    <small class="form-text text-muted">Depth to water from reference point (ft). Use consistent measuring reference.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="Temperature" class="form-label"></label>
-                                    <input asp-for="Temperature" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="Temperature" class="text-danger"></span>
-                                    <small class="form-text text-muted">Sample temperature in °C, measured at time of collection.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="PH" class="form-label"></label>
-                                    <input asp-for="PH" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="PH" class="text-danger"></span>
-                                    <small class="form-text text-muted">Field pH or lab‑reported value; note method in <em>Comments</em> if unusual.</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="GallonsPumped" class="form-label"></label>
-                                    <input asp-for="GallonsPumped" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="GallonsPumped" class="text-danger"></span>
-                                    <small class="form-text text-muted">Total gallons pumped during the sampling event, if applicable.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="Odor" class="form-label"></label>
-                                    <select asp-for="Odor" class="form-select">
-                                        <option value="">Select Odor</option>
-                                        <option value="None">None</option>
-                                        <option value="Slight">Slight</option>
-                                        <option value="Strong">Strong</option>
-                                    </select>
-                                    <span asp-validation-for="Odor" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="Appearance" class="form-label"></label>
-                                    <select asp-for="Appearance" class="form-select">
-                                        <option value="">Select Appearance</option>
-                                        <option value="Clear">Clear</option>
-                                        <option value="Turbid">Turbid</option>
-                                    </select>
-                                    <span asp-validation-for="Appearance" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title">Physical Parameters</div>
-                        
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="Conductivity" class="form-label"></label>
-                                    <input asp-for="Conductivity" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="Conductivity" class="text-danger"></span>
-                                    <small class="form-text text-muted">Specific conductance (uMhos). Check meter calibration regularly.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="Turbidity" class="form-label"></label>
-                                    <input asp-for="Turbidity" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="Turbidity" class="text-danger"></span>
-                                    <small class="form-text text-muted">Turbidity (NTU). Note if sample required dilution or special handling.</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title">Chemical Parameters</div>
-                        
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="TSS" class="form-label"></label>
-                                    <input asp-for="TSS" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="TSS" class="text-danger"></span>
-                                    <small class="form-text text-muted">Total Suspended Solids (mg/L).</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="NH3N" class="form-label"></label>
-                                    <input asp-for="NH3N" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="NH3N" class="text-danger"></span>
-                                    <small class="form-text text-muted">Ammonia‑Nitrogen (mg/L).</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="NO3N" class="form-label"></label>
-                                    <input asp-for="NO3N" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="NO3N" class="text-danger"></span>
-                                    <small class="form-text text-muted">Nitrate‑Nitrogen (mg/L).</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="TKN" class="form-label"></label>
-                                    <input asp-for="TKN" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="TKN" class="text-danger"></span>
-                                    <small class="form-text text-muted">Total Kjeldahl Nitrogen (mg/L).</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="TDS" class="form-label"></label>
-                                    <input asp-for="TDS" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="TDS" class="text-danger"></span>
-                                    <small class="form-text text-muted">Total dissolved solids (mg/L), field or lab measured.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="Chloride" class="form-label"></label>
-                                    <input asp-for="Chloride" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="Chloride" class="text-danger"></span>
-                                    <small class="form-text text-muted">Chloride (mg/L).</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="TOC" class="form-label"></label>
-                                    <input asp-for="TOC" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="TOC" class="text-danger"></span>
-                                    <small class="form-text text-muted">Total Organic Carbon (mg/L).</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="Calcium" class="form-label"></label>
-                                    <input asp-for="Calcium" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="Calcium" class="text-danger"></span>
-                                    <small class="form-text text-muted">Calcium (mg/L).</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label asp-for="Magnesium" class="form-label"></label>
-                                    <input asp-for="Magnesium" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="Magnesium" class="text-danger"></span>
-                                    <small class="form-text text-muted">Magnesium (mg/L).</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3 form-check">
-                                    <input class="form-check-input" asp-for="MetalsSamplesCollectedUnfiltered" type="checkbox" />
-                                    <label class="form-check-label" asp-for="MetalsSamplesCollectedUnfiltered"></label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3 form-check">
-                                    <input class="form-check-input" asp-for="MetalSamplesFieldAcidified" type="checkbox" />
-                                    <label class="form-check-label" asp-for="MetalSamplesFieldAcidified"></label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title">Organics</div>
-
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3 form-check">
-                                    <input class="form-check-input" asp-for="VOCReportAttached" type="checkbox" />
-                                    <label class="form-check-label" asp-for="VOCReportAttached"></label>
-                                </div>
-                            </div>
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label asp-for="VOCMethodNumber" class="form-label"></label>
-                                    <input asp-for="VOCMethodNumber" class="form-control" />
-                                    <span asp-validation-for="VOCMethodNumber" class="text-danger"></span>
-                                    <small class="form-text text-muted">Enter VOC analytical method number reported by the lab (if tested).</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title">Biological Parameters</div>
-                        
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="FecalColiform" class="form-label"></label>
-                                    <input asp-for="FecalColiform" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="FecalColiform" class="text-danger"></span>
-                                    <small class="form-text text-muted">Fecal coliform (CFU/100mL). Note method and detection limits if relevant.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="TotalColiform" class="form-label"></label>
-                                    <input asp-for="TotalColiform" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="TotalColiform" class="text-danger"></span>
-                                    <small class="form-text text-muted">Total coliform (CFU/100mL).</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title">Lab Information</div>
-                        
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="LabCertification" class="form-label required"></label>
-                                    <input asp-for="LabCertification" class="form-control" />
-                                    <span asp-validation-for="LabCertification" class="text-danger"></span>
-                                    <small class="form-text text-muted">Lab accreditation or certification ID as required by your permit.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="CollectedBy" class="form-label required"></label>
-                                    <input asp-for="CollectedBy" class="form-control" />
-                                    <span asp-validation-for="CollectedBy" class="text-danger"></span>
-                                    <small class="form-text text-muted">Person or crew responsible for collecting the sample.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label asp-for="AnalyzedBy" class="form-label required"></label>
-                                    <input asp-for="AnalyzedBy" class="form-control" />
-                                    <span asp-validation-for="AnalyzedBy" class="text-danger"></span>
-                                    <small class="form-text text-muted">Lab or analyst who performed testing.</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <div class="form-section-title">Additional Information</div>
-                        
+            <div class="form-section">
+                <div class="form-section-title">Basic Information</div>
+                <div class="row">
+                    <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="Comments" class="form-label required"></label>
-                            <textarea asp-for="Comments" class="form-control" rows="3"></textarea>
-                            <span asp-validation-for="Comments" class="text-danger"></span>
-                            <small class="form-text text-muted">Summarize any unusual conditions, deviations from SOP, field issues, or lab qualifiers.</small>
+                            <label asp-for="FacilityId" class="form-label required"></label>
+                            <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
+                                <option value=""> Select Facility </option>
+                            </select>
+                            <span asp-validation-for="FacilityId" class="text-danger"></span>
                         </div>
                     </div>
-
-                    <div class="d-flex justify-content-end gap-2">
-                        <a asp-action="GWMonits" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">Cancel</a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle"></i> Create Record
-                        </button>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="MonitoringWellId" class="form-label required"></label>
+                            <select asp-for="MonitoringWellId" asp-items="monitoringWells" class="form-select" id="monitoringWellSelect">
+                                <option value=""> Select Monitoring Well </option>
+                            </select>
+                            <span asp-validation-for="MonitoringWellId" class="text-danger"></span>
+                        </div>
                     </div>
-                </form>
-            </div>
-
-            <div class="col-lg-4">
-                <div class="alert alert-info ">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Groundwater Monitoring Guidelines</h6>
-                    <ul class="small mb-0 ps-3">
-                        <li class="mb-1"><strong>Facility & Monitoring Well</strong>: Select the facility and well that match your monitoring plan. Well IDs should align with site maps and permit documentation.</li>
-                        <li class="mb-1"><strong>Sample Date</strong>: Use the actual field collection date, not the lab receipt date.</li>
-                        <li class="mb-1"><strong>Depth & Water Level</strong>: Measure from a consistent reference point (e.g., top of casing). Document any purging or stabilization procedure in <em>Comments</em> if not captured elsewhere.</li>
-                        <li class="mb-1"><strong>Field Measurements</strong>: Temperature, pH, conductivity, and turbidity should be taken after parameters stabilize. Verify calibration logs before sampling.</li>
-                        <li class="mb-1"><strong>Chemical Parameters</strong>: Enter the final lab‑reported values (mg/L). Use the appropriate qualifiers in lab reports; note any “J”, “U”, or other flags in <em>Comments</em>.</li>
-                        <li class="mb-1"><strong>Biological Results</strong>: Fecal and total coliform results are typically in CFU/100mL. Ensure detection limits and methods comply with permit requirements.</li>
-                        <li class="mb-1"><strong>Lab Certification</strong>: Record the certification or accreditation identifier used for regulatory reporting (e.g., state lab ID).</li>
-                        <li class="mb-1"><strong>Collected By / Analyzed By</strong>: Use full names or standard lab identifiers so records remain clear during audits.</li>
-                        <li><strong>Comments</strong>: Use this field to explain anything unusual—equipment malfunctions, sample resubmittals, difficult purging, weather impacts, or deviations from SOP. Clear notes make future trend reviews and regulatory inquiries much easier.</li>
-                    </ul>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="SampleDate" class="form-label required"></label>
+                            <input asp-for="SampleDate" type="date" class="form-control" />
+                            <span asp-validation-for="SampleDate" class="text-danger"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            <div class="form-section" id="gw59WellDataSection">
+                <div class="form-section-title">Well Data (GW-59)</div>
+                <p class="small text-muted">These values are stored on the selected monitoring well and update the well master record when you save.</p>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="WellDepthFeet" class="form-label"></label>
+                            <input asp-for="WellDepthFeet" type="number" step="0.01" class="form-control gw59-well-field" />
+                            <span asp-validation-for="WellDepthFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="DiameterInches" class="form-label"></label>
+                            <input asp-for="DiameterInches" type="number" step="0.01" class="form-control gw59-well-field" />
+                            <span asp-validation-for="DiameterInches" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="ScreenedIntervalFromFeet" class="form-label"></label>
+                            <input asp-for="ScreenedIntervalFromFeet" type="number" step="0.01" class="form-control gw59-well-field" />
+                            <span asp-validation-for="ScreenedIntervalFromFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="ScreenedIntervalToFeet" class="form-label"></label>
+                            <input asp-for="ScreenedIntervalToFeet" type="number" step="0.01" class="form-control gw59-well-field" />
+                            <span asp-validation-for="ScreenedIntervalToFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="MeasuringPointAboveLandSurface" class="form-label"></label>
+                            <input asp-for="MeasuringPointAboveLandSurface" type="number" step="0.01" class="form-control gw59-well-field" />
+                            <span asp-validation-for="MeasuringPointAboveLandSurface" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="RelativeMpElevation" class="form-label"></label>
+                            <input asp-for="RelativeMpElevation" type="number" step="0.01" class="form-control gw59-well-field" />
+                            <span asp-validation-for="RelativeMpElevation" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Sample Information</div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="WaterLevel" class="form-label"></label>
+                            <input asp-for="WaterLevel" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="WaterLevel" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="Temperature" class="form-label"></label>
+                            <input asp-for="Temperature" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="Temperature" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="PH" class="form-label"></label>
+                            <input asp-for="PH" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="PH" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="GallonsPumped" class="form-label"></label>
+                            <input asp-for="GallonsPumped" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="GallonsPumped" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="Odor" class="form-label"></label>
+                            <select asp-for="Odor" class="form-select">
+                                <option value="">Select Odor</option>
+                                <option value="None">None</option>
+                                <option value="Slight">Slight</option>
+                                <option value="Strong">Strong</option>
+                            </select>
+                            <span asp-validation-for="Odor" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="Appearance" class="form-label"></label>
+                            <select asp-for="Appearance" class="form-select">
+                                <option value="">Select Appearance</option>
+                                <option value="Clear">Clear</option>
+                                <option value="Turbid">Turbid</option>
+                            </select>
+                            <span asp-validation-for="Appearance" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="MetalsSamplesCollectedUnfiltered" class="form-label"></label>
+                            <select asp-for="MetalsSamplesCollectedUnfiltered" class="form-select">
+                                <option value="">Not set</option>
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </select>
+                            <span asp-validation-for="MetalsSamplesCollectedUnfiltered" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label asp-for="MetalSamplesFieldAcidified" class="form-label"></label>
+                            <select asp-for="MetalSamplesFieldAcidified" class="form-select">
+                                <option value="">Not set</option>
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </select>
+                            <span asp-validation-for="MetalSamplesFieldAcidified" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Physical Parameters</div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Conductivity" class="form-label"></label>
+                            <input asp-for="Conductivity" type="number" step="0.01" class="form-control" />
+                            <span asp-validation-for="Conductivity" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Lab Information</div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="LabCertification" class="form-label"></label>
+                            <input asp-for="LabCertification" class="form-control" />
+                            <span asp-validation-for="LabCertification" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="CollectedBy" class="form-label"></label>
+                            <input asp-for="CollectedBy" class="form-control" />
+                            <span asp-validation-for="CollectedBy" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="AnalyzedBy" class="form-label"></label>
+                            <input asp-for="AnalyzedBy" class="form-control" />
+                            <span asp-validation-for="AnalyzedBy" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div id="gwTemplateSectionContainer">
+                    @await Html.PartialAsync("Partials/_GWMonitTemplateSection", new SAM.ViewModels.OperationalData.GWMonitTemplateSectionViewModel
+                    {
+                        FacilityId = Model.FacilityId,
+                        SampleDate = Model.SampleDate,
+                        RecordId = null,
+                        IsEdit = false,
+                        FacilityPermitId = Model.FacilityPermitId,
+                        FacilityPermitDisplay = Model.FacilityPermitDisplay,
+                        TemplateParametersStatusMessage = Model.TemplateParametersStatusMessage,
+                        TemplateParameters = Model.TemplateParameters
+                    })
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Organics</div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3 form-check">
+                            <input class="form-check-input" asp-for="VOCReportAttached" type="checkbox" id="vocReportAttachedCheckbox" disabled="@(!hasVocFile)" />
+                            <label class="form-check-label @(vocScheduledThisMonth ? "required" : string.Empty)" asp-for="VOCReportAttached" id="vocReportAttachedLabel"></label>
+                            <small class="text-muted d-block mt-1" id="vocAttachmentHelp">
+                                Upload a VOC PDF before it can be attached to the GW-59 report.
+                            </small>
+                            <small class="text-warning d-block mt-2 @(vocScheduledThisMonth ? string.Empty : "d-none")" id="vocTemplateNotice">
+                                Attachment C lists Volatile Compounds for this sample month. If a VOC report applies to this event, upload the PDF here so it can be attached to the GW-59 report.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label asp-for="VOCReportFile" class="form-label @(vocScheduledThisMonth ? "required" : string.Empty)" id="vocReportFileLabel"></label>
+                            <input asp-for="VOCReportFile" type="file" class="form-control" accept=".pdf,application/pdf" id="vocReportFileInput" />
+                            <span asp-validation-for="VOCReportFile" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label asp-for="VOCMethodNumber" class="form-label @(vocScheduledThisMonth ? "required" : string.Empty)" id="vocMethodNumberLabel"></label>
+                            <input asp-for="VOCMethodNumber" class="form-control" />
+                            <span asp-validation-for="VOCMethodNumber" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">GW-59A Compliance</div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="GW59ADueDate" class="form-label"></label>
+                            <input asp-for="GW59ADueDate" type="date" class="form-control" />
+                            <span asp-validation-for="GW59ADueDate" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label class="form-label">1. Enter date monitoring results were due. (@(Model.GW59ADueDate?.ToString("MM/dd/yyyy") ?? "__________")) Will this monitoring report (GW-59 and GW-59A) be submitted after the established due date?</label>
+                        <div class="d-flex gap-4">
+                            <input type="hidden" name="GW59AQuestion1Response" value="@(Model.GW59AQuestion1Response.HasValue ? (Model.GW59AQuestion1Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion1Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion1Response_Yes" data-gw59a-toggle="GW59AQuestion1Response" data-gw59a-value="true" @(Model.GW59AQuestion1Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion1Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion1Response_No" data-gw59a-toggle="GW59AQuestion1Response" data-gw59a-value="false" @(Model.GW59AQuestion1Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion1Response_No">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">2. Was any required information missing on the GW-59 report forms?</label>
+                        <div class="d-flex gap-4 mb-2">
+                            <input type="hidden" name="GW59AQuestion2Response" value="@(Model.GW59AQuestion2Response.HasValue ? (Model.GW59AQuestion2Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion2Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion2Response_Yes" data-gw59a-toggle="GW59AQuestion2Response" data-gw59a-value="true" @(Model.GW59AQuestion2Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion2Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion2Response_No" data-gw59a-toggle="GW59AQuestion2Response" data-gw59a-value="false" @(Model.GW59AQuestion2Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion2Response_No">No</label>
+                            </div>
+                        </div>
+                        <label asp-for="GW59AQuestion2Details" class="form-label"></label>
+                        <textarea asp-for="GW59AQuestion2Details" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">3. Are any of the monitor wells in need of repair or maintenance (damaged casing, unlocked or missing cap, missing identification plate, area overgrown, etc.)? If the answer is "Yes", contact the Regional Office for guidance.</label>
+                        <div class="d-flex gap-4">
+                            <input type="hidden" name="GW59AQuestion3Response" value="@(Model.GW59AQuestion3Response.HasValue ? (Model.GW59AQuestion3Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion3Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion3Response_Yes" data-gw59a-toggle="GW59AQuestion3Response" data-gw59a-value="true" @(Model.GW59AQuestion3Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion3Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion3Response_No" data-gw59a-toggle="GW59AQuestion3Response" data-gw59a-value="false" @(Model.GW59AQuestion3Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion3Response_No">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">4. Are any monitored constituents equal to or above the established standards?</label>
+                        <div class="d-flex gap-4 mb-2">
+                            <input type="hidden" name="GW59AQuestion4Response" value="@(Model.GW59AQuestion4Response.HasValue ? (Model.GW59AQuestion4Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion4Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion4Response_Yes" data-gw59a-toggle="GW59AQuestion4Response" data-gw59a-value="true" @(Model.GW59AQuestion4Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion4Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion4Response_No" data-gw59a-toggle="GW59AQuestion4Response" data-gw59a-value="false" @(Model.GW59AQuestion4Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion4Response_No">No</label>
+                            </div>
+                        </div>
+                        <label asp-for="GW59AQuestion4Details" class="form-label"></label>
+                        <textarea asp-for="GW59AQuestion4Details" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">5. For the constituents identified in question 4 above, have standards been exceeded previously for the same constituent(s) in the same well(s) in the last two years?</label>
+                        <div class="d-flex gap-4 mb-2">
+                            <input type="hidden" name="GW59AQuestion5Response" value="@(Model.GW59AQuestion5Response.HasValue ? (Model.GW59AQuestion5Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion5Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion5Response_Yes" data-gw59a-toggle="GW59AQuestion5Response" data-gw59a-value="true" @(Model.GW59AQuestion5Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion5Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion5Response_No" data-gw59a-toggle="GW59AQuestion5Response" data-gw59a-value="false" @(Model.GW59AQuestion5Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion5Response_No">No</label>
+                            </div>
+                        </div>
+                        <label asp-for="GW59AQuestion5Details" class="form-label"></label>
+                        <textarea asp-for="GW59AQuestion5Details" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">6. Are the monitoring wells listed in section 5 located at or beyond the review boundary?</label>
+                        <div class="d-flex gap-4">
+                            <input type="hidden" name="GW59AQuestion6Response" value="@(Model.GW59AQuestion6Response.HasValue ? (Model.GW59AQuestion6Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion6Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion6Response_Yes" data-gw59a-toggle="GW59AQuestion6Response" data-gw59a-value="true" @(Model.GW59AQuestion6Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion6Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion6Response_No" data-gw59a-toggle="GW59AQuestion6Response" data-gw59a-value="false" @(Model.GW59AQuestion6Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion6Response_No">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label">7. Is the permittee implementing previously approved actions required by the Division involving this groundwater quality problem?</label>
+                        <div class="d-flex gap-4 mb-2">
+                            <input type="hidden" name="GW59AQuestion7Response" value="@(Model.GW59AQuestion7Response.HasValue ? (Model.GW59AQuestion7Response.Value ? "true" : "false") : "")" data-gw59a-hidden="GW59AQuestion7Response" />
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion7Response_Yes" data-gw59a-toggle="GW59AQuestion7Response" data-gw59a-value="true" @(Model.GW59AQuestion7Response == true ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion7Response_Yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="GW59AQuestion7Response_No" data-gw59a-toggle="GW59AQuestion7Response" data-gw59a-value="false" @(Model.GW59AQuestion7Response == false ? "checked" : "") />
+                                <label class="form-check-label" for="GW59AQuestion7Response_No">No</label>
+                            </div>
+                        </div>
+                        <label asp-for="GW59AQuestion7Details" class="form-label"></label>
+                        <textarea asp-for="GW59AQuestion7Details" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="alert alert-secondary mb-0">
+                    GW-59A signer fields are populated automatically when the report is exported.
+                    The signer uses the exporting user, the title is set to <strong>Authorized Agent</strong>, and the signed date uses the export date.
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="GWMonits" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Record
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
-        // Update monitoring wells when facility changes
-        document.getElementById('facilitySelect')?.addEventListener('change', function() {
-            var facilityId = this.value;
-            if (facilityId) {
-                // Reload page with new facility filter; company will be inferred from facility on the server
-                window.location.href = '@Url.Action("GWMonitCreate")' + '?facilityId=' + facilityId;
+        (function () {
+            const facilitySelect = document.getElementById('facilitySelect');
+            const sampleDateInput = document.getElementById('SampleDate');
+            const container = document.getElementById('gwTemplateSectionContainer');
+            const contextUrl = '@Url.Action("GWMonitTemplateContext", "OperationalData")';
+            const vocFileInput = document.getElementById('vocReportFileInput');
+            const vocAttachedCheckbox = document.getElementById('vocReportAttachedCheckbox');
+            const vocAttachmentHelp = document.getElementById('vocAttachmentHelp');
+            const vocAttachedLabel = document.getElementById('vocReportAttachedLabel');
+            const vocFileLabel = document.getElementById('vocReportFileLabel');
+            const vocMethodLabel = document.getElementById('vocMethodNumberLabel');
+            let debounceTimer = null;
+            let requestCounter = 0;
+
+            function initTooltips(scope) {
+                (scope || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                    var tooltipContainer = el.closest('.fixed-height-table-wrapper') || el.closest('.card-body') || document.body;
+                    var existing = bootstrap.Tooltip.getInstance(el);
+                    if (existing) {
+                        existing.dispose();
+                    }
+
+                    new bootstrap.Tooltip(el, {
+                        container: tooltipContainer,
+                        trigger: 'hover focus',
+                        boundary: 'viewport',
+                        fallbackPlacements: ['top', 'bottom', 'right', 'left']
+                    });
+                });
             }
-        });
+
+            function captureTemplateValues() {
+                const values = {};
+                if (!container) return values;
+                const rowInputs = container.querySelectorAll('input[name^="TemplateParameters["][name$="].EnteredValue"]');
+                rowInputs.forEach(function (input) {
+                    const idxMatch = input.name.match(/^TemplateParameters\[(\d+)\]\.EnteredValue$/);
+                    if (!idxMatch) return;
+                    const idx = idxMatch[1];
+                    const idInput = container.querySelector(`input[name="TemplateParameters[${idx}].FacilityPermitTemplateParameterId"]`);
+                    const key = idInput?.value;
+                    if (key) {
+                        values[key] = input.value;
+                    }
+                });
+                return values;
+            }
+
+            function restoreTemplateValues(values) {
+                if (!container || !values) return;
+                const rowInputs = container.querySelectorAll('input[name^="TemplateParameters["][name$="].EnteredValue"]');
+                rowInputs.forEach(function (input) {
+                    const idxMatch = input.name.match(/^TemplateParameters\[(\d+)\]\.EnteredValue$/);
+                    if (!idxMatch) return;
+                    const idx = idxMatch[1];
+                    const idInput = container.querySelector(`input[name="TemplateParameters[${idx}].FacilityPermitTemplateParameterId"]`);
+                    const key = idInput?.value;
+                    if (key && Object.prototype.hasOwnProperty.call(values, key)) {
+                        input.value = values[key];
+                    }
+                });
+            }
+
+            function syncVocTemplateNotice() {
+                const notice = document.getElementById('vocTemplateNotice');
+                if (!notice || !container) return;
+
+                const hasScheduledVocRow = Array.from(container.querySelectorAll('tbody tr')).some(function (row) {
+                    const pcsCell = row.querySelector('td');
+                    return row.classList.contains('table-warning') && pcsCell && pcsCell.textContent.trim() === '78732';
+                });
+
+                notice.classList.toggle('d-none', !hasScheduledVocRow);
+                vocAttachedLabel?.classList.toggle('required', hasScheduledVocRow);
+                vocFileLabel?.classList.toggle('required', hasScheduledVocRow);
+                vocMethodLabel?.classList.toggle('required', hasScheduledVocRow);
+
+                if (hasScheduledVocRow && vocAttachedCheckbox) {
+                    vocAttachedCheckbox.checked = true;
+                }
+            }
+
+            async function refreshTemplateSection() {
+                const facilityId = facilitySelect?.value;
+                const sampleDate = sampleDateInput?.value;
+                if (!container || !facilityId || !sampleDate) return;
+
+                const snapshot = captureTemplateValues();
+                const currentRequest = ++requestCounter;
+                const url = `${contextUrl}?facilityId=${encodeURIComponent(facilityId)}&sampleDate=${encodeURIComponent(sampleDate)}&isEdit=false`;
+
+                try {
+                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!response.ok) return;
+                    const html = await response.text();
+                    if (currentRequest !== requestCounter) return;
+                    container.innerHTML = html;
+                    restoreTemplateValues(snapshot);
+                    initTooltips(container);
+                    syncVocTemplateNotice();
+                } catch {
+                    // no-op; keep current UI state on transient failures
+                }
+            }
+
+            function queueRefresh() {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(refreshTemplateSection, 180);
+            }
+
+            facilitySelect?.addEventListener('change', queueRefresh);
+            sampleDateInput?.addEventListener('change', queueRefresh);
+            initTooltips(document);
+            syncVocTemplateNotice();
+
+            function syncVocAttachmentState() {
+                if (!vocAttachedCheckbox || !vocFileInput) return;
+                const hasSelectedFile = vocFileInput.files && vocFileInput.files.length > 0;
+                const vocIsRequired = vocAttachedLabel?.classList.contains('required') ?? false;
+                vocAttachedCheckbox.disabled = !hasSelectedFile;
+
+                if (vocIsRequired && hasSelectedFile) {
+                    vocAttachedCheckbox.checked = true;
+                } else if (!hasSelectedFile) {
+                    vocAttachedCheckbox.checked = false;
+                    if (vocAttachmentHelp) {
+                        vocAttachmentHelp.textContent = 'Upload a VOC PDF before it can be attached to the GW-59 report.';
+                    }
+                } else if (vocAttachmentHelp) {
+                    vocAttachmentHelp.textContent = 'A selected VOC PDF can be attached to the GW-59 report.';
+                }
+            }
+
+            vocFileInput?.addEventListener('change', syncVocAttachmentState);
+            vocAttachedCheckbox?.addEventListener('change', function () {
+                const vocIsRequired = vocAttachedLabel?.classList.contains('required') ?? false;
+                if (vocIsRequired) {
+                    vocAttachedCheckbox.checked = true;
+                }
+            });
+            syncVocAttachmentState();
+
+            function initGw59AToggles() {
+                const toggleInputs = document.querySelectorAll('[data-gw59a-toggle]');
+                toggleInputs.forEach(function (input) {
+                    input.addEventListener('change', function () {
+                        const field = input.getAttribute('data-gw59a-toggle');
+                        const selectedValue = input.getAttribute('data-gw59a-value');
+                        const hidden = document.querySelector(`[data-gw59a-hidden="${field}"]`);
+                        if (!hidden) return;
+
+                        const siblings = document.querySelectorAll(`[data-gw59a-toggle="${field}"]`);
+                        if (input.checked) {
+                            siblings.forEach(function (sibling) {
+                                if (sibling !== input) {
+                                    sibling.checked = false;
+                                }
+                            });
+                            hidden.value = selectedValue;
+                        } else if (hidden.value === selectedValue) {
+                            hidden.value = '';
+                        }
+                    });
+                });
+            }
+
+            initGw59AToggles();
+
+            const monitoringWellSelect = document.getElementById('monitoringWellSelect');
+            const wellFieldMap = {
+                wellDepthFeet: 'WellDepthFeet',
+                diameterInches: 'DiameterInches',
+                screenedIntervalFromFeet: 'ScreenedIntervalFromFeet',
+                screenedIntervalToFeet: 'ScreenedIntervalToFeet',
+                measuringPointAboveLandSurface: 'MeasuringPointAboveLandSurface',
+                relativeMpElevation: 'RelativeMpElevation'
+            };
+
+            function setWellFieldValue(fieldName, value) {
+                const input = document.getElementById(fieldName) || document.querySelector(`[name="${fieldName}"]`);
+                if (!input) return;
+                input.value = value === null || value === undefined ? '' : value;
+            }
+
+            async function loadWellData(wellId) {
+                if (!wellId) {
+                    Object.values(wellFieldMap).forEach(name => setWellFieldValue(name, ''));
+                    return;
+                }
+
+                const response = await fetch(`@Url.Action("GWMonitWellData", "OperationalData")?monitoringWellId=${encodeURIComponent(wellId)}`);
+                if (!response.ok) return;
+                const data = await response.json();
+                setWellFieldValue(wellFieldMap.wellDepthFeet, data.wellDepthFeet);
+                setWellFieldValue(wellFieldMap.diameterInches, data.diameterInches);
+                setWellFieldValue(wellFieldMap.screenedIntervalFromFeet, data.screenedIntervalFromFeet);
+                setWellFieldValue(wellFieldMap.screenedIntervalToFeet, data.screenedIntervalToFeet);
+                setWellFieldValue(wellFieldMap.measuringPointAboveLandSurface, data.measuringPointAboveLandSurface);
+                setWellFieldValue(wellFieldMap.relativeMpElevation, data.relativeMpElevation);
+            }
+
+            monitoringWellSelect?.addEventListener('change', function () {
+                loadWellData(monitoringWellSelect.value);
+            });
+        })();
     </script>
 }
-

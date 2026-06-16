@@ -1,0 +1,292 @@
+@model SAM.ViewModels.OperationalData.MonthlyApplicationEditViewModel
+@{
+    ViewData["Title"] = "Edit Monthly Application";
+    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var wwCharShortcutUrl = ViewBag.WWCharShortcutUrl as string;
+    object? monthlyDependencyGuidance = ViewBag.MonthlyDependencyGuidance;
+}
+
+@section PageTitleInline {
+    <span tabindex="0"
+          role="button"
+          class="text-info"
+          data-bs-toggle="tooltip"
+          data-bs-html="true"
+          data-bs-placement="left"
+          title="<strong>Monthly Application Backend Logic</strong><br/>Wastewater PAN formula used here:<br/>PAN (lbs) = {[MR x (TKN - NH3)] + (1 - VR) x NH3 + NO2 + NO3} x 8.34 x Volume (mgal).<br/>PAN Loading (lbs/acre) = PAN (lbs) / acres.<br/>MR/VR are from Facility defaults (40%/50% fallback), chemistry comes from WWChar monthly values.<br/>Annual PAN limit threshold comes from Crop PANLimit (derived at crop save).<br/>System computes 12-month rolling PAN/hydraulic utilization and asks confirmation on threshold warnings.">
+        <i class="bi bi-info-circle fs-5"></i>
+    </span>
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Update the sprayfield-level application entry.</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="mb-3">Edit Monthly Application</h5>
+        @if (!string.IsNullOrWhiteSpace(wwCharShortcutUrl))
+        {
+            <div id="wwcharDependencyAlertInitial" class="alert alert-warning" role="alert"></div>
+        }
+        <div id="wwcharDependencyAlert" class="alert alert-warning d-none" role="alert"></div>
+        <form asp-action="MonthlyApplicationEdit" method="post" novalidate id="monthlyApplicationForm">
+            @Html.AntiForgeryToken()
+            <input asp-for="Id" type="hidden" />
+            <input asp-for="CompanyId" type="hidden" id="companyIdInput" />
+            <input type="hidden" asp-for="ConfirmComplianceWarnings" id="confirmComplianceWarningsInput" />
+            <input type="hidden" asp-for="ComplianceWarningSummary" id="complianceWarningSummaryInput" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="FacilityId" class="form-label required"></label>
+                    <select asp-for="FacilityId" asp-items="facilities" class="form-select" id="facilitySelect">
+                        <option value="">-- Select Facility --</option>
+                    </select>
+                    <span asp-validation-for="FacilityId" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="SprayfieldId" class="form-label required"></label>
+                    <select asp-for="SprayfieldId" asp-items="sprayfields" class="form-select" id="sprayfieldSelect">
+                        <option value="">-- Select Sprayfield --</option>
+                    </select>
+                    <span asp-validation-for="SprayfieldId" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="ApplicationDate" class="form-label required"></label>
+                    <input asp-for="ApplicationDate" type="date" class="form-control" />
+                    <span asp-validation-for="ApplicationDate" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="TimeIrrigatedMinutes" class="form-label"></label>
+                    <input asp-for="TimeIrrigatedMinutes" type="number" step="any" min="0" class="form-control" id="timeIrrigatedInput" />
+                    <span asp-validation-for="TimeIrrigatedMinutes" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="DailyLoadingInches" class="form-label"></label>
+                    <input asp-for="DailyLoadingInches" type="text" class="form-control" id="dailyLoadingInput" readonly />
+                    <span asp-validation-for="DailyLoadingInches" class="text-danger"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="MaximumHourlyLoadingInchesPerAcre" class="form-label required"></label>
+                    <input asp-for="MaximumHourlyLoadingInchesPerAcre" type="text" class="form-control" id="maxHourlyInput" readonly />
+                    <span asp-validation-for="MaximumHourlyLoadingInchesPerAcre" class="text-danger"></span>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label asp-for="VolumeGallons" class="form-label"></label>
+                    <input asp-for="VolumeGallons" type="text" class="form-control" id="volumeInput" readonly />
+                    <span asp-validation-for="VolumeGallons" class="text-danger"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Comments" class="form-label"></label>
+                    <textarea asp-for="Comments" class="form-control" rows="3"></textarea>
+                    <span asp-validation-for="Comments" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a asp-action="MonthlyApplications" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Update Application</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/monthly-application-dependency-alert.js"></script>
+    <script>
+        (function () {
+            const facilitySelect = document.getElementById('facilitySelect');
+            const sprayfieldSelect = document.getElementById('sprayfieldSelect');
+            const companyIdInput = document.getElementById('companyIdInput');
+            const form = document.getElementById('monthlyApplicationForm');
+            const antiForgeryToken = form?.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            const dailyLoadingInput = document.getElementById('dailyLoadingInput');
+            const volumeInput = document.getElementById('volumeInput');
+            const maxHourlyInput = document.getElementById('maxHourlyInput');
+            const timeIrrigatedInput = document.getElementById('timeIrrigatedInput');
+            const gallonsPerAcreInch = @SAM.Services.Helpers.MonthlyApplicationCalculationHelper.GallonsPerAcreInch;
+            let sprayfieldMeta = {};
+
+            function formatDecimal(value) {
+                const num = Number(value);
+                if (Number.isNaN(num)) return '';
+                if (Number.isInteger(num)) return num.toString();
+                return num.toFixed(6).replace(/\.?0+$/, '');
+            }
+
+            function recalcCalculatedFields() {
+                const selected = sprayfieldSelect?.value || '';
+                const meta = sprayfieldMeta[selected];
+                const acres = meta && meta.acres != null ? Number(meta.acres) : NaN;
+                const hourlyRate = meta && meta.hourlyRateInches != null ? Number(meta.hourlyRateInches) : NaN;
+                const timeIrrigated = Number(timeIrrigatedInput?.value || 0);
+                const hasTime = !Number.isNaN(timeIrrigated) && timeIrrigated > 0;
+                const hasAcres = !Number.isNaN(acres) && acres > 0;
+                const computedDaily = (!Number.isNaN(hourlyRate) && hasTime) ? (hourlyRate * (timeIrrigated / 60.0)) : NaN;
+
+                if (dailyLoadingInput) {
+                    dailyLoadingInput.value = !Number.isNaN(computedDaily) ? formatDecimal(computedDaily) : '';
+                }
+
+                if (maxHourlyInput) {
+                    maxHourlyInput.value = !Number.isNaN(hourlyRate) ? formatDecimal(hourlyRate) : '';
+                }
+
+                if (volumeInput) {
+                    if (!Number.isNaN(computedDaily) && hasAcres) {
+                        volumeInput.value = formatDecimal(computedDaily * acres * gallonsPerAcreInch);
+                    } else {
+                        volumeInput.value = '';
+                    }
+                }
+            }
+
+            async function loadSprayfields(facilityId) {
+                const selectedSprayfieldId = sprayfieldSelect?.value || '@Model.SprayfieldId';
+                sprayfieldSelect.innerHTML = '<option value="">-- Select Sprayfield --</option>';
+                if (!facilityId) return;
+
+                const res = await fetch('@Url.Action("GetSprayfieldsForFacility", "OperationalData")?facilityId=' + encodeURIComponent(facilityId));
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.companyId && companyIdInput) companyIdInput.value = data.companyId;
+                sprayfieldMeta = {};
+
+                (data.sprayfields || []).forEach(sf => {
+                    const option = document.createElement('option');
+                    option.value = sf.id;
+                    option.textContent = sf.name;
+                    sprayfieldMeta[sf.id] = { acres: sf.acres, hourlyRateInches: sf.hourlyRateInches };
+                    if (sf.id === selectedSprayfieldId) option.selected = true;
+                    sprayfieldSelect.appendChild(option);
+                });
+                recalcCalculatedFields();
+            }
+
+            async function validateComplianceBeforeSubmit() {
+                const payload = {
+                    facilityId: facilitySelect?.value || null,
+                    sprayfieldId: sprayfieldSelect?.value || null,
+                    applicationDate: document.getElementById('ApplicationDate')?.value || null,
+                    volumeGallons: volumeInput?.value || 0,
+                    existingApplicationId: document.getElementById('Id')?.value || null
+                };
+
+                const response = await fetch('@Url.Action("ValidateMonthlyApplication", "OperationalData")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': antiForgeryToken
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json().catch(() => null);
+                if (!response.ok) {
+                    return {
+                        error: true,
+                        message: data?.message || 'WWChar chemistry is required before saving this monthly application.',
+                        dependencyCode: data?.dependencyCode || 'MissingTknChemistryForMonth',
+                        dependencySummary: data?.dependencySummary || data?.message || 'WWChar chemistry is required before saving this monthly application.',
+                        dependencySteps: data?.dependencySteps || [],
+                        wwCharShortcutUrl: data?.wwCharShortcutUrl || '',
+                        permitVersionsUrl: data?.permitVersionsUrl || ''
+                    };
+                }
+
+                return data;
+            }
+
+            function showWwcharDependencyAlert(guidance) {
+                const alert = document.getElementById('wwcharDependencyAlert');
+                if (!alert || !window.MonthlyDependencyAlert) return;
+                window.MonthlyDependencyAlert.render(alert, guidance);
+            }
+
+            function buildGuidanceToastText(guidance) {
+                if (!guidance) return '';
+                const summary = (guidance.dependencySummary || guidance.message || '').trim();
+                const steps = Array.isArray(guidance.dependencySteps)
+                    ? guidance.dependencySteps.filter(Boolean).slice(0, 3)
+                    : [];
+                if (steps.length === 0) return summary;
+                const numbered = steps.map((step, idx) => `${idx + 1}. ${step}`).join('\n');
+                return `${summary}\nNext steps:\n${numbered}`;
+            }
+
+            function showErrorNotification(message) {
+                const text = message || 'Unable to validate monthly application right now.';
+                if (window.toastr && typeof window.toastr.error === 'function') {
+                    window.toastr.error(text);
+                    return;
+                }
+                alert(text);
+            }
+
+            const initialGuidance = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthlyDependencyGuidance));
+            const initialAlert = document.getElementById('wwcharDependencyAlertInitial');
+            if (initialAlert && initialGuidance && window.MonthlyDependencyAlert) {
+                window.MonthlyDependencyAlert.render(initialAlert, initialGuidance);
+            }
+
+            facilitySelect?.addEventListener('change', () => loadSprayfields(facilitySelect.value));
+            sprayfieldSelect?.addEventListener('change', recalcCalculatedFields);
+            timeIrrigatedInput?.addEventListener('input', recalcCalculatedFields);
+            loadSprayfields(facilitySelect?.value);
+            recalcCalculatedFields();
+
+            form?.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                if (!form.checkValidity()) return;
+
+                let result;
+                try {
+                    result = await validateComplianceBeforeSubmit();
+                } catch (error) {
+                    showErrorNotification('Unable to validate this update right now. Please try again.');
+                    return;
+                }
+
+                if (result?.error) {
+                    showWwcharDependencyAlert(result);
+                    showErrorNotification(buildGuidanceToastText(result) || result.message || result.dependencySummary || result.detail);
+                    return;
+                }
+
+                if (result && result.requiresConfirmation && (result.warnings || []).length > 0) {
+                    const ok = confirm((result.warnings || []).join('\n'));
+                    if (!ok) return;
+                    document.getElementById('confirmComplianceWarningsInput').value = 'true';
+                    document.getElementById('complianceWarningSummaryInput').value = (result.warnings || []).join(' | ');
+                }
+
+                form.submit();
+            });
+
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+                bootstrap.Tooltip.getOrCreateInstance(element);
+            });
+
+            const validationSummary = document.querySelector('[data-valmsg-summary="true"], .validation-summary-errors');
+            if (validationSummary && window.toastr && typeof window.toastr.error === 'function') {
+                const firstError = validationSummary.querySelector('li')?.textContent?.trim()
+                    || validationSummary.textContent?.trim();
+                if (firstError) {
+                    window.toastr.error(firstError);
+                }
+            }
+        })();
+    </script>
+}
+

@@ -262,11 +262,28 @@ public class CompanyRequestService : ICompanyRequestService
 
     private string GenerateTemporaryPassword()
     {
-        // Generate a random password (in production, use a more secure method)
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        const string uppercase = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+        const string lowercase = "abcdefghijklmnopqrstuvwxyz";
+        const string digits = "0123456789";
+        const string symbols = "!@#$%^&*";
+        const string allChars = uppercase + lowercase + digits + symbols;
+
         var random = new Random();
-        return new string(Enumerable.Repeat(chars, 12)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
+        var password = new string(Enumerable.Repeat(allChars, 12)
+            .Select(s => s[random.Next(s.Length)])
+            .ToArray());
+
+        // Ensure password always includes a symbol and other common requirements.
+        if (!password.Any(char.IsUpper))
+            password += uppercase[random.Next(uppercase.Length)];
+        if (!password.Any(char.IsLower))
+            password += lowercase[random.Next(lowercase.Length)];
+        if (!password.Any(char.IsDigit))
+            password += digits[random.Next(digits.Length)];
+        if (!password.Any(c => !char.IsLetterOrDigit(c)))
+            password += symbols[random.Next(symbols.Length)];
+
+        return password;
     }
 
     private async Task TrySendNotificationWithRetryAsync(

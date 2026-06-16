@@ -22,6 +22,12 @@ public class SoilConfiguration : IEntityTypeConfiguration<Soil>
         builder.Property(s => s.Permeability)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(s => s.InfiltrationRate)
+            .HasColumnType("decimal(18,3)");
+
+        builder.Property(s => s.PANFactor)
+            .HasColumnType("decimal(18,4)");
+
         builder.HasIndex(s => s.CompanyId);
 
         builder.HasOne(s => s.Company)

@@ -42,7 +42,8 @@ public partial class SystemAdminController
             OrcName = facility.OrcName,
             OperatorGrade = facility.OperatorGrade,
             OperatorNumber = facility.OperatorNumber,
-            ChangeInOrc = facility.ChangeInOrc,
+            OperatorPhone = facility.OperatorPhone,
+            ChangeInOrc = facility.ChangeInOrc ?? false,
             TotalNumberOfSprayfields = facility.TotalNumberOfSprayfields,
             CertifiedLaboratory1Name = facility.CertifiedLaboratory1Name,
             CertifiedLaboratory2Name = facility.CertifiedLaboratory2Name,
@@ -118,6 +119,7 @@ public partial class SystemAdminController
                 OrcName = viewModel.OrcName,
                 OperatorGrade = viewModel.OperatorGrade,
                 OperatorNumber = viewModel.OperatorNumber,
+                OperatorPhone = viewModel.OperatorPhone,
                 ChangeInOrc = viewModel.ChangeInOrc,
                 TotalNumberOfSprayfields = viewModel.TotalNumberOfSprayfields,
                 CertifiedLaboratory1Name = viewModel.CertifiedLaboratory1Name,
@@ -186,7 +188,8 @@ public partial class SystemAdminController
             OrcName = facility.OrcName,
             OperatorGrade = facility.OperatorGrade,
             OperatorNumber = facility.OperatorNumber,
-            ChangeInOrc = facility.ChangeInOrc,
+            OperatorPhone = facility.OperatorPhone,
+            ChangeInOrc = facility.ChangeInOrc ?? false,
             TotalNumberOfSprayfields = facility.TotalNumberOfSprayfields,
             CertifiedLaboratory1Name = facility.CertifiedLaboratory1Name,
             CertifiedLaboratory2Name = facility.CertifiedLaboratory2Name,
@@ -237,6 +240,7 @@ public partial class SystemAdminController
             facility.OrcName = viewModel.OrcName;
             facility.OperatorGrade = viewModel.OperatorGrade;
             facility.OperatorNumber = viewModel.OperatorNumber;
+            facility.OperatorPhone = viewModel.OperatorPhone;
             facility.ChangeInOrc = viewModel.ChangeInOrc;
             facility.TotalNumberOfSprayfields = viewModel.TotalNumberOfSprayfields;
             facility.CertifiedLaboratory1Name = viewModel.CertifiedLaboratory1Name;

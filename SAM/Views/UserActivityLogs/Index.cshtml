@@ -4,61 +4,75 @@
     ViewData["PageSubtitle"] = "Admin audit timeline for platform activity";
 }
 
-<div class="card mb-3">
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label">User</label>
-                <select name="ActorUserId" class="form-select" asp-items="Model.Actors">
-                    <option value="">All</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Activity</label>
-                <select name="ActivityType" class="form-select" asp-items="Model.ActivityTypes">
-                    <option value="">All</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Module</label>
-                <select name="Module" class="form-select" asp-items="Model.Modules">
-                    <option value="">All</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Search</label>
-                <input name="SearchTerm" class="form-control" value="@Model.Filter.SearchTerm" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">From (UTC)</label>
-                <input type="date" name="FromUtc" class="form-control" value="@(Model.Filter.FromUtc?.ToString("yyyy-MM-dd"))" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">To (UTC)</label>
-                <input type="date" name="ToUtc" class="form-control" value="@(Model.Filter.ToUtc?.ToString("yyyy-MM-dd"))" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Page Size</label>
-                <select name="PageSize" class="form-select">
-                    @foreach (var size in new[] { 25, 50, 100, 200 })
-                    {
-                        if (Model.Filter.PageSize == size)
+@section PageTitleExtra {
+    <button class="btn btn-sm btn-outline-secondary"
+            type="button"
+            id="toggleUserActivityLogFilters"
+            data-bs-toggle="collapse"
+            data-bs-target="#userActivityLogFiltersCollapse"
+            aria-expanded="true"
+            aria-controls="userActivityLogFiltersCollapse">
+        <i class="bi bi-funnel me-1"></i><span>Hide Filters</span>
+    </button>
+}
+
+<div class="collapse show" id="userActivityLogFiltersCollapse">
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">User</label>
+                    <select name="ActorUserId" class="form-select" asp-items="Model.Actors">
+                        <option value="">All</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Activity</label>
+                    <select name="ActivityType" class="form-select" asp-items="Model.ActivityTypes">
+                        <option value="">All</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Module</label>
+                    <select name="Module" class="form-select" asp-items="Model.Modules">
+                        <option value="">All</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Search</label>
+                    <input name="SearchTerm" class="form-control" value="@Model.Filter.SearchTerm" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">From (UTC)</label>
+                    <input type="date" name="FromUtc" class="form-control" value="@(Model.Filter.FromUtc?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">To (UTC)</label>
+                    <input type="date" name="ToUtc" class="form-control" value="@(Model.Filter.ToUtc?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Page Size</label>
+                    <select name="PageSize" class="form-select">
+                        @foreach (var size in new[] { 25, 50, 100, 200 })
                         {
-                            <option value="@size" selected>@size</option>
+                            if (Model.Filter.PageSize == size)
+                            {
+                                <option value="@size" selected>@size</option>
+                            }
+                            else
+                            {
+                                <option value="@size">@size</option>
+                            }
                         }
-                        else
-                        {
-                            <option value="@size">@size</option>
-                        }
-                    }
-                </select>
-            </div>
-            <div class="col-md-2 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary">Apply</button>
-                <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
-            </div>
-            <input type="hidden" name="Page" value="1" />
-        </form>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary">Apply</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                </div>
+                <input type="hidden" name="Page" value="1" />
+            </form>
+        </div>
     </div>
 </div>
 
@@ -118,6 +132,51 @@
     var totalPages = Model.Logs.TotalPages;
     var currentPage = Model.Logs.Page;
 }
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const storageKey = 'userActivityLogsFiltersCollapsed';
+        const toggleBtn = document.getElementById('toggleUserActivityLogFilters');
+        const collapseElement = document.getElementById('userActivityLogFiltersCollapse');
+
+        if (!toggleBtn || !collapseElement || typeof bootstrap === 'undefined') {
+            return;
+        }
+
+        const collapse = bootstrap.Collapse.getOrCreateInstance(collapseElement, { toggle: false });
+        const label = toggleBtn.querySelector('span');
+
+        function setToggleState(isExpanded) {
+            toggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+            if (label) {
+                label.textContent = isExpanded ? 'Hide Filters' : 'Show Filters';
+            }
+        }
+
+        const savedCollapsed = window.localStorage ? localStorage.getItem(storageKey) === 'true' : false;
+        if (savedCollapsed) {
+            collapse.hide();
+            setToggleState(false);
+        } else {
+            collapse.show();
+            setToggleState(true);
+        }
+
+        collapseElement.addEventListener('shown.bs.collapse', function () {
+            setToggleState(true);
+            if (window.localStorage) {
+                localStorage.setItem(storageKey, 'false');
+            }
+        });
+
+        collapseElement.addEventListener('hidden.bs.collapse', function () {
+            setToggleState(false);
+            if (window.localStorage) {
+                localStorage.setItem(storageKey, 'true');
+            }
+        });
+    });
+</script>
 
 @if (totalPages > 1)
 {

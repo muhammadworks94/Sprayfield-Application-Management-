@@ -46,7 +46,7 @@
     var pendingTotalCount = pendingUserRequestCount + pendingCompanyRequestCount;
 }
 
-<div class="dropdown header-dropdown user-menu-dropdown">
+<div class="dropdown header-dropdown user-menu-dropdown responsive-user-menu">
     <button class="btn btn-link text-decoration-none d-flex align-items-center justify-content-center header-dropdown-trigger user-menu-trigger position-relative" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open user menu for @(user?.FullName ?? User.Identity?.Name ?? "User")">
         <i class="bi bi-person-circle user-menu-trigger-icon"></i>
         @if (pendingTotalCount > 0)

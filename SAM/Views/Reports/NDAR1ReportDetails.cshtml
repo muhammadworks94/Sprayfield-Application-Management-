@@ -1,9 +1,10 @@
 @model SAM.ViewModels.Reports.NDAR1ViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
+@using SAM.Utilities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Non-Discharge Reports";
+    ViewData["Title"] = "Non-Discharge Application Report Details";
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
     var report = ViewBag.Report as SAM.Domain.Entities.NDAR1;
@@ -11,27 +12,20 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <p class="text-muted mb-0">View NDAR-1 and NDMR reports for @Model.Month @Model.Year</p>
+        <p class="text-muted mb-0">View NDAR-1 report details for @Model.Month @Model.Year</p>
     </div>
     <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-success js-report-export-link" asp-action="ExportNDAR1ReportPdf" asp-route-id="@Model.Id">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+        </a>
         <div class="dropdown">
-            <button class="btn btn-success dropdown-toggle" type="button" id="reportExportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-download"></i> Generate Report
+            <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                More...
             </button>
-            <ul class="dropdown-menu" aria-labelledby="reportExportDropdown">
+            <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                    <a class="dropdown-item" asp-action="ExportNDAR1Report" asp-route-id="@Model.Id">
-                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDAR-1
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item" asp-action="ExportNDMRReport" asp-route-id="@Model.Id">
-                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDMR
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item" asp-action="ExportNDMLRReport" asp-route-id="@Model.Id">
-                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export NDMLR
+                    <a class="dropdown-item js-report-export-link" asp-action="ExportNDAR1Report" asp-route-id="@Model.Id">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
                     </a>
                 </li>
             </ul>
@@ -47,6 +41,21 @@
         </a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            if (!window.SAMLoading || !window.SAMLoading.bindLinkClicks) {
+                return;
+            }
+
+            window.SAMLoading.bindLinkClicks('.js-report-export-link', {
+                loadingMessage: 'Generating export, please wait...',
+                useFetchDownload: true
+            });
+        })();
+    </script>
+}
 
 <div class="card">
     <div class="card-body">
@@ -94,75 +103,55 @@
 
         @if (report != null)
         {
+            var dynamicFields = report.Fields?.OrderBy(f => f.FieldOrder).ToList() ?? new List<SAM.Domain.Entities.NDAR1Field>();
             <div class="border-top pt-3 mt-3">
                 <h5 class="detail-section-label mb-4">Field Information</h5>
-                <div class="row">
-                    @if (report.Field1 != null)
-                    {
-                        <div class="col-md-6 mb-4">
-                            <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field 1: @report.Field1.FieldId</h6>
-                            <dl class="row small">
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field1.SizeAcres acres</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(report.Field1.Crop?.Name ?? "N/A")</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field1MonthlyLoading.ToString("F2") in</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field1TwelveMonthFloatingTotal.ToString("F2") in</dd>
-                            </dl>
-                        </div>
-                    }
-                    @if (report.Field2 != null)
-                    {
-                        <div class="col-md-6 mb-4">
-                            <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field 2: @report.Field2.FieldId</h6>
-                            <dl class="row small">
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field2.SizeAcres acres</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(report.Field2.Crop?.Name ?? "N/A")</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field2MonthlyLoading.ToString("F2") in</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field2TwelveMonthFloatingTotal.ToString("F2") in</dd>
-                            </dl>
-                        </div>
-                    }
-                    @if (report.Field3 != null)
-                    {
-                        <div class="col-md-6 mb-4">
-                            <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field 3: @report.Field3.FieldId</h6>
-                            <dl class="row small">
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field3.SizeAcres acres</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(report.Field3.Crop?.Name ?? "N/A")</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field3MonthlyLoading.ToString("F2") in</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field3TwelveMonthFloatingTotal.ToString("F2") in</dd>
-                            </dl>
-                        </div>
-                    }
-                    @if (report.Field4 != null)
-                    {
-                        <div class="col-md-6 mb-4">
-                            <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field 4: @report.Field4.FieldId</h6>
-                            <dl class="row small">
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field4.SizeAcres acres</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
-                                <dd class="col-sm-7 mb-2">@(report.Field4.Crop?.Name ?? "N/A")</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field4MonthlyLoading.ToString("F2") in</dd>
-                                <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
-                                <dd class="col-sm-7 mb-2">@report.Field4TwelveMonthFloatingTotal.ToString("F2") in</dd>
-                            </dl>
-                        </div>
-                    }
-                </div>
+                @if (dynamicFields.Any())
+                {
+                    <div class="row">
+                        @foreach (var field in dynamicFields)
+                        {
+                            <div class="col-md-6 mb-4">
+                                <h6 class="mb-3 fw-bold"><i class="bi bi-geo-alt me-1"></i>Field: @(field.Sprayfield?.FieldId ?? "N/A")</h6>
+                                <dl class="row small">
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Area:</dt>
+                                    <dd class="col-sm-7 mb-2">@((field.Sprayfield != null ? SprayfieldReportHelper.GetReportAcres(field.Sprayfield) : 0m).ToString("F2")) acres</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-flower1 me-1"></i>Cover Crop:</dt>
+                                    <dd class="col-sm-7 mb-2">@(field.Sprayfield != null ? SprayfieldZoneSummaryHelper.GetCropSummary(field.Sprayfield) ?? "N/A" : "N/A")</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-speedometer2 me-1"></i>Permitted (Max) Hourly Rate:</dt>
+                                    <dd class="col-sm-7 mb-2">@((field.Sprayfield?.HourlyRateInches?.ToString("F2") ?? "0.00")) in/hr</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-range me-1"></i>Permitted (Max) Annual Rate:</dt>
+                                    <dd class="col-sm-7 mb-2">
+                                        @(((field.Sprayfield?.AnnualRateInches ?? field.Sprayfield?.HydraulicLoadingLimitInPerYr ?? 0m).ToString("F2"))) in/yr
+                                        <div class="small text-muted">
+                                            @(field.Sprayfield?.AnnualRateInches.HasValue == true
+                                                ? "Source: Sprayfield Annual Rate (provided)."
+                                                : "Source: Hydraulic Loading Limit fallback (Annual Rate not provided).")
+                                        </div>
+                                    </dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-week me-1"></i>Weekly Rate:</dt>
+                                    <dd class="col-sm-7 mb-2">
+                                        @((field.Sprayfield?.WeeklyRateInches?.ToString("F2") ?? "-")) in/week
+                                        <div class="small text-muted">Planning-only value. Not used as annual fallback.</div>
+                                    </dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-graph-up me-1"></i>Monthly Loading:</dt>
+                                    <dd class="col-sm-7 mb-2">@field.MonthlyLoading.ToString("F2") in</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-bar-chart me-1"></i>12-Month Floating Total:</dt>
+                                    <dd class="col-sm-7 mb-2">@field.TwelveMonthFloatingTotal.ToString("F2") in</dd>
+                                </dl>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        No field information is available for this report yet. Click Edit to add field application data.
+                    </div>
+                }
             </div>
         }
     </div>
 </div>
+

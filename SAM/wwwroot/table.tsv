@@ -1,0 +1,76 @@
+ 	User Friendly Name	Official Parameter Name	DWQ Accepted Units
+00010	Temperature	Temperature, Water Deg. Centigrade	ºC
+00076	Turbidity	Turbidity, HCH Turbidimeter	NTU
+00092	Flow - Maximum	Flow, Maximum Flow Range	GPD
+00094	Conductivity	Conductivity	µΩ
+00125	Dichlorobenzene	Dichlorobenzene (Isomers) M/P In Water ug/l	µg/L
+00300	Dissolved Oxygen	DO, Oxygen, Dissolved	mg/L
+00310	BOD5	BOD, 5-Day (20 Deg. C)	mg/L
+00340	COD	COD, Oxygen Demand, Chem. (High Level)	mg/L
+00400	pH	pH	su
+00480	Salinity	Salinity	mg/L
+00515	Total Filterable Residue	Residue, Tot Fltrble (dried at 105C)	mg/L
+00530	Total Suspended Solids	Solids, Total Suspended	mg/L
+00545	Settleable Solids	Solids, Settleable	mL/L
+00556	Oil & Grease	Oil & Grease	mg/L
+00600	Total Nitrogen	Nitrogen, Total (as N)	mg/L
+00610	Ammonia	Nitrogen, Ammonia Total (as N)	mg/L
+00615	Nitrite	Nitrogen, Nitrite Total (as N)	mg/L
+00620	Nitrate	Nitrogen, Nitrate Total (as N)	mg/L
+00625	Total Kjeldahl Nitrogen	Nitrogen, Kjeldahl, Total (as N)	mg/L
+00630	Nitrite + Nitrate	Nitrite plus Nitrate Total 1 DET. (as N)	mg/L
+00660	Ortho Phosphate	Phosphate, Ortho (as PO4)	mg/L
+00665	Total Phosphorus	Phosphorus, Total (as P)	mg/L
+00670	Organic Phosphorus	Phosphorous, Total Organic (as P)	mg/L
+00680	Total Organic Carbon	Carbon, Tot Organic (TOC)	mg/L
+00681	Dissolved Organic Carbon	Carbon, Dissolved Organic (As C)	mg/L
+00916	Calcium	Calcium, Total (as Ca)	mg/L
+00927	Magnesium	Magnesium, Total (as Mg)	mg/L
+00929	Sodium	Sodium, Total (as Na)	mg/L
+00931	Sodium Adsorption Ratio	Sodium Adsorption Ratio	Ratio
+00937	Potassium	Potassium, Total (as K)	mg/L
+00940	Chloride	Chloride (as Cl)	mg/L
+00945	Sulfate	Sulfate, Total (as SO4)	mg/L
+01002	Arsenic	Arsenic, Total (as As)	mg/L
+01007	Barium	Barium, Total (as Ba)	mg/L
+01022	Boron	Boron, Total (as B)	mg/L
+01027	Cadmium	Cadmium, Total (as Cd)	mg/L
+01034	Chromium	Chromium, Total (as Cr)	mg/L
+01042	Copper	Copper, Total (as Cu)	mg/L
+01045	Iron	Iron, Total (as Fe)	mg/L
+01051	Lead	Lead, Total (as Pb)	mg/L
+01055	Manganese	Manganese, Total (as Mn)	mg/L
+01067	Nickel	Nickel, Total (as Ni)	mg/L
+01077	Silver	Silver, Total (as Ag)	mg/L
+01092	Zinc	Zinc, Total (as Zn)	mg/L
+01147	Selenium	Selenium, Total (as Se)	mg/L
+01284	ND Application Rate	Non-Discharge Application Rate	in/yr
+31504	Total Coliform	Coliform, Total MF, Immed,LES Endo Agar	#/100 mL
+31505	Total Coliform	Coliform, Tot, MPN, Completed, (100 mL)	MPN/100 mL
+31613	Fecal Coliform	Coliform, Fecal MF, M-FC Agar,44.5C,24hr	#/100 mL
+31616	Fecal Coliform	Coliform, Fecal MF, M-FC Broth,44.5C	#/100 mL
+32106	Chloroform	Chloroform	mg/L
+32730	Phenolics - Recoverable	Phenolics, Total Recoverable	mg/L
+32730	Phenols	 	mg/L
+34469	Pyrene	Pyrene	µg/L
+34694	Phenol - Single	Phenol, Single Compound	mg/L
+38260	Surfactants	Surfactants (MBAS)	mg/L
+50050	Flow	Flow, in conduit or thru treatment plant	GPD
+50060	Total Residual Chlorine	Chlorine, Total Residual	mg/L
+70295	Total Dissolved Solids	Solids, Total Dissolved	mg/L
+70300	Total Dissolved Solids	Solids, Total Dissolved- 180 Deg.C	mg/L
+70318	% Solids	Solids, Total, Percent	%
+71880	Formaldehyde	Formaldehyde	mg/L
+71900	Mercury	Mercury, Total (as Hg)	mg/L
+78732	Volatile Compounds	Volatile Compounds, (GC/MS)	Yes/No
+80082	Carbonaceous BOD	BOD, Carbonaceous 05 Day, 20C	mg/L
+81639	Total Kjeldahl Nitrogen	Nitrogen Kjeldalh, Total (TKN)	lbs/ac
+81688	Ethylene Glycol	Ethylene glycol	µg/L
+82385	Nitrogen Oxides	Nitrogen Oxides (as N)	mg/L
+82546	Water Level	Water level, distance from measuring point	ft
+CO310	BOD5 - Conc.	BOD, 5-Day (20 Deg. C) - Concentration	mg/L
+CO530	TSS - Conc.	Solids, Total Suspended - Concentration	mg/L
+CO600	Total Nitrogen - Conc.	Nitrogen, Total (as N) - Concentration	mg/L
+CO610	Ammonia - Conc.	Nitrogen, Ammonia Total (as N) - Concentration	mg/L
+CO665	Total Phosphorus - Conc.	Phosphorus, Total (as P) - Concentration	mg/L
+WQ09C	Plant Available Nitrogen	Plant Available Nitrogen - Concentration	mg/L

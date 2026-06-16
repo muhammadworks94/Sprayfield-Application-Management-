@@ -30,5 +30,7 @@ public class SystemAdminViewModel
     public FilterViewModel? NozzlesFilter { get; set; }
     public FilterViewModel? SprayfieldsFilter { get; set; }
     public FilterViewModel? MonitoringWellsFilter { get; set; }
+
+    public SelectList? SprayfieldFacilities { get; set; }
 }
 

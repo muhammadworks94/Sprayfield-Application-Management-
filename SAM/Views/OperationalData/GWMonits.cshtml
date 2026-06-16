@@ -1,66 +1,122 @@
-@model IEnumerable<SAM.ViewModels.OperationalData.GWMonitViewModel>
+@model SAM.ViewModels.OperationalData.GWMonitsIndexViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Groundwater Monitoring";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var monitoringWells = ViewBag.MonitoringWells as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
-    var selectedMonitoringWellId = ViewBag.SelectedMonitoringWellId as Guid?;
+    var facilities = Model.Facilities;
+    var monitoringWells = Model.MonitoringWells;
+    var selectedFacilityId = Model.Filter.FacilityId;
+    var selectedMonitoringWellId = Model.Filter.MonitoringWellId;
+    var items = Model.GWMonits.Items;
+    var totalPages = Model.GWMonits.TotalPages;
+    var currentPage = Model.GWMonits.Page;
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
+
+    string NextSortDir(string column) =>
+        string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(Model.Sort.SortDir, "asc", StringComparison.OrdinalIgnoreCase)
+            ? "desc"
+            : "asc";
+
+    bool IsActiveSort(string column) => string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase);
+
+    var sampleDateNextSortDir = NextSortDir("sampleDate");
+    var facilityNextSortDir = NextSortDir("facility");
+    var wellIdNextSortDir = NextSortDir("wellId");
+    var conductivityNextSortDir = NextSortDir("conductivity");
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+@section PageTitleExtra {
+    <button class="btn btn-sm btn-outline-secondary"
+            type="button"
+            id="toggleGwMonitFilters"
+            data-bs-toggle="collapse"
+            data-bs-target="#gwMonitFiltersCollapse"
+            aria-expanded="false"
+            aria-controls="gwMonitFiltersCollapse">
+        <i class="bi bi-funnel me-1"></i><span>Show Filters</span>
+    </button>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">Manage groundwater monitoring data and records</p>
     </div>
-   
 </div>
-<div class="card mb-3">
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-3">
-                <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
-                <select name="facilityId" id="facilityId" class="form-select" data-auto-submit="true">
-                    <option value="">All Facilities</option>
-                    @if (facilities != null)
-                    {
-                        @foreach (var facility in facilities)
+
+<div class="collapse mb-3" id="gwMonitFiltersCollapse">
+    <div class="card">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
+                    <select name="facilityId" id="facilityId" class="form-select">
+                        <option value="">All Facilities</option>
+                        @if (facilities != null)
                         {
-                            <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
-                                @facility.Text
-                            </option>
+                            @foreach (var facility in facilities)
+                            {
+                                <option value="@facility.Value" selected="@(selectedFacilityId.HasValue && selectedFacilityId.Value.ToString() == facility.Value)">
+                                    @facility.Text
+                                </option>
+                            }
                         }
-                    }
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="monitoringWellId" class="form-label"><i class="bi bi-droplet-half me-1"></i>Monitoring Well:</label>
-                <select name="monitoringWellId" id="monitoringWellId" class="form-select" data-auto-submit="true">
-                    <option value="">All Wells</option>
-                    @if (monitoringWells != null)
-                    {
-                        @foreach (var well in monitoringWells)
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="monitoringWellId" class="form-label"><i class="bi bi-droplet-half me-1"></i>Monitoring Well:</label>
+                    <select name="monitoringWellId" id="monitoringWellId" class="form-select">
+                        <option value="">All Wells</option>
+                        @if (monitoringWells != null)
                         {
-                            <option value="@well.Value" selected="@(selectedMonitoringWellId.HasValue && selectedMonitoringWellId.Value.ToString() == well.Value)">
-                                @well.Text
-                            </option>
+                            @foreach (var well in monitoringWells)
+                            {
+                                <option value="@well.Value" selected="@(selectedMonitoringWellId.HasValue && selectedMonitoringWellId.Value.ToString() == well.Value)">
+                                    @well.Text
+                                </option>
+                            }
                         }
-                    }
-                </select>
-            </div>
-        </form>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="pageSize" class="form-label">Size:</label>
+                    <select name="pageSize" id="pageSize" class="form-select">
+                        @foreach (var size in new[] { 25, 50, 100, 200 })
+                        {
+                            if (Model.Filter.PageSize == size)
+                            {
+                                <option value="@size" selected>@size</option>
+                            }
+                            else
+                            {
+                                <option value="@size">@size</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
+                    <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
+                    <input type="hidden" name="page" value="1" />
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> 
+                    </button>
+                    <a asp-action="GWMonits" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-x-circle"></i> 
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-5">
+        <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
             <h4 class="mb-0"> Groundwater Monitoring List</h4>
-            <div class="d-flex">
+            <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
                             class="btn btn-outline-secondary btn-sm active"
@@ -81,29 +137,73 @@
                 }
             </div>
         </div>
-        @if (Model.Any())
+        @if (items.Any())
         {
-            <div id="gwmonitsTableView" class="table-responsive">
+            <div id="gwmonitsTableView" class="table-responsive responsive-table gwmonits-table-wrapper fixed-height-table-wrapper">
                 <table class="table table-hover gwmonits-table">
                     <thead>
                         <tr>
-                            <th> Sample Date</th>
-                            <th> Facility</th>
-                            <th> Well ID</th>
-                            @* <th><i class="bi bi-rulers"></i> Sample Depth</th> *@
-                            @* <th><i class="bi bi-water"></i> Water Level</th> *@
-                            <th> pH</th>
-                            @* <th><i class="bi bi-thermometer-half"></i> Temperature</th> *@
-                            <th> Conductivity</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th> Company</th>
-                            }
+                            <th>
+                                <a asp-action="GWMonits"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="sampleDate"
+                                   asp-route-sortDir="@sampleDateNextSortDir">Sample Date
+                                    @if (IsActiveSort("sampleDate"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="GWMonits"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="facility"
+                                   asp-route-sortDir="@facilityNextSortDir">Facility
+                                    @if (IsActiveSort("facility"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="GWMonits"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="wellId"
+                                   asp-route-sortDir="@wellIdNextSortDir">Well ID
+                                    @if (IsActiveSort("wellId"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="GWMonits"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="conductivity"
+                                   asp-route-sortDir="@conductivityNextSortDir">Conductivity
+                                    @if (IsActiveSort("conductivity"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
                             <th class="table-actions"> Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var gwMonit in Model)
+                        @foreach (var gwMonit in items)
                         {
                             <tr>
                                 <td>
@@ -113,19 +213,8 @@
                                 </td>
                                 <td>@gwMonit.FacilityName</td>
                                 <td>@gwMonit.MonitoringWellName</td>
-                                @* <td>@(gwMonit.SampleDepth?.ToString("F2") ?? "N/A")</td> *@
-                                @* <td>@(gwMonit.WaterLevel?.ToString("F2") ?? "N/A")</td> *@
-                                <td>@(gwMonit.PH?.ToString("F2") ?? "N/A")</td>
-                                @* <td>@(gwMonit.Temperature?.ToString("F1") ?? "N/A")</td> *@
                                 <td>@(gwMonit.Conductivity?.ToString("F2") ?? "N/A")</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@gwMonit.CompanyName</td>
-                                }
                                 <td class="table-actions">
-                                    <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
                                     @if (canEdit)
                                     {
                                         <a asp-action="GWMonitEdit" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-secondary">
@@ -168,8 +257,8 @@
                 </table>
             </div>
 
-            <div id="gwmonitsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var gwMonit in Model)
+            <div id="gwmonitsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
+                @foreach (var gwMonit in items)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm">
@@ -197,20 +286,11 @@
                                     <dt class="col-6"><i class="bi bi-water me-1"></i>Water Level</dt>
                                     <dd class="col-6 mb-1">@((gwMonit.WaterLevel?.ToString("F2") ?? "N/A"))</dd>
 
-                                    <dt class="col-6"><i class="bi bi-thermometer me-1"></i>pH</dt>
-                                    <dd class="col-6 mb-1">@((gwMonit.PH?.ToString("F2") ?? "N/A"))</dd>
-
                                     <dt class="col-6"><i class="bi bi-thermometer-half me-1"></i>Temp.</dt>
                                     <dd class="col-6 mb-1">@((gwMonit.Temperature?.ToString("F1") ?? "N/A"))</dd>
 
                                     <dt class="col-6"><i class="bi bi-lightning me-1"></i>Conductivity</dt>
                                     <dd class="col-6 mb-1">@((gwMonit.Conductivity?.ToString("F2") ?? "N/A"))</dd>
-
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@gwMonit.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-between">
@@ -234,6 +314,27 @@
                     </div>
                 }
             </div>
+
+            @if (totalPages > 1)
+            {
+                <nav class="mt-3">
+                    <ul class="pagination">
+                        @for (var pageNumber = 1; pageNumber <= totalPages; pageNumber++)
+                        {
+                            <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                                <a class="page-link"
+                                   asp-action="GWMonits"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-page="@pageNumber"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="@Model.Sort.SortBy"
+                                   asp-route-sortDir="@Model.Sort.SortDir">@pageNumber</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
         }
         else
         {
@@ -275,7 +376,7 @@
             const cardBtn = document.getElementById('gwmonitsCardViewBtn');
             const tableView = document.getElementById('gwmonitsTableView');
             const cardView = document.getElementById('gwmonitsCardView');
-            const storageKey = 'viewMode';
+            const storageKey = 'gwmonitsViewMode';
 
             function setViewMode(mode) {
                 const isTable = mode === 'table';
@@ -307,8 +408,31 @@
             cardBtn?.addEventListener('click', function () {
                 setViewMode('card');
             });
+
+            const filterToggleBtn = document.getElementById('toggleGwMonitFilters');
+            const filterCollapseElement = document.getElementById('gwMonitFiltersCollapse');
+            if (filterToggleBtn && filterCollapseElement && typeof bootstrap !== 'undefined') {
+                const filterCollapse = bootstrap.Collapse.getOrCreateInstance(filterCollapseElement, { toggle: false });
+                const label = filterToggleBtn.querySelector('span');
+
+                function setFilterToggleState(isExpanded) {
+                    filterToggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                    if (label) {
+                        label.textContent = isExpanded ? 'Hide Filters' : 'Show Filters';
+                    }
+                }
+
+                filterCollapse.hide();
+                setFilterToggleState(false);
+
+                filterCollapseElement.addEventListener('shown.bs.collapse', function () {
+                    setFilterToggleState(true);
+                });
+
+                filterCollapseElement.addEventListener('hidden.bs.collapse', function () {
+                    setFilterToggleState(false);
+                });
+            }
         });
     </script>
 }
-
-

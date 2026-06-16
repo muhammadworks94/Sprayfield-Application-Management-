@@ -19,6 +19,9 @@ public class CropConfiguration : IEntityTypeConfiguration<Crop>
         builder.Property(c => c.NUptake)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(c => c.PANLimit)
+            .HasColumnType("decimal(18,2)");
+
         builder.HasIndex(c => c.CompanyId);
 
         builder.HasOne(c => c.Company)

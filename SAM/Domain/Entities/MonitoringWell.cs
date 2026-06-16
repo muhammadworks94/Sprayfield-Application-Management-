@@ -49,6 +49,26 @@ public class MonitoringWell : CompanyScopedEntity
     public decimal? HighScreenDepthFeet { get; set; }
 
     /// <summary>
+    /// GW-59 screened interval from depth in feet.
+    /// </summary>
+    public decimal? ScreenedIntervalFromFeet { get; set; }
+
+    /// <summary>
+    /// GW-59 screened interval to depth in feet.
+    /// </summary>
+    public decimal? ScreenedIntervalToFeet { get; set; }
+
+    /// <summary>
+    /// GW-59 measuring point above land surface in feet.
+    /// </summary>
+    public decimal? MeasuringPointAboveLandSurface { get; set; }
+
+    /// <summary>
+    /// GW-59 relative measuring point elevation in feet.
+    /// </summary>
+    public decimal? RelativeMpElevation { get; set; }
+
+    /// <summary>
     /// Top of casing elevation in msl.
     /// </summary>
     public decimal? TopOfCasingElevationMsl { get; set; }

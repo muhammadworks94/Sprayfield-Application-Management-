@@ -41,12 +41,6 @@ public class NDAR1Configuration : IEntityTypeConfiguration<NDAR1>
                 v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
             .HasColumnType("nvarchar(max)");
 
-        builder.Property(n => n.StorageDaily)
-            .HasConversion(
-                v => JsonSerializer.Serialize(v, jsonOptions),
-                v => JsonSerializer.Deserialize<List<decimal?>>(v, jsonOptions) ?? new List<decimal?>())
-            .HasColumnType("nvarchar(max)");
-
         builder.Property(n => n.FiveDayUpsetDaily)
             .HasConversion(
                 v => JsonSerializer.Serialize(v, jsonOptions),

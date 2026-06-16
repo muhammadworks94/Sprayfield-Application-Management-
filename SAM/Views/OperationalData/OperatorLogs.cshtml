@@ -1,26 +1,58 @@
-@model IEnumerable<SAM.ViewModels.OperationalData.OperatorLogViewModel>
+@model SAM.ViewModels.OperationalData.OperatorLogsIndexViewModel
 @{
     ViewData["Title"] = "Operator Logs";
-    var isGlobalAdmin = ViewBag.IsGlobalAdmin as bool? ?? false;
-    var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var selectedCompanyId = ViewBag.SelectedCompanyId as Guid?;
-    var selectedFacilityId = ViewBag.SelectedFacilityId as Guid?;
+    var isGlobalAdmin = Model.IsGlobalAdmin;
+    var facilities = Model.Facilities;
+    var selectedCompanyId = Model.SelectedCompanyId;
+    var selectedFacilityId = Model.SelectedFacilityId;
+    var logs = Model.Logs.Items;
+    var totalPages = Model.Logs.TotalPages;
+    var currentPage = Model.Logs.Page;
+
+    string NextSortDir(string column) =>
+        string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(Model.Sort.SortDir, "asc", StringComparison.OrdinalIgnoreCase)
+            ? "desc"
+            : "asc";
+
+    bool IsActiveSort(string column)
+    {
+        return string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase);
+    }
+
+    var logDateNextSortDir = NextSortDir("logDate");
+    var operatorNextSortDir = NextSortDir("operator");
+    var arrivalTimeNextSortDir = NextSortDir("arrivalTime");
+    var timeOnSiteNextSortDir = NextSortDir("timeOnSiteHours");
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+@section PageTitleExtra {
+    <button class="btn btn-sm btn-outline-secondary"
+            type="button"
+            id="toggleOperatorLogFilters"
+            data-bs-toggle="collapse"
+            data-bs-target="#operatorLogFiltersCollapse"
+            aria-expanded="false"
+            aria-controls="operatorLogFiltersCollapse">
+        <i class="bi bi-funnel me-1"></i><span>Show Filters</span>
+    </button>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
         <p class="text-muted mb-0">View and manage operator log entries for facilities</p>
     </div>
     
 </div>
 
-
-<div class="card mb-3">
-    <div class="card-body">
-        <form method="get" class="row g-3">
+<div class="collapse mb-3" id="operatorLogFiltersCollapse">
+    <div class="card">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+            <input type="hidden" name="companyId" value="@selectedCompanyId" />
             <div class="col-md-4">
                 <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
-                <select name="facilityId" id="facilityId" class="form-select" data-auto-submit="true">
+                <select name="facilityId" id="facilityId" class="form-select">
                     <option value="">All Facilities</option>
                     @if (facilities != null)
                     {
@@ -33,15 +65,57 @@
                     }
                 </select>
             </div>
-        </form>
+            <div class="col-md-3">
+                <label for="operatorName" class="form-label"><i class="bi bi-person me-1"></i>Operator:</label>
+                <select name="operatorName" id="operatorName" class="form-select" asp-items="Model.Operators">
+                    <option value="">All Operators</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="fromDate" class="form-label"><i class="bi bi-calendar-event me-1"></i>From:</label>
+                <input type="date" id="fromDate" name="fromDate" class="form-control" value="@(Model.Filter.FromDate?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="col-md-2">
+                <label for="toDate" class="form-label"><i class="bi bi-calendar-check me-1"></i>To:</label>
+                <input type="date" id="toDate" name="toDate" class="form-control" value="@(Model.Filter.ToDate?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="col-md-1">
+                <label for="pageSize" class="form-label">Size:</label>
+                <select name="pageSize" id="pageSize" class="form-select">
+                    @foreach (var size in new[] { 25, 50, 100, 200 })
+                    {
+                        if (Model.Filter.PageSize == size)
+                        {
+                            <option value="@size" selected>@size</option>
+                        }
+                        else
+                        {
+                            <option value="@size">@size</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-12 d-flex justify-content-end gap-2">
+                <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
+                <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
+                <input type="hidden" name="page" value="1" />
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel"></i> Apply
+                </button>
+                <a asp-action="OperatorLogs" asp-route-companyId="@selectedCompanyId" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-circle"></i> Reset
+                </a>
+            </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-5">
+        <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
             <h4 class="mb-0"> Operator Logs</h4>
-            <div class="d-flex">
+            <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary active"
@@ -59,26 +133,89 @@
                     </a>
             </div>
         </div>
-        @if (Model.Any())
+        @if (logs.Any())
         {
-            <div id="operatorLogsTableView" class="table-responsive">
-                <table class="table table-hover irrigates-table">
+            <div id="operatorLogsTableView" class="table-responsive responsive-table operator-logs-table-wrapper fixed-height-table-wrapper">
+                <table class="table table-hover operator-logs-table">
                     <thead>
                         <tr>
-                            <th><i class="bi bi-calendar"></i> Log Date</th>
-                            <th><i class="bi bi-person"></i> Operator</th>
-                            <th><i class="bi bi-clock"></i> Arrival Time</th>
-                            <th><i class="bi bi-hourglass"></i> Time on Site (hours)</th>
-                            <th><i class="bi bi-building"></i> Facility</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
+                            <th>
+                                <a asp-action="OperatorLogs"
+                                   asp-route-companyId="@selectedCompanyId"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-operatorName="@Model.Filter.OperatorName"
+                                   asp-route-fromDate="@Model.Filter.FromDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-toDate="@Model.Filter.ToDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="logDate"
+                                   asp-route-sortDir="@logDateNextSortDir">
+                                    <i class="bi bi-calendar"></i> Log Date
+                                    @if (IsActiveSort("logDate"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="OperatorLogs"
+                                   asp-route-companyId="@selectedCompanyId"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-operatorName="@Model.Filter.OperatorName"
+                                   asp-route-fromDate="@Model.Filter.FromDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-toDate="@Model.Filter.ToDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="operator"
+                                   asp-route-sortDir="@operatorNextSortDir">
+                                    <i class="bi bi-person"></i> Operator
+                                    @if (IsActiveSort("operator"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="OperatorLogs"
+                                   asp-route-companyId="@selectedCompanyId"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-operatorName="@Model.Filter.OperatorName"
+                                   asp-route-fromDate="@Model.Filter.FromDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-toDate="@Model.Filter.ToDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="arrivalTime"
+                                   asp-route-sortDir="@arrivalTimeNextSortDir">
+                                    <i class="bi bi-clock"></i> Arrival Time
+                                    @if (IsActiveSort("arrivalTime"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="OperatorLogs"
+                                   asp-route-companyId="@selectedCompanyId"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-operatorName="@Model.Filter.OperatorName"
+                                   asp-route-fromDate="@Model.Filter.FromDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-toDate="@Model.Filter.ToDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-page="1"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="timeOnSiteHours"
+                                   asp-route-sortDir="@timeOnSiteNextSortDir">
+                                    <i class="bi bi-hourglass"></i> Time on Site (hours)
+                                    @if (IsActiveSort("timeOnSiteHours"))
+                                    {
+                                        <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
+                                    }
+                                </a>
+                            </th>
                             <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var log in Model)
+                        @foreach (var log in logs)
                         {
                             <tr>
                                 <td>
@@ -87,13 +224,8 @@
                                 <td>@log.OperatorName</td>
                                 <td>@log.ArrivalTime</td>
                                 <td>@(log.TimeOnSiteHours.HasValue ? log.TimeOnSiteHours.Value.ToString("F2") : "N/A")</td>
-                                <td>@log.FacilityName</td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@log.CompanyName</td>
-                                }
                                 <td class="table-actions">
-                                    <a asp-action="OperatorLogEdit" asp-route-id="@log.Id" class="btn btn-sm btn-outline-primary">
+                                    <a asp-action="OperatorLogEdit" asp-route-id="@log.Id" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
                                     <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(log.Id.ToString().Replace("-", ""))">
@@ -127,8 +259,8 @@
                 </table>
             </div>
 
-            <div id="operatorLogsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
-                @foreach (var log in Model)
+            <div id="operatorLogsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
+                @foreach (var log in logs)
                 {
                     <div class="col">
                             <div class="card h-100 shadow-sm">
@@ -141,12 +273,12 @@
                             </div>
                             <div class="card-body d-flex flex-column">
 
-                                <dl class="row small mb-3">
+                                <dl class="row small mb-3 responsive-detail-list">
                                     <dt class="col-5"><i class="bi bi-person me-1"></i>Operator</dt>
                                     <dd class="col-7 mb-1">@log.OperatorName</dd>
 
-                                    <dt class="col-5"><i class="bi bi-building me-1"></i>Facility</dt>
-                                    <dd class="col-7 mb-1">@log.FacilityName</dd>
+                                    @* <dt class="col-5"><i class="bi bi-building me-1"></i>Facility</dt> *@
+                                    @* <dd class="col-7 mb-1">@log.FacilityName</dd> *@
                                     
                                     <dt class="col-5"><i class="bi bi-clock me-1"></i>Arrival</dt>
                                     <dd class="col-7 mb-1">@log.ArrivalTime</dd>
@@ -156,13 +288,13 @@
 
                                     @if (isGlobalAdmin)
                                     {
-                                        <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-7 mb-1">@log.CompanyName</dd>
+                                        @* <dt class="col-5"><i class="bi bi-briefcase me-1"></i>Company</dt> *@
+                                        @* <dd class="col-7 mb-1">@log.CompanyName</dd> *@
                                     }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-between">
-                                    <a asp-action="OperatorLogEdit" asp-route-id="@log.Id" class="btn btn-sm btn-outline-primary">
+                                    <a asp-action="OperatorLogEdit" asp-route-id="@log.Id" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-pencil"></i> Edit
                                     </a>
                                     <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(log.Id.ToString().Replace("-", ""))">
@@ -174,6 +306,30 @@
                     </div>
                 }
             </div>
+
+            @if (totalPages > 1)
+            {
+                <nav class="mt-3">
+                    <ul class="pagination">
+                        @for (var pageNumber = 1; pageNumber <= totalPages; pageNumber++)
+                        {
+                            <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                                <a class="page-link"
+                                   asp-action="OperatorLogs"
+                                   asp-route-companyId="@selectedCompanyId"
+                                   asp-route-facilityId="@Model.Filter.FacilityId"
+                                   asp-route-operatorName="@Model.Filter.OperatorName"
+                                   asp-route-fromDate="@Model.Filter.FromDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-toDate="@Model.Filter.ToDate?.ToString("yyyy-MM-dd")"
+                                   asp-route-page="@pageNumber"
+                                   asp-route-pageSize="@Model.Filter.PageSize"
+                                   asp-route-sortBy="@Model.Sort.SortBy"
+                                   asp-route-sortDir="@Model.Sort.SortDir">@pageNumber</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
         }
         else
         {
@@ -227,7 +383,34 @@
             cardBtn?.addEventListener('click', function () {
                 setViewMode('card');
             });
+
+            const filterToggleBtn = document.getElementById('toggleOperatorLogFilters');
+            const filterCollapseElement = document.getElementById('operatorLogFiltersCollapse');
+            if (filterToggleBtn && filterCollapseElement && typeof bootstrap !== 'undefined') {
+                const filterCollapse = bootstrap.Collapse.getOrCreateInstance(filterCollapseElement, { toggle: false });
+                const label = filterToggleBtn.querySelector('span');
+
+                function setFilterToggleState(isExpanded) {
+                    filterToggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                    if (label) {
+                        label.textContent = isExpanded ? 'Hide Filters' : 'Show Filters';
+                    }
+                }
+
+                // Default hidden
+                filterCollapse.hide();
+                setFilterToggleState(false);
+
+                filterCollapseElement.addEventListener('shown.bs.collapse', function () {
+                    setFilterToggleState(true);
+                });
+
+                filterCollapseElement.addEventListener('hidden.bs.collapse', function () {
+                    setFilterToggleState(false);
+                });
+            }
         })();
     </script>
 }
+
 

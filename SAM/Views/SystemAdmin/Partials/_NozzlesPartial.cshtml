@@ -15,9 +15,9 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-5 page-section-header">
             <h4 class="mb-0">Nozzles</h4>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
                             class="btn btn-outline-secondary btn-sm active"
@@ -40,8 +40,8 @@
         </div>
         @if (Model.Nozzles.Any())
         {
-            <div id="nozzlesTableView" class="table-responsive">
-                <table class="table table-hover irrigates-table nozzles-table">
+            <div id="nozzlesTableView" class="table-responsive responsive-table">
+                <table class="table table-hover nozzles-table">
                     <thead>
                         <tr>
                             <th><i class="bi bi-building"></i> Manufacturer</th>
@@ -49,10 +49,6 @@
                             <th><i class="bi bi-speedometer2"></i> Flow Rate (GPM)</th>
                             <th><i class="bi bi-droplet"></i> Spray Arc (°)</th>
                             <th class="nozzles-comment-col"><i class="bi bi-chat-left-text"></i> Comment</th>
-                            @if (isGlobalAdmin)
-                            {
-                                <th><i class="bi bi-briefcase"></i> Company</th>
-                            }
                             @if (canManageRecords)
                             {
                                 <th class="table-actions"><i class="bi bi-gear"></i> Actions</th>
@@ -79,10 +75,6 @@
                                         <span>N/A</span>
                                     }
                                 </td>
-                                @if (isGlobalAdmin)
-                                {
-                                    <td>@nozzle.CompanyName</td>
-                                }
                                 @if (canManageRecords)
                                 {
                                     <td class="table-actions">
@@ -104,7 +96,7 @@
                 </table>
             </div>
 
-            <div id="nozzlesCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none">
+            <div id="nozzlesCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
                 @foreach (var nozzle in Model.Nozzles)
                 {
                     var commentText = string.IsNullOrWhiteSpace(nozzle.Comment) ? "N/A" : nozzle.Comment;
@@ -114,7 +106,7 @@
                             <h6 class="mb-0 card-header-light">@nozzle.Manufacturer @nozzle.Model</h6>
                             <div class="card-body d-flex flex-column">
 
-                                <dl class="row small mb-3">
+                                <dl class="row small mb-3 responsive-detail-list">
                                     <dt class="col-6"><i class="bi bi-speedometer2 me-1"></i>Flow Rate</dt>
                                     <dd class="col-6 mb-1">@nozzle.FlowRateGpm.ToString("F2") GPM</dd>
 
@@ -133,11 +125,6 @@
                                         }
                                     </dd>
 
-                                    @if (isGlobalAdmin)
-                                    {
-                                        <dt class="col-6"><i class="bi bi-briefcase me-1"></i>Company</dt>
-                                        <dd class="col-6 mb-1">@nozzle.CompanyName</dd>
-                                    }
                                 </dl>
 
                                 <div class="mt-auto d-flex justify-content-end">

@@ -1,5 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 using SAM.Domain.Enums;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using SAM.Services.Models;
 
 namespace SAM.ViewModels.OperationalData;
 
@@ -9,6 +12,9 @@ public class WWCharViewModel
     public Guid CompanyId { get; set; }
     public string? CompanyName { get; set; }
     public Guid FacilityId { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
     public string? FacilityName { get; set; }
     
     [Required]
@@ -65,6 +71,12 @@ public class WWCharViewModel
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
 
+    [Display(Name = "ORC Arrival Time Daily")]
+    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+
+    [Display(Name = "ORC Time On Site Daily (hours)")]
+    public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
+
     [Display(Name = "NO2 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
     public decimal? NO2N { get; set; }
@@ -76,6 +88,12 @@ public class WWCharViewModel
     [Display(Name = "NO3 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
     public decimal? NO3N { get; set; }
+
+    [Display(Name = "Flow Measuring Point")]
+    public FlowMeasuringPointEnum? FlowMeasuringPoint { get; set; }
+
+    [Display(Name = "Parameter Monitoring Point")]
+    public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -88,6 +106,9 @@ public class WWCharViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string AnalyzedBy { get; set; } = string.Empty;
+
+    public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+    public List<WWCharTestResultAttachmentViewModel> TestResultAttachments { get; set; } = new();
 }
 
 public class WWCharCreateViewModel
@@ -99,6 +120,9 @@ public class WWCharCreateViewModel
     [Required]
     [Display(Name = "Facility")]
     public Guid FacilityId { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
     
     [Required]
     [Display(Name = "Month")]
@@ -154,6 +178,12 @@ public class WWCharCreateViewModel
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
 
+    [Display(Name = "ORC Arrival Time Daily")]
+    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+
+    [Display(Name = "ORC Time On Site Daily (hours)")]
+    public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
+
     [Display(Name = "NO2 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
     public decimal? NO2N { get; set; }
@@ -165,6 +195,12 @@ public class WWCharCreateViewModel
     [Display(Name = "NO3 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
     public decimal? NO3N { get; set; }
+
+    [Display(Name = "Flow Measuring Point")]
+    public FlowMeasuringPointEnum? FlowMeasuringPoint { get; set; }
+
+    [Display(Name = "Parameter Monitoring Point")]
+    public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -177,6 +213,8 @@ public class WWCharCreateViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string AnalyzedBy { get; set; } = string.Empty;
+
+    public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
 }
 
 public class WWCharEditViewModel
@@ -190,6 +228,9 @@ public class WWCharEditViewModel
     [Required]
     [Display(Name = "Facility")]
     public Guid FacilityId { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
     
     [Required]
     [Display(Name = "Month")]
@@ -245,6 +286,12 @@ public class WWCharEditViewModel
     [Display(Name = "Lagoon Freeboard Daily (inches)")]
     public List<decimal?> LagoonFreeboard { get; set; } = new();
 
+    [Display(Name = "ORC Arrival Time Daily")]
+    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+
+    [Display(Name = "ORC Time On Site Daily (hours)")]
+    public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
+
     [Display(Name = "NO2 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO2 as N must be 0 or greater.")]
     public decimal? NO2N { get; set; }
@@ -256,6 +303,12 @@ public class WWCharEditViewModel
     [Display(Name = "NO3 as N (mg/L)")]
     [Range(0, double.MaxValue, ErrorMessage = "NO3 as N must be 0 or greater.")]
     public decimal? NO3N { get; set; }
+
+    [Display(Name = "Flow Measuring Point")]
+    public FlowMeasuringPointEnum? FlowMeasuringPoint { get; set; }
+
+    [Display(Name = "Parameter Monitoring Point")]
+    public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
     
     [StringLength(500)]
     [Display(Name = "Lab Certification")]
@@ -268,6 +321,85 @@ public class WWCharEditViewModel
     [StringLength(200)]
     [Display(Name = "Analyzed By")]
     public string AnalyzedBy { get; set; } = string.Empty;
+
+    [Display(Name = "Test Date")]
+    [DataType(DataType.Date)]
+    public DateTime? TestResultDate { get; set; }
+
+    [Display(Name = "Upload Test Result (PDF)")]
+    public IFormFile? TestResultFile { get; set; }
+
+    public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+    public List<WWCharTestResultAttachmentViewModel> TestResultAttachments { get; set; } = new();
+}
+
+public class WWCharTemplateParameterInputViewModel
+{
+    public Guid FacilityPermitTemplateParameterId { get; set; }
+    public string PcsCode { get; set; } = string.Empty;
+    public string ParameterName { get; set; } = string.Empty;
+    public string Units { get; set; } = string.Empty;
+    public bool IsRequired { get; set; }
+    public string MeasurementFrequency { get; set; } = string.Empty;
+    public string SampleType { get; set; } = string.Empty;
+    public string? ScheduledMonthsCsv { get; set; }
+    public string? Notes { get; set; }
+    public decimal? MonthlyAverageLimit { get; set; }
+    public decimal? MonthlyGeometricMeanLimit { get; set; }
+    public decimal? DailyMinimumLimit { get; set; }
+    public decimal? DailyMaximumLimit { get; set; }
+    public List<decimal?> DailyValues { get; set; } = new();
+}
+
+public class WWCharTemplateSectionViewModel
+{
+    public Guid FacilityId { get; set; }
+    public Guid? FacilityPermitId { get; set; }
+    public string? FacilityPermitDisplay { get; set; }
+    public MonthEnum Month { get; set; }
+    public int Year { get; set; }
+    public Guid? RecordId { get; set; }
+    public bool IsEdit { get; set; }
+    public string? TemplateParametersStatusMessage { get; set; }
+    public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
+    public List<decimal?> LagoonFreeboard { get; set; } = new();
+    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+    public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
+    public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
+}
+
+public class WWCharTestResultAttachmentViewModel
+{
+    public Guid Id { get; set; }
+    public DateTime TestDate { get; set; }
+    public string OriginalFileName { get; set; } = string.Empty;
+    public string UploadedBy { get; set; } = string.Empty;
+    public DateTime UploadedAtUtc { get; set; }
+}
+
+public class WWCharFilterViewModel
+{
+    public Guid? FacilityId { get; set; }
+    public int? Month { get; set; }
+    public int? Year { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+}
+
+public class WWCharSortViewModel
+{
+    public string SortBy { get; set; } = "period";
+    public string SortDir { get; set; } = "desc";
+}
+
+public class WWCharsIndexViewModel
+{
+    public bool IsGlobalAdmin { get; set; }
+    public Guid? SelectedCompanyId { get; set; }
+    public SelectList? Facilities { get; set; }
+    public WWCharFilterViewModel Filter { get; set; } = new();
+    public WWCharSortViewModel Sort { get; set; } = new();
+    public PagedResult<WWCharViewModel> WWChars { get; set; } = new();
 }
 
 

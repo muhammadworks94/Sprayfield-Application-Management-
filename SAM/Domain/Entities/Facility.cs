@@ -85,6 +85,11 @@ public class Facility : CompanyScopedEntity
     public string? OperatorNumber { get; set; } = string.Empty;
 
     /// <summary>
+    /// ORC operator phone number.
+    /// </summary>
+    public string? OperatorPhone { get; set; } = string.Empty;
+
+    /// <summary>
     /// Indicates whether there was a change in ORC.
     /// </summary>
     public bool? ChangeInOrc { get; set; } = false;
@@ -137,11 +142,13 @@ public class Facility : CompanyScopedEntity
     // Navigation properties
     public ICollection<WWChar> WWChars { get; set; } = new List<WWChar>();
     public ICollection<GWMonit> GWMonits { get; set; } = new List<GWMonit>();
-    public ICollection<Irrigate> Irrigates { get; set; } = new List<Irrigate>();
+    public ICollection<MonthlyApplication> MonthlyApplications { get; set; } = new List<MonthlyApplication>();
     public ICollection<IrrRprt> IrrRprts { get; set; } = new List<IrrRprt>();
+    public ICollection<NDMLR> NDMLRs { get; set; } = new List<NDMLR>();
     public ICollection<OperatorLog> OperatorLogs { get; set; } = new List<OperatorLog>();
     public ICollection<Sprayfield> Sprayfields { get; set; } = new List<Sprayfield>();
     public ICollection<NDAR1> NDAR1s { get; set; } = new List<NDAR1>();
+    public ICollection<FacilityPermit> FacilityPermits { get; set; } = new List<FacilityPermit>();
 }
 
 
