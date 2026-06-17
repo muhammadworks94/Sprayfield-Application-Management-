@@ -13,6 +13,8 @@ public class GroundwaterQualityReportsPageViewModel
     public List<SelectListItem> Years { get; set; } = new();
     public GroundwaterQualityFilterViewModel Filter { get; set; } = new();
     public GroundwaterQualitySortViewModel Sort { get; set; } = new();
+    public bool GroupByDate => Filter.GroupByDate;
+    public Dictionary<DateTime, int> RecordCountsBySampleDate { get; set; } = new();
     public PagedResult<GroundwaterQualityReportRowViewModel> Reports { get; set; } = new();
 }
 
@@ -24,6 +26,7 @@ public class GroundwaterQualityFilterViewModel
     public int? Year { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 25;
+    public bool GroupByDate { get; set; } = true;
 }
 
 public class GroundwaterQualitySortViewModel

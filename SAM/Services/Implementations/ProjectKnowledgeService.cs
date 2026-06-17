@@ -331,7 +331,10 @@ flowchart TD
                     Steps =
                     {
                         "Company Admin opens Reports > Groundwater Quality Reports.",
-                        "System lists groundwater monitoring records with facility, well, sample date, and resolved permit context.",
+                        "System lists groundwater monitoring records grouped by sample date (toggleable) with facility, well, and resolved permit context.",
+                        "List toolbar provides group-by-date toggle (default on), page size selector, and record count summary; pagination is always visible.",
+                        "When group-by-date is off, the list renders as a flat table without date headers or per-date bulk download.",
+                        "Each sample-date group offers Download all PDFs, which merges every filtered record for that date into one PDF (GW-59 + GW-59A + VOC per record). Individual row Download PDF actions remain available.",
                         "Download PDF is the single supported groundwater report export action; the record-details page no longer serves as the report-download entry point.",
                         "ExportGW59Report generates one combined PDF in this order: GW-59, GW-59A if questionnaire data exists, then attached VOC PDF pages if present.",
                         "GW-59 export uses letter-size form template GW59_Resized.pdf (792×612 pt, 11\"×8.5\" landscape) with mapped facility, permit, monitoring-well, GWMonit, and permit-template data.",

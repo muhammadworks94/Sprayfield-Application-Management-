@@ -1715,9 +1715,16 @@ public class ReportsController : BaseController
         int? year = null,
         string? sortBy = null,
         string? sortDir = null,
+        bool groupByDate = true,
         int page = 1,
         int pageSize = 25)
     {
+        if (Request.Query.ContainsKey("groupByDate"))
+        {
+            groupByDate = Request.Query["groupByDate"]
+                .Any(v => string.Equals(v, "true", StringComparison.OrdinalIgnoreCase));
+        }
+
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
         if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
@@ -1736,36 +1743,16 @@ public class ReportsController : BaseController
         var normalizedMonth = month.HasValue && month.Value >= 1 && month.Value <= 12 ? month : null;
         var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
 
-        var query = _context.GWMonits
-            .Include(x => x.Facility)
-            .Include(x => x.MonitoringWell)
-            .AsNoTracking()
-            .AsQueryable();
-
-        if (companyId.HasValue)
+        var filter = new GroundwaterQualityReportsFilter
         {
-            query = query.Where(x => x.CompanyId == companyId.Value);
-        }
+            CompanyId = companyId,
+            FacilityId = facilityId,
+            MonitoringWellId = monitoringWellId,
+            Month = normalizedMonth,
+            Year = normalizedYear
+        };
 
-        if (facilityId.HasValue)
-        {
-            query = query.Where(x => x.FacilityId == facilityId.Value);
-        }
-
-        if (monitoringWellId.HasValue)
-        {
-            query = query.Where(x => x.MonitoringWellId == monitoringWellId.Value);
-        }
-
-        if (normalizedMonth.HasValue)
-        {
-            query = query.Where(x => x.SampleDate.Month == normalizedMonth.Value);
-        }
-
-        if (normalizedYear.HasValue)
-        {
-            query = query.Where(x => x.SampleDate.Year == normalizedYear.Value);
-        }
+        var query = BuildGroundwaterQualityReportsQuery(filter);
 
         query = normalizedSortBy switch
         {
@@ -1814,6 +1801,22 @@ public class ReportsController : BaseController
             });
         }
 
+        var recordCountsBySampleDate = new Dictionary<DateTime, int>();
+        if (groupByDate)
+        {
+            var datesOnPage = rows.Select(r => r.SampleDate.Date).Distinct().ToList();
+            if (datesOnPage.Count > 0)
+            {
+                var countQuery = BuildGroundwaterQualityReportsQuery(filter);
+                var counts = await countQuery
+                    .Where(x => datesOnPage.Contains(x.SampleDate.Date))
+                    .GroupBy(x => x.SampleDate.Date)
+                    .Select(g => new { Date = g.Key, Count = g.Count() })
+                    .ToListAsync();
+                recordCountsBySampleDate = counts.ToDictionary(x => x.Date, x => x.Count);
+            }
+        }
+
         var model = new GroundwaterQualityReportsPageViewModel
         {
             SelectedCompanyId = companyId,
@@ -1824,13 +1827,15 @@ public class ReportsController : BaseController
                 Month = normalizedMonth,
                 Year = normalizedYear,
                 Page = normalizedPage,
-                PageSize = normalizedPageSize
+                PageSize = normalizedPageSize,
+                GroupByDate = groupByDate
             },
             Sort = new GroundwaterQualitySortViewModel
             {
                 SortBy = normalizedSortBy,
                 SortDir = normalizedSortDir
             },
+            RecordCountsBySampleDate = recordCountsBySampleDate,
             Reports = new PagedResult<GroundwaterQualityReportRowViewModel>
             {
                 Items = rows,
@@ -1946,6 +1951,120 @@ public class ReportsController : BaseController
         var bytes = await RenderCombinedGw59PdfAsync(model, showGrid);
         var safeFacility = string.IsNullOrWhiteSpace(model.FacilityName) ? "Facility" : model.FacilityName.Replace(' ', '_');
         return File(bytes, "application/pdf", $"GW59_{safeFacility}_{model.SampleDate:yyyyMMdd}.pdf");
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> ExportGW59ReportsBySampleDate(
+        DateTime sampleDate,
+        Guid? companyId = null,
+        Guid? facilityId = null,
+        Guid? monitoringWellId = null,
+        int? month = null,
+        int? year = null,
+        bool showGrid = false)
+    {
+        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+        if (!companyId.HasValue && effectiveCompanyId.HasValue)
+        {
+            companyId = effectiveCompanyId.Value;
+        }
+
+        if (companyId.HasValue)
+        {
+            await EnsureCompanyAccessAsync(companyId.Value);
+        }
+
+        var normalizedMonth = month.HasValue && month.Value >= 1 && month.Value <= 12 ? month : null;
+        var normalizedYear = year.HasValue && year.Value >= 2000 && year.Value <= 2100 ? year : null;
+        var targetDate = sampleDate.Date;
+
+        var filter = new GroundwaterQualityReportsFilter
+        {
+            CompanyId = companyId,
+            FacilityId = facilityId,
+            MonitoringWellId = monitoringWellId,
+            Month = normalizedMonth,
+            Year = normalizedYear
+        };
+
+        var ids = await BuildGroundwaterQualityReportsQuery(filter)
+            .Where(x => x.SampleDate.Date == targetDate)
+            .OrderBy(x => x.SampleDate)
+            .ThenBy(x => x.Facility!.Name)
+            .ThenBy(x => x.MonitoringWell!.WellId)
+            .Select(x => x.Id)
+            .ToListAsync();
+
+        if (ids.Count == 0)
+        {
+            throw new Infrastructure.Exceptions.BusinessRuleException(
+                $"No groundwater monitoring records found for {targetDate:MM/dd/yyyy} with the selected filters.");
+        }
+
+        var bytes = await RenderBulkGw59PdfAsync(ids, showGrid);
+        return File(bytes, "application/pdf", $"GW59_{targetDate:yyyyMMdd}_All.pdf");
+    }
+
+    private sealed class GroundwaterQualityReportsFilter
+    {
+        public Guid? CompanyId { get; set; }
+        public Guid? FacilityId { get; set; }
+        public Guid? MonitoringWellId { get; set; }
+        public int? Month { get; set; }
+        public int? Year { get; set; }
+    }
+
+    private IQueryable<GWMonit> BuildGroundwaterQualityReportsQuery(GroundwaterQualityReportsFilter filter)
+    {
+        var query = _context.GWMonits
+            .Include(x => x.Facility)
+            .Include(x => x.MonitoringWell)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (filter.CompanyId.HasValue)
+        {
+            query = query.Where(x => x.CompanyId == filter.CompanyId.Value);
+        }
+
+        if (filter.FacilityId.HasValue)
+        {
+            query = query.Where(x => x.FacilityId == filter.FacilityId.Value);
+        }
+
+        if (filter.MonitoringWellId.HasValue)
+        {
+            query = query.Where(x => x.MonitoringWellId == filter.MonitoringWellId.Value);
+        }
+
+        if (filter.Month.HasValue)
+        {
+            query = query.Where(x => x.SampleDate.Month == filter.Month.Value);
+        }
+
+        if (filter.Year.HasValue)
+        {
+            query = query.Where(x => x.SampleDate.Year == filter.Year.Value);
+        }
+
+        return query;
+    }
+
+    private async Task<byte[]> RenderBulkGw59PdfAsync(IReadOnlyList<Guid> ids, bool showGrid = false)
+    {
+        using var assembledOutput = new MemoryStream();
+        using var assembledDoc = new PdfDocument();
+
+        foreach (var id in ids)
+        {
+            var model = await BuildGw59ExportModelAsync(id);
+            var recordBytes = await RenderCombinedGw59PdfAsync(model, showGrid);
+            ImportPdfBytes(assembledDoc, recordBytes);
+        }
+
+        assembledDoc.Save(assembledOutput, false);
+        return assembledOutput.ToArray();
     }
 
     #endregion
