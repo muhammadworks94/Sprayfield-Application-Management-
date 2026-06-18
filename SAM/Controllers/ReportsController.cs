@@ -2328,6 +2328,18 @@ public class ReportsController : BaseController
             void DrawFieldText(string? text, Gw59PdfTextSlot slot) =>
                 DrawBaselineText(text, slot.X, slot.Y, slot.Width, font);
 
+            void DrawCenteredFieldText(string? text, Gw59PdfTextSlot slot)
+            {
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return;
+                }
+
+                var baselineY = Gw59PdfCalibration.GetBaselineY(slot.Y);
+                var rect = new XRect(slot.X, baselineY - font.Height, slot.Width, font.Height + 1);
+                gfx.DrawString(text, font, XBrushes.Black, rect, XStringFormats.BottomCenter);
+            }
+
             void DrawFieldLabText(string? text, Gw59PdfUnderlineSlot slot) =>
                 DrawBaselineText(text, slot.X, slot.Y, slot.Width, font);
 
@@ -2338,15 +2350,15 @@ public class ReportsController : BaseController
                     return;
                 }
 
-                DrawTick(slot.X, slot.Y);
+                DrawCheckboxX(gfx, slot.X, slot.Y, slot.Width);
             }
 
-            void DrawTick(double boxLeft, double boxTop)
+            void DrawMetalsMark(bool? value, bool yes, Gw59PdfTextSlot slot)
             {
-                var x = boxLeft + 1.0;
-                var topY = boxTop + 0.5;
-                gfx.DrawLine(XPens.Black, x, topY + 4, x + 3, topY + 7);
-                gfx.DrawLine(XPens.Black, x + 3, topY + 7, x + 8, topY + 1);
+                if (value.HasValue && value.Value == yes)
+                {
+                    DrawCheckboxX(gfx, slot.X, slot.Y, slot.Width);
+                }
             }
 
             DrawFieldText(model.FacilityName, fields.FacilityName);
@@ -2361,7 +2373,7 @@ public class ReportsController : BaseController
             DrawFieldText(model.ContactPerson, fields.ContactPerson);
             DrawFieldText(model.FacilityPhone, fields.FacilityPhone);
             DrawFieldText(model.WellLocation, fields.WellLocation);
-            DrawFieldText(model.NumberOfWellsToBeSampled?.ToString(), fields.NumberOfWellsToBeSampled);
+            DrawCenteredFieldText(model.NumberOfWellsToBeSampled?.ToString(), fields.NumberOfWellsToBeSampled);
             DrawFieldText(model.WellId, fields.WellId);
             DrawFieldText(model.SampleDate.ToString("MM/dd/yyyy"), fields.SampleDate);
             DrawFieldText(model.WellDepthFeet?.ToString("F2"), fields.WellDepthFeet);
@@ -2380,13 +2392,6 @@ public class ReportsController : BaseController
             DrawFieldText(model.SpecificConductance?.ToString("F2"), fields.SpecificConductance);
             DrawFieldText(model.Odor, fields.Odor);
             DrawFieldText(model.Appearance, fields.Appearance);
-            void DrawMetalsMark(bool? value, bool yes, Gw59PdfTextSlot slot)
-            {
-                if (value.HasValue && value.Value == yes)
-                {
-                    DrawTick(slot.X, slot.Y);
-                }
-            }
 
             DrawMetalsMark(model.MetalsUnfiltered, true, fields.MetalsUnfilteredYes);
             DrawMetalsMark(model.MetalsUnfiltered, false, fields.MetalsUnfilteredNo);
@@ -2423,12 +2428,12 @@ public class ReportsController : BaseController
             DrawFieldLabText(model.VOCMethodNumber, fields.VOCMethodNumber);
             if (model.GwOperationLagoon)
             {
-                DrawTick(fields.OperationLagoonTick.X, fields.OperationLagoonTick.Y);
+                DrawCheckboxX(gfx, fields.OperationLagoonTick.X, fields.OperationLagoonTick.Y, fields.OperationLagoonTick.Width);
             }
 
             if (model.GwOperationSprayField)
             {
-                DrawTick(fields.OperationSprayFieldTick.X, fields.OperationSprayFieldTick.Y);
+                DrawCheckboxX(gfx, fields.OperationSprayFieldTick.X, fields.OperationSprayFieldTick.Y, fields.OperationSprayFieldTick.Width);
             }
 
             var otherLineIndex = 0;
@@ -2442,8 +2447,6 @@ public class ReportsController : BaseController
                     otherSlot.Width,
                     otherFont);
             }
-            DrawFieldText($"{model.CertificationName} - {model.CertificationTitle}", fields.CertificationNameTitle);
-            DrawFieldText(model.CertificationDate?.ToString("MM/dd/yyyy"), fields.CertificationDate);
 
             if (showGrid)
             {
@@ -3777,27 +3780,38 @@ public class ReportsController : BaseController
                 gfx.DrawString(text ?? string.Empty, isBold ? bold : font, XBrushes.Black, new XRect(x, y, 320, 11), XStringFormats.TopLeft);
             void DrawWrapped(string? text, TextBox2D box) =>
                 DrawWrappedText(gfx, text, font, XBrushes.Black, box);
-            void DrawMark(bool? value, bool yes, double x, double y)
+            void DrawMark(bool? value, bool yes, double x, double y, double boxSize = 9)
             {
                 if (value.HasValue && value.Value == yes)
                 {
-                    // Draw a tick as vector lines so it renders consistently in all viewers/fonts.
-                    gfx.DrawLine(XPens.Black, x, y + 5, x + 3, y + 8);
-                    gfx.DrawLine(XPens.Black, x + 3, y + 8, x + 9, y + 1);
+                    DrawCheckboxX(gfx, x, y, boxSize);
                 }
             }
 
             Draw(model.PermitNumber, map.PermitNumber.X, map.PermitNumber.Y, true);
-            Draw(model.GW59ADueDate?.ToString("MM/dd/yyyy"), map.DueDate.X, map.DueDate.Y);
+            if (!string.IsNullOrWhiteSpace(model.GW59ADueDate?.ToString("MM/dd/yyyy")))
+            {
+                var dueDateRect = new XRect(
+                    map.DueDateBox.X,
+                    map.DueDateBox.Y,
+                    map.DueDateBox.Width,
+                    map.DueDateBox.Height);
+                gfx.DrawString(
+                    model.GW59ADueDate!.Value.ToString("MM/dd/yyyy"),
+                    font,
+                    XBrushes.Black,
+                    dueDateRect,
+                    XStringFormats.BottomCenter);
+            }
 
-            DrawMark(model.GW59AQuestion1Response, true, map.Q1Yes.X, map.Q1Yes.Y);
-            DrawMark(model.GW59AQuestion1Response, false, map.Q1No.X, map.Q1No.Y);
+            DrawMark(model.GW59AQuestion1Response, true, map.Q1Yes.X, map.Q1Yes.Y, map.Q1YesBoxSize);
+            DrawMark(model.GW59AQuestion1Response, false, map.Q1No.X, map.Q1No.Y, map.Q1YesBoxSize);
             DrawMark(model.GW59AQuestion2Response, true, map.Q2Yes.X, map.Q2Yes.Y);
             DrawMark(model.GW59AQuestion2Response, false, map.Q2No.X, map.Q2No.Y);
             DrawMark(model.GW59AQuestion3Response, true, map.Q3Yes.X, map.Q3Yes.Y);
             DrawMark(model.GW59AQuestion3Response, false, map.Q3No.X, map.Q3No.Y);
-            DrawMark(model.GW59AQuestion4Response, true, map.Q4Yes.X, map.Q4Yes.Y);
-            DrawMark(model.GW59AQuestion4Response, false, map.Q4No.X, map.Q4No.Y);
+            DrawMark(model.GW59AQuestion4Response, true, map.Q4Yes.X, map.Q4Yes.Y, map.Q4YesBoxSize);
+            DrawMark(model.GW59AQuestion4Response, false, map.Q4No.X, map.Q4No.Y, map.Q4YesBoxSize);
             DrawMark(model.GW59AQuestion5Response, true, map.Q5Yes.X, map.Q5Yes.Y);
             DrawMark(model.GW59AQuestion5Response, false, map.Q5No.X, map.Q5No.Y);
             DrawMark(model.GW59AQuestion6Response, true, map.Q6Yes.X, map.Q6Yes.Y);
@@ -3809,9 +3823,6 @@ public class ReportsController : BaseController
             DrawWrapped(model.GW59AQuestion4Details, map.Q4Details);
             DrawWrapped(model.GW59AQuestion5Details, map.Q5Details);
             DrawWrapped(model.GW59AQuestion7Details, map.Q7Details);
-
-            Draw(model.GW59ASignerName, map.SignerName.X, map.SignerName.Y);
-            Draw(model.GW59ASignedDate?.ToString("MM/dd/yyyy"), map.SignedDate.X, map.SignedDate.Y);
 
             if (showGrid)
             {
@@ -3831,22 +3842,26 @@ public class ReportsController : BaseController
         return new Gw59ACalibrationMap
         {
             PermitNumber = new Point2D(450, 18),
-            DueDate = new Point2D(292, 58),
-
-            Q1Yes = new Point2D(522, 58),
-            Q1No = new Point2D(554, 58),
-            Q2Yes = new Point2D(522, 90),
-            Q2No = new Point2D(554, 90),
-            Q3Yes = new Point2D(522, 170),
-            Q3No = new Point2D(554, 170),
-            Q4Yes = new Point2D(522, 202),
-            Q4No = new Point2D(554, 202),
-            Q5Yes = new Point2D(522, 293),
-            Q5No = new Point2D(554, 293),
-            Q6Yes = new Point2D(522, 408),
-            Q6No = new Point2D(554, 408),
-            Q7Yes = new Point2D(522, 489),
-            Q7No = new Point2D(554, 489),
+            // Due date blank is inside parentheses only: x=245.2–288.8 (center 267.0).
+            DueDateBox = new TextBox2D(245.2, 57.6, 43.6, 11),
+            // Q1 shares the first row with Q2; mark sits in the upper YES/NO sub-cell (70.6–91.2).
+            Q1Yes = new Point2D(532.9, 76.4),
+            Q1No = new Point2D(559.2, 76.4),
+            Q1YesBoxSize = 8,
+            Q2Yes = new Point2D(532.7, 98.0),
+            Q2No = new Point2D(559.1, 98.0),
+            Q3Yes = new Point2D(532.9, 187.8),
+            Q3No = new Point2D(559.2, 187.8),
+            // Q4 row band is 203–221; center the mark in the full row height.
+            Q4Yes = new Point2D(532.7, 210.5),
+            Q4No = new Point2D(559.1, 210.5),
+            Q4YesBoxSize = 9,
+            Q5Yes = new Point2D(532.7, 310.4),
+            Q5No = new Point2D(559.1, 310.4),
+            Q6Yes = new Point2D(532.9, 421.5),
+            Q6No = new Point2D(559.2, 421.5),
+            Q7Yes = new Point2D(532.9, 506.3),
+            Q7No = new Point2D(559.2, 506.3),
 
             Q2Details = new TextBox2D(70, 142, 440, 36),
             Q4Details = new TextBox2D(70, 262, 440, 36),
@@ -3861,7 +3876,9 @@ public class ReportsController : BaseController
     private sealed class Gw59ACalibrationMap
     {
         public Point2D PermitNumber { get; set; }
-        public Point2D DueDate { get; set; }
+        public TextBox2D DueDateBox { get; set; }
+        public double Q1YesBoxSize { get; set; } = 9;
+        public double Q4YesBoxSize { get; set; } = 9;
         public Point2D Q1Yes { get; set; }
         public Point2D Q1No { get; set; }
         public Point2D Q2Yes { get; set; }
@@ -3939,6 +3956,15 @@ public class ReportsController : BaseController
         {
             gfx.DrawString(line.ToString(), font, brush, new XRect(box.X, y, box.Width, lineHeight), XStringFormats.TopLeft);
         }
+    }
+
+    private static void DrawCheckboxX(XGraphics gfx, double boxLeft, double boxTop, double boxSize = 8)
+    {
+        var centerX = boxLeft + (boxSize / 2.0);
+        var centerY = boxTop + (boxSize / 2.0);
+        const double half = 2.5;
+        gfx.DrawLine(XPens.Black, centerX - half, centerY - half, centerX + half, centerY + half);
+        gfx.DrawLine(XPens.Black, centerX + half, centerY - half, centerX - half, centerY + half);
     }
 
     private static void DrawCoordinateGrid(XGraphics gfx, double pageWidth, double pageHeight)

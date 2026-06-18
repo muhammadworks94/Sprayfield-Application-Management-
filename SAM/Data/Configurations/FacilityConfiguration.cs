@@ -49,6 +49,12 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
         builder.Property(f => f.FacilityPhone)
             .HasMaxLength(50);
 
+        builder.Property(f => f.FacilityContactPerson)
+            .HasMaxLength(200);
+
+        builder.Property(f => f.FacilityContactPersonPhone)
+            .HasMaxLength(50);
+
         builder.Property(f => f.OrcName)
             .HasMaxLength(200);
 

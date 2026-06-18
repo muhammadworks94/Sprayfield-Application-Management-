@@ -133,6 +133,14 @@ public static class CompanySeeder
             City = "Raleigh",
             State = "NC",
             ZipCode = "27601",
+            County = "Wake",
+            PermitExpirationDate = new DateTime(2026, 7, 31),
+            FacilityContactPerson = "Steven Dodds",
+            FacilityContactPersonPhone = "919-867-5309",
+            OrcName = "Steven Dodds",
+            OperatorPhone = "919-867-5309",
+            CertifiedLaboratory1Name = "Demo Certified Laboratory",
+            LabCertificationNumber1 = "NC-DEMO-001",
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
@@ -346,6 +354,145 @@ public static class CompanySeeder
 
         await context.SaveChangesAsync();
 
+        await SeedAcmeGw59DemoAsync(context, company1, facility1, well1, logger);
+
         logger.LogInformation("Successfully seeded 2 companies with reference data.");
+    }
+
+    private static async Task SeedAcmeGw59DemoAsync(
+        ApplicationDbContext context,
+        Company company,
+        Facility facility,
+        MonitoringWell monitoringWell,
+        ILogger logger)
+    {
+        var pcsRows = new (string Code, string Friendly, string Official, string Units, decimal DemoValue)[]
+        {
+            ("00400", "pH", "pH", "su", 7.10m),
+            ("00680", "Total Organic Carbon", "Carbon, Tot Organic (TOC)", "mg/L", 2.50m),
+            ("00940", "Chloride", "Chloride (as Cl)", "mg/L", 12.00m),
+            ("70300", "Total Dissolved Solids", "Solids, Total Dissolved- 180 Deg.C", "mg/L", 350.00m),
+            ("00552", "Grease and Oils", "Grease and Oils", "mg/L", 1.25m),
+            ("00095", "Specific Conductance", "Specific Conductance", "uMhos/cm", 450.00m),
+            ("70507", "Orthophosphate", "Orthophosphate (as PO4)", "mg/L", 0.08m),
+            ("01105", "Al - Aluminum", "Aluminum, Total (as Al)", "mg/L", 0.05m)
+        };
+
+        var catalogByCode = new Dictionary<string, PcsParameterCatalog>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in pcsRows)
+        {
+            var catalog = new PcsParameterCatalog
+            {
+                Id = Guid.NewGuid(),
+                PcsCode = row.Code,
+                UserFriendlyName = row.Friendly,
+                OfficialParameterName = row.Official,
+                AcceptedUnits = row.Units,
+                IsActive = true,
+                CreatedDate = DateTime.UtcNow,
+                CreatedBy = "system",
+                IsDeleted = false
+            };
+            context.PcsParameterCatalogs.Add(catalog);
+            catalogByCode[row.Code] = catalog;
+        }
+
+        var permit = new FacilityPermit
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company.Id,
+            FacilityId = facility.Id,
+            PermitNumber = facility.PermitNumber,
+            PermitVersion = "1.0",
+            EffectiveStartDate = new DateTime(2020, 1, 1),
+            EffectiveEndDate = new DateTime(2026, 7, 31),
+            IsActive = true,
+            GwOperationLagoon = true,
+            GwOperationSprayField = true,
+            CreatedDate = DateTime.UtcNow,
+            CreatedBy = "system",
+            IsDeleted = false
+        };
+        context.FacilityPermits.Add(permit);
+
+        var sortOrder = 1;
+        var templateParameters = new List<FacilityPermitTemplateParameter>();
+        foreach (var row in pcsRows)
+        {
+            var templateParameter = new FacilityPermitTemplateParameter
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = company.Id,
+                FacilityPermitId = permit.Id,
+                PcsParameterCatalogId = catalogByCode[row.Code].Id,
+                SampleType = SampleTypeEnum.Grab,
+                MeasurementFrequency = MeasurementFrequencyEnum.Annual,
+                SortOrder = sortOrder++,
+                IsRequired = false,
+                ReportTypes = PermitTemplateReportTypeEnum.Gw59,
+                CreatedDate = DateTime.UtcNow,
+                CreatedBy = "system",
+                IsDeleted = false
+            };
+            templateParameters.Add(templateParameter);
+            context.FacilityPermitTemplateParameters.Add(templateParameter);
+        }
+
+        var gwMonit = new GWMonit
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company.Id,
+            FacilityId = facility.Id,
+            MonitoringWellId = monitoringWell.Id,
+            SampleDate = new DateTime(2026, 6, 16),
+            LabSampleAnalyzedDate = new DateTime(2026, 6, 18),
+            WaterLevel = 12.5m,
+            PH = 7.2m,
+            Temperature = 18.5m,
+            Conductivity = 450m,
+            GallonsPumped = 3m,
+            Odor = "None",
+            Appearance = "Clear",
+            MetalsSamplesCollectedUnfiltered = true,
+            MetalSamplesFieldAcidified = false,
+            VOCReportAttached = true,
+            CollectedBy = "Steven Dodds",
+            AnalyzedBy = facility.CertifiedLaboratory1Name ?? string.Empty,
+            LabCertification = facility.LabCertificationNumber1 ?? string.Empty,
+            GW59ADueDate = new DateTime(2026, 7, 15),
+            GW59AQuestion1Response = true,
+            GW59AQuestion2Response = false,
+            GW59AQuestion2Details = "No exceedances during calibration test period.",
+            GW59AQuestion3Response = true,
+            GW59AQuestion4Response = false,
+            GW59AQuestion5Response = true,
+            GW59AQuestion5Details = "All wells sampled per permit schedule.",
+            GW59AQuestion6Response = false,
+            GW59AQuestion7Response = true,
+            CreatedDate = DateTime.UtcNow,
+            CreatedBy = "system",
+            IsDeleted = false
+        };
+        context.GWMonits.Add(gwMonit);
+
+        foreach (var row in pcsRows)
+        {
+            var templateParameter = templateParameters.First(x =>
+                x.PcsParameterCatalogId == catalogByCode[row.Code].Id);
+            context.GWMonitTemplateValues.Add(new GWMonitTemplateValue
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = company.Id,
+                GWMonitId = gwMonit.Id,
+                FacilityPermitTemplateParameterId = templateParameter.Id,
+                NumericValue = row.DemoValue,
+                CreatedDate = DateTime.UtcNow,
+                CreatedBy = "system",
+                IsDeleted = false
+            });
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Seeded Acme GW-59 demo permit, parameters, and monitoring record {GwMonitId}.", gwMonit.Id);
     }
 }

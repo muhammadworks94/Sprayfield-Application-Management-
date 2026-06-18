@@ -70,6 +70,16 @@ public class Facility : CompanyScopedEntity
     public string? FacilityPhone { get; set; } = string.Empty;
 
     /// <summary>
+    /// Facility contact person for regulatory reports (e.g. GW-59).
+    /// </summary>
+    public string? FacilityContactPerson { get; set; }
+
+    /// <summary>
+    /// Phone number for the facility contact person.
+    /// </summary>
+    public string? FacilityContactPersonPhone { get; set; }
+
+    /// <summary>
     /// Operator in Responsible Charge (ORC) name.
     /// </summary>
     public string? OrcName { get; set; } = string.Empty;

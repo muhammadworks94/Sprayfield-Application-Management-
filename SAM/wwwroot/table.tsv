@@ -3,6 +3,7 @@
 00076	Turbidity	Turbidity, HCH Turbidimeter	NTU
 00092	Flow - Maximum	Flow, Maximum Flow Range	GPD
 00094	Conductivity	Conductivity	µΩ
+00095	Specific Conductance	Specific Conductance	µMhos/cm
 00125	Dichlorobenzene	Dichlorobenzene (Isomers) M/P In Water ug/l	µg/L
 00300	Dissolved Oxygen	DO, Oxygen, Dissolved	mg/L
 00310	BOD5	BOD, 5-Day (20 Deg. C)	mg/L
@@ -12,6 +13,7 @@
 00515	Total Filterable Residue	Residue, Tot Fltrble (dried at 105C)	mg/L
 00530	Total Suspended Solids	Solids, Total Suspended	mg/L
 00545	Settleable Solids	Solids, Settleable	mL/L
+00552	Grease and Oils	Grease and Oils	mg/L
 00556	Oil & Grease	Oil & Grease	mg/L
 00600	Total Nitrogen	Nitrogen, Total (as N)	mg/L
 00610	Ammonia	Nitrogen, Ammonia Total (as N)	mg/L
@@ -33,6 +35,7 @@
 00945	Sulfate	Sulfate, Total (as SO4)	mg/L
 01002	Arsenic	Arsenic, Total (as As)	mg/L
 01007	Barium	Barium, Total (as Ba)	mg/L
+01105	Al - Aluminum	Aluminum, Total (as Al)	mg/L
 01022	Boron	Boron, Total (as B)	mg/L
 01027	Cadmium	Cadmium, Total (as Cd)	mg/L
 01034	Chromium	Chromium, Total (as Cr)	mg/L
@@ -60,6 +63,7 @@
 70295	Total Dissolved Solids	Solids, Total Dissolved	mg/L
 70300	Total Dissolved Solids	Solids, Total Dissolved- 180 Deg.C	mg/L
 70318	% Solids	Solids, Total, Percent	%
+70507	Orthophosphate	Orthophosphate (as PO4)	mg/L
 71880	Formaldehyde	Formaldehyde	mg/L
 71900	Mercury	Mercury, Total (as Hg)	mg/L
 78732	Volatile Compounds	Volatile Compounds, (GC/MS)	Yes/No

@@ -39,6 +39,8 @@ public partial class SystemAdminController
             PermitExpirationDate = facility.PermitExpirationDate,
             PermitPhone = facility.PermitPhone,
             FacilityPhone = facility.FacilityPhone,
+            FacilityContactPerson = facility.FacilityContactPerson,
+            FacilityContactPersonPhone = facility.FacilityContactPersonPhone,
             OrcName = facility.OrcName,
             OperatorGrade = facility.OperatorGrade,
             OperatorNumber = facility.OperatorNumber,
@@ -116,6 +118,8 @@ public partial class SystemAdminController
                 PermitExpirationDate = viewModel.PermitExpirationDate,
                 PermitPhone = viewModel.PermitPhone,
                 FacilityPhone = viewModel.FacilityPhone,
+                FacilityContactPerson = viewModel.FacilityContactPerson,
+                FacilityContactPersonPhone = viewModel.FacilityContactPersonPhone,
                 OrcName = viewModel.OrcName,
                 OperatorGrade = viewModel.OperatorGrade,
                 OperatorNumber = viewModel.OperatorNumber,
@@ -185,6 +189,8 @@ public partial class SystemAdminController
             PermitExpirationDate = facility.PermitExpirationDate,
             PermitPhone = facility.PermitPhone,
             FacilityPhone = facility.FacilityPhone,
+            FacilityContactPerson = facility.FacilityContactPerson,
+            FacilityContactPersonPhone = facility.FacilityContactPersonPhone,
             OrcName = facility.OrcName,
             OperatorGrade = facility.OperatorGrade,
             OperatorNumber = facility.OperatorNumber,
@@ -237,6 +243,8 @@ public partial class SystemAdminController
             facility.PermitExpirationDate = viewModel.PermitExpirationDate;
             facility.PermitPhone = viewModel.PermitPhone;
             facility.FacilityPhone = viewModel.FacilityPhone;
+            facility.FacilityContactPerson = viewModel.FacilityContactPerson;
+            facility.FacilityContactPersonPhone = viewModel.FacilityContactPersonPhone;
             facility.OrcName = viewModel.OrcName;
             facility.OperatorGrade = viewModel.OperatorGrade;
             facility.OperatorNumber = viewModel.OperatorNumber;

@@ -65,6 +65,14 @@ public class FacilityViewModel
     public string FacilityPhone { get; set; } = string.Empty;
 
     [StringLength(200)]
+    [Display(Name = "Facility Contact Person")]
+    public string FacilityContactPerson { get; set; } = string.Empty;
+
+    [StringLength(50)]
+    [Display(Name = "Facility Contact Person Phone #")]
+    public string FacilityContactPersonPhone { get; set; } = string.Empty;
+
+    [StringLength(200)]
     [Display(Name = "Operator in Responsible Charge (ORC)")]
     public string OrcName { get; set; } = string.Empty;
 
@@ -180,6 +188,14 @@ public class FacilityCreateViewModel
     [StringLength(50)]
     [Display(Name = "Facility Phone")]
     public string? FacilityPhone { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Facility Contact Person")]
+    public string? FacilityContactPerson { get; set; }
+
+    [StringLength(50)]
+    [Display(Name = "Facility Contact Person Phone #")]
+    public string? FacilityContactPersonPhone { get; set; }
 
     [StringLength(200)]
     [Display(Name = "Operator in Responsible Charge (ORC)")]
@@ -299,6 +315,14 @@ public class FacilityEditViewModel
     [StringLength(50)]
     [Display(Name = "Facility Phone")]
     public string? FacilityPhone { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Facility Contact Person")]
+    public string? FacilityContactPerson { get; set; }
+
+    [StringLength(50)]
+    [Display(Name = "Facility Contact Person Phone #")]
+    public string? FacilityContactPersonPhone { get; set; }
 
     [StringLength(200)]
     [Display(Name = "Operator in Responsible Charge (ORC)")]

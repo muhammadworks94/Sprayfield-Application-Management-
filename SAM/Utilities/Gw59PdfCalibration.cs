@@ -196,7 +196,7 @@ public static class Gw59PdfCalibration
         State = TextOnLine(206.6, 126.2, 45),
         ZipCode = TextOnLine(248, 126.2, 50),
         County = TextOnLine(355, 126.2, 95),
-        PermitExpirationDate = TextOnLine(636.5, 86.8, 50),
+        PermitExpirationDate = TextOnLine(664.8, 75.1, 55),
         ContactPerson = TextOnLine(110, 152.5, 240),
         FacilityPhone = TextOnLine(355, 152.5, 95),
         WellLocation = TextOnLine(136.6, 165.8, 180),

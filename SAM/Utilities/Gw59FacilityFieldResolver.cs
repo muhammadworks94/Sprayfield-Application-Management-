@@ -7,22 +7,10 @@ namespace SAM.Utilities;
 public static class Gw59FacilityFieldResolver
 {
     public static string ResolveContactPerson(Facility? facility) =>
-        facility?.OrcName ?? string.Empty;
+        facility?.FacilityContactPerson ?? string.Empty;
 
-    public static string ResolveFacilityPhone(Facility? facility)
-    {
-        if (!string.IsNullOrWhiteSpace(facility?.FacilityPhone))
-        {
-            return facility.FacilityPhone;
-        }
-
-        if (!string.IsNullOrWhiteSpace(facility?.PermitPhone))
-        {
-            return facility.PermitPhone;
-        }
-
-        return facility?.OperatorPhone ?? string.Empty;
-    }
+    public static string ResolveFacilityPhone(Facility? facility) =>
+        facility?.FacilityContactPersonPhone ?? string.Empty;
 
     public static Task<int> CountMonitoringWellsForFacilityAsync(
         ApplicationDbContext context,

@@ -90,6 +90,8 @@ public class FacilityService : IFacilityService
         existing.PermitExpirationDate = facility.PermitExpirationDate;
         existing.PermitPhone = facility.PermitPhone;
         existing.FacilityPhone = facility.FacilityPhone;
+        existing.FacilityContactPerson = facility.FacilityContactPerson;
+        existing.FacilityContactPersonPhone = facility.FacilityContactPersonPhone;
         existing.OrcName = facility.OrcName;
         existing.OperatorGrade = facility.OperatorGrade;
         existing.OperatorNumber = facility.OperatorNumber;
