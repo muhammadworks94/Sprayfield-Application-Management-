@@ -34,6 +34,23 @@
 }
 
 <div class="dashboard-modern">
+@if (Model.PermitAlerts.Any())
+{
+    <div class="mb-4">
+        @foreach (var alert in Model.PermitAlerts)
+        {
+            var alertClass = alert.Severity switch
+            {
+                "Critical" => "alert-danger",
+                "Info" => "alert-info",
+                _ => "alert-warning"
+            };
+            <div class="alert @alertClass py-2 mb-2" role="alert">
+                <strong>@alert.FacilityName (@alert.PermitNumber v@alert.PermitVersion):</strong> @alert.Message
+            </div>
+        }
+    </div>
+}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         @if (canManageUsers && Model.PendingUserRequests > 0)

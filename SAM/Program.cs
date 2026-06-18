@@ -126,6 +126,8 @@ builder.Services.AddScoped<SAM.Services.Interfaces.IErrorLogService, ErrorLogSer
 builder.Services.AddScoped<SAM.Services.Interfaces.ILookupQueryService, LookupQueryService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IBreadcrumbService, BreadcrumbService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IFacilityPermitResolver, FacilityPermitResolver>();
+builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyLabOptionService, CompanyLabOptionService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IPermitAlertService, PermitAlertService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IPcsCatalogService, PcsCatalogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IProjectKnowledgeService, ProjectKnowledgeService>();
 var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");

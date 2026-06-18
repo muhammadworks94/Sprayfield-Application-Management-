@@ -28,6 +28,7 @@ public class NDAR1Service : INDAR1Service
     private readonly IFacilityService _facilityService;
     private readonly IApplicationComplianceService _applicationComplianceService;
     private readonly IWebHostEnvironment _environment;
+    private readonly IFacilityPermitResolver _facilityPermitResolver;
 
     public NDAR1Service(
         ApplicationDbContext context,
@@ -35,7 +36,8 @@ public class NDAR1Service : INDAR1Service
         ISprayfieldService sprayfieldService,
         IFacilityService facilityService,
         IApplicationComplianceService applicationComplianceService,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IFacilityPermitResolver facilityPermitResolver)
     {
         _context = context;
         _logger = logger;
@@ -43,6 +45,7 @@ public class NDAR1Service : INDAR1Service
         _facilityService = facilityService;
         _applicationComplianceService = applicationComplianceService;
         _environment = environment;
+        _facilityPermitResolver = facilityPermitResolver;
     }
 
     public async Task<IEnumerable<NDAR1>> GetAllAsync(Guid? companyId = null, Guid? facilityId = null)
@@ -1027,12 +1030,12 @@ public class NDAR1Service : INDAR1Service
 
         using var workbook = new XLWorkbook(templatePath);
         var worksheet = workbook.Worksheet(1);
+        var reportDate = new DateTime(report.Year, (int)report.Month, 1);
+        var permit = await _facilityPermitResolver.ResolveForDateAsync(facility.Id, reportDate);
 
-        // Populate header information
-        // Row 1 value cells: D1 (Permit No.), I1 (Facility Name), P1 (County), S1 (Month), V1 (Year)
-        worksheet.Cell("D1").Value = facility.PermitNumber;
+        worksheet.Cell("D1").Value = Gw59FacilityFieldResolver.ResolvePermitNumberForReport(facility, permit);
         worksheet.Cell("I1").Value = facility.Name;
-        worksheet.Cell("P1").Value = facility.County;
+        worksheet.Cell("P1").Value = Gw59FacilityFieldResolver.ResolveCounty(facility, permit);
         worksheet.Cell("S1").Value = report.Month.ToString();
         worksheet.Cell("V1").Value = report.Year;
 
@@ -1188,14 +1191,14 @@ public class NDAR1Service : INDAR1Service
         {
             // Make sheet 1 deterministic and ensure it represents chunk 1.
             worksheet.Name = "NDAR-1 (1)";
-            WriteNdarSheetChunk(worksheet, facility, report, chunks[0], operatorLogStorageByDate);
+            WriteNdarSheetChunk(worksheet, facility, permit, report, chunks[0], operatorLogStorageByDate);
 
             // Create additional NDAR chunk sheets for chunk 2..N.
             for (var chunkIndex = 1; chunkIndex < chunks.Count; chunkIndex++)
             {
                 var extraSheetName = $"NDAR-1 ({chunkIndex + 1})";
                 var extraSheet = worksheet.CopyTo(extraSheetName);
-                WriteNdarSheetChunk(extraSheet, facility, report, chunks[chunkIndex], operatorLogStorageByDate);
+                WriteNdarSheetChunk(extraSheet, facility, permit, report, chunks[chunkIndex], operatorLogStorageByDate);
             }
         }
 
@@ -1216,7 +1219,7 @@ public class NDAR1Service : INDAR1Service
 
                 var certSheetName = $"Certification ({chunkIndex + 1})";
                 var certSheet = certificationTemplate.CopyTo(certSheetName);
-                WriteCertificationPage(certSheet, facility, irrigationReport?.ComplianceStatus);
+                WriteCertificationPage(certSheet, facility, permit, irrigationReport?.ComplianceStatus);
                 certSheet.Position = ndarSheet.Position + 1;
             }
         }
@@ -1314,13 +1317,14 @@ public class NDAR1Service : INDAR1Service
     private static void WriteNdarSheetChunk(
         IXLWorksheet worksheet,
         Facility facility,
+        FacilityPermit? permit,
         NDAR1 report,
         List<NdarExportField> chunk,
         IReadOnlyDictionary<DateTime, decimal?> operatorLogStorageByDate)
     {
-        worksheet.Cell("D1").Value = facility.PermitNumber;
+        worksheet.Cell("D1").Value = Gw59FacilityFieldResolver.ResolvePermitNumberForReport(facility, permit);
         worksheet.Cell("I1").Value = facility.Name;
-        worksheet.Cell("P1").Value = facility.County;
+        worksheet.Cell("P1").Value = Gw59FacilityFieldResolver.ResolveCounty(facility, permit);
         worksheet.Cell("S1").Value = report.Month.ToString();
         worksheet.Cell("V1").Value = report.Year;
         WriteFacilityIrrigationCheckbox(worksheet, report.DidIrrigationOccur);
@@ -1583,7 +1587,7 @@ public class NDAR1Service : INDAR1Service
         public decimal FloatingTotal { get; set; }
     }
 
-    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility, ComplianceStatusEnum? complianceStatus)
+    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility, FacilityPermit? permit, ComplianceStatusEnum? complianceStatus)
     {
         WriteFacilityStatusComplianceRows(certificationWorksheet, complianceStatus);
 
@@ -1594,12 +1598,11 @@ public class NDAR1Service : INDAR1Service
         certificationWorksheet.Cell("A13").Value = $"Has the ORC changed since the previous NDAR-1? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
         certificationWorksheet.Cell("K14").Value = DateTime.Today.ToString("MM/dd/yyyy");
 
-        // Permittee certification section
         certificationWorksheet.Cell("O10").Value = facility.Permittee ?? string.Empty;
         certificationWorksheet.Cell("O11").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("P12").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("O13").Value = facility.PermitPhone ?? string.Empty;
-        certificationWorksheet.Cell("T13").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
+        certificationWorksheet.Cell("T13").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("U14").Value = DateTime.Today.ToString("MM/dd/yyyy");
     }
 

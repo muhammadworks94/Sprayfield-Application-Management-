@@ -13,11 +13,6 @@ public class Facility : CompanyScopedEntity
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Facility's permit number.
-    /// </summary>
-    public string PermitNumber { get; set; } = string.Empty;
-
-    /// <summary>
     /// Name of the permit holder.
     /// </summary>
     public string Permittee { get; set; } = string.Empty;
@@ -27,37 +22,7 @@ public class Facility : CompanyScopedEntity
     /// </summary>
     public string FacilityClass { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Street address.
-    /// </summary>
-    public string Address { get; set; } = string.Empty;
-
-    /// <summary>
-    /// City.
-    /// </summary>
-    public string City { get; set; } = string.Empty;
-
-    /// <summary>
-    /// State.
-    /// </summary>
-    public string State { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Zip code.
-    /// </summary>
-    public string ZipCode { get; set; } = string.Empty;
-
-    /// <summary>
-    /// County.
-    /// </summary>
-    public string County { get; set; } = string.Empty;
-
     // Permit / facility contact & regulatory metadata (from Facility Data Entry Form)
-
-    /// <summary>
-    /// Permit expiration date.
-    /// </summary>
-    public DateTime? PermitExpirationDate { get; set; }
 
     /// <summary>
     /// General permittee contact phone number.
@@ -105,39 +70,9 @@ public class Facility : CompanyScopedEntity
     public bool? ChangeInOrc { get; set; } = false;
 
     /// <summary>
-    /// Total number of sprayfields for this facility.
-    /// </summary>
-    public int? TotalNumberOfSprayfields { get; set; }
-
-    /// <summary>
-    /// Name of certified laboratory #1.
-    /// </summary>
-    public string? CertifiedLaboratory1Name { get; set; }
-
-    /// <summary>
-    /// Name of certified laboratory #2.
-    /// </summary>
-    public string? CertifiedLaboratory2Name { get; set; }
-
-    /// <summary>
-    /// Certification number for laboratory #1.
-    /// </summary>
-    public string? LabCertificationNumber1 { get; set; }
-
-    /// <summary>
-    /// Certification number for laboratory #2.
-    /// </summary>
-    public string? LabCertificationNumber2 { get; set; }
-
-    /// <summary>
     /// Person(s) collecting samples.
     /// </summary>
     public string? PersonsCollectingSamples { get; set; }
-
-    /// <summary>
-    /// Permitted minimum freeboard in feet.
-    /// </summary>
-    public decimal? PermittedMinimumFreeboardFeet { get; set; }
 
     /// <summary>
     /// Mineralization rate (%), used for PAN calculation. Default 40%.
@@ -148,6 +83,19 @@ public class Facility : CompanyScopedEntity
     /// Volatilization rate (%), used for PAN calculation. Default 50%.
     /// </summary>
     public decimal? VolatilizationRatePercent { get; set; }
+
+    /// <summary>
+    /// Default certified laboratory for GW-59 and related exports.
+    /// </summary>
+    public Guid? DefaultLabOptionId { get; set; }
+
+    /// <summary>
+    /// Default permit version assigned to this facility.
+    /// </summary>
+    public Guid? DefaultFacilityPermitId { get; set; }
+
+    public CompanyLabOption? DefaultLabOption { get; set; }
+    public FacilityPermit? DefaultFacilityPermit { get; set; }
 
     // Navigation properties
     public ICollection<WWChar> WWChars { get; set; } = new List<WWChar>();

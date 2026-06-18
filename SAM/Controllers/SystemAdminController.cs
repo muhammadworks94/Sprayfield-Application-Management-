@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using SAM.Controllers.Base;
 using SAM.Data;
@@ -87,7 +88,7 @@ public partial class SystemAdminController : BaseController
         }
         
         // Validate tab parameter
-        var validTabs = new[] { "facilities", "soils", "crops", "nozzles", "sprayfields", "monitoringwells" };
+        var validTabs = new[] { "facilities", "soils", "crops", "nozzles", "sprayfields", "monitoringwells", "permits", "laboptions" };
         if (!validTabs.Contains(tab?.ToLower()))
         {
             tab = "facilities";
@@ -107,21 +108,7 @@ public partial class SystemAdminController : BaseController
         {
             case "facilities":
                 var facilities = await _facilityService.GetAllAsync(companyId);
-                viewModel.Facilities = facilities.Select(f => new FacilityViewModel
-                {
-                    Id = f.Id,
-                    CompanyId = f.CompanyId,
-                    CompanyName = f.Company?.Name,
-                    Name = f.Name,
-                    PermitNumber = f.PermitNumber,
-                    Permittee = f.Permittee,
-                    FacilityClass = f.FacilityClass,
-                    Address = f.Address,
-                    City = f.City,
-                    State = f.State,
-                    ZipCode = f.ZipCode,
-                    County = f.County
-                });
+                viewModel.Facilities = facilities.Select(Gw59FacilityFieldResolver.ToFacilityListItemViewModel);
                 viewModel.FacilitiesFilter = await CreateFacilitiesFilterViewModelAsync(isGlobalAdmin, companyId);
                 break;
             case "soils":
@@ -215,6 +202,60 @@ public partial class SystemAdminController : BaseController
                     Longitude = m.Longitude
                 });
                 viewModel.MonitoringWellsFilter = await CreateMonitoringWellsFilterViewModelAsync(isGlobalAdmin, companyId);
+                break;
+            case "permits":
+                var permitQuery = _context.FacilityPermits
+                    .AsNoTracking()
+                    .Include(p => p.Facility)
+                    .AsQueryable();
+                if (companyId.HasValue)
+                {
+                    permitQuery = permitQuery.Where(p => p.CompanyId == companyId.Value);
+                }
+
+                viewModel.Permits = await permitQuery
+                    .OrderBy(p => p.Facility!.Name)
+                    .ThenByDescending(p => p.EffectiveStartDate)
+                    .Select(p => new PermitListItemViewModel
+                    {
+                        Id = p.Id,
+                        FacilityId = p.FacilityId,
+                        FacilityName = p.Facility!.Name,
+                        PermitNumber = p.PermitNumber,
+                        PermitVersion = p.PermitVersion,
+                        EffectiveStartDate = p.EffectiveStartDate,
+                        EffectiveEndDate = p.EffectiveEndDate,
+                        IsActive = p.IsActive,
+                        GwOperationLagoon = p.GwOperationLagoon,
+                        GwOperationSprayField = p.GwOperationSprayField,
+                        County = p.County,
+                        Address = p.Address,
+                        City = p.City,
+                        State = p.State,
+                        ZipCode = p.ZipCode,
+                        TotalNumberOfSprayfields = p.TotalNumberOfSprayfields
+                    })
+                    .ToListAsync();
+                break;
+            case "laboptions":
+                var labOptions = await _context.CompanyLabOptions
+                    .AsNoTracking()
+                    .Include(x => x.Company)
+                    .Where(x => x.IsActive)
+                    .Where(x => !companyId.HasValue || x.CompanyId == companyId.Value)
+                    .OrderBy(x => x.SortOrder)
+                    .ThenBy(x => x.Name)
+                    .ToListAsync();
+                viewModel.LabOptions = labOptions.Select(x => new LabOptionViewModel
+                {
+                    Id = x.Id,
+                    CompanyId = x.CompanyId,
+                    CompanyName = x.Company?.Name,
+                    Name = x.Name,
+                    CertificationNumber = x.CertificationNumber,
+                    SortOrder = x.SortOrder,
+                    IsActive = x.IsActive
+                });
                 break;
         }
         
@@ -441,6 +482,53 @@ public partial class SystemAdminController : BaseController
     private static string BuildNaturalSortKey(string? input)
     {
         return Regex.Replace(input ?? string.Empty, @"\d+", match => match.Value.PadLeft(10, '0'));
+    }
+
+    private async Task<SelectList> GetFacilityPermitSelectListAsync(Guid facilityId, Guid? selectedId)
+    {
+        var permits = await _context.FacilityPermits
+            .AsNoTracking()
+            .Where(p => p.FacilityId == facilityId && p.IsActive)
+            .OrderByDescending(p => p.EffectiveStartDate)
+            .Select(p => new { p.Id, Label = $"{p.PermitNumber} v{p.PermitVersion}" })
+            .ToListAsync();
+
+        return new SelectList(permits, "Id", "Label", selectedId);
+    }
+
+    private async Task<SelectList> GetLabOptionSelectListAsync(Guid companyId, Guid? selectedId)
+    {
+        var labs = await _context.CompanyLabOptions
+            .AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.IsActive)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name })
+            .ToListAsync();
+
+        return new SelectList(labs, "Id", "Name", selectedId);
+    }
+
+    private async Task<Guid?> ResolveSingleLabOptionIdAsync(Guid companyId)
+    {
+        var labIds = await _context.CompanyLabOptions
+            .AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.IsActive)
+            .Select(x => x.Id)
+            .ToListAsync();
+
+        return labIds.Count == 1 ? labIds[0] : null;
+    }
+
+    private async Task<Guid?> ResolveSingleFacilityPermitIdAsync(Guid facilityId)
+    {
+        var permitIds = await _context.FacilityPermits
+            .AsNoTracking()
+            .Where(p => p.FacilityId == facilityId && p.IsActive)
+            .Select(p => p.Id)
+            .ToListAsync();
+
+        return permitIds.Count == 1 ? permitIds[0] : null;
     }
 
     #endregion

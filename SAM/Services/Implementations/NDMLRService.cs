@@ -26,17 +26,20 @@ public class NDMLRService : INDMLRService
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<NDMLRService> _logger;
     private readonly IApplicationComplianceService _applicationComplianceService;
+    private readonly IFacilityPermitResolver _facilityPermitResolver;
 
     public NDMLRService(
         ApplicationDbContext context,
         IWebHostEnvironment environment,
         ILogger<NDMLRService> logger,
-        IApplicationComplianceService applicationComplianceService)
+        IApplicationComplianceService applicationComplianceService,
+        IFacilityPermitResolver facilityPermitResolver)
     {
         _context = context;
         _environment = environment;
         _logger = logger;
         _applicationComplianceService = applicationComplianceService;
+        _facilityPermitResolver = facilityPermitResolver;
     }
 
     /// <inheritdoc />
@@ -170,6 +173,9 @@ public class NDMLRService : INDMLRService
             chunks.Add(new List<Sprayfield>());
         }
 
+        var reportDate = new DateTime(year, (int)ndmlr.Month, 1);
+        var permit = await _facilityPermitResolver.ResolveForDateAsync(facility.Id, reportDate);
+
         for (var chunkIndex = 0; chunkIndex < chunks.Count; chunkIndex++)
         {
             IXLWorksheet reportSheet;
@@ -185,7 +191,7 @@ public class NDMLRService : INDMLRService
             }
 
             var chunk = chunks[chunkIndex];
-            WriteHeader(reportSheet, facility, year, ndmlr.Month);
+            WriteHeader(reportSheet, facility, permit, year, ndmlr.Month);
             WriteFieldBlocks(reportSheet, chunk, monthlyVolumesByFieldByMonth);
             WriteDataRows(reportSheet, chunk, monthlyVolumesByFieldByMonth, gwMonits, monthKeys);
             await WriteFooterAsync(reportSheet, ndmlr, chunk, windowEnd);
@@ -194,7 +200,7 @@ public class NDMLRService : INDMLRService
             {
                 var certSheetName = $"Certification ({chunkIndex + 1})";
                 var certSheet = certificationTemplate.CopyTo(certSheetName);
-                WriteCertificationPage(certSheet, facility);
+                WriteCertificationPage(certSheet, facility, permit);
                 certSheet.Position = reportSheet.Position + 1;
             }
         }
@@ -257,11 +263,11 @@ public class NDMLRService : INDMLRService
         return values.Average();
     }
 
-    private static void WriteHeader(IXLWorksheet worksheet, Facility facility, int year, MonthEnum month)
+    private static void WriteHeader(IXLWorksheet worksheet, Facility facility, FacilityPermit? permit, int year, MonthEnum month)
     {
-        worksheet.Cell("C1").Value = facility.PermitNumber ?? "";
+        worksheet.Cell("C1").Value = Gw59FacilityFieldResolver.ResolvePermitNumberForReport(facility, permit);
         worksheet.Cell("G1").Value = facility.Name ?? "";
-        worksheet.Cell("O1").Value = facility.County ?? "";
+        worksheet.Cell("O1").Value = Gw59FacilityFieldResolver.ResolveCounty(facility, permit);
         worksheet.Cell("S1").Value = month.ToString();
         worksheet.Cell("V1").Value = year;
     }
@@ -542,7 +548,7 @@ public class NDMLRService : INDMLRService
         sheet?.Delete();
     }
 
-    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility)
+    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility, FacilityPermit? permit)
     {
         certificationWorksheet.Cell("C6").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("E7").Value = facility.OperatorNumber ?? string.Empty;
@@ -551,12 +557,11 @@ public class NDMLRService : INDMLRService
         certificationWorksheet.Cell("B9").Value = $"Has the ORC changed since the previous NDMLR? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
         certificationWorksheet.Cell("K10").Value = DateTime.Today.ToString("MM/dd/yyyy");
 
-        // Permittee certification section
         certificationWorksheet.Cell("O6").Value = facility.Permittee ?? string.Empty;
         certificationWorksheet.Cell("P7").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("P8").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("O9").Value = facility.PermitPhone ?? string.Empty;
-        certificationWorksheet.Cell("T9").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
+        certificationWorksheet.Cell("T9").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("U10").Value = DateTime.Today.ToString("MM/dd/yyyy");
     }
 

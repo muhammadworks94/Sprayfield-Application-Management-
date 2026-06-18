@@ -22,7 +22,7 @@ public class CompanyDetailsViewModel
 
     // Related Entities Collections
     public List<UserListItemViewModel> Users { get; set; } = new List<UserListItemViewModel>();
-    public List<FacilityViewModel> Facilities { get; set; } = new List<FacilityViewModel>();
+    public List<FacilityListItemViewModel> Facilities { get; set; } = new List<FacilityListItemViewModel>();
     public List<SoilViewModel> Soils { get; set; } = new List<SoilViewModel>();
     public List<CropViewModel> Crops { get; set; } = new List<CropViewModel>();
     public List<NozzleViewModel> Nozzles { get; set; } = new List<NozzleViewModel>();

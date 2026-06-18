@@ -1,0 +1,105 @@
+@model SAM.ViewModels.SystemAdmin.PermitsPartialViewModel
+@{
+    var canManageRecords = Model.CanManageRecords;
+
+    string FormatLocation(SAM.ViewModels.SystemAdmin.PermitListItemViewModel permit)
+    {
+        var parts = new[] { permit.Address, permit.City, permit.State, permit.ZipCode }
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p!.Trim())
+            .ToList();
+        return parts.Count > 0 ? string.Join(", ", parts) : "—";
+    }
+
+    string FormatGwOperations(SAM.ViewModels.SystemAdmin.PermitListItemViewModel permit)
+    {
+        if (!permit.GwOperationLagoon && !permit.GwOperationSprayField)
+        {
+            return "—";
+        }
+
+        var parts = new List<string>();
+        if (permit.GwOperationLagoon) parts.Add("Lagoon");
+        if (permit.GwOperationSprayField) parts.Add("Spray Field");
+        return string.Join(", ", parts);
+    }
+}
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4 page-section-header">
+            <div>
+                <h4 class="mb-0">Permits</h4>
+                <p class="text-muted mb-0 small">Permit versions with location, county, and operational limits by facility.</p>
+            </div>
+        </div>
+
+        @if (Model.Permits.Any())
+        {
+            <div class="table-responsive permits-table-wrapper">
+                <table class="table table-hover permits-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-building me-1"></i>Facility</th>
+                            <th><i class="bi bi-file-text me-1"></i>Permit Number</th>
+                            <th><i class="bi bi-layers me-1"></i>Version</th>
+                            <th><i class="bi bi-geo-alt me-1"></i>Permit Location</th>
+                            <th><i class="bi bi-map me-1"></i>County</th>
+                            <th><i class="bi bi-calendar-event me-1"></i>Start Date</th>
+                            <th><i class="bi bi-calendar-x me-1"></i>End Date</th>
+                            <th><i class="bi bi-bezier me-1"></i>Sprayfield Count</th>
+                            <th><i class="bi bi-check-circle me-1"></i>Status</th>
+                            <th><i class="bi bi-water me-1"></i>GW-59 Operations</th>
+                            @if (canManageRecords)
+                            {
+                                <th class="table-actions"><i class="bi bi-gear me-1"></i>Actions</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var permit in Model.Permits)
+                        {
+                            <tr>
+                                <td>@permit.FacilityName</td>
+                                <td class="text-nowrap">@permit.PermitNumber</td>
+                                <td class="text-nowrap">@permit.PermitVersion</td>
+                                <td class="permits-table__location small">@FormatLocation(permit)</td>
+                                <td>@(string.IsNullOrWhiteSpace(permit.County) ? "—" : permit.County)</td>
+                                <td class="text-nowrap">@permit.EffectiveStartDate.ToString("MM/dd/yyyy")</td>
+                                <td class="text-nowrap">@(permit.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? "—")</td>
+                                <td class="text-center">@(permit.TotalNumberOfSprayfields?.ToString() ?? "—")</td>
+                                <td>
+                                    @if (permit.IsActive)
+                                    {
+                                        <span class="badge bg-success-subtle text-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary">Archived</span>
+                                    }
+                                </td>
+                                <td class="small text-nowrap">@FormatGwOperations(permit)</td>
+                                @if (canManageRecords)
+                                {
+                                    <td class="table-actions">
+                                        <a asp-action="FacilityPermits" asp-route-facilityId="@permit.FacilityId" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Manage
+                                        </a>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-file-earmark-medical fs-1 d-block mb-3"></i>
+                <p class="mb-0">No permit versions found for this company.</p>
+                <p class="small">Add permits from a facility's Permit Versions page.</p>
+            </div>
+        }
+    </div>
+</div>

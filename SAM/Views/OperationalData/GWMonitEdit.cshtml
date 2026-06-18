@@ -99,9 +99,9 @@
                 <div class="form-section-title">Lab Information</div>
                 <div class="row">
                     <div class="col-md-3"><div class="mb-3"><label asp-for="LabSampleAnalyzedDate" class="form-label"></label><input asp-for="LabSampleAnalyzedDate" type="date" class="form-control" /><span asp-validation-for="LabSampleAnalyzedDate" class="text-danger"></span></div></div>
-                    <div class="col-md-3"><div class="mb-3"><label asp-for="LabCertification" class="form-label"></label><input asp-for="LabCertification" class="form-control" /><span asp-validation-for="LabCertification" class="text-danger"></span></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label class="form-label">Laboratory</label><input class="form-control" value="@(Model.ResolvedLabName ?? "—")" readonly /><small class="text-muted">From facility Lab Options.</small></div></div>
+                    <div class="col-md-3"><div class="mb-3"><label class="form-label">Lab Certification No.</label><input class="form-control" value="@(Model.ResolvedLabCertificationNumber ?? "—")" readonly /></div></div>
                     <div class="col-md-3"><div class="mb-3"><label asp-for="CollectedBy" class="form-label"></label><input asp-for="CollectedBy" class="form-control" /><span asp-validation-for="CollectedBy" class="text-danger"></span></div></div>
-                    <div class="col-md-3"><div class="mb-3"><label asp-for="AnalyzedBy" class="form-label"></label><input asp-for="AnalyzedBy" class="form-control" /><span asp-validation-for="AnalyzedBy" class="text-danger"></span></div></div>
                 </div>
             </div>
 

@@ -79,15 +79,8 @@ public class FacilityService : IFacilityService
             throw new EntityNotFoundException(nameof(Company), facility.CompanyId);
 
         existing.Name = facility.Name;
-        existing.PermitNumber = facility.PermitNumber;
         existing.Permittee = facility.Permittee;
         existing.FacilityClass = facility.FacilityClass;
-        existing.Address = facility.Address;
-        existing.City = facility.City;
-        existing.State = facility.State;
-        existing.ZipCode = facility.ZipCode;
-        existing.County = facility.County;
-        existing.PermitExpirationDate = facility.PermitExpirationDate;
         existing.PermitPhone = facility.PermitPhone;
         existing.FacilityPhone = facility.FacilityPhone;
         existing.FacilityContactPerson = facility.FacilityContactPerson;
@@ -97,15 +90,11 @@ public class FacilityService : IFacilityService
         existing.OperatorNumber = facility.OperatorNumber;
         existing.OperatorPhone = facility.OperatorPhone;
         existing.ChangeInOrc = facility.ChangeInOrc;
-        existing.TotalNumberOfSprayfields = facility.TotalNumberOfSprayfields;
-        existing.CertifiedLaboratory1Name = facility.CertifiedLaboratory1Name;
-        existing.CertifiedLaboratory2Name = facility.CertifiedLaboratory2Name;
-        existing.LabCertificationNumber1 = facility.LabCertificationNumber1;
-        existing.LabCertificationNumber2 = facility.LabCertificationNumber2;
         existing.PersonsCollectingSamples = facility.PersonsCollectingSamples;
-        existing.PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet;
         existing.MineralizationRatePercent = facility.MineralizationRatePercent;
         existing.VolatilizationRatePercent = facility.VolatilizationRatePercent;
+        existing.DefaultLabOptionId = facility.DefaultLabOptionId;
+        existing.DefaultFacilityPermitId = facility.DefaultFacilityPermitId;
 
         await _context.SaveChangesAsync();
 

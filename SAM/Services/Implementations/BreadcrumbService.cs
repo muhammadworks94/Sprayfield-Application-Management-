@@ -15,7 +15,9 @@ public class BreadcrumbService : IBreadcrumbService
         ["crops"] = "Crops",
         ["nozzles"] = "Nozzles",
         ["sprayfields"] = "Sprayfields",
-        ["monitoringwells"] = "Monitoring Wells"
+        ["monitoringwells"] = "Monitoring Wells",
+        ["permits"] = "Permits",
+        ["laboptions"] = "Lab Options"
     };
 
     private static readonly IReadOnlyDictionary<string, string> SectionDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.ViewModels.SystemAdmin;
@@ -22,21 +23,27 @@ public partial class SystemAdminController
         // Check company access
         await EnsureCompanyAccessAsync(facility.CompanyId);
 
+        var defaultPermit = facility.DefaultFacilityPermitId.HasValue
+            ? await _context.FacilityPermits.AsNoTracking().FirstOrDefaultAsync(p => p.Id == facility.DefaultFacilityPermitId)
+            : await _context.FacilityPermits.AsNoTracking()
+                .Where(p => p.FacilityId == facility.Id && p.IsActive)
+                .OrderByDescending(p => p.EffectiveStartDate)
+                .FirstOrDefaultAsync();
+
+        var defaultLab = facility.DefaultLabOptionId.HasValue
+            ? await _context.CompanyLabOptions.AsNoTracking().FirstOrDefaultAsync(x => x.Id == facility.DefaultLabOptionId)
+            : null;
+
         var viewModel = new FacilityViewModel
         {
             Id = facility.Id,
             CompanyId = facility.CompanyId,
             CompanyName = facility.Company?.Name,
             Name = facility.Name,
-            PermitNumber = facility.PermitNumber,
             Permittee = facility.Permittee,
+            PermitNumber = defaultPermit?.PermitNumber ?? string.Empty,
+            PermitExpirationDate = defaultPermit?.EffectiveEndDate,
             FacilityClass = facility.FacilityClass,
-            Address = facility.Address,
-            City = facility.City,
-            State = facility.State,
-            ZipCode = facility.ZipCode,
-            County = facility.County,
-            PermitExpirationDate = facility.PermitExpirationDate,
             PermitPhone = facility.PermitPhone,
             FacilityPhone = facility.FacilityPhone,
             FacilityContactPerson = facility.FacilityContactPerson,
@@ -46,15 +53,23 @@ public partial class SystemAdminController
             OperatorNumber = facility.OperatorNumber,
             OperatorPhone = facility.OperatorPhone,
             ChangeInOrc = facility.ChangeInOrc ?? false,
-            TotalNumberOfSprayfields = facility.TotalNumberOfSprayfields,
-            CertifiedLaboratory1Name = facility.CertifiedLaboratory1Name,
-            CertifiedLaboratory2Name = facility.CertifiedLaboratory2Name,
-            LabCertificationNumber1 = facility.LabCertificationNumber1,
-            LabCertificationNumber2 = facility.LabCertificationNumber2,
             PersonsCollectingSamples = facility.PersonsCollectingSamples,
-            PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet,
             MineralizationRatePercent = facility.MineralizationRatePercent,
-            VolatilizationRatePercent = facility.VolatilizationRatePercent
+            VolatilizationRatePercent = facility.VolatilizationRatePercent,
+            DefaultFacilityPermitId = facility.DefaultFacilityPermitId ?? defaultPermit?.Id,
+            DefaultLabOptionId = facility.DefaultLabOptionId,
+            SelectedPermitLabel = defaultPermit == null
+                ? null
+                : $"{defaultPermit.PermitNumber} v{defaultPermit.PermitVersion}",
+            SelectedLabOptionName = defaultLab?.Name,
+            SelectedLabCertificationNumber = defaultLab?.CertificationNumber,
+            PermitLocationSummary = defaultPermit == null
+                ? null
+                : string.Join(", ", new[] { defaultPermit.Address, $"{defaultPermit.City}, {defaultPermit.State} {defaultPermit.ZipCode}".Trim(' ', ',') }
+                    .Where(s => !string.IsNullOrWhiteSpace(s))),
+            SelectedPermitCounty = defaultPermit?.County,
+            PermitSprayfieldCount = defaultPermit?.TotalNumberOfSprayfields,
+            PermitMinimumFreeboardFeet = defaultPermit?.PermittedMinimumFreeboardFeet
         };
 
         return View(viewModel);
@@ -107,15 +122,8 @@ public partial class SystemAdminController
             {
                 CompanyId = viewModel.CompanyId,
                 Name = viewModel.Name,
-                PermitNumber = viewModel.PermitNumber,
                 Permittee = viewModel.Permittee,
                 FacilityClass = viewModel.FacilityClass,
-                Address = viewModel.Address,
-                City = viewModel.City,
-                State = viewModel.State,
-                ZipCode = viewModel.ZipCode,
-                County = viewModel.County,
-                PermitExpirationDate = viewModel.PermitExpirationDate,
                 PermitPhone = viewModel.PermitPhone,
                 FacilityPhone = viewModel.FacilityPhone,
                 FacilityContactPerson = viewModel.FacilityContactPerson,
@@ -125,13 +133,7 @@ public partial class SystemAdminController
                 OperatorNumber = viewModel.OperatorNumber,
                 OperatorPhone = viewModel.OperatorPhone,
                 ChangeInOrc = viewModel.ChangeInOrc,
-                TotalNumberOfSprayfields = viewModel.TotalNumberOfSprayfields,
-                CertifiedLaboratory1Name = viewModel.CertifiedLaboratory1Name,
-                CertifiedLaboratory2Name = viewModel.CertifiedLaboratory2Name,
-                LabCertificationNumber1 = viewModel.LabCertificationNumber1,
-                LabCertificationNumber2 = viewModel.LabCertificationNumber2,
                 PersonsCollectingSamples = viewModel.PersonsCollectingSamples,
-                PermittedMinimumFreeboardFeet = viewModel.PermittedMinimumFreeboardFeet,
                 MineralizationRatePercent = viewModel.MineralizationRatePercent ?? 40m,
                 VolatilizationRatePercent = viewModel.VolatilizationRatePercent ?? 50m
             };
@@ -178,15 +180,8 @@ public partial class SystemAdminController
             Id = facility.Id,
             CompanyId = facility.CompanyId,
             Name = facility.Name,
-            PermitNumber = facility.PermitNumber,
             Permittee = facility.Permittee,
             FacilityClass = facility.FacilityClass,
-            Address = facility.Address,
-            City = facility.City,
-            State = facility.State,
-            ZipCode = facility.ZipCode,
-            County = facility.County,
-            PermitExpirationDate = facility.PermitExpirationDate,
             PermitPhone = facility.PermitPhone,
             FacilityPhone = facility.FacilityPhone,
             FacilityContactPerson = facility.FacilityContactPerson,
@@ -196,18 +191,21 @@ public partial class SystemAdminController
             OperatorNumber = facility.OperatorNumber,
             OperatorPhone = facility.OperatorPhone,
             ChangeInOrc = facility.ChangeInOrc ?? false,
-            TotalNumberOfSprayfields = facility.TotalNumberOfSprayfields,
-            CertifiedLaboratory1Name = facility.CertifiedLaboratory1Name,
-            CertifiedLaboratory2Name = facility.CertifiedLaboratory2Name,
-            LabCertificationNumber1 = facility.LabCertificationNumber1,
-            LabCertificationNumber2 = facility.LabCertificationNumber2,
             PersonsCollectingSamples = facility.PersonsCollectingSamples,
-            PermittedMinimumFreeboardFeet = facility.PermittedMinimumFreeboardFeet,
             MineralizationRatePercent = facility.MineralizationRatePercent,
-            VolatilizationRatePercent = facility.VolatilizationRatePercent
+            VolatilizationRatePercent = facility.VolatilizationRatePercent,
+            DefaultFacilityPermitId = facility.DefaultFacilityPermitId,
+            DefaultLabOptionId = facility.DefaultLabOptionId ?? await ResolveSingleLabOptionIdAsync(facility.CompanyId)
         };
 
+        if (!viewModel.DefaultFacilityPermitId.HasValue)
+        {
+            viewModel.DefaultFacilityPermitId = await ResolveSingleFacilityPermitIdAsync(facility.Id);
+        }
+
         ViewBag.Companies = await GetCompanySelectListAsync();
+        ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(facility.Id, viewModel.DefaultFacilityPermitId);
+        ViewBag.LabOptions = await GetLabOptionSelectListAsync(facility.CompanyId, viewModel.DefaultLabOptionId);
         return View(viewModel);
     }
 
@@ -222,6 +220,8 @@ public partial class SystemAdminController
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
+            ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(viewModel.Id, viewModel.DefaultFacilityPermitId);
+            ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.DefaultLabOptionId);
             return View(viewModel);
         }
 
@@ -231,16 +231,12 @@ public partial class SystemAdminController
             if (facility == null)
                 return NotFound();
 
+            viewModel.DefaultLabOptionId ??= await ResolveSingleLabOptionIdAsync(viewModel.CompanyId);
+            viewModel.DefaultFacilityPermitId ??= await ResolveSingleFacilityPermitIdAsync(viewModel.Id);
+
             facility.Name = viewModel.Name;
-            facility.PermitNumber = viewModel.PermitNumber;
             facility.Permittee = viewModel.Permittee;
             facility.FacilityClass = viewModel.FacilityClass;
-            facility.Address = viewModel.Address;
-            facility.City = viewModel.City;
-            facility.State = viewModel.State;
-            facility.ZipCode = viewModel.ZipCode;
-            facility.County = viewModel.County;
-            facility.PermitExpirationDate = viewModel.PermitExpirationDate;
             facility.PermitPhone = viewModel.PermitPhone;
             facility.FacilityPhone = viewModel.FacilityPhone;
             facility.FacilityContactPerson = viewModel.FacilityContactPerson;
@@ -250,15 +246,11 @@ public partial class SystemAdminController
             facility.OperatorNumber = viewModel.OperatorNumber;
             facility.OperatorPhone = viewModel.OperatorPhone;
             facility.ChangeInOrc = viewModel.ChangeInOrc;
-            facility.TotalNumberOfSprayfields = viewModel.TotalNumberOfSprayfields;
-            facility.CertifiedLaboratory1Name = viewModel.CertifiedLaboratory1Name;
-            facility.CertifiedLaboratory2Name = viewModel.CertifiedLaboratory2Name;
-            facility.LabCertificationNumber1 = viewModel.LabCertificationNumber1;
-            facility.LabCertificationNumber2 = viewModel.LabCertificationNumber2;
             facility.PersonsCollectingSamples = viewModel.PersonsCollectingSamples;
-            facility.PermittedMinimumFreeboardFeet = viewModel.PermittedMinimumFreeboardFeet;
             facility.MineralizationRatePercent = viewModel.MineralizationRatePercent;
             facility.VolatilizationRatePercent = viewModel.VolatilizationRatePercent;
+            facility.DefaultFacilityPermitId = viewModel.DefaultFacilityPermitId;
+            facility.DefaultLabOptionId = viewModel.DefaultLabOptionId;
 
             await _facilityService.UpdateAsync(facility);
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";
@@ -268,6 +260,8 @@ public partial class SystemAdminController
         {
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
+            ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(viewModel.Id, viewModel.DefaultFacilityPermitId);
+            ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.DefaultLabOptionId);
             return View(viewModel);
         }
     }

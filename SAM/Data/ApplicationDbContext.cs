@@ -34,6 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<MonitoringWell> MonitoringWells => Set<MonitoringWell>();
     public DbSet<WWChar> WWChars => Set<WWChar>();
     public DbSet<FacilityPermit> FacilityPermits => Set<FacilityPermit>();
+    public DbSet<CompanyLabOption> CompanyLabOptions => Set<CompanyLabOption>();
     public DbSet<PcsParameterCatalog> PcsParameterCatalogs => Set<PcsParameterCatalog>();
     public DbSet<FacilityPermitTemplateParameter> FacilityPermitTemplateParameters => Set<FacilityPermitTemplateParameter>();
     public DbSet<WWCharTemplateValue> WWCharTemplateValues => Set<WWCharTemplateValue>();

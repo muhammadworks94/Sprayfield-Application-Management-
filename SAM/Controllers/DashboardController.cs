@@ -30,6 +30,7 @@ public class DashboardController : BaseController
     private readonly IWWCharService _wwCharService;
     private readonly IGWMonitService _gwMonitService;
     private readonly IIrrRprtService _irrRprtService;
+    private readonly IPermitAlertService _permitAlertService;
 
     public DashboardController(
         IFacilityService facilityService,
@@ -42,6 +43,7 @@ public class DashboardController : BaseController
         IWWCharService wwCharService,
         IGWMonitService gwMonitService,
         IIrrRprtService irrRprtService,
+        IPermitAlertService permitAlertService,
         UserManager<ApplicationUser> userManager,
         ILogger<DashboardController> logger)
         : base(userManager, logger)
@@ -56,6 +58,7 @@ public class DashboardController : BaseController
         _wwCharService = wwCharService;
         _gwMonitService = gwMonitService;
         _irrRprtService = irrRprtService;
+        _permitAlertService = permitAlertService;
     }
 
     [HttpGet]
@@ -355,6 +358,18 @@ public class DashboardController : BaseController
         }
 
         viewModel.SelectedCompanyName = companyName;
+
+        var permitAlerts = await _permitAlertService.GetAlertsAsync(companyId, DateTime.UtcNow);
+        viewModel.PermitAlerts = permitAlerts.Select(a => new PermitAlertViewModel
+        {
+            FacilityName = a.FacilityName,
+            PermitNumber = a.PermitNumber,
+            PermitVersion = a.PermitVersion,
+            Message = a.Message,
+            DaysUntilExpiration = a.DaysUntilExpiration,
+            Severity = a.Severity.ToString()
+        }).ToList();
+
         ViewData["TitleIcon"] = "speedometer2";
         ViewData["PageSubtitle"] = "Environmental Monitoring Overview";
 

@@ -129,18 +129,16 @@ public class GWMonitViewModel
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
     public string? VOCMethodNumber { get; set; }
-    
-    [StringLength(500)]
-    [Display(Name = "Lab Certification")]
-    public string? LabCertification { get; set; }
+
+    [Display(Name = "Laboratory")]
+    public string? ResolvedLabName { get; set; }
+
+    [Display(Name = "Lab Certification No.")]
+    public string? ResolvedLabCertificationNumber { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
     public string? CollectedBy { get; set; }
-    
-    [StringLength(200)]
-    [Display(Name = "Analyzed By")]
-    public string? AnalyzedBy { get; set; }
 
     [Display(Name = "Lab Date Sample Analyzed")]
     [DataType(DataType.Date)]
@@ -322,18 +320,16 @@ public class GWMonitCreateViewModel
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
     public string? VOCMethodNumber { get; set; }
-    
-    [StringLength(500)]
-    [Display(Name = "Lab Certification")]
-    public string? LabCertification { get; set; }
+
+    [Display(Name = "Laboratory")]
+    public string? ResolvedLabName { get; set; }
+
+    [Display(Name = "Lab Certification No.")]
+    public string? ResolvedLabCertificationNumber { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
     public string? CollectedBy { get; set; }
-    
-    [StringLength(200)]
-    [Display(Name = "Analyzed By")]
-    public string? AnalyzedBy { get; set; }
 
     [Display(Name = "Lab Date Sample Analyzed")]
     [DataType(DataType.Date)]
@@ -523,18 +519,16 @@ public class GWMonitEditViewModel
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
     public string? VOCMethodNumber { get; set; }
-    
-    [StringLength(500)]
-    [Display(Name = "Lab Certification")]
-    public string? LabCertification { get; set; }
+
+    [Display(Name = "Laboratory")]
+    public string? ResolvedLabName { get; set; }
+
+    [Display(Name = "Lab Certification No.")]
+    public string? ResolvedLabCertificationNumber { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
     public string? CollectedBy { get; set; }
-    
-    [StringLength(200)]
-    [Display(Name = "Analyzed By")]
-    public string? AnalyzedBy { get; set; }
 
     [Display(Name = "Lab Date Sample Analyzed")]
     [DataType(DataType.Date)]

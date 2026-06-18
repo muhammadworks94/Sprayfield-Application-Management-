@@ -33,6 +33,7 @@ public partial class SystemAdminController
 
         ViewBag.Facility = facility;
         ViewBag.Permits = permits;
+        ViewBag.LatestPermit = permits.Where(p => p.IsActive).OrderByDescending(p => p.EffectiveStartDate).FirstOrDefault();
         ViewBag.PcsCatalog = pcsCatalog;
         ViewBag.Frequencies = Enum.GetValues<MeasurementFrequencyEnum>();
         ViewBag.SampleTypes = Enum.GetValues<SampleTypeEnum>();
@@ -58,6 +59,13 @@ public partial class SystemAdminController
         DateTime? effectiveEndDate,
         bool gwOperationLagoon,
         bool gwOperationSprayField,
+        string? address,
+        string? city,
+        string? state,
+        string? zipCode,
+        string? county,
+        int? totalNumberOfSprayfields,
+        decimal? permittedMinimumFreeboardFeet,
         string? notes,
         IFormFile? permitPdf)
     {
@@ -143,7 +151,14 @@ public partial class SystemAdminController
             GwOperationSprayField = gwOperationSprayField,
             Notes = notes,
             PermitPdfFileName = originalName,
-            PermitPdfStoragePath = storedPath
+            PermitPdfStoragePath = storedPath,
+            Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim(),
+            City = string.IsNullOrWhiteSpace(city) ? null : city.Trim(),
+            State = string.IsNullOrWhiteSpace(state) ? null : state.Trim(),
+            ZipCode = string.IsNullOrWhiteSpace(zipCode) ? null : zipCode.Trim(),
+            County = string.IsNullOrWhiteSpace(county) ? null : county.Trim(),
+            TotalNumberOfSprayfields = totalNumberOfSprayfields,
+            PermittedMinimumFreeboardFeet = permittedMinimumFreeboardFeet
         });
 
         try
@@ -169,6 +184,13 @@ public partial class SystemAdminController
         DateTime? effectiveEndDate,
         bool gwOperationLagoon,
         bool gwOperationSprayField,
+        string? address,
+        string? city,
+        string? state,
+        string? zipCode,
+        string? county,
+        int? totalNumberOfSprayfields,
+        decimal? permittedMinimumFreeboardFeet,
         string? notes,
         IFormFile? permitPdf)
     {
@@ -220,6 +242,13 @@ public partial class SystemAdminController
         permit.EffectiveEndDate = endDate;
         permit.GwOperationLagoon = gwOperationLagoon;
         permit.GwOperationSprayField = gwOperationSprayField;
+        permit.Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
+        permit.City = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
+        permit.State = string.IsNullOrWhiteSpace(state) ? null : state.Trim();
+        permit.ZipCode = string.IsNullOrWhiteSpace(zipCode) ? null : zipCode.Trim();
+        permit.County = string.IsNullOrWhiteSpace(county) ? null : county.Trim();
+        permit.TotalNumberOfSprayfields = totalNumberOfSprayfields;
+        permit.PermittedMinimumFreeboardFeet = permittedMinimumFreeboardFeet;
         permit.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
 
         if (!string.IsNullOrWhiteSpace(newBlobPath))
@@ -297,6 +326,15 @@ public partial class SystemAdminController
 
         permit.IsActive = false;
         permit.IsDeleted = true;
+
+        var facilitiesUsingDefault = await _context.Facilities
+            .Where(f => f.DefaultFacilityPermitId == permitId)
+            .ToListAsync();
+        foreach (var facility in facilitiesUsingDefault)
+        {
+            facility.DefaultFacilityPermitId = null;
+        }
+
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "Permit version deleted.";

@@ -2049,9 +2049,7 @@ namespace SAM.Controllers;
             VOCReportAttached = g.VOCReportAttached ?? false,
             VOCReportFileName = g.VOCReportFileName,
             VOCMethodNumber = g.VOCMethodNumber,
-            LabCertification = g.LabCertification,
             CollectedBy = g.CollectedBy,
-            AnalyzedBy = g.AnalyzedBy,
             LabSampleAnalyzedDate = g.LabSampleAnalyzedDate,
             Comments = g.Comments,
             GW59AQuestion1Response = g.GW59AQuestion1Response,
@@ -2150,9 +2148,7 @@ namespace SAM.Controllers;
             VOCReportAttached = gwMonit.VOCReportAttached ?? false,
             VOCReportFileName = gwMonit.VOCReportFileName,
             VOCMethodNumber = gwMonit.VOCMethodNumber,
-            LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
-            AnalyzedBy = gwMonit.AnalyzedBy,
             LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate,
             Comments = gwMonit.Comments,
             GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
@@ -2173,6 +2169,9 @@ namespace SAM.Controllers;
         };
 
         var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(gwMonit.FacilityId, gwMonit.SampleDate);
+        var labDisplay = await ResolveFacilityLabDisplayAsync(gwMonit.FacilityId);
+        viewModel.ResolvedLabName = labDisplay.Name;
+        viewModel.ResolvedLabCertificationNumber = labDisplay.Cert;
         viewModel.TemplateParameters = await BuildGwMonitTemplateInputsAsync(
             gwMonit.FacilityId,
             resolvedPermit?.Id,
@@ -2228,6 +2227,21 @@ namespace SAM.Controllers;
     }
 
 
+    private async Task<(string? Name, string? Cert)> ResolveFacilityLabDisplayAsync(Guid facilityId)
+    {
+        if (facilityId == Guid.Empty)
+        {
+            return (null, null);
+        }
+
+        var facility = await _facilityService.GetByIdAsync(facilityId);
+        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, facility);
+        var labInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, labOption);
+        return (
+            string.IsNullOrWhiteSpace(labInfo.LabName) ? null : labInfo.LabName,
+            string.IsNullOrWhiteSpace(labInfo.LabCertificationNumber) ? null : labInfo.LabCertificationNumber);
+    }
+
     private async Task<GW59ReportViewModel> BuildGW59ReportAsync(Guid gwMonitId)
     {
         var gwMonit = await _gwMonitService.GetByIdAsync(gwMonitId);
@@ -2245,10 +2259,15 @@ namespace SAM.Controllers;
             .AsNoTracking()
             .FirstOrDefaultAsync(w => w.Id == gwMonit.MonitoringWellId);
         var resolvedPermit = await _facilityPermitResolver.ResolveForDateAsync(gwMonit.FacilityId, gwMonit.SampleDate);
+        var preferredPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, facility, resolvedPermit);
+        var exportPermit = preferredPermit ?? resolvedPermit;
+        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, facility);
         var facilityWellCount = await Gw59FacilityFieldResolver.CountMonitoringWellsForFacilityAsync(
             _context,
             gwMonit.FacilityId,
             facility?.CompanyId ?? gwMonit.CompanyId);
+        var wellsCount = Gw59FacilityFieldResolver.ResolveNumberOfWellsToBeSampled(facility, exportPermit, facilityWellCount);
+        var labInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, labOption);
         var wellLocation = await Gw59FacilityFieldResolver.ResolveWellLocationAsync(
             _context,
             gwMonit.MonitoringWellId,
@@ -2289,16 +2308,16 @@ namespace SAM.Controllers;
             GwMonitId = gwMonit.Id,
             FacilityId = gwMonit.FacilityId,
             FacilityName = facility?.Name ?? string.Empty,
-            PermitNumber = resolvedPermit?.PermitNumber ?? facility?.PermitNumber ?? string.Empty,
+            PermitNumber = exportPermit?.PermitNumber ?? string.Empty,
             Permittee = facility?.Permittee ?? string.Empty,
-            Address = facility?.Address ?? string.Empty,
-            City = facility?.City ?? string.Empty,
-            State = facility?.State ?? string.Empty,
-            ZipCode = facility?.ZipCode ?? string.Empty,
-            County = facility?.County ?? string.Empty,
+            Address = Gw59FacilityFieldResolver.ResolveAddress(facility, exportPermit),
+            City = Gw59FacilityFieldResolver.ResolveCity(facility, exportPermit),
+            State = Gw59FacilityFieldResolver.ResolveState(facility, exportPermit),
+            ZipCode = Gw59FacilityFieldResolver.ResolveZipCode(facility, exportPermit),
+            County = Gw59FacilityFieldResolver.ResolveCounty(facility, exportPermit),
             ContactPerson = Gw59FacilityFieldResolver.ResolveContactPerson(facility),
             FacilityPhone = Gw59FacilityFieldResolver.ResolveFacilityPhone(facility),
-            PermitExpirationDate = resolvedPermit?.EffectiveEndDate ?? facility?.PermitExpirationDate,
+            PermitExpirationDate = exportPermit?.EffectiveEndDate,
 
             MonitoringWellId = gwMonit.MonitoringWellId,
             WellId = well?.WellId ?? string.Empty,
@@ -2307,7 +2326,7 @@ namespace SAM.Controllers;
             DiameterInches = wellData.DiameterInches,
             ScreenedIntervalFromFeet = wellData.ScreenedIntervalFromFeet,
             ScreenedIntervalToFeet = wellData.ScreenedIntervalToFeet,
-            NumberOfWellsToBeSampled = facilityWellCount,
+            NumberOfWellsToBeSampled = wellsCount,
 
             SampleDate = gwMonit.SampleDate,
             LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate,
@@ -2336,16 +2355,12 @@ namespace SAM.Controllers;
             PHLab = chemistry.PHLab,
             PhosphorusTotal = chemistry.PhosphorusTotal,
 
-            LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
-                ? (facility?.CertifiedLaboratory1Name ?? string.Empty)
-                : gwMonit.AnalyzedBy,
-            LabCertificationNumber = string.IsNullOrWhiteSpace(gwMonit.LabCertification)
-                ? (facility?.LabCertificationNumber1 ?? string.Empty)
-                : gwMonit.LabCertification,
+            LabName = labInfo.LabName,
+            LabCertificationNumber = labInfo.LabCertificationNumber,
             LabReportAttached = gwMonit.VOCReportAttached ?? false,
             VOCMethodNumber = gwMonit.VOCMethodNumber,
-            GwOperationLagoon = resolvedPermit?.GwOperationLagoon ?? true,
-            GwOperationSprayField = resolvedPermit?.GwOperationSprayField ?? true,
+            GwOperationLagoon = exportPermit?.GwOperationLagoon ?? true,
+            GwOperationSprayField = exportPermit?.GwOperationSprayField ?? true,
             OtherParameterLines = Gw59ChemistryResolver.ResolveOtherLines(snapshots).ToList(),
             ParameterSnapshots = snapshots
         };
@@ -2414,6 +2429,9 @@ namespace SAM.Controllers;
                 resolvedPermit?.Id,
                 viewModel.SampleDate,
                 viewModel.TemplateParameters.Count);
+            var labDisplay = await ResolveFacilityLabDisplayAsync(viewModel.FacilityId);
+            viewModel.ResolvedLabName = labDisplay.Name;
+            viewModel.ResolvedLabCertificationNumber = labDisplay.Cert;
         }
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
@@ -2543,9 +2561,7 @@ namespace SAM.Controllers;
                 TotalColiform = viewModel.TotalColiform,
                 VOCReportAttached = vocRequiredForSelectedMonth || viewModel.VOCReportAttached,
                 VOCMethodNumber = viewModel.VOCMethodNumber ?? string.Empty,
-                LabCertification = viewModel.LabCertification ?? string.Empty,
                 CollectedBy = viewModel.CollectedBy ?? string.Empty,
-                AnalyzedBy = viewModel.AnalyzedBy ?? string.Empty,
                 LabSampleAnalyzedDate = viewModel.LabSampleAnalyzedDate,
                 Comments = viewModel.Comments ?? string.Empty,
                 GW59AQuestion1Response = viewModel.GW59AQuestion1Response,
@@ -2642,9 +2658,7 @@ namespace SAM.Controllers;
             VOCReportAttached = gwMonit.VOCReportAttached ?? false,
             VOCReportFileName = gwMonit.VOCReportFileName,
             VOCMethodNumber = gwMonit.VOCMethodNumber,
-            LabCertification = gwMonit.LabCertification,
             CollectedBy = gwMonit.CollectedBy,
-            AnalyzedBy = gwMonit.AnalyzedBy,
             LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate,
             Comments = gwMonit.Comments,
             GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
@@ -2676,6 +2690,9 @@ namespace SAM.Controllers;
             resolvedEditPermit?.Id,
             gwMonit.SampleDate,
             viewModel.TemplateParameters.Count);
+        var labDisplay = await ResolveFacilityLabDisplayAsync(gwMonit.FacilityId);
+        viewModel.ResolvedLabName = labDisplay.Name;
+        viewModel.ResolvedLabCertificationNumber = labDisplay.Cert;
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(gwMonit.CompanyId);
         ViewBag.MonitoringWells = await GetMonitoringWellSelectListAsync(gwMonit.CompanyId, gwMonit.FacilityId);
@@ -2839,9 +2856,7 @@ namespace SAM.Controllers;
             gwMonit.TotalColiform = viewModel.TotalColiform;
             gwMonit.VOCReportAttached = vocRequiredForSelectedMonth || viewModel.VOCReportAttached;
             gwMonit.VOCMethodNumber = viewModel.VOCMethodNumber ?? string.Empty;
-            gwMonit.LabCertification = viewModel.LabCertification ?? string.Empty;
             gwMonit.CollectedBy = viewModel.CollectedBy ?? string.Empty;
-            gwMonit.AnalyzedBy = viewModel.AnalyzedBy ?? string.Empty;
             gwMonit.LabSampleAnalyzedDate = viewModel.LabSampleAnalyzedDate;
             gwMonit.Comments = viewModel.Comments ?? string.Empty;
             gwMonit.GW59AQuestion1Response = viewModel.GW59AQuestion1Response;

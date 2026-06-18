@@ -126,21 +126,12 @@ public static class CompanySeeder
             Id = Guid.NewGuid(),
             CompanyId = company1.Id,
             Name = "North Treatment Facility",
-            PermitNumber = "NPDES-001",
             Permittee = "Acme Environmental Services",
             FacilityClass = "Class A",
-            Address = "123 Industrial Blvd",
-            City = "Raleigh",
-            State = "NC",
-            ZipCode = "27601",
-            County = "Wake",
-            PermitExpirationDate = new DateTime(2026, 7, 31),
             FacilityContactPerson = "Steven Dodds",
             FacilityContactPersonPhone = "919-867-5309",
             OrcName = "Steven Dodds",
             OperatorPhone = "919-867-5309",
-            CertifiedLaboratory1Name = "Demo Certified Laboratory",
-            LabCertificationNumber1 = "NC-DEMO-001",
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
@@ -290,13 +281,8 @@ public static class CompanySeeder
             Id = Guid.NewGuid(),
             CompanyId = company2.Id,
             Name = "South Treatment Facility",
-            PermitNumber = "NPDES-002",
             Permittee = "Green Valley Waste Management",
             FacilityClass = "Class B",
-            Address = "456 Environmental Way",
-            City = "Charlotte",
-            State = "NC",
-            ZipCode = "28202",
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
@@ -397,23 +383,44 @@ public static class CompanySeeder
             catalogByCode[row.Code] = catalog;
         }
 
+        var labOption = new CompanyLabOption
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company.Id,
+            Name = "Demo Certified Laboratory",
+            CertificationNumber = "NC-DEMO-001",
+            SortOrder = 1,
+            IsActive = true,
+            CreatedDate = DateTime.UtcNow,
+            CreatedBy = "system",
+            IsDeleted = false
+        };
+        context.CompanyLabOptions.Add(labOption);
+        facility.DefaultLabOptionId = labOption.Id;
+
         var permit = new FacilityPermit
         {
             Id = Guid.NewGuid(),
             CompanyId = company.Id,
             FacilityId = facility.Id,
-            PermitNumber = facility.PermitNumber,
+            PermitNumber = "NPDES-001",
             PermitVersion = "1.0",
             EffectiveStartDate = new DateTime(2020, 1, 1),
             EffectiveEndDate = new DateTime(2026, 7, 31),
             IsActive = true,
             GwOperationLagoon = true,
             GwOperationSprayField = true,
+            Address = "123 Industrial Blvd",
+            City = "Raleigh",
+            State = "NC",
+            ZipCode = "27601",
+            County = "Wake",
             CreatedDate = DateTime.UtcNow,
             CreatedBy = "system",
             IsDeleted = false
         };
         context.FacilityPermits.Add(permit);
+        facility.DefaultFacilityPermitId = permit.Id;
 
         var sortOrder = 1;
         var templateParameters = new List<FacilityPermitTemplateParameter>();
@@ -457,8 +464,8 @@ public static class CompanySeeder
             MetalSamplesFieldAcidified = false,
             VOCReportAttached = true,
             CollectedBy = "Steven Dodds",
-            AnalyzedBy = facility.CertifiedLaboratory1Name ?? string.Empty,
-            LabCertification = facility.LabCertificationNumber1 ?? string.Empty,
+            AnalyzedBy = string.Empty,
+            LabCertification = string.Empty,
             GW59ADueDate = new DateTime(2026, 7, 15),
             GW59AQuestion1Response = true,
             GW59AQuestion2Response = false,

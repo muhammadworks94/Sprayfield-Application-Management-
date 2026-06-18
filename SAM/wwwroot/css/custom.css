@@ -4645,6 +4645,110 @@ i.bi-question-circle {
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
+.system-admin-tab.system-admin-tab--permits,
+.system-admin-tab.system-admin-tab--laboptions {
+  background: linear-gradient(180deg, #ffffff 0%, #e8f4ff 100%);
+}
+
+.system-admin-tab.system-admin-tab--permits:hover,
+.system-admin-tab.system-admin-tab--laboptions:hover {
+  background: linear-gradient(180deg, #f8fbff 0%, #dbeafe 100%);
+}
+
+.system-admin-tab.system-admin-tab--permits.active,
+.system-admin-tab.system-admin-tab--laboptions.active {
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.25), var(--shadow-sm);
+  background: linear-gradient(180deg, #f0f8ff 0%, #dbeafe 100%);
+}
+
+.system-admin-tab.system-admin-tab--permits .system-admin-tab-icon,
+.system-admin-tab.system-admin-tab--permits .system-admin-tab-label,
+.system-admin-tab.system-admin-tab--laboptions .system-admin-tab-icon,
+.system-admin-tab.system-admin-tab--laboptions .system-admin-tab-label {
+  color: #1d4ed8;
+}
+
+.lab-options-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.lab-options-table .lab-drag-col {
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  padding: 0.5rem 0.2rem !important;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.lab-options-table .lab-actions-col {
+  width: 11rem;
+}
+
+.lab-options-table.reorder-enabled .lab-drag-handle {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: element;
+}
+
+.lab-options-table.reorder-enabled .lab-drag-handle i {
+  font-size: 1.05rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.lab-options-table.reorder-enabled .lab-reorder-row:hover {
+  background-color: #f8f9fa;
+}
+
+.lab-options-table.reorder-enabled .lab-reorder-row.lab-dragging {
+  opacity: 0.55;
+}
+
+.lab-options-table.reorder-enabled .lab-drag-handle:active {
+  cursor: grabbing;
+}
+
+.permits-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.permits-table {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.permits-table thead th {
+  white-space: nowrap;
+  vertical-align: middle;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.permits-table thead th i {
+  opacity: 0.75;
+}
+
+.permits-table tbody td {
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
+}
+
+.permits-table__location {
+  max-width: 14rem;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.permits-table .table-actions {
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dashboard-animate-in {
     animation: none;

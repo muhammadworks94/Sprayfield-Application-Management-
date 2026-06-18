@@ -3,16 +3,12 @@ using SAM.ViewModels.Common;
 
 namespace SAM.ViewModels.SystemAdmin;
 
-/// <summary>
-/// ViewModel for the Facilities partial view.
-/// </summary>
-public class FacilitiesPartialViewModel
+public class PermitsPartialViewModel
 {
-    public IEnumerable<FacilityListItemViewModel> Facilities { get; set; } = new List<FacilityListItemViewModel>();
+    public IEnumerable<PermitListItemViewModel> Permits { get; set; } = new List<PermitListItemViewModel>();
     public FilterViewModel? Filter { get; set; }
     public bool IsGlobalAdmin { get; set; }
     public bool CanManageRecords { get; set; }
     public SelectList? Companies { get; set; }
     public Guid? SelectedCompanyId { get; set; }
 }
-

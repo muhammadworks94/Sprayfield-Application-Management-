@@ -1,0 +1,39 @@
+@model SAM.ViewModels.SystemAdmin.LabOptionCreateViewModel
+@{
+    ViewData["Title"] = "Add Lab Option";
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Add a certified laboratory for GW-59 and related reports</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="LabOptionCreate" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CompanyId" class="form-label"></label>
+                    <select asp-for="CompanyId" asp-items="companies" class="form-select"></select>
+                    <span asp-validation-for="CompanyId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CertificationNumber" class="form-label"></label>
+                    <input asp-for="CertificationNumber" class="form-control" />
+                    <span asp-validation-for="CertificationNumber" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a asp-action="SystemAdmin" asp-route-tab="laboptions" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

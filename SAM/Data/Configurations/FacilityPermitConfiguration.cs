@@ -18,6 +18,12 @@ public class FacilityPermitConfiguration : IEntityTypeConfiguration<FacilityPerm
         builder.Property(x => x.Notes).HasMaxLength(2000);
         builder.Property(x => x.PermitPdfFileName).HasMaxLength(260);
         builder.Property(x => x.PermitPdfStoragePath).HasMaxLength(500);
+        builder.Property(x => x.Address).HasMaxLength(500);
+        builder.Property(x => x.City).HasMaxLength(100);
+        builder.Property(x => x.State).HasMaxLength(50);
+        builder.Property(x => x.ZipCode).HasMaxLength(20);
+        builder.Property(x => x.County).HasMaxLength(100);
+        builder.Property(x => x.PermittedMinimumFreeboardFeet).HasPrecision(8, 2);
 
         builder.HasIndex(x => x.CompanyId);
         builder.HasIndex(x => x.FacilityId);

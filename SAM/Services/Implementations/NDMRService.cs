@@ -7,6 +7,7 @@ using SAM.Domain.Extensions;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Utilities;
 
 namespace SAM.Services.Implementations;
 
@@ -55,6 +56,7 @@ public class NDMRService : INDMRService
     private static void WriteStandardHeader(
         IXLWorksheet worksheet,
         Facility facility,
+        FacilityPermit? permit,
         SAM.Domain.Enums.MonthEnum monthEnum,
         int year,
         string ppiLabel,
@@ -63,10 +65,9 @@ public class NDMRService : INDMRService
         FlowMeasuringPointEnum? flowMeasuringPoint,
         ParameterMonitoringPointEnum? parameterMonitoringPoint)
     {
-        // Core report identification
-        worksheet.Cell("C1").Value = facility.PermitNumber;              // Permit number
-        worksheet.Cell("G1").Value = facility.Name;                      // Facility name
-        worksheet.Cell("M1").Value = facility.County;                    // County
+        worksheet.Cell("C1").Value = Gw59FacilityFieldResolver.ResolvePermitNumberForReport(facility, permit);
+        worksheet.Cell("G1").Value = facility.Name;
+        worksheet.Cell("M1").Value = Gw59FacilityFieldResolver.ResolveCounty(facility, permit);
         worksheet.Cell("P1").Value = monthEnum.ToString();               // Month label
         worksheet.Cell("S1").Value = year;                               // Year
 
@@ -122,6 +123,7 @@ public class NDMRService : INDMRService
         WriteStandardHeader(
             worksheet,
             facility,
+            null,
             monthEnum,
             year,
             ppiLabel,
@@ -484,6 +486,7 @@ public class NDMRService : INDMRService
         WriteStandardHeader(
             flowWorksheet,
             facility,
+            permit,
             ndar1.Month,
             year,
             "002",
@@ -491,11 +494,6 @@ public class NDMRService : INDMRService
             "BOD5 (mg/L)",
             wwChar?.FlowMeasuringPoint,
             wwChar?.ParameterMonitoringPoint);
-
-        if (permit != null)
-        {
-            flowWorksheet.Cell("C1").Value = $"{permit.PermitNumber} v{permit.PermitVersion}";
-        }
 
         var permitTemplateRows = permit == null
             ? new List<FacilityPermitTemplateParameter>()
@@ -636,6 +634,7 @@ public class NDMRService : INDMRService
             WriteStandardHeader(
                 worksheet,
                 facility,
+                permit,
                 ndar1.Month,
                 year,
                 "002",
@@ -643,11 +642,6 @@ public class NDMRService : INDMRService
                 chunk.FirstOrDefault()?.DisplayName ?? "Flow",
                 wwChar?.FlowMeasuringPoint,
                 wwChar?.ParameterMonitoringPoint);
-
-            if (permit != null)
-            {
-                worksheet.Cell("C1").Value = $"{permit.PermitNumber} v{permit.PermitVersion}";
-            }
 
             for (var slot = 0; slot < codeSlots.Length; slot++)
             {
@@ -753,7 +747,8 @@ public class NDMRService : INDMRService
             flowWorksheet.Column("F").Width = 11;
         }
 
-        WriteCertificationPage(workbook, facility, irrigationReport?.ComplianceStatus);
+        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, facility);
+        WriteCertificationPage(workbook, facility, permit, labOption, irrigationReport?.ComplianceStatus);
 
         // Keep NDMR output focused on PPI 001 chunk pages + required supporting sheets.
         // Remove legacy nitrogen PPI worksheets that are not part of the consolidated layout.
@@ -781,7 +776,12 @@ public class NDMRService : INDMRService
         return stream.ToArray();
     }
 
-    private static void WriteCertificationPage(IXLWorkbook workbook, Facility facility, ComplianceStatusEnum? complianceStatus)
+    private static void WriteCertificationPage(
+        IXLWorkbook workbook,
+        Facility facility,
+        FacilityPermit? permit,
+        CompanyLabOption? labOption,
+        ComplianceStatusEnum? complianceStatus)
     {
         var certificationWorksheet = workbook.Worksheets
             .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
@@ -829,15 +829,15 @@ public class NDMRService : INDMRService
         certificationWorksheet.Cell("M10").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("N11").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("M12").Value = facility.PermitPhone ?? string.Empty;
-        certificationWorksheet.Cell("R12").Value = facility.PermitExpirationDate?.ToString("MM/dd/yyyy") ?? string.Empty;
+        certificationWorksheet.Cell("R12").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("R13").Value = DateTime.Today.ToString("MM/dd/yyyy");
 
-        // Sampling Person(s) and Certified Laboratories
         var samplerNames = (facility.PersonsCollectingSamples ?? string.Empty)
             .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         certificationWorksheet.Cell("C2").Value = samplerNames.Length > 0 ? samplerNames[0] : string.Empty;
         certificationWorksheet.Cell("C3").Value = samplerNames.Length > 1 ? samplerNames[1] : string.Empty;
-        certificationWorksheet.Cell("L2").Value = facility.CertifiedLaboratory1Name ?? string.Empty;
-        certificationWorksheet.Cell("L3").Value = facility.CertifiedLaboratory2Name ?? string.Empty;
+        var labInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, labOption);
+        certificationWorksheet.Cell("L2").Value = labInfo.LabName;
+        certificationWorksheet.Cell("L3").Value = string.Empty;
     }
 }

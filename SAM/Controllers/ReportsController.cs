@@ -2204,10 +2204,15 @@ public class ReportsController : BaseController
         var facility = gwMonit.Facility ?? await _context.Facilities
             .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == gwMonit.FacilityId);
+        var preferredPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, facility, permit);
+        var exportPermit = preferredPermit ?? permit;
+        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, facility);
         var facilityWellCount = await Gw59FacilityFieldResolver.CountMonitoringWellsForFacilityAsync(
             _context,
             gwMonit.FacilityId,
             facility?.CompanyId ?? gwMonit.CompanyId);
+        var wellsCount = Gw59FacilityFieldResolver.ResolveNumberOfWellsToBeSampled(facility, exportPermit, facilityWellCount);
+        var labInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, labOption);
         var wellLocation = await Gw59FacilityFieldResolver.ResolveWellLocationAsync(
             _context,
             gwMonit.MonitoringWellId,
@@ -2217,16 +2222,16 @@ public class ReportsController : BaseController
         {
             GwMonitId = gwMonit.Id,
             FacilityName = facility?.Name ?? string.Empty,
-            PermitNumber = permit?.PermitNumber ?? facility?.PermitNumber ?? string.Empty,
+            PermitNumber = exportPermit?.PermitNumber ?? string.Empty,
             Permittee = facility?.Permittee ?? string.Empty,
-            Address = facility?.Address ?? string.Empty,
-            City = facility?.City ?? string.Empty,
-            State = facility?.State ?? string.Empty,
-            ZipCode = facility?.ZipCode ?? string.Empty,
-            County = facility?.County ?? string.Empty,
+            Address = Gw59FacilityFieldResolver.ResolveAddress(facility, exportPermit),
+            City = Gw59FacilityFieldResolver.ResolveCity(facility, exportPermit),
+            State = Gw59FacilityFieldResolver.ResolveState(facility, exportPermit),
+            ZipCode = Gw59FacilityFieldResolver.ResolveZipCode(facility, exportPermit),
+            County = Gw59FacilityFieldResolver.ResolveCounty(facility, exportPermit),
             ContactPerson = Gw59FacilityFieldResolver.ResolveContactPerson(facility),
             FacilityPhone = Gw59FacilityFieldResolver.ResolveFacilityPhone(facility),
-            PermitExpirationDate = permit?.EffectiveEndDate ?? facility?.PermitExpirationDate,
+            PermitExpirationDate = exportPermit?.EffectiveEndDate,
             WellId = gwMonit.MonitoringWell?.WellId ?? string.Empty,
             WellLocation = wellLocation,
             WellDepthFeet = wellData.WellDepthFeet,
@@ -2234,7 +2239,7 @@ public class ReportsController : BaseController
             ScreenedIntervalFromFeet = wellData.ScreenedIntervalFromFeet,
             ScreenedIntervalToFeet = wellData.ScreenedIntervalToFeet,
             RelativeMpElevation = wellData.RelativeMpElevation,
-            NumberOfWellsToBeSampled = facilityWellCount,
+            NumberOfWellsToBeSampled = wellsCount,
             SampleDate = gwMonit.SampleDate,
             LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate,
             SampleDepth = gwMonit.SampleDepth,
@@ -2260,12 +2265,8 @@ public class ReportsController : BaseController
             TotalColiform = chemistry.TotalColiform,
             PHLab = chemistry.PHLab,
             PhosphorusTotal = chemistry.PhosphorusTotal,
-            LabName = string.IsNullOrWhiteSpace(gwMonit.AnalyzedBy)
-                ? (facility?.CertifiedLaboratory1Name ?? string.Empty)
-                : gwMonit.AnalyzedBy,
-            LabCertificationNumber = string.IsNullOrWhiteSpace(gwMonit.LabCertification)
-                ? (facility?.LabCertificationNumber1 ?? string.Empty)
-                : gwMonit.LabCertification,
+            LabName = labInfo.LabName,
+            LabCertificationNumber = labInfo.LabCertificationNumber,
             CollectedBy = gwMonit.CollectedBy,
             AnalyzedBy = gwMonit.AnalyzedBy,
             LabReportAttached = gwMonit.VOCReportAttached.GetValueOrDefault(),
@@ -2275,8 +2276,8 @@ public class ReportsController : BaseController
             CertificationDate = DateTime.UtcNow.Date,
             VOCReportFileStoragePath = gwMonit.VOCReportFileStoragePath,
             HasGw59APermitTemplateRows = hasGw59APermitTemplateRows,
-            GwOperationLagoon = permit?.GwOperationLagoon ?? true,
-            GwOperationSprayField = permit?.GwOperationSprayField ?? true,
+            GwOperationLagoon = exportPermit?.GwOperationLagoon ?? true,
+            GwOperationSprayField = exportPermit?.GwOperationSprayField ?? true,
             OtherParameterLines = Gw59ChemistryResolver.ResolveOtherLines(snapshots).ToList(),
             ParameterSnapshots = snapshots,
             GW59AQuestion1Response = gwMonit.GW59AQuestion1Response,
@@ -2579,6 +2580,14 @@ public class ReportsController : BaseController
                         i.Year == report.Year)
             .OrderByDescending(i => i.UpdatedDate)
             .FirstOrDefaultAsync();
+        var facility = report.Facility
+            ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId);
+        var reportDate = new DateTime(report.Year, (int)report.Month, 1);
+        var ndarPermit = await ResolvePermitForDateAsync(report.FacilityId, reportDate);
+        var ndarExportPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, facility, ndarPermit) ?? ndarPermit;
+        var ndarHeaderPermitNumber = Gw59FacilityFieldResolver.ResolvePermitNumberForReport(facility, ndarExportPermit);
+        var ndarHeaderCounty = Gw59FacilityFieldResolver.ResolveCounty(facility, ndarExportPermit);
+        var ndarPermitExpiration = ndarExportPermit?.EffectiveEndDate;
         var operatorLogsForMonth = await _context.OperatorLogs
             .Where(o => o.FacilityId == report.FacilityId &&
                         o.LogDate.Year == report.Year &&
@@ -2631,9 +2640,9 @@ public class ReportsController : BaseController
 
             var font = new XFont("Arial", 8, XFontStyle.Regular);
             var bold = new XFont("Arial", 8, XFontStyle.Bold);
-            Draw(gfx, report.Facility?.PermitNumber, font, map.Header.PermitValue);
+            Draw(gfx, ndarHeaderPermitNumber, font, map.Header.PermitValue);
             Draw(gfx, report.Facility?.Name, font, map.Header.FacilityValue);
-            Draw(gfx, report.Facility?.County, font, map.Header.CountyValue);
+            Draw(gfx, ndarHeaderCounty, font, map.Header.CountyValue);
             Draw(gfx, new DateTime(report.Year, (int)report.Month, 1).ToString("MMMM"), font, map.Header.MonthValue);
             Draw(gfx, report.Year.ToString(), font, map.Header.YearValue);
             Draw(gfx, report.DidIrrigationOccur ? "X" : string.Empty, font, map.Header.IrrigationYes);
@@ -2741,7 +2750,7 @@ public class ReportsController : BaseController
                 Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.SigningOfficial);
                 Draw(certGfx, "Authorized Agent", certFont, map.Certification.SigningOfficialTitle);
                 Draw(certGfx, string.Empty, certFont, map.Certification.PermitteePhone);
-                Draw(certGfx, report.Facility?.PermitExpirationDate?.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitExp);
+                Draw(certGfx, ndarPermitExpiration?.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitExp);
                 Draw(certGfx, string.Empty, certFont, map.Certification.PermitteeSignature);
                 Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitteeDate);
 
@@ -2769,6 +2778,13 @@ public class ReportsController : BaseController
         const decimal monthlyLoadConversionFactor = 8.34e-6m;
         var (windowStart, windowEnd) = GetNdmlrWindow(report.Year, report.Month);
         var monthKeys = BuildDescendingNdmlrWindowMonthKeys(report.Year, report.Month);
+        var ndmlrFacility = report.Facility
+            ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId);
+        var ndmlrPermit = await ResolvePermitForDateAsync(report.FacilityId, windowEnd);
+        var ndmlrExportPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, ndmlrFacility, ndmlrPermit) ?? ndmlrPermit;
+        var ndmlrHeaderPermitNumber = Gw59FacilityFieldResolver.ResolvePermitNumberForReport(ndmlrFacility, ndmlrExportPermit);
+        var ndmlrHeaderCounty = Gw59FacilityFieldResolver.ResolveCounty(ndmlrFacility, ndmlrExportPermit);
+        var ndmlrPermitExpiration = ndmlrExportPermit?.EffectiveEndDate;
         var startYear = windowStart.Year;
         var startMonth = windowStart.Month;
         var endYear = windowEnd.Year;
@@ -2901,9 +2917,9 @@ public class ReportsController : BaseController
             var font = new XFont("Arial", 8, XFontStyle.Regular);
 
             // Header
-            Draw(gfx, report.Facility?.PermitNumber, font, new NdarPdfPoint(73, 42));
+            Draw(gfx, ndmlrHeaderPermitNumber, font, new NdarPdfPoint(73, 42));
             Draw(gfx, report.Facility?.Name, font, new NdarPdfPoint(220, 42));
-            Draw(gfx, report.Facility?.County, font, new NdarPdfPoint(480, 42));
+            Draw(gfx, ndmlrHeaderCounty, font, new NdarPdfPoint(480, 42));
             Draw(gfx, $"{report.Month}", font, new NdarPdfPoint(633, 42));
             Draw(gfx, report.Year.ToString(), font, new NdarPdfPoint(734, 42));
             Draw(gfx, currentPageNumber.ToString(), font, new NdarPdfPoint(685, 16));
@@ -3038,7 +3054,7 @@ public class ReportsController : BaseController
                 Draw(certGfx, orcName, certFont, new NdarPdfPoint(500, 338));
                 Draw(certGfx, operatorGrade, certFont, new NdarPdfPoint(530, 360));
                 Draw(certGfx, permitPhone, certFont, new NdarPdfPoint(480, 383));
-                Draw(certGfx, facility?.PermitExpirationDate?.ToString("MM/dd/yyyy"), certFont, new NdarPdfPoint(650, 387));
+                Draw(certGfx, ndmlrPermitExpiration?.ToString("MM/dd/yyyy"), certFont, new NdarPdfPoint(650, 387));
                 Draw(certGfx, exportDate, certFont, new NdarPdfPoint(710, 429));
 
                 if (showGrid)
@@ -3071,6 +3087,10 @@ public class ReportsController : BaseController
     private sealed class NdmrPdfSnapshot
     {
         public required Facility Facility { get; init; }
+        public required string ResolvedPermitNumber { get; init; }
+        public required string ResolvedCounty { get; init; }
+        public DateTime? ResolvedPermitExpiration { get; init; }
+        public required string ResolvedLabName { get; init; }
         public required MonthEnum Month { get; init; }
         public required int Year { get; init; }
         public required int DaysInMonth { get; init; }
@@ -3134,9 +3154,9 @@ public class ReportsController : BaseController
             var page = document.Pages[document.PageCount - 1];
             var gfx = XGraphics.FromPdfPage(page);
 
-            Draw(gfx, snapshot.Facility.PermitNumber, boldFont, new NdarPdfPoint(73, 41));
+            Draw(gfx, snapshot.ResolvedPermitNumber, boldFont, new NdarPdfPoint(73, 41));
             Draw(gfx, snapshot.Facility.Name, boldFont, new NdarPdfPoint(226, 41));
-            Draw(gfx, snapshot.Facility.County, boldFont, new NdarPdfPoint(482, 41));
+            Draw(gfx, snapshot.ResolvedCounty, boldFont, new NdarPdfPoint(482, 41));
             Draw(gfx, snapshot.Month.ToString(), boldFont, new NdarPdfPoint(608.5, 41));
             Draw(gfx, snapshot.Year.ToString(), boldFont, new NdarPdfPoint(721, 41));
             Draw(gfx, currentPage.ToString(), font, new NdarPdfPoint(685, 16));
@@ -3199,8 +3219,8 @@ public class ReportsController : BaseController
                 .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             Draw(certGfx, samplerNames.Length > 0 ? samplerNames[0] : string.Empty, font, new NdarPdfPoint(72, 95));
             Draw(certGfx, samplerNames.Length > 1 ? samplerNames[1] : string.Empty, font, new NdarPdfPoint(72, 116));
-            Draw(certGfx, snapshot.Facility.CertifiedLaboratory1Name, font, new NdarPdfPoint(430, 95));
-            Draw(certGfx, snapshot.Facility.CertifiedLaboratory2Name, font, new NdarPdfPoint(430, 116));
+            Draw(certGfx, snapshot.ResolvedLabName, font, new NdarPdfPoint(430, 95));
+            Draw(certGfx, string.Empty, font, new NdarPdfPoint(430, 116));
 
             var complianceText = snapshot.ComplianceStatus switch
             {
@@ -3222,7 +3242,7 @@ public class ReportsController : BaseController
             Draw(certGfx, snapshot.Facility.OrcName, font, new NdarPdfPoint(499, 350));
             Draw(certGfx, snapshot.Facility.OperatorGrade, font, new NdarPdfPoint(530, 374));
             Draw(certGfx, snapshot.Facility.PermitPhone, font, new NdarPdfPoint(470, 399));
-            Draw(certGfx, snapshot.Facility.PermitExpirationDate?.ToString("MM/dd/yyyy"), font, new NdarPdfPoint(680, 399));
+            Draw(certGfx, snapshot.ResolvedPermitExpiration?.ToString("MM/dd/yyyy"), font, new NdarPdfPoint(680, 399));
             Draw(certGfx, exportDate, font, new NdarPdfPoint(700, 440));
 
             if (showGrid)
@@ -3247,6 +3267,9 @@ public class ReportsController : BaseController
         var endDate = startDate.AddMonths(1).AddDays(-1);
         var daysInMonth = DateTime.DaysInMonth(year, monthNumber);
         var permit = await ResolvePermitForDateAsync(report.FacilityId, startDate);
+        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, facility);
+        var labInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, labOption);
+        var exportPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, facility, permit) ?? permit;
 
         var permitTemplateRows = permit == null
             ? new List<FacilityPermitTemplateParameter>()
@@ -3392,6 +3415,10 @@ public class ReportsController : BaseController
         return new NdmrPdfSnapshot
         {
             Facility = facility,
+            ResolvedPermitNumber = Gw59FacilityFieldResolver.ResolvePermitNumberForReport(facility, exportPermit),
+            ResolvedCounty = Gw59FacilityFieldResolver.ResolveCounty(facility, exportPermit),
+            ResolvedPermitExpiration = exportPermit?.EffectiveEndDate,
+            ResolvedLabName = labInfo.LabName,
             Month = report.Month,
             Year = year,
             DaysInMonth = daysInMonth,

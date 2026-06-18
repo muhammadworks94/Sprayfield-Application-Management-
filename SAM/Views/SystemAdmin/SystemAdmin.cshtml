@@ -6,7 +6,7 @@
 <div class="system-admin-page">
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">Manage facilities, soils, crops, nozzles, sprayfields, and monitoring wells</p>
+        <p class="text-muted mb-0">Manage facilities, soils, crops, nozzles, sprayfields, monitoring wells, permits, and lab options</p>
     </div>
 </div>
 
@@ -65,6 +65,24 @@
                 <i class="bi bi-water"></i>
             </div>
             <div class="system-admin-tab-label">Monitoring Wells</div>
+        </a>
+        <a class="system-admin-tab system-admin-tab--permits @(Model.ActiveTab == "permits" ? "active" : "")" 
+           asp-action="SystemAdmin" 
+           asp-controller="SystemAdmin" 
+           asp-route-tab="permits" >
+            <div class="system-admin-tab-icon">
+                <i class="bi bi-file-earmark-medical"></i>
+            </div>
+            <div class="system-admin-tab-label">Permits</div>
+        </a>
+        <a class="system-admin-tab system-admin-tab--laboptions @(Model.ActiveTab == "laboptions" ? "active" : "")" 
+           asp-action="SystemAdmin" 
+           asp-controller="SystemAdmin" 
+           asp-route-tab="laboptions" >
+            <div class="system-admin-tab-icon">
+                <i class="bi bi-flask"></i>
+            </div>
+            <div class="system-admin-tab-label">Lab Options</div>
         </a>
     </div>
 </div>
@@ -161,6 +179,35 @@
                     SelectedCompanyId = Model.SelectedCompanyId
                 };
                 @await Html.PartialAsync("Partials/_MonitoringWellsPartial", partialViewModel)
+            }
+            break;
+        case "permits":
+            @if (Model.Permits != null)
+            {
+                var permitsPartial = new PermitsPartialViewModel
+                {
+                    Permits = Model.Permits,
+                    Filter = Model.PermitsFilter,
+                    IsGlobalAdmin = Model.IsGlobalAdmin,
+                    CanManageRecords = Model.CanManageRecords,
+                    Companies = Model.Companies,
+                    SelectedCompanyId = Model.SelectedCompanyId
+                };
+                @await Html.PartialAsync("Partials/_PermitsPartial", permitsPartial)
+            }
+            break;
+        case "laboptions":
+            @if (Model.LabOptions != null)
+            {
+                var labPartial = new LabOptionsPartialViewModel
+                {
+                    LabOptions = Model.LabOptions,
+                    IsGlobalAdmin = Model.IsGlobalAdmin,
+                    CanManageRecords = Model.CanManageRecords,
+                    Companies = Model.Companies,
+                    SelectedCompanyId = Model.SelectedCompanyId
+                };
+                @await Html.PartialAsync("Partials/_LabOptionsPartial", labPartial)
             }
             break;
     }

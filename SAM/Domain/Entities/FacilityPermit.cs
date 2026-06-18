@@ -16,6 +16,14 @@ public class FacilityPermit : CompanyScopedEntity
     public string? PermitPdfFileName { get; set; }
     public string? PermitPdfStoragePath { get; set; }
 
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? ZipCode { get; set; }
+    public string? County { get; set; }
+    public int? TotalNumberOfSprayfields { get; set; }
+    public decimal? PermittedMinimumFreeboardFeet { get; set; }
+
     public Facility? Facility { get; set; }
     public ICollection<FacilityPermitTemplateParameter> TemplateParameters { get; set; } = new List<FacilityPermitTemplateParameter>();
     public ICollection<WWChar> WWChars { get; set; } = new List<WWChar>();

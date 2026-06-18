@@ -1,0 +1,200 @@
+@model SAM.ViewModels.SystemAdmin.LabOptionsPartialViewModel
+@{
+    var canManageRecords = Model.CanManageRecords;
+}
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4 page-section-header">
+            <h4 class="mb-0">Lab Options</h4>
+            @if (canManageRecords)
+            {
+                <a asp-action="LabOptionCreate" asp-route-companyId="@Model.SelectedCompanyId" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Lab Option
+                </a>
+            }
+        </div>
+
+        @if (Model.LabOptions.Any())
+        {
+            <div class="table-responsive responsive-table">
+                <table class="table table-hover lab-options-table @(canManageRecords ? "reorder-enabled" : "")" id="labOptionsTable">
+                    <colgroup>
+                        <col class="lab-drag-col" />
+                        <col />
+                        <col />
+                        <col />
+                        @if (canManageRecords)
+                        {
+                            <col class="lab-actions-col" />
+                        }
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="lab-drag-col" aria-label="Reorder"></th>
+                            <th>Certified Laboratory</th>
+                            <th>Lab Certification No.</th>
+                            <th>Status</th>
+                            @if (canManageRecords)
+                            {
+                                <th class="table-actions">Actions</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var lab in Model.LabOptions)
+                        {
+                            <tr data-lab-id="@lab.Id" class="lab-reorder-row">
+                                <td class="lab-drag-handle text-muted lab-drag-col" @(canManageRecords ? "draggable=true" : "")>
+                                    @if (canManageRecords)
+                                    {
+                                        <i class="bi bi-grip-vertical" draggable="false" title="Drag to reorder"></i>
+                                    }
+                                    else
+                                    {
+                                        @lab.SortOrder
+                                    }
+                                </td>
+                                <td>@lab.Name</td>
+                                <td>@lab.CertificationNumber</td>
+                                <td>
+                                    @if (lab.IsActive)
+                                    {
+                                        <span class="badge bg-success-subtle text-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
+                                    }
+                                </td>
+                                @if (canManageRecords)
+                                {
+                                    <td class="table-actions">
+                                        <a asp-action="LabOptionEdit" asp-route-id="@lab.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger lab-delete-btn" data-id="@lab.Id" data-name="@lab.Name">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-flask fs-1 d-block mb-3"></i>
+                <p class="mb-0">No lab options configured for this company.</p>
+                @if (canManageRecords)
+                {
+                    <p class="small">Add certified laboratories used on GW-59 and related reports.</p>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@if (canManageRecords && Model.LabOptions.Any())
+{
+    <form id="labOptionDeleteForm" asp-action="LabOptionDelete" method="post" class="d-none">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" id="labOptionDeleteId" />
+    </form>
+    <form id="labOptionReorderForm" asp-action="LabOptionReorder" method="post" class="d-none">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="companyId" value="@Model.SelectedCompanyId" />
+        <input type="hidden" name="orderedIds" id="labOptionOrderedIds" />
+    </form>
+    <script>
+        (function () {
+            const table = document.getElementById('labOptionsTable');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            const reorderInput = document.getElementById('labOptionOrderedIds');
+            const reorderForm = document.getElementById('labOptionReorderForm');
+            let draggedRow = null;
+            let orderBeforeDrag = [];
+
+            function currentOrder() {
+                return Array.from(tbody.querySelectorAll('tr[data-lab-id]')).map(function (r) {
+                    return r.getAttribute('data-lab-id');
+                });
+            }
+
+            function submitOrder() {
+                reorderInput.value = currentOrder().join(',');
+                reorderForm.submit();
+            }
+
+            function ordersEqual(a, b) {
+                return a.length === b.length && a.every(function (id, i) { return id === b[i]; });
+            }
+
+            tbody.querySelectorAll('.lab-drag-handle[draggable="true"]').forEach(function (handle) {
+                handle.addEventListener('dragstart', function (e) {
+                    draggedRow = handle.closest('.lab-reorder-row');
+                    if (!draggedRow) {
+                        e.preventDefault();
+                        return;
+                    }
+                    orderBeforeDrag = currentOrder();
+                    draggedRow.classList.add('lab-dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', draggedRow.getAttribute('data-lab-id') || '');
+                });
+
+                handle.addEventListener('dragend', function () {
+                    if (draggedRow) {
+                        draggedRow.classList.remove('lab-dragging');
+                    }
+                    draggedRow = null;
+                });
+            });
+
+            tbody.addEventListener('dragenter', function (e) {
+                if (!draggedRow) return;
+                e.preventDefault();
+            });
+
+            tbody.addEventListener('dragover', function (e) {
+                if (!draggedRow) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                const target = e.target.closest('.lab-reorder-row');
+                if (!target || target === draggedRow) return;
+                const rect = target.getBoundingClientRect();
+                const after = e.clientY > rect.top + rect.height / 2;
+                if (after) {
+                    target.insertAdjacentElement('afterend', draggedRow);
+                } else {
+                    target.insertAdjacentElement('beforebegin', draggedRow);
+                }
+            });
+
+            tbody.addEventListener('drop', function (e) {
+                if (!draggedRow) return;
+                e.preventDefault();
+                const newOrder = currentOrder();
+                draggedRow.classList.remove('lab-dragging');
+                draggedRow = null;
+                if (!ordersEqual(orderBeforeDrag, newOrder)) {
+                    submitOrder();
+                }
+            });
+
+            table.addEventListener('click', function (e) {
+                const del = e.target.closest('.lab-delete-btn');
+                if (del) {
+                    if (confirm('Delete lab option "' + del.getAttribute('data-name') + '"?')) {
+                        document.getElementById('labOptionDeleteId').value = del.getAttribute('data-id');
+                        document.getElementById('labOptionDeleteForm').submit();
+                    }
+                }
+            });
+        })();
+    </script>
+}

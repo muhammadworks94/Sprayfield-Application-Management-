@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SAM.Controllers.Base;
+using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Authorization;
 using SAM.Services.Interfaces;
@@ -33,6 +35,7 @@ public class CompanyManagementController : BaseController
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly IUserService _userService;
+    private readonly ApplicationDbContext _context;
 
     public CompanyManagementController(
         ICompanyService companyService,
@@ -45,6 +48,7 @@ public class CompanyManagementController : BaseController
         ISprayfieldService sprayfieldService,
         IMonitoringWellService monitoringWellService,
         IUserService userService,
+        ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         ILogger<CompanyManagementController> logger)
         : base(userManager, logger)
@@ -59,6 +63,7 @@ public class CompanyManagementController : BaseController
         _sprayfieldService = sprayfieldService;
         _monitoringWellService = monitoringWellService;
         _userService = userService;
+        _context = context;
     }
 
     [HttpGet]
@@ -286,21 +291,9 @@ public class CompanyManagementController : BaseController
 
         // Load Facilities
         var facilities = await _facilityService.GetAllAsync(id);
-        var facilityViewModels = facilities.Select(f => new FacilityViewModel
-        {
-            Id = f.Id,
-            CompanyId = f.CompanyId,
-            CompanyName = f.Company?.Name,
-            Name = f.Name,
-            PermitNumber = f.PermitNumber,
-            Permittee = f.Permittee,
-            FacilityClass = f.FacilityClass,
-            Address = f.Address,
-            City = f.City,
-            State = f.State,
-            ZipCode = f.ZipCode,
-            County = f.County
-        }).ToList();
+        var facilityViewModels = facilities
+            .Select(Gw59FacilityFieldResolver.ToFacilityListItemViewModel)
+            .ToList();
 
         // Load Soils
         var soils = await _soilService.GetAllAsync(id);
@@ -590,8 +583,18 @@ public class CompanyManagementController : BaseController
         var facilityInfos = facilities.Select(f => new FacilityInfo
         {
             Name = f.Name,
-            PermitNumber = f.PermitNumber
+            PermitNumber = string.Empty
         }).ToList();
+        var permitsByFacility = await Gw59FacilityFieldResolver.LoadActivePermitsByFacilityAsync(
+            _context,
+            facilities.Select(f => f.Id));
+        for (var i = 0; i < facilities.Count; i++)
+        {
+            var facility = facilities[i];
+            permitsByFacility.TryGetValue(facility.Id, out var facilityPermits);
+            var displayPermit = Gw59FacilityFieldResolver.ResolveDisplayPermit(facility, facilityPermits ?? []);
+            facilityInfos[i].PermitNumber = Gw59FacilityFieldResolver.ResolvePermitNumber(facility, displayPermit);
+        }
 
         var userRequestInfos = userRequests.Select(u => new UserRequestInfo
         {

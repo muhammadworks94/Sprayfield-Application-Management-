@@ -270,14 +270,14 @@
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-event me-1"></i>Lab Date Sample Analyzed:</dt>
                     <dd class="col-sm-7 mb-2">@(Model.LabSampleAnalyzedDate?.ToString("MM/dd/yyyy") ?? "N/A")</dd>
 
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-clipboard-check me-1"></i>Lab Certification:</dt>
-                    <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.LabCertification) ? "N/A" : Model.LabCertification)</dd>
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-building me-1"></i>Laboratory:</dt>
+                    <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.ResolvedLabName) ? "N/A" : Model.ResolvedLabName)</dd>
+
+                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-clipboard-check me-1"></i>Lab Certification No.:</dt>
+                    <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.ResolvedLabCertificationNumber) ? "N/A" : Model.ResolvedLabCertificationNumber)</dd>
 
                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-person me-1"></i>Collected By:</dt>
                     <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.CollectedBy) ? "N/A" : Model.CollectedBy)</dd>
-
-                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-person-badge me-1"></i>Analyzed By:</dt>
-                    <dd class="col-sm-7 mb-2">@(string.IsNullOrEmpty(Model.AnalyzedBy) ? "N/A" : Model.AnalyzedBy)</dd>
                 </dl>
             </div>
         </div>

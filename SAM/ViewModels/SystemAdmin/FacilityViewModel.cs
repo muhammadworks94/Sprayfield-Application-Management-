@@ -23,7 +23,7 @@ public class FacilityViewModel
     
     [Required]
     [StringLength(200)]
-    [Display(Name = "Permittee")]
+    [Display(Name = "Permit Name (if different than facility)")]
     public string Permittee { get; set; } = string.Empty;
     
     [StringLength(100)]
@@ -91,31 +91,9 @@ public class FacilityViewModel
     [Display(Name = "Change in ORC?")]
     public bool ChangeInOrc { get; set; }
 
-    [Display(Name = "Total Number of Sprayfields")]
-    public int? TotalNumberOfSprayfields { get; set; }
-
-    [StringLength(200)]
-    [Display(Name = "Certified Laboratory (1)")]
-    public string CertifiedLaboratory1Name { get; set; } = string.Empty;
-
-    [StringLength(200)]
-    [Display(Name = "Certified Laboratory (2)")]
-    public string CertifiedLaboratory2Name { get; set; } = string.Empty;
-
-    [StringLength(100)]
-    [Display(Name = "Lab Certification No. (1)")]
-    public string LabCertificationNumber1 { get; set; } = string.Empty;
-
-    [StringLength(100)]
-    [Display(Name = "Lab Certification No. (2)")]
-    public string LabCertificationNumber2 { get; set; } = string.Empty;
-
     [StringLength(200)]
     [Display(Name = "Person(s) Collecting Samples")]
     public string PersonsCollectingSamples { get; set; } = string.Empty;
-
-    [Display(Name = "Permitted Minimum Freeboard (ft)")]
-    public decimal? PermittedMinimumFreeboardFeet { get; set; }
 
     [Display(Name = "Mineralization Rate (%)")]
     [Range(0, 100)]
@@ -124,6 +102,26 @@ public class FacilityViewModel
     [Display(Name = "Volatilization Rate (%)")]
     [Range(0, 100)]
     public decimal? VolatilizationRatePercent { get; set; }
+
+    [Display(Name = "Select Permit")]
+    public Guid? DefaultFacilityPermitId { get; set; }
+
+    [Display(Name = "Lab Options")]
+    public Guid? DefaultLabOptionId { get; set; }
+
+    public string? SelectedPermitLabel { get; set; }
+
+    public string? SelectedLabOptionName { get; set; }
+
+    public string? SelectedLabCertificationNumber { get; set; }
+
+    public string? PermitLocationSummary { get; set; }
+
+    public string? SelectedPermitCounty { get; set; }
+
+    public int? PermitSprayfieldCount { get; set; }
+
+    public decimal? PermitMinimumFreeboardFeet { get; set; }
 }
 
 public class FacilityCreateViewModel
@@ -138,48 +136,14 @@ public class FacilityCreateViewModel
     public string Name { get; set; } = string.Empty;
     
     [Required]
-    [StringLength(100)]
-    [Display(Name = "Permit Number")]
-    public string PermitNumber { get; set; } = string.Empty;
-    
-    [Required]
     [StringLength(200)]
-    [Display(Name = "Permittee")]
+    [Display(Name = "Permit Name (if different than facility)")]
     public string Permittee { get; set; } = string.Empty;
     
     [Required]
     [StringLength(100)]
     [Display(Name = "Facility Class")]
     public string FacilityClass { get; set; } = string.Empty;
-    
-    [Required]
-    [StringLength(500)]
-    [Display(Name = "Permittee Street Address")]
-    public string Address { get; set; } = string.Empty;
-    
-    [Required]
-    [StringLength(100)]
-    [Display(Name = "Permittee City")]
-    public string City { get; set; } = string.Empty;
-    
-    [Required]
-    [StringLength(50)]
-    [Display(Name = "Permittee State")]
-    public string State { get; set; } = string.Empty;
-    
-    [Required]
-    [StringLength(20)]
-    [Display(Name = "Zip Code")]
-    public string ZipCode { get; set; } = string.Empty;
-
-    [Required]
-    [StringLength(100)]
-    [Display(Name = "County")]
-    public string County { get; set; } = string.Empty;
-
-    [Display(Name = "Permit Expiration Date")]
-    [DataType(DataType.Date)]
-    public DateTime? PermitExpirationDate { get; set; }
 
     [StringLength(50)]
     [Display(Name = "Permittee Phone")]
@@ -216,31 +180,9 @@ public class FacilityCreateViewModel
     [Display(Name = "Change in ORC?")]
     public bool ChangeInOrc { get; set; }
 
-    [Display(Name = "Total Number of Sprayfields")]
-    public int? TotalNumberOfSprayfields { get; set; }
-
-    [StringLength(200)]
-    [Display(Name = "Certified Laboratory (1)")]
-    public string? CertifiedLaboratory1Name { get; set; }
-
-    [StringLength(200)]
-    [Display(Name = "Certified Laboratory (2)")]
-    public string? CertifiedLaboratory2Name { get; set; }
-
-    [StringLength(100)]
-    [Display(Name = "Lab Certification No. (1)")]
-    public string? LabCertificationNumber1 { get; set; }
-
-    [StringLength(100)]
-    [Display(Name = "Lab Certification No. (2)")]
-    public string? LabCertificationNumber2 { get; set; }
-
     [StringLength(200)]
     [Display(Name = "Person(s) Collecting Samples")]
     public string? PersonsCollectingSamples { get; set; }
-
-    [Display(Name = "Permitted Minimum Freeboard (ft)")]
-    public decimal? PermittedMinimumFreeboardFeet { get; set; }
 
     [Display(Name = "Mineralization Rate (%)")]
     [Range(0, 100)]
@@ -265,48 +207,14 @@ public class FacilityEditViewModel
     public string Name { get; set; } = string.Empty;
     
     [Required]
-    [StringLength(100)]
-    [Display(Name = "Permit Number")]
-    public string PermitNumber { get; set; } = string.Empty;
-    
-    [Required]
     [StringLength(200)]
-    [Display(Name = "Permittee")]
+    [Display(Name = "Permit Name (if different than facility)")]
     public string Permittee { get; set; } = string.Empty;
     
     [Required]
     [StringLength(100)]
     [Display(Name = "Facility Class")]
     public string FacilityClass { get; set; } = string.Empty;
-    
-    [Required]
-    [StringLength(500)]
-    [Display(Name = "Permittee StreetAddress")]
-    public string Address { get; set; } = string.Empty;
-    
-    [Required]
-    [StringLength(100)]
-    [Display(Name = "Permittee City")]
-    public string City { get; set; } = string.Empty;
-    
-    [Required]
-    [StringLength(50)]
-    [Display(Name = "Permittee State")]
-    public string State { get; set; } = string.Empty;
-    
-    [Required]
-    [StringLength(20)]
-    [Display(Name = "Zip Code")]
-    public string ZipCode { get; set; } = string.Empty;
-
-    [Required]
-    [StringLength(100)]
-    [Display(Name = "County")]
-    public string County { get; set; } = string.Empty;
-
-    [Display(Name = "Permit Expiration Date")]
-    [DataType(DataType.Date)]
-    public DateTime? PermitExpirationDate { get; set; }
 
     [StringLength(50)]
     [Display(Name = "Permittee Phone")]
@@ -343,31 +251,9 @@ public class FacilityEditViewModel
     [Display(Name = "Change in ORC?")]
     public bool ChangeInOrc { get; set; }
 
-    [Display(Name = "Total Number of Sprayfields")]
-    public int? TotalNumberOfSprayfields { get; set; }
-
-    [StringLength(200)]
-    [Display(Name = "Certified Laboratory (1)")]
-    public string? CertifiedLaboratory1Name { get; set; }
-
-    [StringLength(200)]
-    [Display(Name = "Certified Laboratory (2)")]
-    public string? CertifiedLaboratory2Name { get; set; }
-
-    [StringLength(100)]
-    [Display(Name = "Lab Certification No. (1)")]
-    public string? LabCertificationNumber1 { get; set; }
-
-    [StringLength(100)]
-    [Display(Name = "Lab Certification No. (2)")]
-    public string? LabCertificationNumber2 { get; set; }
-
     [StringLength(200)]
     [Display(Name = "Person(s) Collecting Samples")]
     public string? PersonsCollectingSamples { get; set; }
-
-    [Display(Name = "Permitted Minimum Freeboard (ft)")]
-    public decimal? PermittedMinimumFreeboardFeet { get; set; }
 
     [Display(Name = "Mineralization Rate (%)")]
     [Range(0, 100)]
@@ -376,6 +262,12 @@ public class FacilityEditViewModel
     [Display(Name = "Volatilization Rate (%)")]
     [Range(0, 100)]
     public decimal? VolatilizationRatePercent { get; set; }
+
+    [Display(Name = "Select Permit")]
+    public Guid? DefaultFacilityPermitId { get; set; }
+
+    [Display(Name = "Lab Options")]
+    public Guid? DefaultLabOptionId { get; set; }
 }
 
 

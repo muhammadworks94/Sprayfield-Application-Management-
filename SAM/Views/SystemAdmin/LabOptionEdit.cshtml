@@ -1,0 +1,47 @@
+@model SAM.ViewModels.SystemAdmin.LabOptionEditViewModel
+@{
+    ViewData["Title"] = "Edit Lab Option";
+    var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Update certified laboratory details</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="LabOptionEdit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="SortOrder" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CompanyId" class="form-label"></label>
+                    <select asp-for="CompanyId" asp-items="companies" class="form-select" disabled></select>
+                    <input type="hidden" asp-for="CompanyId" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CertificationNumber" class="form-label"></label>
+                    <input asp-for="CertificationNumber" class="form-control" />
+                    <span asp-validation-for="CertificationNumber" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="form-check mt-4">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label">Active</label>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a asp-action="SystemAdmin" asp-route-tab="laboptions" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

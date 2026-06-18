@@ -107,7 +107,6 @@ public partial class SystemAdminController
                 RelativeMpElevation = viewModel.RelativeMpElevation,
                 TopOfCasingElevationMsl = viewModel.TopOfCasingElevationMsl,
                 TreatmentSystemLocation = viewModel.TreatmentSystemLocation,
-                NumberOfWellsToBeSampled = viewModel.NumberOfWellsToBeSampled,
                 Latitude = viewModel.Latitude,
                 Longitude = viewModel.Longitude
             };
@@ -194,7 +193,6 @@ public partial class SystemAdminController
             monitoringWell.RelativeMpElevation = viewModel.RelativeMpElevation;
             monitoringWell.TopOfCasingElevationMsl = viewModel.TopOfCasingElevationMsl;
             monitoringWell.TreatmentSystemLocation = viewModel.TreatmentSystemLocation;
-            monitoringWell.NumberOfWellsToBeSampled = viewModel.NumberOfWellsToBeSampled;
             monitoringWell.Latitude = viewModel.Latitude;
             monitoringWell.Longitude = viewModel.Longitude;
 

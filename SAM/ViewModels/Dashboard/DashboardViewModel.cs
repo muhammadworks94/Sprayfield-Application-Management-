@@ -50,6 +50,18 @@ public class DashboardViewModel
 
     // Phase 2: NDAR operator decision support (live-source, field-wise)
     public List<FieldLoadingProgressViewModel> FieldLoadingProgress { get; set; } = new();
+
+    public List<PermitAlertViewModel> PermitAlerts { get; set; } = new();
+}
+
+public class PermitAlertViewModel
+{
+    public string FacilityName { get; set; } = string.Empty;
+    public string PermitNumber { get; set; } = string.Empty;
+    public string PermitVersion { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string Severity { get; set; } = "Warning";
+    public int DaysUntilExpiration { get; set; }
 }
 
 public class IrrigationCompliancePieViewModel

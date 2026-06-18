@@ -1,0 +1,36 @@
+@model SAM.Domain.Entities.FacilityPermit
+@{
+    var idSuffix = Model.Id.ToString("N");
+}
+
+<div class="col-12">
+    <h6 class="mb-2 mt-2">Permit Location &amp; Sprayfields</h6>
+</div>
+<div class="col-md-4">
+    <label class="form-label" for="address_@idSuffix">Permittee Street Address</label>
+    <input id="address_@idSuffix" name="address" class="form-control" value="@Model.Address" />
+</div>
+<div class="col-md-4">
+    <label class="form-label" for="city_@idSuffix">City</label>
+    <input id="city_@idSuffix" name="city" class="form-control" value="@Model.City" />
+</div>
+<div class="col-md-2">
+    <label class="form-label" for="state_@idSuffix">State</label>
+    <input id="state_@idSuffix" name="state" class="form-control" value="@Model.State" />
+</div>
+<div class="col-md-2">
+    <label class="form-label" for="zipCode_@idSuffix">Zip Code</label>
+    <input id="zipCode_@idSuffix" name="zipCode" class="form-control" value="@Model.ZipCode" />
+</div>
+<div class="col-md-4">
+    <label class="form-label" for="county_@idSuffix">County</label>
+    <input id="county_@idSuffix" name="county" class="form-control" value="@Model.County" />
+</div>
+<div class="col-md-4">
+    <label class="form-label" for="totalSprayfields_@idSuffix">Total Number of Sprayfields</label>
+    <input id="totalSprayfields_@idSuffix" name="totalNumberOfSprayfields" type="number" min="0" class="form-control" value="@Model.TotalNumberOfSprayfields" />
+</div>
+<div class="col-md-4">
+    <label class="form-label" for="freeboard_@idSuffix">Permitted Minimum Freeboard (ft)</label>
+    <input id="freeboard_@idSuffix" name="permittedMinimumFreeboardFeet" type="number" step="0.1" class="form-control" value="@Model.PermittedMinimumFreeboardFeet" />
+</div>
