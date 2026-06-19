@@ -21,7 +21,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
         _ndar1Service = ndar1Service;
     }
 
-    public async Task<NDAR1EditGridViewModel> BuildGridAsync(Guid ndar1Id)
+    public async Task<NDAR1EditGridViewModel> BuildGridAsync(Guid ndar1Id, string? currentUserId = null)
     {
         var report = await _context.NDAR1s
             .Include(x => x.Facility)
@@ -107,6 +107,8 @@ public class NDAR1RowEditService : INDAR1RowEditService
             {
                 row.LockToken = dayLock.LockToken;
                 row.LockedBy = dayLock.LockedByDisplayName;
+                row.IsLockedByCurrentUser = !string.IsNullOrEmpty(currentUserId) &&
+                    string.Equals(dayLock.LockedByUserId, currentUserId, StringComparison.OrdinalIgnoreCase);
             }
 
             foreach (var field in fieldColumns)
@@ -191,6 +193,134 @@ public class NDAR1RowEditService : INDAR1RowEditService
             Success = true,
             DayNo = dayNo,
             LockToken = token
+        };
+    }
+
+    public async Task<NDAR1GridEditBeginResult> BeginGridEditAsync(Guid ndar1Id, string userId, string userDisplayName)
+    {
+        var report = await _context.NDAR1s.FirstOrDefaultAsync(x => x.Id == ndar1Id);
+        if (report == null)
+        {
+            throw new EntityNotFoundException(nameof(NDAR1), ndar1Id);
+        }
+
+        var start = new DateTime(report.Year, (int)report.Month, 1);
+        var end = start.AddMonths(1);
+        var daysInMonth = DateTime.DaysInMonth(report.Year, (int)report.Month);
+        var now = DateTime.UtcNow;
+
+        var existingLocks = await _context.NdarEditLocks
+            .Where(x => x.FacilityId == report.FacilityId && x.EditDate >= start && x.EditDate < end)
+            .ToListAsync();
+
+        var result = new NDAR1GridEditBeginResult();
+
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(report.Year, (int)report.Month, day);
+            var lockRow = existingLocks.FirstOrDefault(x => x.EditDate == date);
+
+            if (lockRow != null && lockRow.ExpiresAtUtc > now &&
+                !string.Equals(lockRow.LockedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+            {
+                result.Locks.Add(new NDAR1GridDayLockResult
+                {
+                    DayNo = day,
+                    Success = false,
+                    LockedBy = lockRow.LockedByDisplayName,
+                    Message = $"This row is currently being edited by {lockRow.LockedByDisplayName}."
+                });
+                continue;
+            }
+
+            var token = Guid.NewGuid();
+            if (lockRow == null)
+            {
+                lockRow = new NdarEditLock
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyId = report.CompanyId,
+                    FacilityId = report.FacilityId,
+                    EditDate = date,
+                    LockedByUserId = userId,
+                    LockedByDisplayName = userDisplayName,
+                    LockToken = token,
+                    LockedAtUtc = now,
+                    ExpiresAtUtc = now.Add(LockTimeout),
+                    CreatedBy = userDisplayName
+                };
+                _context.NdarEditLocks.Add(lockRow);
+                existingLocks.Add(lockRow);
+            }
+            else
+            {
+                lockRow.LockedByUserId = userId;
+                lockRow.LockedByDisplayName = userDisplayName;
+                lockRow.LockToken = token;
+                lockRow.LockedAtUtc = now;
+                lockRow.ExpiresAtUtc = now.Add(LockTimeout);
+                lockRow.ReleasedAtUtc = null;
+                lockRow.IsDeleted = false;
+            }
+
+            result.Locks.Add(new NDAR1GridDayLockResult
+            {
+                DayNo = day,
+                Success = true,
+                LockToken = token
+            });
+        }
+
+        await _context.SaveChangesAsync();
+        return result;
+    }
+
+    public async Task ReleaseGridEditAsync(Guid ndar1Id, IEnumerable<Guid> lockTokens, string userId)
+    {
+        var tokens = lockTokens.Where(x => x != Guid.Empty).Distinct().ToList();
+        if (tokens.Count == 0)
+        {
+            return;
+        }
+
+        var report = await _context.NDAR1s.FirstOrDefaultAsync(x => x.Id == ndar1Id);
+        if (report == null)
+        {
+            throw new EntityNotFoundException(nameof(NDAR1), ndar1Id);
+        }
+
+        var start = new DateTime(report.Year, (int)report.Month, 1);
+        var end = start.AddMonths(1);
+
+        var lockRows = await _context.NdarEditLocks
+            .Where(x =>
+                x.FacilityId == report.FacilityId &&
+                x.EditDate >= start &&
+                x.EditDate < end &&
+                tokens.Contains(x.LockToken))
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
+        foreach (var lockRow in lockRows)
+        {
+            if (!string.Equals(lockRow.LockedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            lockRow.ReleasedAtUtc = now;
+            lockRow.ExpiresAtUtc = now;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<NDAR1GridFooterTotalsResult> GetGridFooterTotalsAsync(Guid ndar1Id)
+    {
+        var grid = await BuildGridAsync(ndar1Id);
+        return new NDAR1GridFooterTotalsResult
+        {
+            FieldColumns = grid.FieldColumns
         };
     }
 
@@ -429,8 +559,16 @@ public class NDAR1RowEditService : INDAR1RowEditService
             report.DidIrrigationOccur = hasOtherIrrigationThisMonth || hasIrrigationForEditedDay;
             saveSummary.IrrigationFlagAfterSave = report.DidIrrigationOccur;
 
-            lockRow.ReleasedAtUtc = DateTime.UtcNow;
-            lockRow.ExpiresAtUtc = DateTime.UtcNow;
+            if (request.KeepLockAfterSave)
+            {
+                lockRow.ExpiresAtUtc = DateTime.UtcNow.Add(LockTimeout);
+                lockRow.ReleasedAtUtc = null;
+            }
+            else
+            {
+                lockRow.ReleasedAtUtc = DateTime.UtcNow;
+                lockRow.ExpiresAtUtc = DateTime.UtcNow;
+            }
 
             try
             {
@@ -453,44 +591,49 @@ public class NDAR1RowEditService : INDAR1RowEditService
             return lockValidationFailure;
         }
 
-        var reportMonth = saveSummary!.Date.Month;
-        var reportYear = saveSummary.Date.Year;
-        Services.Models.NdarRefreshOutcome ndarRefreshOutcome;
-
-        // Re-query report period context with stable values from updated row date.
-        // Use facility and period inferred from saved row context.
-        var sourceReport = await _context.NDAR1s
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == ndar1Id);
-
-        if (sourceReport != null)
+        if (!request.SkipNdarRefresh)
         {
-            ndarRefreshOutcome = await _ndar1Service.RefreshExistingReportForMonthAsync(
-                sourceReport.FacilityId,
-                reportMonth,
-                reportYear);
+            var reportMonth = saveSummary!.Date.Month;
+            var reportYear = saveSummary.Date.Year;
+            Services.Models.NdarRefreshOutcome ndarRefreshOutcome;
+
+            var sourceReport = await _context.NDAR1s
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == ndar1Id);
+
+            if (sourceReport != null)
+            {
+                ndarRefreshOutcome = await _ndar1Service.RefreshExistingReportForMonthAsync(
+                    sourceReport.FacilityId,
+                    reportMonth,
+                    reportYear);
+            }
+            else
+            {
+                ndarRefreshOutcome = new Services.Models.NdarRefreshOutcome
+                {
+                    FacilityId = Guid.Empty,
+                    Month = reportMonth,
+                    Year = reportYear,
+                    Status = Services.Models.NdarRefreshStatus.NoReport,
+                    Message = "No NDAR-1 report exists for this period."
+                };
+            }
+
+            saveSummary.NdarRefreshStatus = ndarRefreshOutcome.Status.ToString();
+            saveSummary.NdarRefreshMessage = ndarRefreshOutcome.Message;
+            if (ndarRefreshOutcome.Status == Services.Models.NdarRefreshStatus.Failed && !string.IsNullOrWhiteSpace(ndarRefreshOutcome.Message))
+            {
+                saveSummary.Warnings.Add(ndarRefreshOutcome.Message);
+            }
         }
         else
         {
-            ndarRefreshOutcome = new Services.Models.NdarRefreshOutcome
-            {
-                FacilityId = Guid.Empty,
-                Month = reportMonth,
-                Year = reportYear,
-                Status = Services.Models.NdarRefreshStatus.NoReport,
-                Message = "No NDAR-1 report exists for this period."
-            };
-        }
-
-        saveSummary.NdarRefreshStatus = ndarRefreshOutcome.Status.ToString();
-        saveSummary.NdarRefreshMessage = ndarRefreshOutcome.Message;
-        if (ndarRefreshOutcome.Status == Services.Models.NdarRefreshStatus.Failed && !string.IsNullOrWhiteSpace(ndarRefreshOutcome.Message))
-        {
-            saveSummary.Warnings.Add(ndarRefreshOutcome.Message);
+            saveSummary!.NdarRefreshStatus = "Skipped";
         }
 
         _context.ChangeTracker.Clear();
-        var refreshed = await BuildGridAsync(ndar1Id);
+        var refreshed = await BuildGridAsync(ndar1Id, userId);
         return new NDAR1RowEditResult
         {
             Success = true,

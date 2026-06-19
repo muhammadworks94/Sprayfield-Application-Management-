@@ -399,6 +399,32 @@ public class NDAR1DayRowUpdateRequest
     public decimal? StorageFt { get; set; }
     public decimal? FiveDayUpsetFt { get; set; }
     public List<NDAR1GridApplicationCellViewModel> Applications { get; set; } = new();
+    public bool KeepLockAfterSave { get; set; }
+    public bool SkipNdarRefresh { get; set; }
+}
+
+public class NDAR1GridEditBeginResult
+{
+    public List<NDAR1GridDayLockResult> Locks { get; set; } = new();
+}
+
+public class NDAR1GridDayLockResult
+{
+    public int DayNo { get; set; }
+    public bool Success { get; set; }
+    public Guid? LockToken { get; set; }
+    public string? LockedBy { get; set; }
+    public string? Message { get; set; }
+}
+
+public class NDAR1GridReleaseRequest
+{
+    public List<Guid> LockTokens { get; set; } = new();
+}
+
+public class NDAR1GridFooterTotalsResult
+{
+    public List<NDAR1GridFieldColumnViewModel> FieldColumns { get; set; } = new();
 }
 
 public class NDAR1RowEditLockResult

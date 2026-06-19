@@ -14,9 +14,9 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">Edit daily data for @Model.Month @Model.Year using shared Operator Logs and Monthly Applications records.</p>
+        <p class="text-muted mb-0">Edit daily data for @Model.Month @Model.Year. Changes save automatically as you tab through cells.</p>
     </div>
-    <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.NDAR1Id" class="btn btn-secondary">
+    <a asp-action="NDAR1ReportDetails" asp-route-id="@Model.NDAR1Id" class="btn btn-secondary" id="ndarBackToDetails">
         <i class="bi bi-arrow-left"></i> Back to Details
     </a>
 </div>
@@ -25,7 +25,7 @@
     <div class="card-body">
         @Html.AntiForgeryToken()
         <h5 class="mb-3">Daily Grid (Live Source)</h5>
-        <p class="text-muted small">Each row updates the same underlying records used in Operations.</p>
+        <p class="text-muted small">Each row updates the same underlying records used in Operations. Tab through a column to enter data quickly.</p>
 
         <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
             <table class="table table-bordered table-sm ndar-daily-table" id="ndarLiveGrid">
@@ -44,16 +44,20 @@
                             <th>Field @field.FieldCode<br /><small>Max Hr (in/ac)</small></th>
                             <th>Field @field.FieldCode<br /><small>Daily Load (in)</small></th>
                         }
-                        <th>Actions</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var row in Model.Rows)
                     {
-                        <tr data-day="@row.DayNo" data-date="@row.Date.ToString("yyyy-MM-dd")">
+                        var lockedByOther = !string.IsNullOrWhiteSpace(row.LockedBy) && !row.IsLockedByCurrentUser;
+                        var editable = !lockedByOther;
+                        <tr data-day="@row.DayNo"
+                            data-date="@row.Date.ToString("yyyy-MM-dd")"
+                            data-locked-by-other="@(lockedByOther ? "true" : "false")">
                             <td><strong>@row.DayNo</strong></td>
                             <td>
-                                <select class="form-select form-select-sm" data-field="weatherCode" disabled title="Click Edit for this row to modify values.">
+                                <select class="form-select form-select-sm ndar-editable" data-field="weatherCode" @(editable ? null : "disabled")>
                                     <option value=""></option>
                                     @foreach (var weather in weatherOptions)
                                     {
@@ -68,29 +72,23 @@
                                     }
                                 </select>
                             </td>
-                            <td><input class="form-control form-control-sm" data-field="temperatureF" type="number" step="0.01" value="@row.TemperatureF" disabled title="Click Edit for this row to modify values." /></td>
-                            <td><input class="form-control form-control-sm" data-field="precipitationIn" type="number" step="0.01" value="@row.PrecipitationIn" disabled title="Click Edit for this row to modify values." /></td>
-                            <td><input class="form-control form-control-sm" data-field="storageFt" type="number" step="0.01" value="@row.StorageFt" disabled title="Click Edit for this row to modify values." /></td>
-                            <td><input class="form-control form-control-sm" data-field="fiveDayUpsetFt" type="number" step="0.01" value="@row.FiveDayUpsetFt" disabled title="Click Edit for this row to modify values." /></td>
+                            <td><input class="form-control form-control-sm ndar-editable" data-field="temperatureF" type="number" step="0.01" value="@row.TemperatureF" @(editable ? null : "disabled") /></td>
+                            <td><input class="form-control form-control-sm ndar-editable" data-field="precipitationIn" type="number" step="0.01" value="@row.PrecipitationIn" @(editable ? null : "disabled") /></td>
+                            <td><input class="form-control form-control-sm ndar-editable" data-field="storageFt" type="number" step="0.01" value="@row.StorageFt" @(editable ? null : "disabled") /></td>
+                            <td><input class="form-control form-control-sm ndar-editable" data-field="fiveDayUpsetFt" type="number" step="0.01" value="@row.FiveDayUpsetFt" @(editable ? null : "disabled") /></td>
                             @foreach (var app in row.Applications)
                             {
                                 <td><input class="form-control form-control-sm" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.VolumeGallons" disabled title="Calculated field from time irrigated. This value is read-only." /></td>
-                                <td><input class="form-control form-control-sm" data-app="timeIrrigatedMinutes" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.TimeIrrigatedMinutes" disabled title="Click Edit for this row to modify values." /></td>
+                                <td><input class="form-control form-control-sm ndar-editable" data-app="timeIrrigatedMinutes" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.TimeIrrigatedMinutes" @(editable ? null : "disabled") /></td>
                                 <td><input class="form-control form-control-sm" data-app="maximumHourlyLoadingInchesPerAcre" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.MaximumHourlyLoadingInchesPerAcre" disabled title="Static value from Sprayfield Permitted (Max) Hourly Rate. This value is read-only." /></td>
                                 <td><input class="form-control form-control-sm" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.DailyLoadingInches" disabled title="Calculated from time irrigated and permitted max hourly rate. This value is read-only." /></td>
                             }
-                            <td class="text-nowrap">
-                                <span class="badge bg-warning text-dark d-none lock-badge"></span>
-                                <button type="button" class="btn btn-sm btn-outline-primary row-edit-btn" title="Edit" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-container="body" aria-label="Edit">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-primary row-update-btn d-none" title="Save" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-container="body" aria-label="Save">
-                                    <i class="bi bi-check-lg"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-secondary row-cancel-btn d-none" title="Cancel" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-container="body" aria-label="Cancel">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
-                                <input type="hidden" class="lock-token" value="" />
+                            <td class="text-nowrap row-status-cell">
+                                <span class="row-status-icon" data-status="idle" title="Ready">
+                                    <i class="bi bi-check-circle text-muted"></i>
+                                </span>
+                                <span class="badge bg-warning text-dark lock-badge @(lockedByOther ? "" : "d-none")" title="@row.LockedBy">@(lockedByOther ? row.LockedBy : "")</span>
+                                <input type="hidden" class="lock-token" value="@(row.LockToken?.ToString() ?? "")" />
                             </td>
                         </tr>
                     }
@@ -141,7 +139,6 @@
         padding-right: 0.5rem;
     }
 
-    /* Keep day column visible while horizontally scrolling */
     #ndarLiveGrid th:first-child,
     #ndarLiveGrid td:first-child {
         position: sticky;
@@ -162,16 +159,15 @@
         background-color: #f8f9fa;
     }
 
-    /* Keep row actions always visible while horizontally scrolling */
     #ndarLiveGrid th:last-child,
     #ndarLiveGrid td:last-child {
         position: sticky;
         right: 0;
         z-index: 3;
         background-color: #fff;
-        width: 88px;
-        min-width: 88px;
-        max-width: 88px;
+        width: 72px;
+        min-width: 72px;
+        max-width: 72px;
         box-shadow: -1px 0 0 #dee2e6;
     }
 
@@ -180,27 +176,46 @@
         background-color: #f8f9fa;
     }
 
-    #ndarLiveGrid tbody td:last-child {
-        z-index: 3;
-    }
-
     #ndarLiveGrid tfoot th:last-child,
     #ndarLiveGrid tfoot td:last-child {
         background-color: #f8f9fa;
     }
 
-    #ndarLiveGrid td.text-nowrap {
-        white-space: nowrap;
-        text-align: center;
+    #ndarLiveGrid tbody tr:focus-within {
+        background-color: #f8fbff;
     }
 
-    #ndarLiveGrid td.text-nowrap .btn {
-        width: 32px;
-        height: 32px;
-        padding: 0;
+    #ndarLiveGrid tbody tr[data-locked-by-other="true"] {
+        background-color: #fff8e6;
+    }
+
+    #ndarLiveGrid .ndar-editable:focus {
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        border-color: #86b7fe;
+    }
+
+    #ndarLiveGrid td.row-status-cell {
+        white-space: nowrap;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    #ndarLiveGrid .row-status-icon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        width: 24px;
+        height: 24px;
+    }
+
+    #ndarLiveGrid .lock-badge {
+        font-size: 0.65rem;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: block;
+        margin-top: 2px;
     }
 </style>
 
@@ -212,8 +227,7 @@
 
             const grid = document.getElementById('ndarLiveGrid');
             if (!grid) return;
-            const defaultReadOnlyTitle = 'Click Edit for this row to modify values.';
-            const calculatedReadOnlyTitle = 'Calculated field. This value is read-only.';
+
             const fieldAcresById = {
                 @for (var i = 0; i < Model.FieldColumns.Count; i++)
                 {
@@ -221,6 +235,13 @@
                     @:"@field.SprayfieldId": @(field.Acres.HasValue ? field.Acres.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null")@(i < Model.FieldColumns.Count - 1 ? "," : "")
                 }
             };
+
+            const rowStates = new Map();
+            let ndarRefreshTimer = null;
+            let isLeavingPage = false;
+            let activeEditRow = null;
+            const heldLockTokens = new Set();
+            const ROW_SAVE_DEBOUNCE_MS = 400;
 
             const recalcFooterTotals = () => {
                 const volumeTotals = {};
@@ -241,7 +262,7 @@
                         }
 
                         const acres = fieldAcresById[sf];
-                    if (acres && volume != null && !Number.isNaN(volume) && acres > 0) {
+                        if (acres && volume != null && !Number.isNaN(volume) && acres > 0) {
                             loadingTotals[sf] += (volume / (acres * 27154));
                         }
                     });
@@ -255,6 +276,32 @@
                 });
             };
 
+            const refreshFloatingTotals = async () => {
+                try {
+                    const resp = await fetch(`@Url.Action("NDAR1RefreshGridTotals", "Reports")?ndar1Id=${ndar1Id}`, {
+                        method: 'POST',
+                        headers: { 'RequestVerificationToken': antiForgery }
+                    });
+                    if (!resp.ok) return;
+                    const result = await resp.json();
+                    if (!result?.fieldColumns) return;
+                    result.fieldColumns.forEach(col => {
+                        const sf = col.sprayfieldId;
+                        const floatingCell = grid.querySelector(`[data-total-floating="${sf}"]`);
+                        if (floatingCell && col.twelveMonthFloatingTotalInches != null) {
+                            floatingCell.textContent = Number(col.twelveMonthFloatingTotalInches).toFixed(2);
+                        }
+                    });
+                } catch {
+                    // Best-effort refresh.
+                }
+            };
+
+            const scheduleNdarRefresh = () => {
+                if (ndarRefreshTimer) clearTimeout(ndarRefreshTimer);
+                ndarRefreshTimer = setTimeout(refreshFloatingTotals, 2500);
+            };
+
             const showError = (message) => {
                 const safeMessage = message || 'Something went wrong. Please try again.';
                 if (window.toastr) {
@@ -263,59 +310,7 @@
                 }
                 console.error(safeMessage);
             };
-            const showSuccess = (message) => {
-                const safeMessage = message || 'Row updated successfully.';
-                if (window.toastr) {
-                    window.toastr.success(safeMessage);
-                    return;
-                }
-                console.log(safeMessage);
-            };
-            const formatCappedList = (items, selector, limit = 5) => {
-                if (!Array.isArray(items) || items.length === 0) return 'None';
-                const labels = items
-                    .map(selector)
-                    .filter(x => !!x && x.trim() !== '');
-                if (labels.length === 0) return 'None';
-                const shown = labels.slice(0, limit);
-                const hiddenCount = labels.length - shown.length;
-                return hiddenCount > 0 ? `${shown.join(', ')} +${hiddenCount} more` : shown.join(', ');
-            };
-            const buildSaveSummaryMessage = (summary) => {
-                if (!summary) return 'Row updated successfully.';
-                const parts = [];
-                const period = summary.date ? new Date(summary.date).toLocaleDateString() : `Day ${summary.dayNo}`;
-                parts.push(`NDAR row saved (${period}).`);
-                parts.push(`Operator Log: ${summary.operatorLogAction || 'None'}`);
-                parts.push(`Monthly Apps Created: ${formatCappedList(summary.monthlyApplicationsCreated, x => x.sprayfieldCode ? `Field ${x.sprayfieldCode}` : x.sprayfieldId)}`);
-                parts.push(`Monthly Apps Updated: ${formatCappedList(summary.monthlyApplicationsUpdated, x => x.sprayfieldCode ? `Field ${x.sprayfieldCode}` : x.sprayfieldId)}`);
-                parts.push(`Backfilled: ${formatCappedList(summary.monthlyApplicationsBackfilled, x => x.sprayfieldCode ? `Field ${x.sprayfieldCode}` : x.sprayfieldId)}`);
-                const weatherChanged = Array.isArray(summary.weatherFieldsChanged) && summary.weatherFieldsChanged.length > 0
-                    ? summary.weatherFieldsChanged.join(', ')
-                    : 'None';
-                parts.push(`Weather Changed: ${weatherChanged}`);
-                parts.push(`Irrigation Occurred: ${summary.irrigationFlagAfterSave ? 'YES' : 'NO'}`);
-                const refreshStatus = summary.ndarRefreshStatus || 'None';
-                const refreshMessage = summary.ndarRefreshMessage ? ` - ${summary.ndarRefreshMessage}` : '';
-                parts.push(`NDAR Totals Refresh: ${refreshStatus}${refreshMessage}`);
-                if (Array.isArray(summary.warnings) && summary.warnings.length > 0) {
-                    parts.push(`Warnings: ${summary.warnings.join(' | ')}`);
-                }
-                return parts.join(' ');
-            };
-            const setButtonLoading = (button, isLoading, loadingText = '') => {
-                if (!button) return;
-                if (isLoading) {
-                    button.dataset.originalHtml = button.innerHTML;
-                    button.disabled = true;
-                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + loadingText;
-                    return;
-                }
 
-                button.disabled = false;
-                button.innerHTML = button.dataset.originalHtml || '<i class="bi bi-pencil-square"></i>';
-                delete button.dataset.originalHtml;
-            };
             const tryReadJson = async (response) => {
                 try {
                     return await response.json();
@@ -330,47 +325,23 @@
                 selectEl.classList.toggle('weather-select-selected', hasValue);
             };
 
-            const setEditable = (tr, editable) => {
-                tr.querySelectorAll('input[data-field], select[data-field], input[data-app]').forEach(i => {
-                    if (i.dataset.app === 'dailyLoadingInches' ||
-                        i.dataset.app === 'volumeGallons' ||
-                        i.dataset.app === 'maximumHourlyLoadingInchesPerAcre') {
-                        i.disabled = true;
-                        i.title = calculatedReadOnlyTitle;
-                        return;
-                    }
-                    i.disabled = !editable;
-                    i.title = editable ? '' : defaultReadOnlyTitle;
-                });
-                tr.querySelector('.row-edit-btn')?.classList.toggle('d-none', editable);
-                tr.querySelector('.row-update-btn')?.classList.toggle('d-none', !editable);
-                tr.querySelector('.row-cancel-btn')?.classList.toggle('d-none', !editable);
-                syncWeatherIconState(tr.querySelector('select[data-field="weatherCode"]'));
+            const setRowStatus = (tr, status, title) => {
+                const icon = tr.querySelector('.row-status-icon');
+                if (!icon) return;
+                icon.dataset.status = status;
+                icon.title = title || '';
+                const icons = {
+                    idle: '<i class="bi bi-check-circle text-muted"></i>',
+                    dirty: '<i class="bi bi-circle-fill text-warning" style="font-size:0.5rem;"></i>',
+                    saving: '<span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>',
+                    saved: '<i class="bi bi-check-circle text-success"></i>',
+                    error: '<i class="bi bi-exclamation-circle text-danger"></i>',
+                    locked: '<i class="bi bi-lock-fill text-warning"></i>'
+                };
+                icon.innerHTML = icons[status] || icons.idle;
             };
 
-            const closeOtherEditingRows = async (currentTr) => {
-                const editingRows = grid.querySelectorAll('tr[data-day] .row-update-btn:not(.d-none)');
-                for (const updateBtn of editingRows) {
-                    const tr = updateBtn.closest('tr[data-day]');
-                    if (!tr || tr === currentTr) continue;
-                    const dayNo = Number(tr.dataset.day);
-                    const lockToken = tr.querySelector('.lock-token')?.value;
-                    if (lockToken) {
-                        try {
-                            await fetch(`@Url.Action("NDAR1CancelRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}&lockToken=${lockToken}`, {
-                                method: 'POST',
-                                headers: { 'RequestVerificationToken': antiForgery }
-                            });
-                        } catch {
-                            // Best-effort release for client-side row state cleanup.
-                        }
-                    }
-                    tr.querySelector('.lock-token').value = '';
-                    setEditable(tr, false);
-                }
-            };
-
-            const collectRowPayload = (tr) => {
+            const collectRowPayload = (tr, options = {}) => {
                 const apps = {};
                 tr.querySelectorAll('input[data-app]').forEach(i => {
                     const sprayfieldId = i.dataset.sprayfieldId;
@@ -390,14 +361,37 @@
 
                 return {
                     dayNo: Number(tr.dataset.day),
-                    lockToken: tr.querySelector('.lock-token').value,
+                    lockToken: tr.querySelector('.lock-token')?.value || '',
                     weatherCode: tr.querySelector('select[data-field="weatherCode"]').value,
                     temperatureF: numOrNull('input[data-field="temperatureF"]'),
                     precipitationIn: numOrNull('input[data-field="precipitationIn"]'),
                     storageFt: numOrNull('input[data-field="storageFt"]'),
                     fiveDayUpsetFt: numOrNull('input[data-field="fiveDayUpsetFt"]'),
-                    applications: Object.values(apps)
+                    applications: Object.values(apps),
+                    keepLockAfterSave: true,
+                    skipNdarRefresh: options.skipNdarRefresh !== false
                 };
+            };
+
+            const payloadSignature = (payload) => JSON.stringify({
+                weatherCode: payload.weatherCode,
+                temperatureF: payload.temperatureF,
+                precipitationIn: payload.precipitationIn,
+                storageFt: payload.storageFt,
+                fiveDayUpsetFt: payload.fiveDayUpsetFt,
+                applications: payload.applications
+            });
+
+            const refreshCalculatedFields = (tr, row) => {
+                row.applications.forEach(app => {
+                    const sf = app.sprayfieldId;
+                    const v = tr.querySelector(`input[data-app="volumeGallons"][data-sprayfield-id="${sf}"]`);
+                    const h = tr.querySelector(`input[data-app="maximumHourlyLoadingInchesPerAcre"][data-sprayfield-id="${sf}"]`);
+                    const d = tr.querySelector(`input[data-app="dailyLoadingInches"][data-sprayfield-id="${sf}"]`);
+                    if (v) v.value = app.volumeGallons == null ? '' : Math.round(app.volumeGallons);
+                    if (h) h.value = app.maximumHourlyLoadingInchesPerAcre ?? '';
+                    if (d) d.value = app.dailyLoadingInches ?? '';
+                });
             };
 
             const refreshRowFromResponse = (tr, row) => {
@@ -421,52 +415,78 @@
                 });
             };
 
-            grid.addEventListener('click', async e => {
-                const tr = e.target.closest('tr[data-day]');
-                if (!tr) return;
+            const getRowState = (tr) => {
+                const dayNo = Number(tr.dataset.day);
+                if (!rowStates.has(dayNo)) {
+                    rowStates.set(dayNo, {
+                        lastSavedSignature: payloadSignature(collectRowPayload(tr)),
+                        saveInFlight: false,
+                        rescheduleAfterFlight: false,
+                        debounceTimer: null
+                    });
+                }
+                return rowStates.get(dayNo);
+            };
 
-                const editBtnTarget = e.target.closest('.row-edit-btn');
-                const updateBtnTarget = e.target.closest('.row-update-btn');
-                const cancelBtnTarget = e.target.closest('.row-cancel-btn');
+            const isRowDirty = (tr) => {
+                const state = getRowState(tr);
+                return payloadSignature(collectRowPayload(tr)) !== state.lastSavedSignature;
+            };
 
-                if (editBtnTarget) {
-                    const editBtn = editBtnTarget;
-                    setButtonLoading(editBtn, true, '');
-                    const dayNo = Number(tr.dataset.day);
-                    try {
-                        const resp = await fetch(`@Url.Action("NDAR1BeginRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}`, {
-                            method: 'POST',
-                            headers: { 'RequestVerificationToken': antiForgery }
-                        });
-                        const result = await tryReadJson(resp);
-                        if (!resp.ok || !result) {
-                            showError('Unable to start editing this row right now. Please try again.');
-                            return;
-                        }
-                        if (!result.success) {
-                            const badge = tr.querySelector('.lock-badge');
-                            badge.textContent = result.message || 'Locked';
+            const ensureRowLock = async (tr) => {
+                if (tr.dataset.lockedByOther === 'true') return false;
+
+                const tokenInput = tr.querySelector('.lock-token');
+                if (tokenInput?.value) return true;
+
+                const dayNo = Number(tr.dataset.day);
+                try {
+                    const resp = await fetch(`@Url.Action("NDAR1BeginRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}`, {
+                        method: 'POST',
+                        headers: { 'RequestVerificationToken': antiForgery }
+                    });
+                    const result = await tryReadJson(resp);
+                    if (!resp.ok || !result?.success) {
+                        tr.dataset.lockedByOther = 'true';
+                        tr.querySelectorAll('.ndar-editable').forEach(el => { el.disabled = true; });
+                        const badge = tr.querySelector('.lock-badge');
+                        if (badge) {
+                            badge.textContent = result?.message || result?.lockedBy || 'Locked';
                             badge.classList.remove('d-none');
-                            const rowEditBtn = tr.querySelector('.row-edit-btn');
-                            if (rowEditBtn && result.message) {
-                                rowEditBtn.title = result.message;
-                            }
-                            if (result.message) {
-                                showError(result.message);
-                            }
-                            return;
                         }
-                        await closeOtherEditingRows(tr);
-                        tr.querySelector('.lock-token').value = result.lockToken;
-                        tr.querySelector('.lock-badge').classList.add('d-none');
-                        setEditable(tr, true);
-                    } finally {
-                        setButtonLoading(editBtn, false);
+                        setRowStatus(tr, 'locked', result?.message || 'Locked by another user');
+                        if (result?.message) showError(result.message);
+                        return false;
                     }
+                    tokenInput.value = result.lockToken;
+                    heldLockTokens.add(result.lockToken);
+                    return true;
+                } catch {
+                    showError('Unable to acquire edit lock for this row.');
+                    return false;
+                }
+            };
+
+            const saveRow = async (tr, options = {}) => {
+                if (tr.dataset.lockedByOther === 'true') return;
+                if (!isRowDirty(tr) && !options.force) return;
+
+                const state = getRowState(tr);
+                if (state.saveInFlight) {
+                    state.rescheduleAfterFlight = true;
+                    return;
                 }
 
-                if (updateBtnTarget) {
-                    const payload = collectRowPayload(tr);
+                const hasLock = await ensureRowLock(tr);
+                if (!hasLock) return;
+
+                state.saveInFlight = true;
+                setRowStatus(tr, 'saving', 'Saving...');
+
+                const payload = collectRowPayload(tr, options);
+                const sentSignature = payloadSignature(payload);
+                let saveSucceeded = false;
+                try {
                     const resp = await fetch(`@Url.Action("NDAR1UpdateRow", "Reports")?ndar1Id=${ndar1Id}`, {
                         method: 'POST',
                         headers: {
@@ -476,56 +496,188 @@
                         body: JSON.stringify(payload)
                     });
                     const result = await tryReadJson(resp);
-                    if (!resp.ok) {
-                        if ((resp.status === 409 || resp.status === 400) && result?.message) {
-                            showError(result.message);
-                        } else {
-                            showError('Unable to update the row right now. Please try again.');
-                        }
+
+                    if (!resp.ok || !result?.success) {
+                        const message = result?.message || 'Unable to update the row right now. Please try again.';
+                        setRowStatus(tr, 'error', message);
+                        showError(message);
                         return;
                     }
-                    if (!result) {
-                        showError('Unable to update the row right now. Please try again.');
-                        return;
-                    }
-                    if (!result.success) {
-                        showError(result.message || 'Unable to update row.');
-                        return;
-                    }
-                    refreshRowFromResponse(tr, result.row);
+
+                    saveSucceeded = true;
+                    refreshCalculatedFields(tr, result.row);
+                    state.lastSavedSignature = sentSignature;
                     recalcFooterTotals();
-                    tr.querySelector('.lock-token').value = '';
-                    setEditable(tr, false);
-                    showSuccess(buildSaveSummaryMessage(result.saveSummary));
+                    setRowStatus(tr, 'saved', 'Saved');
+                    scheduleNdarRefresh();
+
+                    if (payload.lockToken) {
+                        heldLockTokens.add(payload.lockToken);
+                    }
+                } catch {
+                    setRowStatus(tr, 'error', 'Save failed');
+                    showError('Unable to update the row right now. Please try again.');
+                } finally {
+                    state.saveInFlight = false;
+                    if (saveSucceeded && (state.rescheduleAfterFlight || isRowDirty(tr))) {
+                        state.rescheduleAfterFlight = false;
+                        await saveRow(tr, options);
+                    } else {
+                        state.rescheduleAfterFlight = false;
+                        if (saveSucceeded && !isRowDirty(tr)) {
+                            setTimeout(() => {
+                                if (!isRowDirty(tr)) setRowStatus(tr, 'idle', 'Ready');
+                            }, 1500);
+                        } else if (!saveSucceeded && isRowDirty(tr)) {
+                            setRowStatus(tr, 'dirty', 'Unsaved changes');
+                        }
+                    }
+                }
+            };
+
+            const cancelScheduledRowSave = (tr) => {
+                const state = getRowState(tr);
+                if (state.debounceTimer) {
+                    clearTimeout(state.debounceTimer);
+                    state.debounceTimer = null;
+                }
+            };
+
+            const scheduleRowSave = (tr, options = {}) => {
+                const state = getRowState(tr);
+                cancelScheduledRowSave(tr);
+
+                if (options.immediate) {
+                    saveRow(tr, options);
+                    return;
                 }
 
-                if (cancelBtnTarget) {
-                    const dayNo = Number(tr.dataset.day);
-                    const lockToken = tr.querySelector('.lock-token').value;
-                    await fetch(`@Url.Action("NDAR1CancelRowEdit", "Reports")?ndar1Id=${ndar1Id}&dayNo=${dayNo}&lockToken=${lockToken}`, {
+                state.debounceTimer = setTimeout(() => {
+                    state.debounceTimer = null;
+                    saveRow(tr, options);
+                }, ROW_SAVE_DEBOUNCE_MS);
+            };
+
+            const flushScheduledRowSave = async (tr, options = {}) => {
+                cancelScheduledRowSave(tr);
+                await saveRow(tr, { ...options, force: true });
+            };
+
+            const flushDirtyRows = async () => {
+                const rows = [...grid.querySelectorAll('tbody tr[data-day]')];
+                for (const tr of rows) {
+                    cancelScheduledRowSave(tr);
+                    if (isRowDirty(tr)) {
+                        await saveRow(tr, { skipNdarRefresh: true, force: true });
+                    }
+                }
+            };
+
+            const releaseAllLocks = () => {
+                const tokens = [...heldLockTokens];
+                if (tokens.length === 0) return;
+
+                fetch(`@Url.Action("NDAR1ReleaseGridEdit", "Reports")?ndar1Id=${ndar1Id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': antiForgery
+                    },
+                    body: JSON.stringify({ lockTokens: tokens }),
+                    keepalive: true
+                }).catch(() => { });
+
+                heldLockTokens.clear();
+            };
+
+            const initializeGridLocks = async () => {
+                try {
+                    const resp = await fetch(`@Url.Action("NDAR1BeginGridEdit", "Reports")?ndar1Id=${ndar1Id}`, {
                         method: 'POST',
                         headers: { 'RequestVerificationToken': antiForgery }
                     });
-                    tr.querySelector('.lock-token').value = '';
-                    setEditable(tr, false);
+                    const result = await tryReadJson(resp);
+                    if (!resp.ok || !result?.locks) return;
+
+                    result.locks.forEach(lock => {
+                        const tr = grid.querySelector(`tr[data-day="${lock.dayNo}"]`);
+                        if (!tr) return;
+
+                        if (lock.success && lock.lockToken) {
+                            tr.querySelector('.lock-token').value = lock.lockToken;
+                            heldLockTokens.add(lock.lockToken);
+                            return;
+                        }
+
+                        tr.dataset.lockedByOther = 'true';
+                        tr.querySelectorAll('.ndar-editable').forEach(el => { el.disabled = true; });
+                        const badge = tr.querySelector('.lock-badge');
+                        if (badge) {
+                            badge.textContent = lock.lockedBy || lock.message || 'Locked';
+                            badge.classList.remove('d-none');
+                        }
+                        setRowStatus(tr, 'locked', lock.message || lock.lockedBy || 'Locked');
+                    });
+                } catch {
+                    // Rows will acquire locks lazily on first edit.
                 }
+            };
+
+            grid.addEventListener('focusin', (e) => {
+                if (!e.target.classList?.contains('ndar-editable')) return;
+                const tr = e.target.closest('tr[data-day]');
+                if (!tr) return;
+
+                if (activeEditRow && activeEditRow !== tr) {
+                    flushScheduledRowSave(activeEditRow);
+                }
+                activeEditRow = tr;
             });
 
-            grid.querySelectorAll('select[data-field="weatherCode"]').forEach(selectEl => {
-                syncWeatherIconState(selectEl);
-                selectEl.addEventListener('change', () => syncWeatherIconState(selectEl));
-            });
+            grid.querySelectorAll('tbody tr[data-day]').forEach(tr => {
+                getRowState(tr);
 
-            if (window.bootstrap?.Tooltip) {
-                grid.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-                    window.bootstrap.Tooltip.getOrCreateInstance(el, {
-                        container: 'body',
-                        boundary: document.body,
-                        fallbackPlacements: ['left', 'right', 'top']
+                tr.querySelectorAll('select[data-field="weatherCode"]').forEach(selectEl => {
+                    syncWeatherIconState(selectEl);
+                    selectEl.addEventListener('change', () => {
+                        syncWeatherIconState(selectEl);
+                        if (isRowDirty(tr)) {
+                            setRowStatus(tr, 'dirty', 'Unsaved changes');
+                            scheduleRowSave(tr);
+                        }
                     });
                 });
-            }
 
+                tr.querySelectorAll('input.ndar-editable').forEach(inputEl => {
+                    inputEl.addEventListener('input', () => {
+                        if (isRowDirty(tr)) {
+                            setRowStatus(tr, 'dirty', 'Unsaved changes');
+                        }
+                    });
+
+                    inputEl.addEventListener('blur', () => {
+                        if (isRowDirty(tr)) {
+                            scheduleRowSave(tr);
+                        }
+                    });
+                });
+            });
+
+            document.getElementById('ndarBackToDetails')?.addEventListener('click', async (e) => {
+                if (isLeavingPage) return;
+                e.preventDefault();
+                isLeavingPage = true;
+                await flushDirtyRows();
+                await refreshFloatingTotals();
+                releaseAllLocks();
+                window.location.href = e.currentTarget.href;
+            });
+
+            window.addEventListener('beforeunload', () => {
+                releaseAllLocks();
+            });
+
+            initializeGridLocks();
             recalcFooterTotals();
         })();
     </script>

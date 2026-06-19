@@ -1228,7 +1228,8 @@ public class ReportsController : BaseController
             return NotFound();
 
         await EnsureCompanyAccessAsync(report.CompanyId);
-        var grid = await _ndar1RowEditService.BuildGridAsync(id);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var grid = await _ndar1RowEditService.BuildGridAsync(id, userId);
         return View(grid);
     }
 
@@ -1247,6 +1248,57 @@ public class ReportsController : BaseController
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var userDisplay = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "User";
         var result = await _ndar1RowEditService.BeginRowEditAsync(ndar1Id, dayNo, userId, userDisplay);
+        return Json(result);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1BeginGridEdit(Guid ndar1Id)
+    {
+        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+        if (report == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var userDisplay = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "User";
+        var result = await _ndar1RowEditService.BeginGridEditAsync(ndar1Id, userId, userDisplay);
+        return Json(result);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1ReleaseGridEdit(Guid ndar1Id, [FromBody] NDAR1GridReleaseRequest request)
+    {
+        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+        if (report == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await _ndar1RowEditService.ReleaseGridEditAsync(ndar1Id, request?.LockTokens ?? new List<Guid>(), userId);
+        return Ok(new { success = true });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1RefreshGridTotals(Guid ndar1Id)
+    {
+        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+        if (report == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(report.CompanyId);
+        var result = await _ndar1RowEditService.GetGridFooterTotalsAsync(ndar1Id);
         return Json(result);
     }
 

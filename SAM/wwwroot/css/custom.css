@@ -1030,6 +1030,28 @@ i.bi-question-circle {
   background-color: var(--white);
 }
 
+.ndar-daily-table thead th:last-child,
+.ndar-daily-table tbody td:last-child,
+.ndar-daily-table tfoot th:last-child {
+  position: sticky;
+  right: 0;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
+  z-index: 4;
+  background-color: var(--white);
+  box-shadow: inset 1px 0 0 var(--border-color);
+}
+
+.ndar-daily-table thead th:last-child {
+  z-index: 5;
+  background-color: var(--gray-50);
+}
+
+.ndar-daily-table tfoot th:last-child {
+  background-color: var(--gray-50);
+}
+
 /* ============================================
    Groundwater Monitoring List Table
    ============================================ */
