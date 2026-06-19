@@ -26,6 +26,7 @@
     var wastewaterCount = activePermits.Sum(p => p.TemplateParameters.Count(x => (x.ReportTypes & PermitTemplateReportTypeEnum.Ndmr) != 0));
     var gw59Count = activePermits.Sum(p => p.TemplateParameters.Count(x => (x.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0));
     var gw59ACount = activePermits.Sum(p => p.TemplateParameters.Count(x => (x.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0));
+    var canEditPermitNumber = ViewBag.CanEditPermitNumber as bool? ?? false;
 }
 
 @functions {
@@ -55,7 +56,7 @@
             <input type="hidden" name="facilityId" value="@facility?.Id" />
             <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-database-down me-1"></i>Import PCS Catalog</button>
         </form>
-        <a asp-action="FacilityDetails" asp-route-id="@facility?.Id" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        <a asp-action="SystemAdmin" asp-route-tab="permits" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
     </div>
 </div>
 
@@ -223,6 +224,11 @@
                                 </div>
                             </div>
                         </div>
+
+                        @if (canEditPermitNumber)
+                        {
+                            <partial name="Partials/_PermitNumberEditPartial" model="permit" />
+                        }
 
                         <div class="collapse mb-3" id="@editPermitCollapseId">
                             <div class="card card-body bg-light">
@@ -452,6 +458,10 @@
                                 </div>
                             </div>
                         </div>
+                        @if (canEditPermitNumber)
+                        {
+                            <partial name="Partials/_PermitNumberEditPartial" model="permit" />
+                        }
                         <div class="collapse mb-3" id="@editPermitCollapseId">
                             <div class="card card-body bg-light">
                                 <h6 class="mb-3">Edit Permit</h6>
@@ -663,6 +673,10 @@
                                 </div>
                             </div>
                         </div>
+                        @if (canEditPermitNumber)
+                        {
+                            <partial name="Partials/_PermitNumberEditPartial" model="permit" />
+                        }
                         <div class="collapse mb-3" id="@editPermitCollapseId">
                             <div class="card card-body bg-light">
                                 <h6 class="mb-3">Edit Permit</h6>
@@ -868,6 +882,11 @@
                                 </form>
                             </div>
                         </div>
+
+                        @if (canEditPermitNumber)
+                        {
+                            <partial name="Partials/_PermitNumberEditPartial" model="permit" />
+                        }
 
                         <div class="table-responsive">
                             <table class="table table-sm table-bordered align-middle">

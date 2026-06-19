@@ -44,6 +44,7 @@ public partial class SystemAdminController
         ViewBag.ContextMonth = month;
         ViewBag.ContextYear = year;
         ViewBag.ReturnUrl = returnUrl;
+        ViewBag.CanEditPermitNumber = await IsGlobalAdminAsync() || await IsInRoleAsync("company_admin");
 
         return View();
     }
@@ -265,6 +266,57 @@ public partial class SystemAdminController
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Permit version updated.";
+        return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> FacilityPermitUpdatePermitNumber(Guid permitId, string permitNumber)
+    {
+        if (!await IsGlobalAdminAsync() && !await IsInRoleAsync("company_admin"))
+        {
+            return Forbid();
+        }
+
+        var permit = await _context.FacilityPermits.FirstOrDefaultAsync(x => x.Id == permitId);
+        if (permit == null)
+        {
+            return NotFound();
+        }
+
+        await EnsureCompanyAccessAsync(permit.CompanyId);
+
+        var normalizedPermitNumber = permitNumber?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedPermitNumber))
+        {
+            TempData["ErrorMessage"] = "Permit number is required.";
+            return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+        }
+
+        if (string.Equals(permit.PermitNumber, normalizedPermitNumber, StringComparison.Ordinal))
+        {
+            TempData["SuccessMessage"] = "Permit number unchanged.";
+            return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+        }
+
+        var duplicate = await _context.FacilityPermits
+            .IgnoreQueryFilters()
+            .AnyAsync(p => p.FacilityId == permit.FacilityId
+                           && p.PermitNumber == normalizedPermitNumber
+                           && p.PermitVersion == permit.PermitVersion
+                           && p.Id != permitId
+                           && !p.IsDeleted);
+
+        if (duplicate)
+        {
+            TempData["ErrorMessage"] = $"Permit number {normalizedPermitNumber} with version {permit.PermitVersion} already exists for this facility.";
+            return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
+        }
+
+        permit.PermitNumber = normalizedPermitNumber;
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Permit number updated.";
         return RedirectToAction(nameof(FacilityPermits), new { facilityId = permit.FacilityId });
     }
 

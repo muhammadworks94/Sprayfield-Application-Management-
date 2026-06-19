@@ -1,0 +1,21 @@
+@model SAM.Domain.Entities.FacilityPermit
+@{
+    var canEditPermitNumber = ViewBag.CanEditPermitNumber as bool? ?? false;
+}
+
+@if (canEditPermitNumber)
+{
+    <form asp-action="FacilityPermitUpdatePermitNumber" method="post" class="row g-2 align-items-end mb-3 permit-number-edit-form">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="permitId" value="@Model.Id" />
+        <div class="col-md-4 col-lg-3">
+            <label class="form-label mb-0 small">Permit Number</label>
+            <input name="permitNumber" class="form-control form-control-sm" value="@Model.PermitNumber" required maxlength="100" />
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-outline-primary mt-4">
+                <i class="bi bi-check-lg me-1"></i>Save Number
+            </button>
+        </div>
+    </form>
+}
