@@ -118,7 +118,7 @@ public class WWCharService : IWWCharService
             existingAnyState.SARDaily = wwChar.SARDaily;
             existingAnyState.TNDaily = wwChar.TNDaily;
             existingAnyState.CompositeTime = wwChar.CompositeTime;
-            existingAnyState.LabCertification = wwChar.LabCertification;
+            existingAnyState.LabOptionId = wwChar.LabOptionId;
             existingAnyState.CollectedBy = wwChar.CollectedBy;
             existingAnyState.AnalyzedBy = wwChar.AnalyzedBy;
             existingAnyState.NO2N = wwChar.NO2N;
@@ -206,7 +206,7 @@ public class WWCharService : IWWCharService
         existing.SARDaily = wwChar.SARDaily;
         existing.TNDaily = wwChar.TNDaily;
         existing.CompositeTime = wwChar.CompositeTime;
-        existing.LabCertification = wwChar.LabCertification;
+        existing.LabOptionId = wwChar.LabOptionId;
         existing.CollectedBy = wwChar.CollectedBy;
         existing.AnalyzedBy = wwChar.AnalyzedBy;
         existing.NO2N = wwChar.NO2N;

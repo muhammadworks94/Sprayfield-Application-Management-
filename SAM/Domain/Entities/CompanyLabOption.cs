@@ -12,5 +12,6 @@ public class CompanyLabOption : CompanyScopedEntity
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
 
-    public ICollection<Facility> Facilities { get; set; } = new List<Facility>();
+    public ICollection<WWChar> WWChars { get; set; } = new List<WWChar>();
+    public ICollection<GWMonit> GWMonits { get; set; } = new List<GWMonit>();
 }

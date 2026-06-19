@@ -80,12 +80,20 @@ public class CompanyLabOptionService : ICompanyLabOptionService
         existing.IsDeleted = true;
         existing.IsActive = false;
 
-        var facilitiesUsingDefault = await _context.Facilities
-            .Where(f => f.DefaultLabOptionId == id)
+        var wwCharsUsingLab = await _context.WWChars
+            .Where(w => w.LabOptionId == id)
             .ToListAsync();
-        foreach (var facility in facilitiesUsingDefault)
+        foreach (var wwChar in wwCharsUsingLab)
         {
-            facility.DefaultLabOptionId = null;
+            wwChar.LabOptionId = null;
+        }
+
+        var gwMonitsUsingLab = await _context.GWMonits
+            .Where(g => g.LabOptionId == id)
+            .ToListAsync();
+        foreach (var gwMonit in gwMonitsUsingLab)
+        {
+            gwMonit.LabOptionId = null;
         }
 
         await _context.SaveChangesAsync();

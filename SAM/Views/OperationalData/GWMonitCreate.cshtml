@@ -206,15 +206,16 @@
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Laboratory</label>
-                            <input class="form-control" value="@(Model.ResolvedLabName ?? "—")" readonly />
-                            <small class="text-muted">From facility Lab Options (System Admin).</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label class="form-label">Lab Certification No.</label>
-                            <input class="form-control" value="@(Model.ResolvedLabCertificationNumber ?? "—")" readonly />
+                            <label asp-for="LabOptionId" class="form-label"></label>
+                            <select asp-for="LabOptionId" asp-items="ViewBag.LabOptions" class="form-select">
+                                <option value="">-- Select lab --</option>
+                            </select>
+                            <span asp-validation-for="LabOptionId" class="text-danger"></span>
+                            @if (!string.IsNullOrEmpty(Model.ResolvedLabCertificationNumber))
+                            {
+                                <small class="text-muted d-block mt-1">Certification No.: @Model.ResolvedLabCertificationNumber</small>
+                            }
+                            <small class="text-muted d-block mt-1">Manage labs in <a asp-controller="SystemAdmin" asp-action="SystemAdmin">System Admin</a> &gt; Lab Options.</small>
                         </div>
                     </div>
                     <div class="col-md-3">

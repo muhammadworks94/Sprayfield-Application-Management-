@@ -147,7 +147,7 @@ public class GWMonitService : IGWMonitService
         existing.VOCReportFileStoragePath = gwMonit.VOCReportFileStoragePath;
         existing.VOCReportFileName = gwMonit.VOCReportFileName;
         existing.VOCReportContentType = gwMonit.VOCReportContentType;
-        existing.LabCertification = gwMonit.LabCertification;
+        existing.LabOptionId = gwMonit.LabOptionId;
         existing.CollectedBy = gwMonit.CollectedBy;
         existing.AnalyzedBy = gwMonit.AnalyzedBy;
         existing.LabSampleAnalyzedDate = gwMonit.LabSampleAnalyzedDate;

@@ -396,7 +396,6 @@ public static class CompanySeeder
             IsDeleted = false
         };
         context.CompanyLabOptions.Add(labOption);
-        facility.DefaultLabOptionId = labOption.Id;
 
         var permit = new FacilityPermit
         {
@@ -465,7 +464,7 @@ public static class CompanySeeder
             VOCReportAttached = true,
             CollectedBy = "Steven Dodds",
             AnalyzedBy = string.Empty,
-            LabCertification = string.Empty,
+            LabOptionId = labOption.Id,
             GW59ADueDate = new DateTime(2026, 7, 15),
             GW59AQuestion1Response = true,
             GW59AQuestion2Response = false,

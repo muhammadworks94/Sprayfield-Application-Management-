@@ -114,16 +114,6 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
 
 
 
-        builder.HasOne(f => f.DefaultLabOption)
-
-            .WithMany(l => l.Facilities)
-
-            .HasForeignKey(f => f.DefaultLabOptionId)
-
-            .OnDelete(DeleteBehavior.NoAction);
-
-
-
         builder.HasOne(f => f.DefaultFacilityPermit)
 
             .WithMany()

@@ -168,6 +168,11 @@ public class GWMonit : CompanyScopedEntity
     public DateTime? LabSampleAnalyzedDate { get; set; }
 
     /// <summary>
+    /// Certified laboratory used for this sample (GW-59 export).
+    /// </summary>
+    public Guid? LabOptionId { get; set; }
+
+    /// <summary>
     /// Additional comments.
     /// </summary>
     public string Comments { get; set; } = string.Empty;
@@ -250,5 +255,6 @@ public class GWMonit : CompanyScopedEntity
     // Navigation properties
     public Facility? Facility { get; set; }
     public MonitoringWell? MonitoringWell { get; set; }
+    public CompanyLabOption? LabOption { get; set; }
     public ICollection<GWMonitTemplateValue> TemplateValues { get; set; } = new List<GWMonitTemplateValue>();
 }

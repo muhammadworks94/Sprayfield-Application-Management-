@@ -85,16 +85,10 @@ public class Facility : CompanyScopedEntity
     public decimal? VolatilizationRatePercent { get; set; }
 
     /// <summary>
-    /// Default certified laboratory for GW-59 and related exports.
-    /// </summary>
-    public Guid? DefaultLabOptionId { get; set; }
-
-    /// <summary>
     /// Default permit version assigned to this facility.
     /// </summary>
     public Guid? DefaultFacilityPermitId { get; set; }
 
-    public CompanyLabOption? DefaultLabOption { get; set; }
     public FacilityPermit? DefaultFacilityPermit { get; set; }
 
     // Navigation properties

@@ -150,23 +150,19 @@ public static class Gw59FacilityFieldResolver
 
     public static async Task<CompanyLabOption?> ResolveLabOptionAsync(
         ApplicationDbContext context,
-        Facility? facility)
+        Guid? labOptionId,
+        Guid companyId)
     {
-        if (facility?.DefaultLabOptionId is Guid labOptionId)
+        if (labOptionId is Guid id)
         {
             return await context.CompanyLabOptions
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == labOptionId && x.IsActive);
-        }
-
-        if (facility == null)
-        {
-            return null;
+                .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId && x.IsActive);
         }
 
         var companyLabs = await context.CompanyLabOptions
             .AsNoTracking()
-            .Where(x => x.CompanyId == facility.CompanyId && x.IsActive)
+            .Where(x => x.CompanyId == companyId && x.IsActive)
             .OrderBy(x => x.SortOrder)
             .ToListAsync();
 

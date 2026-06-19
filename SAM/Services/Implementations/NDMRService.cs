@@ -747,7 +747,7 @@ public class NDMRService : INDMRService
             flowWorksheet.Column("F").Width = 11;
         }
 
-        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, facility);
+        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, wwChar?.LabOptionId, facility.CompanyId);
         WriteCertificationPage(workbook, facility, permit, labOption, irrigationReport?.ComplianceStatus);
 
         // Keep NDMR output focused on PPI 001 chunk pages + required supporting sheets.

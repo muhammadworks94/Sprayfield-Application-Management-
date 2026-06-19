@@ -129,9 +129,16 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label asp-for="LabCertification" class="form-label required"></label>
-                            <input asp-for="LabCertification" class="form-control" />
-                            <span asp-validation-for="LabCertification" class="text-danger"></span>
+                            <label asp-for="LabOptionId" class="form-label"></label>
+                            <select asp-for="LabOptionId" asp-items="ViewBag.LabOptions" class="form-select">
+                                <option value="">-- Select lab --</option>
+                            </select>
+                            <span asp-validation-for="LabOptionId" class="text-danger"></span>
+                            @if (!string.IsNullOrEmpty(Model.SelectedLabCertificationNumber))
+                            {
+                                <small class="text-muted d-block mt-1">Certification No.: @Model.SelectedLabCertificationNumber</small>
+                            }
+                            <small class="text-muted d-block mt-1">Manage labs in <a asp-controller="SystemAdmin" asp-action="SystemAdmin">System Admin</a> &gt; Lab Options.</small>
                         </div>
                     </div>
                     <div class="col-md-4">

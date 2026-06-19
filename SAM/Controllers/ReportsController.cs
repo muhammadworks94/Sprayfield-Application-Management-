@@ -2258,7 +2258,10 @@ public class ReportsController : BaseController
             .FirstOrDefaultAsync(f => f.Id == gwMonit.FacilityId);
         var preferredPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, facility, permit);
         var exportPermit = preferredPermit ?? permit;
-        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, facility);
+        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(
+            _context,
+            gwMonit.LabOptionId,
+            facility?.CompanyId ?? gwMonit.CompanyId);
         var facilityWellCount = await Gw59FacilityFieldResolver.CountMonitoringWellsForFacilityAsync(
             _context,
             gwMonit.FacilityId,
@@ -3319,7 +3322,17 @@ public class ReportsController : BaseController
         var endDate = startDate.AddMonths(1).AddDays(-1);
         var daysInMonth = DateTime.DaysInMonth(year, monthNumber);
         var permit = await ResolvePermitForDateAsync(report.FacilityId, startDate);
-        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, facility);
+        var wwChar = await _context.WWChars
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w =>
+                w.FacilityId == report.FacilityId &&
+                (int)w.Month == monthNumber &&
+                w.Year == year);
+
+        var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(
+            _context,
+            wwChar?.LabOptionId,
+            facility.CompanyId);
         var labInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, labOption);
         var exportPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, facility, permit) ?? permit;
 
@@ -3342,13 +3355,6 @@ public class ReportsController : BaseController
         {
             throw new Infrastructure.Exceptions.BusinessRuleException("Permit template must include PCS code 50050 (Flow) for NDMR export.");
         }
-
-        var wwChar = await _context.WWChars
-            .AsNoTracking()
-            .FirstOrDefaultAsync(w =>
-                w.FacilityId == report.FacilityId &&
-                (int)w.Month == monthNumber &&
-                w.Year == year);
 
         var wwCharTemplateValues = wwChar == null
             ? new List<WWCharTemplateValue>()

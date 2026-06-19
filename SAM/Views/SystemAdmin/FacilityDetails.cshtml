@@ -60,22 +60,6 @@
                         <div><a asp-action="FacilityPermits" asp-route-facilityId="@Model.Id" class="small">Manage Permit Versions</a></div>
                     </dd>
 
-                    <dt class="col-sm-5"><i class="bi bi-flask me-1"></i>Lab Option:</dt>
-                    <dd class="col-sm-7">
-                        @if (!string.IsNullOrWhiteSpace(Model.SelectedLabOptionName))
-                        {
-                            @Model.SelectedLabOptionName
-                            @if (!string.IsNullOrWhiteSpace(Model.SelectedLabCertificationNumber))
-                            {
-                                <br /><small class="text-muted">Cert No: @Model.SelectedLabCertificationNumber</small>
-                            }
-                        }
-                        else
-                        {
-                            <span class="text-muted">Not set</span>
-                        }
-                    </dd>
-
                     <dt class="col-sm-5"><i class="bi bi-tag me-1"></i>Facility Class:</dt>
                     <dd class="col-sm-7">@Model.FacilityClass</dd>
 

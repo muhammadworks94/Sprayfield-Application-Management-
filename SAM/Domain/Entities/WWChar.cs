@@ -130,9 +130,15 @@ public class WWChar : CompanyScopedEntity
     /// </summary>
     public string AnalyzedBy { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Certified laboratory used for this monthly record (NDMR export).
+    /// </summary>
+    public Guid? LabOptionId { get; set; }
+
     // Navigation properties
     public Facility? Facility { get; set; }
     public FacilityPermit? FacilityPermit { get; set; }
+    public CompanyLabOption? LabOption { get; set; }
     public ICollection<WWCharTemplateValue> TemplateValues { get; set; } = new List<WWCharTemplateValue>();
     public ICollection<WWCharTestResultAttachment> TestResultAttachments { get; set; } = new List<WWCharTestResultAttachment>();
 }

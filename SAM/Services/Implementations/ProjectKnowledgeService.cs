@@ -409,7 +409,7 @@ flowchart TD
                         new List<string> { "Telephone", "Facility.FacilityContactPersonPhone", "System Admin > Facilities." },
                         new List<string> { "Well Location / Site Name", "MonitoringWell.LocationDescription", "Well selected on GWMonit; explicit load if navigation property is null." },
                         new List<string> { "No. of wells to be sampled", "FacilityPermit.TotalNumberOfSprayfields", "Monitoring-well count fallback when permit sprayfield count unset." },
-                        new List<string> { "Lab Name / Certification No.", "CompanyLabOption (facility default lab)", "GWMonit no longer collects lab name/cert; export uses facility Lab Options." }
+                        new List<string> { "Lab Name / Certification No.", "CompanyLabOption (record LabOptionId on WWChar/GWMonit)", "Each monitoring record selects its lab; exports resolve from that record (single active company lab used when unset)." }
                     }
                 },
                 new ProjectTableViewModel
@@ -419,10 +419,10 @@ flowchart TD
                     Rows =
                     {
                         new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Permit number and county from resolved FacilityPermit for report month (Gw59FacilityFieldResolver)", "Area/time/value handling follows per-field formula rules; export layout includes facility/field checkboxes and footer columns through V." },
-                        new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version and county from FacilityPermit; lab cert from CompanyLabOption", "NDMR first two daily columns are exported from canonical Operator Logs as ORC Arrival Time and ORC Time on Site (hours); if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
+                        new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version and county from FacilityPermit; lab cert from WWChar.LabOptionId (CompanyLabOption)", "NDMR first two daily columns are exported from canonical Operator Logs as ORC Arrival Time and ORC Time on Site (hours); if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
                         new List<string> { "NDMLR (annual)", "NDAR-1 + GWMonit + sprayfield volumes", "Permit number and county from resolved FacilityPermit for report period", "Annual mass loading header uses permit-resolved fields." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
-                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + CompanyLabOption + MonitoringWell + Facility", "Permit version resolved by facility default selection or sample date; address/county from permit; operation type checkboxes from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. Lab from CompanyLabOption only; no. of wells from permit sprayfield count with monitoring-well fallback." },
+                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + CompanyLabOption + MonitoringWell + Facility", "Permit version resolved by facility default selection or sample date; address/county from permit; operation type checkboxes from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. Lab from GWMonit.LabOptionId (CompanyLabOption); no. of wells from permit sprayfield count with monitoring-well fallback." },
                         new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
                     }
                 }
@@ -695,12 +695,12 @@ flowchart TD
                     Id = "trace-gw59-facility-info",
                     KeywordOrProperty = "GW-59 Facility Information",
                     Aliases = { "Contact Person", "FacilityContactPerson", "FacilityContactPersonPhone", "CompanyLabOption", "Well Location", "NumberOfWellsToBeSampled", "Gw59FacilityFieldResolver" },
-                    Entity = "Facility + FacilityPermit + CompanyLabOption + MonitoringWell",
-                    StorageField = "Facility.FacilityContactPerson, Facility.FacilityContactPersonPhone, FacilityPermit address/county/sprayfields, CompanyLabOption name/cert, MonitoringWell.LocationDescription",
+                    Entity = "Facility + FacilityPermit + GWMonit.LabOption + MonitoringWell",
+                    StorageField = "Facility.FacilityContactPerson, Facility.FacilityContactPersonPhone, FacilityPermit address/county/sprayfields, GWMonit.LabOptionId -> CompanyLabOption name/cert, MonitoringWell.LocationDescription",
                     UsedInModule = "Reports > Groundwater Quality Reports + Operational Data > GW Monit Preview",
                     FormulaOrTransformation = "BuildGw59ExportModelAsync / BuildGW59ReportAsync map facility block through Gw59FacilityFieldResolver; RenderGw59PdfAsync draws values on GW59_Resized.pdf coordinates via Gw59PdfCalibration.",
                     ReportOutput = "GW-59 PDF Facility Information section and GWMonitReport preview card",
-                    FallbackOrValidation = "Address/county from permit with facility fallback; lab from CompanyLabOption; wells count from permit sprayfield count with monitoring-well fallback.",
+                    FallbackOrValidation = "Address/county from permit with facility fallback; lab from GWMonit record LabOptionId (single active company lab when unset); wells count from permit sprayfield count with monitoring-well fallback.",
                     Reference = new TraceReferenceViewModel
                     {
                         Label = "GW-59 Facility Field Resolver",
@@ -709,7 +709,7 @@ flowchart TD
                     UsedByReports = { "GW-59", "GW-59A (combined export)" },
                     Steps =
                     {
-                        new TraceStepViewModel { Order = 1, Label = "Setup Source", Detail = "Facility contact fields, permit versions (System Admin > Permits tab), lab options, and monitoring wells are maintained in System Admin." },
+                        new TraceStepViewModel { Order = 1, Label = "Setup Source", Detail = "Facility contact fields, permit versions (System Admin > Permits tab), company lab options, and monitoring wells are maintained in System Admin; each GWMonit/WWChar selects its lab on create/edit." },
                         new TraceStepViewModel { Order = 2, Label = "Record Context", Detail = "GWMonit ties export to FacilityId, MonitoringWellId, and SampleDate for permit/well resolution." },
                         new TraceStepViewModel { Order = 3, Label = "Resolver", Detail = "Gw59FacilityFieldResolver supplies contact person, telephone, permit address/county, lab option, well location, and wells-to-sample count." },
                         new TraceStepViewModel { Order = 4, Label = "Report Surface", Detail = "Values render in GWMonitReport preview and ExportGW59Report PDF (Contact Person, Telephone, Well Location, No. of wells)." }

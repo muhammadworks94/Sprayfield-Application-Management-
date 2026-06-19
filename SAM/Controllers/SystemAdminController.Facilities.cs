@@ -30,10 +30,6 @@ public partial class SystemAdminController
                 .OrderByDescending(p => p.EffectiveStartDate)
                 .FirstOrDefaultAsync();
 
-        var defaultLab = facility.DefaultLabOptionId.HasValue
-            ? await _context.CompanyLabOptions.AsNoTracking().FirstOrDefaultAsync(x => x.Id == facility.DefaultLabOptionId)
-            : null;
-
         var viewModel = new FacilityViewModel
         {
             Id = facility.Id,
@@ -57,12 +53,9 @@ public partial class SystemAdminController
             MineralizationRatePercent = facility.MineralizationRatePercent,
             VolatilizationRatePercent = facility.VolatilizationRatePercent,
             DefaultFacilityPermitId = facility.DefaultFacilityPermitId ?? defaultPermit?.Id,
-            DefaultLabOptionId = facility.DefaultLabOptionId,
             SelectedPermitLabel = defaultPermit == null
                 ? null
                 : $"{defaultPermit.PermitNumber} v{defaultPermit.PermitVersion}",
-            SelectedLabOptionName = defaultLab?.Name,
-            SelectedLabCertificationNumber = defaultLab?.CertificationNumber,
             PermitLocationSummary = defaultPermit == null
                 ? null
                 : string.Join(", ", new[] { defaultPermit.Address, $"{defaultPermit.City}, {defaultPermit.State} {defaultPermit.ZipCode}".Trim(' ', ',') }
@@ -194,8 +187,7 @@ public partial class SystemAdminController
             PersonsCollectingSamples = facility.PersonsCollectingSamples,
             MineralizationRatePercent = facility.MineralizationRatePercent,
             VolatilizationRatePercent = facility.VolatilizationRatePercent,
-            DefaultFacilityPermitId = facility.DefaultFacilityPermitId,
-            DefaultLabOptionId = facility.DefaultLabOptionId ?? await ResolveSingleLabOptionIdAsync(facility.CompanyId)
+            DefaultFacilityPermitId = facility.DefaultFacilityPermitId
         };
 
         if (!viewModel.DefaultFacilityPermitId.HasValue)
@@ -205,7 +197,6 @@ public partial class SystemAdminController
 
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(facility.Id, viewModel.DefaultFacilityPermitId);
-        ViewBag.LabOptions = await GetLabOptionSelectListAsync(facility.CompanyId, viewModel.DefaultLabOptionId);
         return View(viewModel);
     }
 
@@ -221,7 +212,6 @@ public partial class SystemAdminController
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
             ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(viewModel.Id, viewModel.DefaultFacilityPermitId);
-            ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.DefaultLabOptionId);
             return View(viewModel);
         }
 
@@ -231,7 +221,6 @@ public partial class SystemAdminController
             if (facility == null)
                 return NotFound();
 
-            viewModel.DefaultLabOptionId ??= await ResolveSingleLabOptionIdAsync(viewModel.CompanyId);
             viewModel.DefaultFacilityPermitId ??= await ResolveSingleFacilityPermitIdAsync(viewModel.Id);
 
             facility.Name = viewModel.Name;
@@ -250,7 +239,6 @@ public partial class SystemAdminController
             facility.MineralizationRatePercent = viewModel.MineralizationRatePercent;
             facility.VolatilizationRatePercent = viewModel.VolatilizationRatePercent;
             facility.DefaultFacilityPermitId = viewModel.DefaultFacilityPermitId;
-            facility.DefaultLabOptionId = viewModel.DefaultLabOptionId;
 
             await _facilityService.UpdateAsync(facility);
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";
@@ -261,7 +249,6 @@ public partial class SystemAdminController
             ModelState.AddModelError("", ex.Message);
             ViewBag.Companies = await GetCompanySelectListAsync();
             ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(viewModel.Id, viewModel.DefaultFacilityPermitId);
-            ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.DefaultLabOptionId);
             return View(viewModel);
         }
     }

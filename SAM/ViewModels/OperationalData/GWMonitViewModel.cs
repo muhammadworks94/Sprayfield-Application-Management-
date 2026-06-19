@@ -130,6 +130,9 @@ public class GWMonitViewModel
     [Display(Name = "VOC Method #")]
     public string? VOCMethodNumber { get; set; }
 
+    [Display(Name = "Lab Options")]
+    public Guid? LabOptionId { get; set; }
+
     [Display(Name = "Laboratory")]
     public string? ResolvedLabName { get; set; }
 
@@ -320,6 +323,9 @@ public class GWMonitCreateViewModel
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
     public string? VOCMethodNumber { get; set; }
+
+    [Display(Name = "Lab Options")]
+    public Guid? LabOptionId { get; set; }
 
     [Display(Name = "Laboratory")]
     public string? ResolvedLabName { get; set; }
@@ -519,6 +525,9 @@ public class GWMonitEditViewModel
     [StringLength(200)]
     [Display(Name = "VOC Method #")]
     public string? VOCMethodNumber { get; set; }
+
+    [Display(Name = "Lab Options")]
+    public Guid? LabOptionId { get; set; }
 
     [Display(Name = "Laboratory")]
     public string? ResolvedLabName { get; set; }

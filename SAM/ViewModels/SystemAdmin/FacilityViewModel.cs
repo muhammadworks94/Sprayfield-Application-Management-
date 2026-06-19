@@ -106,14 +106,7 @@ public class FacilityViewModel
     [Display(Name = "Select Permit")]
     public Guid? DefaultFacilityPermitId { get; set; }
 
-    [Display(Name = "Lab Options")]
-    public Guid? DefaultLabOptionId { get; set; }
-
     public string? SelectedPermitLabel { get; set; }
-
-    public string? SelectedLabOptionName { get; set; }
-
-    public string? SelectedLabCertificationNumber { get; set; }
 
     public string? PermitLocationSummary { get; set; }
 
@@ -265,9 +258,6 @@ public class FacilityEditViewModel
 
     [Display(Name = "Select Permit")]
     public Guid? DefaultFacilityPermitId { get; set; }
-
-    [Display(Name = "Lab Options")]
-    public Guid? DefaultLabOptionId { get; set; }
 }
 
 

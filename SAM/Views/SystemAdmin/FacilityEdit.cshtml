@@ -6,7 +6,6 @@
     ViewData["Title"] = "Edit Facility";
     var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var facilityPermits = ViewBag.FacilityPermits as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
-    var labOptions = ViewBag.LabOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
     var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
@@ -72,15 +71,6 @@
                                 <option value="">-- Select Permit --</option>
                             </select>
                             <div class="form-text">Manage permit versions in <a asp-action="FacilityPermits" asp-route-facilityId="@Model.Id">Permit Versions</a>.</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="DefaultLabOptionId" class="form-label"></label>
-                            <select asp-for="DefaultLabOptionId" asp-items="labOptions" class="form-select">
-                                <option value="">-- Select Lab Option --</option>
-                            </select>
-                            <div class="form-text">Configure labs under System Administration &gt; Lab Options.</div>
                         </div>
                     </div>
                 </div>

@@ -117,6 +117,7 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
         builder.HasIndex(g => g.FacilityId);
         builder.HasIndex(g => g.MonitoringWellId);
         builder.HasIndex(g => g.SampleDate);
+        builder.HasIndex(g => g.LabOptionId);
 
         builder.HasOne(g => g.Facility)
             .WithMany(f => f.GWMonits)
@@ -127,6 +128,11 @@ public class GWMonitConfiguration : IEntityTypeConfiguration<GWMonit>
             .WithMany(m => m.GWMonits)
             .HasForeignKey(g => g.MonitoringWellId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(g => g.LabOption)
+            .WithMany(l => l.GWMonits)
+            .HasForeignKey(g => g.LabOptionId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }
 

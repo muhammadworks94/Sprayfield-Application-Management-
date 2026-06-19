@@ -93,7 +93,6 @@ public class FacilityService : IFacilityService
         existing.PersonsCollectingSamples = facility.PersonsCollectingSamples;
         existing.MineralizationRatePercent = facility.MineralizationRatePercent;
         existing.VolatilizationRatePercent = facility.VolatilizationRatePercent;
-        existing.DefaultLabOptionId = facility.DefaultLabOptionId;
         existing.DefaultFacilityPermitId = facility.DefaultFacilityPermitId;
 
         await _context.SaveChangesAsync();

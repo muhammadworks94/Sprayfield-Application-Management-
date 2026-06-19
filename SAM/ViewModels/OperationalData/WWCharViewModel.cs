@@ -94,10 +94,13 @@ public class WWCharViewModel
 
     [Display(Name = "Parameter Monitoring Point")]
     public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
-    
-    [StringLength(500)]
-    [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+
+    [Display(Name = "Lab Options")]
+    public Guid? LabOptionId { get; set; }
+
+    public string? SelectedLabOptionName { get; set; }
+
+    public string? SelectedLabCertificationNumber { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
@@ -201,10 +204,13 @@ public class WWCharCreateViewModel
 
     [Display(Name = "Parameter Monitoring Point")]
     public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
-    
-    [StringLength(500)]
-    [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+
+    [Display(Name = "Lab Options")]
+    public Guid? LabOptionId { get; set; }
+
+    public string? SelectedLabOptionName { get; set; }
+
+    public string? SelectedLabCertificationNumber { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
@@ -309,10 +315,13 @@ public class WWCharEditViewModel
 
     [Display(Name = "Parameter Monitoring Point")]
     public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; set; }
-    
-    [StringLength(500)]
-    [Display(Name = "Lab Certification")]
-    public string LabCertification { get; set; } = string.Empty;
+
+    [Display(Name = "Lab Options")]
+    public Guid? LabOptionId { get; set; }
+
+    public string? SelectedLabOptionName { get; set; }
+
+    public string? SelectedLabCertificationNumber { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
