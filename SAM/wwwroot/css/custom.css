@@ -592,10 +592,14 @@ i.bi-question-circle {
     }
 
 .table > thead th {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: var(--font-size-sm);
-  letter-spacing: 0.05em;
-  font-weight:500;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.table > thead th i.bi {
+  opacity: 0.75;
 }
 
 .table > thead th:first-child {
@@ -608,6 +612,11 @@ i.bi-question-circle {
 
 .table > tbody {
   vertical-align: inherit;
+}
+
+.table > tbody td {
+  font-size: var(--font-size-sm);
+  font-weight: 400;
 }
 
 .table > tbody tr {
@@ -4746,14 +4755,8 @@ i.bi-question-circle {
 .permits-table thead th {
   white-space: nowrap;
   vertical-align: middle;
-  font-size: 0.8125rem;
-  font-weight: 600;
   padding-top: 0.65rem;
   padding-bottom: 0.65rem;
-}
-
-.permits-table thead th i {
-  opacity: 0.75;
 }
 
 .permits-table tbody td {
