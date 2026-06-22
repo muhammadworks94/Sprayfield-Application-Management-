@@ -748,7 +748,18 @@ public class NDMRService : INDMRService
         }
 
         var labOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(_context, wwChar?.LabOptionId, facility.CompanyId);
-        WriteCertificationPage(workbook, facility, permit, labOption, irrigationReport?.ComplianceStatus);
+        var secondaryLabOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(
+            _context,
+            wwChar?.SecondaryLabOptionId,
+            facility.CompanyId);
+        WriteCertificationPage(
+            workbook,
+            facility,
+            permit,
+            labOption,
+            secondaryLabOption,
+            wwChar,
+            irrigationReport?.ComplianceStatus);
 
         // Keep NDMR output focused on PPI 001 chunk pages + required supporting sheets.
         // Remove legacy nitrogen PPI worksheets that are not part of the consolidated layout.
@@ -781,6 +792,8 @@ public class NDMRService : INDMRService
         Facility facility,
         FacilityPermit? permit,
         CompanyLabOption? labOption,
+        CompanyLabOption? secondaryLabOption,
+        WWChar? wwChar,
         ComplianceStatusEnum? complianceStatus)
     {
         var certificationWorksheet = workbook.Worksheets
@@ -822,7 +835,6 @@ public class NDMRService : INDMRService
         certificationWorksheet.Cell("C11").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("G11").Value = facility.OperatorPhone ?? string.Empty;
         certificationWorksheet.Cell("A12").Value = $"Has the ORC changed since the previous NDMR? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
-        certificationWorksheet.Cell("I13").Value = DateTime.Today.ToString("MM/dd/yyyy");
 
         // Permittee certification section
         certificationWorksheet.Cell("M9").Value = facility.Permittee ?? string.Empty;
@@ -830,14 +842,12 @@ public class NDMRService : INDMRService
         certificationWorksheet.Cell("N11").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("M12").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("R12").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
-        certificationWorksheet.Cell("R13").Value = DateTime.Today.ToString("MM/dd/yyyy");
 
-        var samplerNames = (facility.PersonsCollectingSamples ?? string.Empty)
-            .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        certificationWorksheet.Cell("C2").Value = samplerNames.Length > 0 ? samplerNames[0] : string.Empty;
-        certificationWorksheet.Cell("C3").Value = samplerNames.Length > 1 ? samplerNames[1] : string.Empty;
+        certificationWorksheet.Cell("C2").Value = wwChar?.SamplingPerson1 ?? string.Empty;
+        certificationWorksheet.Cell("C3").Value = wwChar?.SamplingPerson2 ?? string.Empty;
         var labInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, labOption);
+        var secondaryLabInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, secondaryLabOption);
         certificationWorksheet.Cell("L2").Value = labInfo.LabName;
-        certificationWorksheet.Cell("L3").Value = string.Empty;
+        certificationWorksheet.Cell("L3").Value = secondaryLabInfo.LabName;
     }
 }

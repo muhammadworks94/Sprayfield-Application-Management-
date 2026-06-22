@@ -101,6 +101,21 @@ public class WWCharViewModel
     public string? SelectedLabOptionName { get; set; }
 
     public string? SelectedLabCertificationNumber { get; set; }
+
+    [Display(Name = "Lab Options 2")]
+    public Guid? SecondaryLabOptionId { get; set; }
+
+    public string? SelectedSecondaryLabOptionName { get; set; }
+
+    public string? SelectedSecondaryLabCertificationNumber { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Sampling Person 1")]
+    public string SamplingPerson1 { get; set; } = string.Empty;
+
+    [StringLength(200)]
+    [Display(Name = "Sampling Person 2")]
+    public string SamplingPerson2 { get; set; } = string.Empty;
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
@@ -211,6 +226,21 @@ public class WWCharCreateViewModel
     public string? SelectedLabOptionName { get; set; }
 
     public string? SelectedLabCertificationNumber { get; set; }
+
+    [Display(Name = "Lab Options 2")]
+    public Guid? SecondaryLabOptionId { get; set; }
+
+    public string? SelectedSecondaryLabOptionName { get; set; }
+
+    public string? SelectedSecondaryLabCertificationNumber { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Sampling Person 1")]
+    public string SamplingPerson1 { get; set; } = string.Empty;
+
+    [StringLength(200)]
+    [Display(Name = "Sampling Person 2")]
+    public string SamplingPerson2 { get; set; } = string.Empty;
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
@@ -322,6 +352,21 @@ public class WWCharEditViewModel
     public string? SelectedLabOptionName { get; set; }
 
     public string? SelectedLabCertificationNumber { get; set; }
+
+    [Display(Name = "Lab Options 2")]
+    public Guid? SecondaryLabOptionId { get; set; }
+
+    public string? SelectedSecondaryLabOptionName { get; set; }
+
+    public string? SelectedSecondaryLabCertificationNumber { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Sampling Person 1")]
+    public string SamplingPerson1 { get; set; } = string.Empty;
+
+    [StringLength(200)]
+    [Display(Name = "Sampling Person 2")]
+    public string SamplingPerson2 { get; set; } = string.Empty;
     
     [StringLength(200)]
     [Display(Name = "Collected By")]

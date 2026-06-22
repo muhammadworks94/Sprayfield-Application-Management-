@@ -156,10 +156,17 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
         builder.Property(w => w.AnalyzedBy)
             .HasMaxLength(200);
 
+        builder.Property(w => w.SamplingPerson1)
+            .HasMaxLength(200);
+
+        builder.Property(w => w.SamplingPerson2)
+            .HasMaxLength(200);
+
         builder.HasIndex(w => w.CompanyId);
         builder.HasIndex(w => w.FacilityId);
         builder.HasIndex(w => w.FacilityPermitId);
         builder.HasIndex(w => w.LabOptionId);
+        builder.HasIndex(w => w.SecondaryLabOptionId);
         builder.HasIndex(w => new { w.FacilityId, w.Month, w.Year }).IsUnique();
 
         builder.HasOne(w => w.Facility)
@@ -175,6 +182,11 @@ public class WWCharConfiguration : IEntityTypeConfiguration<WWChar>
         builder.HasOne(w => w.LabOption)
             .WithMany(l => l.WWChars)
             .HasForeignKey(w => w.LabOptionId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne(w => w.SecondaryLabOption)
+            .WithMany()
+            .HasForeignKey(w => w.SecondaryLabOptionId)
             .OnDelete(DeleteBehavior.NoAction);
     }
 }

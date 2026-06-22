@@ -3146,6 +3146,9 @@ public class ReportsController : BaseController
         public required string ResolvedCounty { get; init; }
         public DateTime? ResolvedPermitExpiration { get; init; }
         public required string ResolvedLabName { get; init; }
+        public required string ResolvedLabName2 { get; init; }
+        public required string SamplingPerson1 { get; init; }
+        public required string SamplingPerson2 { get; init; }
         public required MonthEnum Month { get; init; }
         public required int Year { get; init; }
         public required int DaysInMonth { get; init; }
@@ -3172,7 +3175,6 @@ public class ReportsController : BaseController
 
         var hasCertificationTemplate = templateDoc.PageCount > 1;
         var totalPages = snapshot.ParameterChunks.Count + (hasCertificationTemplate ? 1 : 0);
-        var exportDate = DateTime.Today.ToString("MM/dd/yyyy");
         var font = new XFont("Arial", 8, XFontStyle.Regular);
         var boldFont = new XFont("Arial", 8, XFontStyle.Bold);
         var tinyBold = new XFont("Arial", 7, XFontStyle.Bold);
@@ -3265,40 +3267,33 @@ public class ReportsController : BaseController
             document.AddPage(templateDoc.Pages[1]);
             var certPage = document.Pages[document.PageCount - 1];
             var certGfx = XGraphics.FromPdfPage(certPage);
+            var cert = NdmrPdfCalibration.Certification;
 
-            Draw(certGfx, currentPage.ToString(), font, new NdarPdfPoint(685, 16));
-            Draw(certGfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
+            Draw(certGfx, currentPage.ToString(), font, Point(cert.PageNumber));
+            Draw(certGfx, totalPages.ToString(), font, Point(cert.TotalPages));
 
-            // Top certification block parity with Excel values (best-guess coordinates for missing fields).
-            var samplerNames = (snapshot.Facility.PersonsCollectingSamples ?? string.Empty)
-                .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            Draw(certGfx, samplerNames.Length > 0 ? samplerNames[0] : string.Empty, font, new NdarPdfPoint(72, 95));
-            Draw(certGfx, samplerNames.Length > 1 ? samplerNames[1] : string.Empty, font, new NdarPdfPoint(72, 116));
-            Draw(certGfx, snapshot.ResolvedLabName, font, new NdarPdfPoint(430, 95));
-            Draw(certGfx, string.Empty, font, new NdarPdfPoint(430, 116));
+            Draw(certGfx, snapshot.SamplingPerson1, font, Point(cert.SamplingPerson1));
+            Draw(certGfx, snapshot.SamplingPerson2, font, Point(cert.SamplingPerson2));
+            Draw(certGfx, snapshot.ResolvedLabName, font, Point(cert.CertifiedLab1));
+            Draw(certGfx, snapshot.ResolvedLabName2, font, Point(cert.CertifiedLab2));
 
-            var complianceText = snapshot.ComplianceStatus switch
-            {
-                ComplianceStatusEnum.Compliant => "X Compliant    Non-Compliant",
-                ComplianceStatusEnum.NonCompliant => "Compliant    X Non-Compliant",
-                _ => "Compliant    Non-Compliant"
-            };
-            Draw(certGfx, complianceText, font, new NdarPdfPoint(540, 136));
+            var markCompliant = snapshot.ComplianceStatus == ComplianceStatusEnum.Compliant;
+            var markNonCompliant = snapshot.ComplianceStatus == ComplianceStatusEnum.NonCompliant;
+            DrawCheckbox(certGfx, markCompliant, cert.Compliant);
+            DrawCheckbox(certGfx, markNonCompliant, cert.NonCompliant);
 
-            Draw(certGfx, snapshot.Facility.OrcName, font, new NdarPdfPoint(50, 327));
-            Draw(certGfx, snapshot.Facility.OperatorNumber, font, new NdarPdfPoint(95, 350));
-            Draw(certGfx, snapshot.Facility.OperatorGrade, font, new NdarPdfPoint(52.5, 374));
-            Draw(certGfx, snapshot.Facility.OperatorPhone, font, new NdarPdfPoint(220, 374));
-            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? "X" : string.Empty, boldFont, new NdarPdfPoint(245, 395));
-            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? string.Empty : "X", boldFont, new NdarPdfPoint(284, 393));
-            Draw(certGfx, exportDate, font, new NdarPdfPoint(330, 440));
+            Draw(certGfx, snapshot.Facility.OrcName, font, Point(cert.OrcName));
+            Draw(certGfx, snapshot.Facility.OperatorNumber, font, Point(cert.OrcCertificationNo));
+            Draw(certGfx, snapshot.Facility.OperatorGrade, font, Point(cert.OrcGrade));
+            Draw(certGfx, snapshot.Facility.OperatorPhone, font, Point(cert.OrcPhone));
+            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? "X" : string.Empty, boldFont, Point(cert.OrcChangedYes));
+            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? string.Empty : "X", boldFont, Point(cert.OrcChangedNo));
 
-            Draw(certGfx, snapshot.Facility.Permittee, font, new NdarPdfPoint(449, 327));
-            Draw(certGfx, snapshot.Facility.OrcName, font, new NdarPdfPoint(499, 350));
-            Draw(certGfx, snapshot.Facility.OperatorGrade, font, new NdarPdfPoint(530, 374));
-            Draw(certGfx, snapshot.Facility.PermitPhone, font, new NdarPdfPoint(470, 399));
-            Draw(certGfx, snapshot.ResolvedPermitExpiration?.ToString("MM/dd/yyyy"), font, new NdarPdfPoint(680, 399));
-            Draw(certGfx, exportDate, font, new NdarPdfPoint(700, 440));
+            Draw(certGfx, snapshot.Facility.Permittee, font, Point(cert.Permittee));
+            Draw(certGfx, snapshot.Facility.OrcName, font, Point(cert.SigningOfficial));
+            Draw(certGfx, snapshot.Facility.OperatorGrade, font, Point(cert.SigningOfficialTitle));
+            Draw(certGfx, snapshot.Facility.PermitPhone, font, Point(cert.PermitteePhone));
+            Draw(certGfx, snapshot.ResolvedPermitExpiration?.ToString("MM/dd/yyyy"), font, Point(cert.PermitExpiration));
 
             if (showGrid)
             {
@@ -3333,7 +3328,12 @@ public class ReportsController : BaseController
             _context,
             wwChar?.LabOptionId,
             facility.CompanyId);
+        var secondaryLabOption = await Gw59FacilityFieldResolver.ResolveLabOptionAsync(
+            _context,
+            wwChar?.SecondaryLabOptionId,
+            facility.CompanyId);
         var labInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, labOption);
+        var secondaryLabInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, secondaryLabOption);
         var exportPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, facility, permit) ?? permit;
 
         var permitTemplateRows = permit == null
@@ -3477,6 +3477,9 @@ public class ReportsController : BaseController
             ResolvedCounty = Gw59FacilityFieldResolver.ResolveCounty(facility, exportPermit),
             ResolvedPermitExpiration = exportPermit?.EffectiveEndDate,
             ResolvedLabName = labInfo.LabName,
+            ResolvedLabName2 = secondaryLabInfo.LabName,
+            SamplingPerson1 = wwChar?.SamplingPerson1 ?? string.Empty,
+            SamplingPerson2 = wwChar?.SamplingPerson2 ?? string.Empty,
             Month = report.Month,
             Year = year,
             DaysInMonth = daysInMonth,
@@ -3562,6 +3565,18 @@ public class ReportsController : BaseController
     private static void Draw(XGraphics gfx, string? text, XFont font, NdarPdfPoint point)
     {
         gfx.DrawString(text ?? string.Empty, font, XBrushes.Black, new XRect(point.X, point.Y, 220, font.Height + 2), XStringFormats.TopLeft);
+    }
+
+    private static NdarPdfPoint Point(NdmrPdfTextSlot slot) => new(slot.X, slot.Y);
+
+    private static void DrawCheckbox(XGraphics gfx, bool marked, NdmrPdfTextSlot slot)
+    {
+        if (!marked || slot.BoxSize is not { } boxSize)
+        {
+            return;
+        }
+
+        DrawCheckboxX(gfx, slot.X, slot.Y, boxSize);
     }
 
     private static void DrawInCell(

@@ -1247,6 +1247,9 @@ namespace SAM.Controllers;
             ORCArrivalTime = new List<TimeSpan?>(),
             ORCTimeOnSiteHours = new List<decimal?>(),
             LabOptionId = w.LabOptionId,
+            SecondaryLabOptionId = w.SecondaryLabOptionId,
+            SamplingPerson1 = w.SamplingPerson1,
+            SamplingPerson2 = w.SamplingPerson2,
             CollectedBy = w.CollectedBy,
             AnalyzedBy = w.AnalyzedBy,
             FacilityPermitId = w.FacilityPermitId,
@@ -1328,6 +1331,9 @@ namespace SAM.Controllers;
             ORCArrivalTime = new List<TimeSpan?>(),
             ORCTimeOnSiteHours = new List<decimal?>(),
             LabOptionId = wwChar.LabOptionId,
+            SecondaryLabOptionId = wwChar.SecondaryLabOptionId,
+            SamplingPerson1 = wwChar.SamplingPerson1,
+            SamplingPerson2 = wwChar.SamplingPerson2,
             CollectedBy = wwChar.CollectedBy,
             AnalyzedBy = wwChar.AnalyzedBy,
             FacilityPermitId = wwChar.FacilityPermitId,
@@ -1368,6 +1374,9 @@ namespace SAM.Controllers;
         var detailsLabDisplay = await ResolveLabOptionDisplayAsync(wwChar.LabOptionId, wwChar.CompanyId);
         viewModel.SelectedLabOptionName = detailsLabDisplay.Name;
         viewModel.SelectedLabCertificationNumber = detailsLabDisplay.Cert;
+        var detailsSecondaryLabDisplay = await ResolveLabOptionDisplayAsync(wwChar.SecondaryLabOptionId, wwChar.CompanyId);
+        viewModel.SelectedSecondaryLabOptionName = detailsSecondaryLabDisplay.Name;
+        viewModel.SelectedSecondaryLabCertificationNumber = detailsSecondaryLabDisplay.Cert;
 
         return View(viewModel);
     }
@@ -1462,10 +1471,22 @@ namespace SAM.Controllers;
                 viewModel.LabOptionId = await ResolveSingleLabOptionIdAsync(viewModel.CompanyId);
             }
 
-            var createLabDisplay = await ResolveLabOptionDisplayAsync(viewModel.LabOptionId, viewModel.CompanyId);
-            viewModel.SelectedLabOptionName = createLabDisplay.Name;
-            viewModel.SelectedLabCertificationNumber = createLabDisplay.Cert;
-            ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.LabOptionId);
+            if (string.IsNullOrWhiteSpace(viewModel.SamplingPerson1) && !string.IsNullOrWhiteSpace(viewModel.CollectedBy))
+            {
+                viewModel.SamplingPerson1 = viewModel.CollectedBy;
+            }
+
+            await SetWwCharLabViewDataAsync(
+                viewModel.CompanyId,
+                viewModel.LabOptionId,
+                viewModel.SecondaryLabOptionId,
+                (name, cert, secondaryName, secondaryCert) =>
+                {
+                    viewModel.SelectedLabOptionName = name;
+                    viewModel.SelectedLabCertificationNumber = cert;
+                    viewModel.SelectedSecondaryLabOptionName = secondaryName;
+                    viewModel.SelectedSecondaryLabCertificationNumber = secondaryCert;
+                });
         }
 
         return View(viewModel);
@@ -1514,11 +1535,7 @@ namespace SAM.Controllers;
             viewModel.LabOptionId = await ResolveSingleLabOptionIdAsync(viewModel.CompanyId);
         }
 
-        if (viewModel.LabOptionId.HasValue &&
-            !await ValidateLabOptionForCompanyAsync(viewModel.LabOptionId, viewModel.CompanyId))
-        {
-            ModelState.AddModelError(nameof(viewModel.LabOptionId), "Selected lab option is invalid or inactive.");
-        }
+        await ValidateWwCharLabOptionsAsync(viewModel.LabOptionId, viewModel.SecondaryLabOptionId, viewModel.CompanyId);
 
         if (!ModelState.IsValid)
         {
@@ -1529,10 +1546,17 @@ namespace SAM.Controllers;
             ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
             if (viewModel.CompanyId != Guid.Empty)
             {
-                var invalidLabDisplay = await ResolveLabOptionDisplayAsync(viewModel.LabOptionId, viewModel.CompanyId);
-                viewModel.SelectedLabOptionName = invalidLabDisplay.Name;
-                viewModel.SelectedLabCertificationNumber = invalidLabDisplay.Cert;
-                ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.LabOptionId);
+                await SetWwCharLabViewDataAsync(
+                    viewModel.CompanyId,
+                    viewModel.LabOptionId,
+                    viewModel.SecondaryLabOptionId,
+                    (name, cert, secondaryName, secondaryCert) =>
+                    {
+                        viewModel.SelectedLabOptionName = name;
+                        viewModel.SelectedLabCertificationNumber = cert;
+                        viewModel.SelectedSecondaryLabOptionName = secondaryName;
+                        viewModel.SelectedSecondaryLabCertificationNumber = secondaryCert;
+                    });
             }
 
             return View(viewModel);
@@ -1560,6 +1584,9 @@ namespace SAM.Controllers;
                 TNDaily = viewModel.TNDaily,
                 CompositeTime = viewModel.CompositeTime,
                 LabOptionId = viewModel.LabOptionId,
+                SecondaryLabOptionId = viewModel.SecondaryLabOptionId,
+                SamplingPerson1 = viewModel.SamplingPerson1,
+                SamplingPerson2 = viewModel.SamplingPerson2,
                 CollectedBy = viewModel.CollectedBy,
                 AnalyzedBy = viewModel.AnalyzedBy,
                 FacilityPermitId = viewModel.FacilityPermitId,
@@ -1593,10 +1620,17 @@ namespace SAM.Controllers;
             ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
             if (viewModel.CompanyId != Guid.Empty)
             {
-                var catchLabDisplay = await ResolveLabOptionDisplayAsync(viewModel.LabOptionId, viewModel.CompanyId);
-                viewModel.SelectedLabOptionName = catchLabDisplay.Name;
-                viewModel.SelectedLabCertificationNumber = catchLabDisplay.Cert;
-                ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.LabOptionId);
+                await SetWwCharLabViewDataAsync(
+                    viewModel.CompanyId,
+                    viewModel.LabOptionId,
+                    viewModel.SecondaryLabOptionId,
+                    (name, cert, secondaryName, secondaryCert) =>
+                    {
+                        viewModel.SelectedLabOptionName = name;
+                        viewModel.SelectedLabCertificationNumber = cert;
+                        viewModel.SelectedSecondaryLabOptionName = secondaryName;
+                        viewModel.SelectedSecondaryLabCertificationNumber = secondaryCert;
+                    });
             }
             if (!viewModel.TemplateParameters.Any())
             {
@@ -1647,6 +1681,9 @@ namespace SAM.Controllers;
             ORCArrivalTime = new List<TimeSpan?>(),
             ORCTimeOnSiteHours = new List<decimal?>(),
             LabOptionId = wwChar.LabOptionId,
+            SecondaryLabOptionId = wwChar.SecondaryLabOptionId,
+            SamplingPerson1 = wwChar.SamplingPerson1,
+            SamplingPerson2 = wwChar.SamplingPerson2,
             CollectedBy = wwChar.CollectedBy,
             AnalyzedBy = wwChar.AnalyzedBy,
             NO2N = wwChar.NO2N.HasValue ? Math.Round(wwChar.NO2N.Value, 2) : (decimal?)null,
@@ -1692,10 +1729,17 @@ namespace SAM.Controllers;
         ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
         ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
 
-        var editLabDisplay = await ResolveLabOptionDisplayAsync(wwChar.LabOptionId, wwChar.CompanyId);
-        viewModel.SelectedLabOptionName = editLabDisplay.Name;
-        viewModel.SelectedLabCertificationNumber = editLabDisplay.Cert;
-        ViewBag.LabOptions = await GetLabOptionSelectListAsync(wwChar.CompanyId, wwChar.LabOptionId);
+        await SetWwCharLabViewDataAsync(
+            wwChar.CompanyId,
+            wwChar.LabOptionId,
+            wwChar.SecondaryLabOptionId,
+            (name, cert, secondaryName, secondaryCert) =>
+            {
+                viewModel.SelectedLabOptionName = name;
+                viewModel.SelectedLabCertificationNumber = cert;
+                viewModel.SelectedSecondaryLabOptionName = secondaryName;
+                viewModel.SelectedSecondaryLabCertificationNumber = secondaryCert;
+            });
 
         return View(viewModel);
     }
@@ -1792,11 +1836,7 @@ namespace SAM.Controllers;
             viewModel.TemplateParameters.Count);
         EnsureTemplateArraysInitialized(viewModel.TemplateParameters);
 
-        if (viewModel.LabOptionId.HasValue &&
-            !await ValidateLabOptionForCompanyAsync(viewModel.LabOptionId, viewModel.CompanyId))
-        {
-            ModelState.AddModelError(nameof(viewModel.LabOptionId), "Selected lab option is invalid or inactive.");
-        }
+        await ValidateWwCharLabOptionsAsync(viewModel.LabOptionId, viewModel.SecondaryLabOptionId, viewModel.CompanyId);
 
         if (viewModel.TestResultFile != null && !viewModel.TestResultDate.HasValue)
         {
@@ -1816,10 +1856,17 @@ namespace SAM.Controllers;
             ViewBag.ORCOnSiteOptions = GetORCOnSiteSelectList();
             ViewBag.FlowMeasuringPointOptions = GetFlowMeasuringPointSelectList();
             ViewBag.ParameterMonitoringPointOptions = GetParameterMonitoringPointSelectList();
-            var invalidEditLabDisplay = await ResolveLabOptionDisplayAsync(viewModel.LabOptionId, viewModel.CompanyId);
-            viewModel.SelectedLabOptionName = invalidEditLabDisplay.Name;
-            viewModel.SelectedLabCertificationNumber = invalidEditLabDisplay.Cert;
-            ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.LabOptionId);
+            await SetWwCharLabViewDataAsync(
+                viewModel.CompanyId,
+                viewModel.LabOptionId,
+                viewModel.SecondaryLabOptionId,
+                (name, cert, secondaryName, secondaryCert) =>
+                {
+                    viewModel.SelectedLabOptionName = name;
+                    viewModel.SelectedLabCertificationNumber = cert;
+                    viewModel.SelectedSecondaryLabOptionName = secondaryName;
+                    viewModel.SelectedSecondaryLabCertificationNumber = secondaryCert;
+                });
             return View(viewModel);
         }
 
@@ -1845,6 +1892,9 @@ namespace SAM.Controllers;
             wwChar.TNDaily = viewModel.TNDaily;
             wwChar.CompositeTime = viewModel.CompositeTime;
             wwChar.LabOptionId = viewModel.LabOptionId;
+            wwChar.SecondaryLabOptionId = viewModel.SecondaryLabOptionId;
+            wwChar.SamplingPerson1 = viewModel.SamplingPerson1;
+            wwChar.SamplingPerson2 = viewModel.SamplingPerson2;
             wwChar.CollectedBy = viewModel.CollectedBy;
             wwChar.AnalyzedBy = viewModel.AnalyzedBy;
             wwChar.FacilityPermitId = viewModel.FacilityPermitId;
@@ -1905,10 +1955,17 @@ namespace SAM.Controllers;
                 resolvedEditPermit?.Id,
                 editReportDate,
                 viewModel.TemplateParameters.Count);
-            var catchEditLabDisplay = await ResolveLabOptionDisplayAsync(viewModel.LabOptionId, viewModel.CompanyId);
-            viewModel.SelectedLabOptionName = catchEditLabDisplay.Name;
-            viewModel.SelectedLabCertificationNumber = catchEditLabDisplay.Cert;
-            ViewBag.LabOptions = await GetLabOptionSelectListAsync(viewModel.CompanyId, viewModel.LabOptionId);
+            await SetWwCharLabViewDataAsync(
+                viewModel.CompanyId,
+                viewModel.LabOptionId,
+                viewModel.SecondaryLabOptionId,
+                (name, cert, secondaryName, secondaryCert) =>
+                {
+                    viewModel.SelectedLabOptionName = name;
+                    viewModel.SelectedLabCertificationNumber = cert;
+                    viewModel.SelectedSecondaryLabOptionName = secondaryName;
+                    viewModel.SelectedSecondaryLabCertificationNumber = secondaryCert;
+                });
             return View(viewModel);
         }
     }
@@ -2340,6 +2397,37 @@ namespace SAM.Controllers;
         return await _context.CompanyLabOptions
             .AsNoTracking()
             .AnyAsync(x => x.Id == labOptionId.Value && x.CompanyId == companyId && x.IsActive);
+    }
+
+    private async Task SetWwCharLabViewDataAsync(
+        Guid companyId,
+        Guid? labOptionId,
+        Guid? secondaryLabOptionId,
+        Action<string?, string?, string?, string?> setDisplay)
+    {
+        var primary = await ResolveLabOptionDisplayAsync(labOptionId, companyId);
+        var secondary = await ResolveLabOptionDisplayAsync(secondaryLabOptionId, companyId);
+        setDisplay(primary.Name, primary.Cert, secondary.Name, secondary.Cert);
+        ViewBag.LabOptions = await GetLabOptionSelectListAsync(companyId, labOptionId);
+        ViewBag.SecondaryLabOptions = await GetLabOptionSelectListAsync(companyId, secondaryLabOptionId);
+    }
+
+    private async Task ValidateWwCharLabOptionsAsync(Guid? labOptionId, Guid? secondaryLabOptionId, Guid companyId)
+    {
+        if (labOptionId.HasValue && secondaryLabOptionId.HasValue && labOptionId == secondaryLabOptionId)
+        {
+            ModelState.AddModelError("LabOptionId", "Primary and secondary lab options must be different.");
+        }
+
+        if (labOptionId.HasValue && !await ValidateLabOptionForCompanyAsync(labOptionId, companyId))
+        {
+            ModelState.AddModelError("LabOptionId", "Selected lab option is invalid or inactive.");
+        }
+
+        if (secondaryLabOptionId.HasValue && !await ValidateLabOptionForCompanyAsync(secondaryLabOptionId, companyId))
+        {
+            ModelState.AddModelError("SecondaryLabOptionId", "Selected secondary lab option is invalid or inactive.");
+        }
     }
 
     private async Task<GW59ReportViewModel> BuildGW59ReportAsync(Guid gwMonitId)

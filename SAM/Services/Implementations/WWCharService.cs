@@ -119,6 +119,9 @@ public class WWCharService : IWWCharService
             existingAnyState.TNDaily = wwChar.TNDaily;
             existingAnyState.CompositeTime = wwChar.CompositeTime;
             existingAnyState.LabOptionId = wwChar.LabOptionId;
+            existingAnyState.SecondaryLabOptionId = wwChar.SecondaryLabOptionId;
+            existingAnyState.SamplingPerson1 = wwChar.SamplingPerson1;
+            existingAnyState.SamplingPerson2 = wwChar.SamplingPerson2;
             existingAnyState.CollectedBy = wwChar.CollectedBy;
             existingAnyState.AnalyzedBy = wwChar.AnalyzedBy;
             existingAnyState.NO2N = wwChar.NO2N;
@@ -207,6 +210,9 @@ public class WWCharService : IWWCharService
         existing.TNDaily = wwChar.TNDaily;
         existing.CompositeTime = wwChar.CompositeTime;
         existing.LabOptionId = wwChar.LabOptionId;
+        existing.SecondaryLabOptionId = wwChar.SecondaryLabOptionId;
+        existing.SamplingPerson1 = wwChar.SamplingPerson1;
+        existing.SamplingPerson2 = wwChar.SamplingPerson2;
         existing.CollectedBy = wwChar.CollectedBy;
         existing.AnalyzedBy = wwChar.AnalyzedBy;
         existing.NO2N = wwChar.NO2N;

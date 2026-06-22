@@ -129,10 +129,10 @@
             </div>
 
             <div class="form-section">
-                <div class="form-section-title">Lab Information</div>
+                <div class="form-section-title">Lab and Sampling</div>
                 
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-lg-3 col-md-6">
                         <div class="mb-3">
                             <label asp-for="LabOptionId" class="form-label"></label>
                             <select asp-for="LabOptionId" asp-items="ViewBag.LabOptions" class="form-select">
@@ -146,18 +146,47 @@
                             <small class="text-muted d-block mt-1">Manage labs in <a asp-controller="SystemAdmin" asp-action="SystemAdmin">System Admin</a> &gt; Lab Options.</small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-lg-3 col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="SecondaryLabOptionId" class="form-label"></label>
+                            <select asp-for="SecondaryLabOptionId" asp-items="ViewBag.SecondaryLabOptions" class="form-select">
+                                <option value="">-- Select lab --</option>
+                            </select>
+                            <span asp-validation-for="SecondaryLabOptionId" class="text-danger"></span>
+                            @if (!string.IsNullOrEmpty(Model.SelectedSecondaryLabCertificationNumber))
+                            {
+                                <small class="text-muted d-block mt-1">Certification No.: @Model.SelectedSecondaryLabCertificationNumber</small>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
                         <div class="mb-3">
                             <label asp-for="CollectedBy" class="form-label required"></label>
                             <input asp-for="CollectedBy" class="form-control" />
                             <span asp-validation-for="CollectedBy" class="text-danger"></span>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-lg-3 col-md-6">
                         <div class="mb-3">
                             <label asp-for="AnalyzedBy" class="form-label required"></label>
                             <input asp-for="AnalyzedBy" class="form-control" />
                             <span asp-validation-for="AnalyzedBy" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="SamplingPerson1" class="form-label"></label>
+                            <input asp-for="SamplingPerson1" class="form-control" />
+                            <span asp-validation-for="SamplingPerson1" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="SamplingPerson2" class="form-label"></label>
+                            <input asp-for="SamplingPerson2" class="form-control" />
+                            <span asp-validation-for="SamplingPerson2" class="text-danger"></span>
                         </div>
                     </div>
                 </div>

@@ -81,11 +81,19 @@ public class CompanyLabOptionService : ICompanyLabOptionService
         existing.IsActive = false;
 
         var wwCharsUsingLab = await _context.WWChars
-            .Where(w => w.LabOptionId == id)
+            .Where(w => w.LabOptionId == id || w.SecondaryLabOptionId == id)
             .ToListAsync();
         foreach (var wwChar in wwCharsUsingLab)
         {
-            wwChar.LabOptionId = null;
+            if (wwChar.LabOptionId == id)
+            {
+                wwChar.LabOptionId = null;
+            }
+
+            if (wwChar.SecondaryLabOptionId == id)
+            {
+                wwChar.SecondaryLabOptionId = null;
+            }
         }
 
         var gwMonitsUsingLab = await _context.GWMonits

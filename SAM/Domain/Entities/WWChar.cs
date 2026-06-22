@@ -131,14 +131,30 @@ public class WWChar : CompanyScopedEntity
     public string AnalyzedBy { get; set; } = string.Empty;
 
     /// <summary>
-    /// Certified laboratory used for this monthly record (NDMR export).
+    /// Primary certified laboratory used for this monthly record (NDMR export page 2, row 1).
     /// </summary>
     public Guid? LabOptionId { get; set; }
+
+    /// <summary>
+    /// Secondary certified laboratory for NDMR export page 2, row 2.
+    /// </summary>
+    public Guid? SecondaryLabOptionId { get; set; }
+
+    /// <summary>
+    /// First person collecting samples for NDMR certification page 2.
+    /// </summary>
+    public string SamplingPerson1 { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Second person collecting samples for NDMR certification page 2.
+    /// </summary>
+    public string SamplingPerson2 { get; set; } = string.Empty;
 
     // Navigation properties
     public Facility? Facility { get; set; }
     public FacilityPermit? FacilityPermit { get; set; }
     public CompanyLabOption? LabOption { get; set; }
+    public CompanyLabOption? SecondaryLabOption { get; set; }
     public ICollection<WWCharTemplateValue> TemplateValues { get; set; } = new List<WWCharTemplateValue>();
     public ICollection<WWCharTestResultAttachment> TestResultAttachments { get; set; } = new List<WWCharTestResultAttachment>();
 }

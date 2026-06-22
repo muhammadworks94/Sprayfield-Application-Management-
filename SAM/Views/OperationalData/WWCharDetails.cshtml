@@ -82,21 +82,40 @@
             <div class="col-12">
                 <h5 class="detail-section-label mb-3">Lab and Sampling</h5>
                 <div class="row g-2">
-                    <div class="col-md-4 d-flex">
-                        <div class="fw-semibold me-2"><i class="bi bi-building me-1"></i>Lab:</div>
+                    <div class="col-lg-3 col-md-6 d-flex">
+                        <div class="fw-semibold me-2"><i class="bi bi-building me-1"></i>Lab Options:</div>
                         <div>@(string.IsNullOrEmpty(Model.SelectedLabOptionName) ? "N/A" : Model.SelectedLabOptionName)</div>
                     </div>
-                    <div class="col-md-4 d-flex">
-                        <div class="fw-semibold me-2"><i class="bi bi-clipboard-check me-1"></i>Lab Certification:</div>
-                        <div>@(string.IsNullOrEmpty(Model.SelectedLabCertificationNumber) ? "N/A" : Model.SelectedLabCertificationNumber)</div>
+                    <div class="col-lg-3 col-md-6 d-flex">
+                        <div class="fw-semibold me-2"><i class="bi bi-building me-1"></i>Lab Options 2:</div>
+                        <div>@(string.IsNullOrEmpty(Model.SelectedSecondaryLabOptionName) ? "N/A" : Model.SelectedSecondaryLabOptionName)</div>
                     </div>
-                    <div class="col-md-4 d-flex">
+                    <div class="col-lg-3 col-md-6 d-flex">
                         <div class="fw-semibold me-2"><i class="bi bi-person me-1"></i>Collected By:</div>
                         <div>@(string.IsNullOrEmpty(Model.CollectedBy) ? "N/A" : Model.CollectedBy)</div>
                     </div>
-                    <div class="col-md-4 d-flex">
+                    <div class="col-lg-3 col-md-6 d-flex">
                         <div class="fw-semibold me-2"><i class="bi bi-person-badge me-1"></i>Analyzed By:</div>
                         <div>@(string.IsNullOrEmpty(Model.AnalyzedBy) ? "N/A" : Model.AnalyzedBy)</div>
+                    </div>
+                    <div class="col-md-6 d-flex">
+                        <div class="fw-semibold me-2"><i class="bi bi-clipboard-check me-1"></i>Lab Certification:</div>
+                        <div>@(string.IsNullOrEmpty(Model.SelectedLabCertificationNumber) ? "N/A" : Model.SelectedLabCertificationNumber)</div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.SelectedSecondaryLabCertificationNumber))
+                    {
+                        <div class="col-md-6 d-flex">
+                            <div class="fw-semibold me-2"><i class="bi bi-clipboard-check me-1"></i>Lab 2 Certification:</div>
+                            <div>@Model.SelectedSecondaryLabCertificationNumber</div>
+                        </div>
+                    }
+                    <div class="col-md-6 d-flex">
+                        <div class="fw-semibold me-2"><i class="bi bi-person me-1"></i>Sampling Person 1:</div>
+                        <div>@(string.IsNullOrEmpty(Model.SamplingPerson1) ? "N/A" : Model.SamplingPerson1)</div>
+                    </div>
+                    <div class="col-md-6 d-flex">
+                        <div class="fw-semibold me-2"><i class="bi bi-person me-1"></i>Sampling Person 2:</div>
+                        <div>@(string.IsNullOrEmpty(Model.SamplingPerson2) ? "N/A" : Model.SamplingPerson2)</div>
                     </div>
                 </div>
             </div>
