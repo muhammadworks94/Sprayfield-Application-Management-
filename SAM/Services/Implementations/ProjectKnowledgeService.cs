@@ -12,7 +12,7 @@ public class ProjectKnowledgeService : IProjectKnowledgeService
     {
         var model = new ProjectKnowledgeViewModel
         {
-            Summary = "This page explains how SAM is structured, how major workflows run, how reports are generated, and which formulas and fallback rules are applied. Groundwater monitoring now uses permit-template PCS rows as the chemistry source of truth, combines GW-59 and GW-59A into one PDF export, and manages VOC attachments through the reports flow."
+            Summary = "This page explains how SAM is structured, how major workflows run, how reports are generated, and which formulas and fallback rules are applied. Monthly NDAR-1, NDMR, and NDMLR report records can be auto-created when operational data is saved (bidirectional with manual Generate and NDAR grid edit). Groundwater monitoring uses permit-template PCS rows as the chemistry source of truth, combines GW-59 and GW-59A into one PDF export, and manages VOC attachments through the reports flow."
         };
 
         model.Sections.Add(BuildSystemOverview());
@@ -32,11 +32,16 @@ flowchart LR
     D --> E[Monthly Applications]
     D --> F[WWChar]
     D --> G[GW Monitoring]
+    D --> O[Operator Logs]
     E --> H[Compliance Validation]
     F --> H
-    G --> I[NDMR and NDMLR]
-    E --> J[NDAR1]
-    F --> I
+    G --> I[GW Reports List]
+    E -->|auto-provision| J[NDAR1]
+    E -->|auto-provision| L[NDMLR]
+    O -->|auto-provision| J
+    O -->|auto-provision| M[NDMR IrrRprt]
+    F -->|auto-provision| M
+    J -->|grid edit| D
 """);
 
         model.MermaidDiagrams.Add("""
@@ -64,6 +69,38 @@ flowchart TD
     B -- Yes --> D{NDMR template rows exist}
     D -- No --> E[No template rows message]
     D -- Yes --> F[Use permit version and template for report entry]
+""");
+
+        model.MermaidDiagrams.Add("""
+flowchart TD
+    subgraph triggers [Operational save triggers]
+        MA[MonthlyApplication create/update]
+        OL[OperatorLog create/update]
+        WW[WWChar create/update]
+        GR[NDAR1 grid row edit]
+    end
+    subgraph provisioner [MonthlyReportProvisionerService]
+        P[Ensure for facility month/year]
+    end
+    subgraph reports [Persisted report records]
+        N1[NDAR1]
+        NDMR[IrrRprt NDMR]
+        NDL[NDMLR]
+    end
+    MA --> P
+    OL --> P
+    WW --> P
+    GR --> P
+    P -->|missing: generate + create| N1
+    P -->|existing: refresh computed fields| N1
+    P -->|missing only| NDMR
+    P -->|missing only| NDL
+    MA -.->|also ensures| NDL
+    OL -.->|also ensures| NDMR
+    WW -.->|also ensures| NDMR
+    GR -.->|ensures all three| N1
+    GR -.-> NDMR
+    GR -.-> NDL
 """);
 
         var traceability = model.Sections
@@ -103,7 +140,7 @@ flowchart TD
                     {
                         "System Administration: master setup (facilities, permits tab, lab options, sprayfields, lookup entities).",
                         "Operational Data: monthly applications, WWChar, GW monitoring, operator logs.",
-                        "Reports: NDAR1, NDMR, annual NDMLR exports, irrigation reports.",
+                        "Reports: NDAR1, NDMR, annual NDMLR exports, irrigation reports; monthly report records can auto-create from operational saves.",
                         "Analytics and Dashboard: trends and status summaries."
                     }
                 }
@@ -148,10 +185,11 @@ flowchart TD
                         new List<string> { "FacilityPermitTemplateParameter", "Permit-bound PCS config", "PcsParameterCatalog, WWCharTemplateValue, GWMonitTemplateValue", "Dynamic template-driven behavior" },
                         new List<string> { "WWChar", "Monthly wastewater chemistry base record", "Facility, FacilityPermit, WWCharTemplateValue", "Monthly compliance checks, NDMR input" },
                         new List<string> { "GWMonit", "Groundwater monitoring record", "Facility, MonitoringWell, GWMonitTemplateValue", "NDMR and annual NDMLR related workflows" },
-                        new List<string> { "MonthlyApplication", "Sprayfield-level monthly application record", "Facility, Sprayfield", "Compliance + NDAR1 inputs" },
-                        new List<string> { "NDAR1", "Non-discharge report data model", "Facility, Sprayfields, dynamic field rows", "NDAR1 report screens/exports" },
-                        new List<string> { "NDMLR", "Annual non-discharge mass loading report identity", "Facility, Company, Year", "NDMLR annual list/details/exports" },
-                        new List<string> { "OperatorLog", "Canonical per-day operations record", "Facility, date-level ORC On Site + Storage Lagoon Freeboard (ft)", "WWChar + NDAR proxy read/write source" }
+                        new List<string> { "MonthlyApplication", "Sprayfield-level monthly application record", "Facility, Sprayfield", "Compliance + NDAR1 inputs; auto-provisions NDAR-1 + NDMLR for application month" },
+                        new List<string> { "NDAR1", "Non-discharge report data model", "Facility, Sprayfields, dynamic field rows", "NDAR1 report screens/exports; auto-created/refreshed from application/operator logs and grid edit" },
+                        new List<string> { "IrrRprt", "Monthly NDMR report identity and compliance summary", "Facility, Month, Year", "NDMR list/details/exports; auto-created from operator logs and WWChar" },
+                        new List<string> { "NDMLR", "Annual non-discharge mass loading report identity", "Facility, Company, Year, Month (window end)", "NDMLR annual list/details/exports; auto-created from application logs" },
+                        new List<string> { "OperatorLog", "Canonical per-day operations record", "Facility, date-level ORC On Site + Storage Lagoon Freeboard (ft)", "WWChar + NDAR proxy read/write source; auto-provisions NDAR-1 + NDMR for log month" }
                     }
                 }
             },
@@ -277,7 +315,7 @@ flowchart TD
         {
             Id = "operational-flows",
             Title = "Operational Data Flows",
-            Intro = "Operational entry is where source data is captured before reports are generated.",
+            Intro = "Operational entry captures source data and can auto-create monthly report records. Manual Generate on Reports screens still works and is idempotent when a report already exists.",
             Flows =
             {
                 new ProjectStepFlowViewModel
@@ -289,7 +327,8 @@ flowchart TD
                         "Maximum Hourly Loading is sourced from System Admin > Sprayfield > Permitted (Max) Hourly Rate.",
                         "System computes Daily Loading (inches) = MaximumHourlyLoading * (TimeIrrigatedMinutes / 60).",
                         "System computes Volume (gallons) = DailyLoading * SprayfieldArea * 27,154.",
-                        "Compliance endpoint validates WWChar chemistry dependency for same month/year (TKN/NO3 sourced from template PCS 00625/00620)."
+                        "Compliance endpoint validates WWChar chemistry dependency for same month/year (TKN/NO3 sourced from template PCS 00625/00620).",
+                        "On successful create/update, MonthlyReportProvisionerService ensures NDAR-1 (create or refresh) and NDMLR (create if missing) for the application month/year."
                     }
                 },
                 new ProjectStepFlowViewModel
@@ -303,7 +342,8 @@ flowchart TD
                         "If none found, page shows guided status message describing missing setup.",
                         "Chemistry/template entry values are saved on WWChar + WWCharTemplateValue rows.",
                         "ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours) are proxy fields: WWChar reads/writes these values through Operator Logs for each exact date.",
-                        "If a day value is edited in WWChar and no Operator Log exists for that date, SAM creates a log record and saves canonical values there."
+                        "If a day value is edited in WWChar and no Operator Log exists for that date, SAM creates a log record and saves canonical values there.",
+                        "After WWChar + template values are saved, MonthlyReportProvisionerService ensures NDMR (IrrRprt) exists for that facility/month/year (create only if missing)."
                     }
                 },
                 new ProjectStepFlowViewModel
@@ -364,7 +404,23 @@ flowchart TD
                         "Daily/period operational observations are captured.",
                         "Operator Logs are the single source of truth for ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours).",
                         "WWChar and NDAR edit experiences act as proxies that read/write those date-level values through Operator Logs.",
+                        "On successful create/update, MonthlyReportProvisionerService ensures NDAR-1 (create or refresh) and NDMR (create if missing) for the log month/year.",
+                        "Deletes refresh NDAR-1 only when a report already exists; they do not auto-create new report records.",
                         "These records support operational traceability, cross-module consistency, and analytics."
+                    }
+                },
+                new ProjectStepFlowViewModel
+                {
+                    Name = "Monthly Report Auto-Provisioning",
+                    Steps =
+                    {
+                        "MonthlyReportProvisionerService (Services/Implementations/MonthlyReportProvisionerService.cs) runs after operational saves commit, outside the original save transaction.",
+                        "Application Log (MonthlyApplication) create/update: ensures NDAR-1 for that month (generate + create if missing, else refresh computed fields) and NDMLR (bare identity row if missing).",
+                        "Operator Log create/update: ensures NDAR-1 (create or refresh) and NDMR/IrrRprt (generate + create if missing).",
+                        "WWChar create/update: ensures NDMR for WWChar month/year after operator-log proxy, WWChar save, and template values are persisted.",
+                        "NDAR-1 grid row edit (reverse-write into Operator Logs + Monthly Applications): ensures NDAR-1, NDMR, and NDMLR for the edited row month when refresh is not skipped.",
+                        "Manual Reports > Generate actions remain available; duplicate month/facility requests reuse the existing record instead of overwriting curated NDAR-1 data.",
+                        "GW-59 has no monthly report entity: each GWMonit record appears in Reports > Groundwater Quality Reports when saved (no separate auto-create step)."
                     }
                 }
             }
@@ -414,13 +470,27 @@ flowchart TD
                 },
                 new ProjectTableViewModel
                 {
+                    Caption = "Monthly Report Auto-Provision Triggers",
+                    Headers = { "Operational save", "Month key", "Auto-created reports", "If report already exists" },
+                    Rows =
+                    {
+                        new List<string> { "MonthlyApplication (create/update)", "ApplicationDate month/year", "NDAR-1 + NDMLR", "NDAR-1 refreshed; NDMLR unchanged" },
+                        new List<string> { "OperatorLog (create/update)", "LogDate month/year", "NDAR-1 + NDMR (IrrRprt)", "NDAR-1 refreshed; NDMR unchanged" },
+                        new List<string> { "WWChar (create/update)", "WWChar Month/Year", "NDMR (IrrRprt)", "No change" },
+                        new List<string> { "NDAR-1 grid row edit", "Edited row date month/year", "NDAR-1 + NDMR + NDMLR", "NDAR-1 refreshed; NDMR/NDMLR unchanged if present" },
+                        new List<string> { "OperatorLog / MonthlyApplication delete", "Affected month/year", "—", "NDAR-1 refreshed only if report exists; no auto-create" },
+                        new List<string> { "GWMonit save", "SampleDate month", "—", "Record listed under Groundwater Quality Reports (no monthly report entity)" }
+                    }
+                },
+                new ProjectTableViewModel
+                {
                     Caption = "Report Source Mapping",
                     Headers = { "Report", "Primary Source Models", "Header/Permit Logic", "Fallback Notes" },
                     Rows =
                     {
-                        new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Permit number and county from resolved FacilityPermit for report month (Gw59FacilityFieldResolver)", "Area/time/value handling follows per-field formula rules; export layout includes facility/field checkboxes and footer columns through V." },
-                        new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version and county from FacilityPermit; certification page uses WWChar LabOptionId + SecondaryLabOptionId and SamplingPerson1/2", "NDMR first two daily columns are exported from canonical Operator Logs as ORC Arrival Time and ORC Time on Site (hours); certification page shows two labs and two sampling persons from WWChar; PDF compliance uses X-only checkbox marks with no signature dates; if no template rows are scheduled for the selected month/frequency, guided setup warnings are shown." },
-                        new List<string> { "NDMLR (annual)", "NDAR-1 + GWMonit + sprayfield volumes", "Permit number and county from resolved FacilityPermit for report period", "Annual mass loading header uses permit-resolved fields." },
+                        new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Permit number and county from resolved FacilityPermit for report month (Gw59FacilityFieldResolver)", "Auto-created/refreshed from application/operator logs; grid edit can reverse-write operational rows; export layout includes facility/field checkboxes and footer columns through V." },
+                        new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version and county from FacilityPermit; certification page uses WWChar LabOptionId + SecondaryLabOptionId and SamplingPerson1/2", "IrrRprt identity auto-created from operator logs or WWChar; export still aggregates live operational data; first two daily columns use canonical Operator Logs; PDF compliance uses X-only checkbox marks with no signature dates." },
+                        new List<string> { "NDMLR (annual)", "NDAR-1 + GWMonit + sprayfield volumes", "Permit number and county from resolved FacilityPermit for report period", "Identity row auto-created from application logs (window end = application month/year); export math runs at export time." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
                         new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + CompanyLabOption + MonitoringWell + Facility", "Permit version resolved by facility default selection or sample date; address/county from permit; operation type checkboxes from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. Lab from GWMonit.LabOptionId (CompanyLabOption); no. of wells from permit sprayfield count with monitoring-well fallback." },
                         new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
@@ -439,6 +509,43 @@ flowchart TD
             Intro = "Search any property (like Address, BOD5, TKN, 50050, DailyLoading) to see where it is stored, transformed, and used in reports.",
             TraceabilityItems =
             {
+                new TraceabilityItemViewModel
+                {
+                    Id = "trace-report-auto-provision",
+                    KeywordOrProperty = "Report auto-create / auto-provision",
+                    Aliases = { "MonthlyReportProvisioner", "EnsureNdar1", "auto-created report", "bidirectional reports" },
+                    Entity = "MonthlyReportProvisionerService",
+                    StorageField = "N/A (orchestration service)",
+                    UsedInModule = "Operational Data + Reports",
+                    FormulaOrTransformation = "Idempotent ensure: NDAR-1 via GenerateMonthlyReportAsync + CreateAsync or RefreshExistingReportForMonthAsync; NDMR via IrrRprtService; NDMLR via bare NDMLR insert",
+                    ReportOutput = "NDAR-1, NDMR (IrrRprt), and NDMLR monthly/annual identity records in Reports lists",
+                    FallbackOrValidation = "Duplicate month/facility races are caught; manual Generate reuses existing records; NDAR-1 refresh never overwrites curated dynamic fields on existing reports.",
+                    Reference = new TraceReferenceViewModel
+                    {
+                        Label = "Monthly Report Auto-Provisioning",
+                        Location = "Services/Implementations/MonthlyReportProvisionerService.cs + Services/Implementations/NDAR1Service.EnsureAndRefreshForMonthAsync"
+                    },
+                    UsedByReports = { "NDAR1", "NDMR", "NDMLR (annual)" },
+                    Steps =
+                    {
+                        new TraceStepViewModel { Order = 1, Label = "Trigger", Detail = "Application log, operator log, WWChar save, or NDAR-1 grid row edit completes successfully." },
+                        new TraceStepViewModel { Order = 2, Label = "Provision", Detail = "MonthlyReportProvisionerService checks facility/month/year and creates missing report records using the same paths as manual Generate." },
+                        new TraceStepViewModel { Order = 3, Label = "NDAR-1 sync", Detail = "If NDAR-1 already exists, computed snapshot fields refresh from operational data without replacing curated grid values." },
+                        new TraceStepViewModel { Order = 4, Label = "Surface", Detail = "Reports module lists show new records; operational save messages may note NDAR-1 auto-created or refreshed." }
+                    },
+                    Usages =
+                    {
+                        new TraceUsageViewModel { Module = "Operational Data", Report = "NDAR1", Destination = "Auto-create or refresh after application/operator log saves." },
+                        new TraceUsageViewModel { Module = "Operational Data", Report = "NDMR", Destination = "Auto-create IrrRprt after operator log or WWChar save." },
+                        new TraceUsageViewModel { Module = "Operational Data", Report = "NDMLR (annual)", Destination = "Auto-create identity after application log save." },
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDAR1", Destination = "Grid row edit reverse-write also provisions all three monthly report types." }
+                    },
+                    FallbackRules =
+                    {
+                        new TraceFallbackRuleViewModel { Condition = "Report already exists for month", Behavior = "NDAR-1 refreshes; NDMR/NDMLR left unchanged." },
+                        new TraceFallbackRuleViewModel { Condition = "Delete operational record", Behavior = "NDAR-1 refreshes if present; no auto-create on delete." }
+                    }
+                },
                 new TraceabilityItemViewModel
                 {
                     Id = "trace-daily-loading-ndar",
@@ -764,18 +871,20 @@ flowchart TD
             ["GWMonit"] = "Operational Data > GW Monitoring",
             ["GWMonitTemplateValue"] = "Operational Data > GW Monitoring (Template Values)",
             ["OperatorLog"] = "Operational Data > Operator Logs",
+            ["IrrRprt"] = "Reports > NDMR",
             ["NDAR1"] = "Reports > NDAR1",
             ["NDMLR"] = "Reports > NDMLR",
             ["NDAR1Field"] = "Reports > NDAR1",
-            ["NDAR1FieldDaily"] = "Reports > NDAR1",
-            ["IrrRprt"] = "Reports > Irrigation"
+            ["NDAR1FieldDaily"] = "Reports > NDAR1"
         };
 
         var reportHints = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["MonthlyApplication"] = new() { "NDAR1", "Irrigation" },
+            ["MonthlyApplication"] = new() { "NDAR1", "NDMLR (annual)", "Irrigation" },
+            ["OperatorLog"] = new() { "NDAR1", "NDMR" },
             ["NDAR1"] = new() { "NDAR1" },
             ["NDMLR"] = new() { "NDMLR (annual)" },
+            ["IrrRprt"] = new() { "NDMR" },
             ["NDAR1Field"] = new() { "NDAR1" },
             ["NDAR1FieldDaily"] = new() { "NDAR1" },
             ["WWChar"] = new() { "NDMR" },
@@ -943,6 +1052,8 @@ flowchart TD
                         new List<string> { "No permit versions for facility", "WWChar template section shows setup warning", "Add permit version in System Administration > Facilities > Permit Versions." },
                         new List<string> { "Permit versions exist but none active for month/year", "WWChar shows date-range warning", "Adjust effective dates or application/report period." },
                         new List<string> { "Permit active but no NDMR template rows", "WWChar shows template-row warning", "Add PCS rows under permit version template." },
+                        new List<string> { "Report missing in Reports list after operational save", "Auto-provision may have failed silently for NDMR/NDMLR (check logs) or NDAR-1 refresh returned Failed", "Confirm save succeeded; retry save or use Reports > Generate; check application/operator log month matches expected report period." },
+                        new List<string> { "Duplicate report on manual Generate", "System reuses existing NDAR-1/NDMLR or IrrRprt for facility/month/year", "Expected idempotent behavior; operational auto-create uses the same uniqueness rules." },
                         new List<string> { "Permit unarchive causes overlap", "Unarchive blocked with message", "Adjust date ranges or archive conflicting active permit." },
                         new List<string> { "Duplicate permit number+version on create", "Create either restores soft-deleted match or shows friendly duplicate message", "Use archived section or update existing record." },
                         new List<string> { "PCS import duplicate codes", "Importer deduplicates and upserts safely", "Re-run import; duplicates in TSV no longer break process." },
@@ -981,7 +1092,8 @@ flowchart TD
                     Steps =
                     {
                         "Confirm user role has required access.",
-                        "Confirm required operational records exist for month/year.",
+                        "Confirm required operational records exist for month/year (saving data may have already auto-created NDAR-1, NDMR, or NDMLR).",
+                        "Check Reports lists before using manual Generate — duplicate Generate reuses the existing record.",
                         "For WWChar/NDMR paths, confirm permit version + template PCS setup.",
                         "Check compliance warnings shown on entry pages; resolve prerequisites."
                     }
@@ -999,7 +1111,9 @@ flowchart TD
                         "Changing permit template PCS rows impacts dynamic entry fields and NDMR parameter output.",
                         "Changing facility ORC Name, phone fields, or monitoring-well location descriptions impacts GW-59 Facility Information on export and preview.",
                         "Changing monitoring-well GW-59 fields (depth, diameter, screened interval, measuring point, relative M.P. elevation) impacts GW-59 Sampling Information on export and preview for all samples tied to that well.",
-                        "Changing monthly application values impacts compliance projections and downstream reporting."
+                        "Changing monthly application values impacts compliance projections and downstream reporting.",
+                        "Saving application logs, operator logs, or WWChar can auto-create monthly report records (NDAR-1, NDMR, NDMLR) without a separate Generate step.",
+                        "NDAR-1 grid edits reverse-write operational data and also run monthly report auto-provisioning for the edited month."
                     }
                 }
             }

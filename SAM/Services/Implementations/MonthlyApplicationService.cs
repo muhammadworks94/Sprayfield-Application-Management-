@@ -13,17 +13,20 @@ public class MonthlyApplicationService : IMonthlyApplicationService
     private readonly ApplicationDbContext _context;
     private readonly ILoadCalculationService _loadCalculationService;
     private readonly INDAR1Service _ndar1Service;
+    private readonly IMonthlyReportProvisionerService _reportProvisioner;
     private readonly ILogger<MonthlyApplicationService> _logger;
 
     public MonthlyApplicationService(
         ApplicationDbContext context,
         ILoadCalculationService loadCalculationService,
         INDAR1Service ndar1Service,
+        IMonthlyReportProvisionerService reportProvisioner,
         ILogger<MonthlyApplicationService> logger)
     {
         _context = context;
         _loadCalculationService = loadCalculationService;
         _ndar1Service = ndar1Service;
+        _reportProvisioner = reportProvisioner;
         _logger = logger;
     }
 
@@ -77,7 +80,7 @@ public class MonthlyApplicationService : IMonthlyApplicationService
         await _context.SaveChangesAsync();
         await _loadCalculationService.RecalculateForApplicationAsync(application.Id);
 
-        var outcome = await RefreshNdar1ForMonthAsync(application.FacilityId, application.ApplicationDate);
+        var outcome = await ProvisionReportsForApplicationMonthAsync(application.FacilityId, application.ApplicationDate);
         return new MonthlyApplicationMutationResult
         {
             Application = application,
@@ -107,14 +110,14 @@ public class MonthlyApplicationService : IMonthlyApplicationService
 
         var outcomes = new List<NdarRefreshOutcome>
         {
-            await RefreshNdar1ForMonthAsync(oldFacilityId, oldDate)
+            await ProvisionReportsForApplicationMonthAsync(oldFacilityId, oldDate)
         };
 
         var oldMonth = oldDate.Month;
         var oldYear = oldDate.Year;
         if (oldFacilityId != existing.FacilityId || oldMonth != existing.ApplicationDate.Month || oldYear != existing.ApplicationDate.Year)
         {
-            outcomes.Add(await RefreshNdar1ForMonthAsync(existing.FacilityId, existing.ApplicationDate));
+            outcomes.Add(await ProvisionReportsForApplicationMonthAsync(existing.FacilityId, existing.ApplicationDate));
         }
 
         return new MonthlyApplicationMutationResult
@@ -133,6 +136,30 @@ public class MonthlyApplicationService : IMonthlyApplicationService
         await _context.SaveChangesAsync();
         var outcome = await RefreshNdar1ForMonthAsync(existing.FacilityId, existing.ApplicationDate);
         return (true, new List<NdarRefreshOutcome> { outcome });
+    }
+
+    private async Task<NdarRefreshOutcome> ProvisionReportsForApplicationMonthAsync(Guid facilityId, DateTime date)
+    {
+        try
+        {
+            var outcome = await _reportProvisioner.EnsureNdar1ForMonthAsync(facilityId, date.Month, date.Year);
+            await _reportProvisioner.EnsureNdmlrForMonthAsync(facilityId, date.Month, date.Year);
+            return outcome;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Monthly report provisioning failed after application log change for facility {FacilityId} month {Month} year {Year}.",
+                facilityId, date.Month, date.Year);
+            return new NdarRefreshOutcome
+            {
+                FacilityId = facilityId,
+                Month = date.Month,
+                Year = date.Year,
+                Status = NdarRefreshStatus.Failed,
+                Message = $"NDAR-1 sync for {new DateTime(date.Year, date.Month, 1):MMM yyyy} failed."
+            };
+        }
     }
 
     private async Task<NdarRefreshOutcome> RefreshNdar1ForMonthAsync(Guid facilityId, DateTime date)

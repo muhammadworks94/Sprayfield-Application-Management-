@@ -41,6 +41,7 @@ namespace SAM.Controllers;
         private readonly IMonitoringWellService _monitoringWellService;
         private readonly ILookupQueryService _lookupQueryService;
         private readonly IFacilityPermitResolver _facilityPermitResolver;
+        private readonly IMonthlyReportProvisionerService _reportProvisioner;
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
@@ -56,6 +57,7 @@ namespace SAM.Controllers;
             IMonitoringWellService monitoringWellService,
             ILookupQueryService lookupQueryService,
             IFacilityPermitResolver facilityPermitResolver,
+            IMonthlyReportProvisionerService reportProvisioner,
             ApplicationDbContext context,
             IWebHostEnvironment environment,
             IConfiguration configuration,
@@ -73,6 +75,7 @@ namespace SAM.Controllers;
             _monitoringWellService = monitoringWellService;
             _lookupQueryService = lookupQueryService;
             _facilityPermitResolver = facilityPermitResolver;
+            _reportProvisioner = reportProvisioner;
             _context = context;
             _environment = environment;
             _configuration = configuration;
@@ -1607,6 +1610,10 @@ namespace SAM.Controllers;
 
             var savedWwChar = await _wwCharService.CreateAsync(wwChar);
             await SaveWwCharTemplateValuesAsync(savedWwChar, viewModel.TemplateParameters);
+            await _reportProvisioner.EnsureNdmrForMonthAsync(
+                savedWwChar.FacilityId,
+                (int)savedWwChar.Month,
+                savedWwChar.Year);
             TempData["SuccessMessage"] = $"Wastewater characteristics record saved for {savedWwChar.Month} {savedWwChar.Year}.";
             return RedirectToAction(nameof(WWChars), new { facilityId = savedWwChar.FacilityId });
         }
@@ -1914,6 +1921,10 @@ namespace SAM.Controllers;
 
             await _wwCharService.UpdateAsync(wwChar);
             await SaveWwCharTemplateValuesAsync(wwChar, viewModel.TemplateParameters);
+            await _reportProvisioner.EnsureNdmrForMonthAsync(
+                wwChar.FacilityId,
+                (int)wwChar.Month,
+                wwChar.Year);
 
             if (viewModel.TestResultFile != null && viewModel.TestResultFile.Length > 0 && viewModel.TestResultDate.HasValue)
             {
@@ -4406,6 +4417,9 @@ namespace SAM.Controllers;
             {
                 case NdarRefreshStatus.Updated:
                     successParts.Add($"NDAR-1 ({period}) refreshed.");
+                    break;
+                case NdarRefreshStatus.Created:
+                    successParts.Add($"NDAR-1 ({period}) auto-created.");
                     break;
                 case NdarRefreshStatus.NoReport:
                     successParts.Add($"No NDAR-1 exists for {period}, so no refresh was needed.");

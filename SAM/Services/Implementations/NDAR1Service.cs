@@ -293,6 +293,56 @@ public class NDAR1Service : INDAR1Service
             .FirstOrDefaultAsync(n => n.FacilityId == facilityId && (int)n.Month == month && n.Year == year);
     }
 
+    public async Task<NdarRefreshOutcome> EnsureAndRefreshForMonthAsync(Guid facilityId, int month, int year)
+    {
+        var existing = await GetByFacilityMonthYearAsync(facilityId, month, year);
+        if (existing != null)
+        {
+            return await RefreshExistingReportForMonthAsync(facilityId, month, year);
+        }
+
+        var periodText = new DateTime(year, month, 1).ToString("MMM yyyy");
+        try
+        {
+            var generated = await GenerateMonthlyReportAsync(facilityId, month, year);
+            var saved = await CreateAsync(generated);
+            _logger.LogInformation(
+                "Auto-created NDAR-1 report {ReportId} for facility {FacilityId} month {Month} year {Year}.",
+                saved.Id,
+                facilityId,
+                month,
+                year);
+
+            return new NdarRefreshOutcome
+            {
+                FacilityId = facilityId,
+                Month = month,
+                Year = year,
+                Status = NdarRefreshStatus.Created,
+                Created = true,
+                Message = $"NDAR-1 report for {periodText} auto-created."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "NDAR-1 auto-create failed for facility {FacilityId} month {Month} year {Year}.",
+                facilityId,
+                month,
+                year);
+
+            return new NdarRefreshOutcome
+            {
+                FacilityId = facilityId,
+                Month = month,
+                Year = year,
+                Status = NdarRefreshStatus.Failed,
+                Message = $"NDAR-1 auto-create failed for {periodText}. Please retry."
+            };
+        }
+    }
+
     public async Task<NdarRefreshOutcome> RefreshExistingReportForMonthAsync(Guid facilityId, int month, int year)
     {
         var outcome = new NdarRefreshOutcome

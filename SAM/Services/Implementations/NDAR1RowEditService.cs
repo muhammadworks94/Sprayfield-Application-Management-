@@ -13,12 +13,14 @@ public class NDAR1RowEditService : INDAR1RowEditService
 {
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMinutes(10);
     private readonly ApplicationDbContext _context;
-    private readonly INDAR1Service _ndar1Service;
+    private readonly IMonthlyReportProvisionerService _reportProvisioner;
 
-    public NDAR1RowEditService(ApplicationDbContext context, INDAR1Service ndar1Service)
+    public NDAR1RowEditService(
+        ApplicationDbContext context,
+        IMonthlyReportProvisionerService reportProvisioner)
     {
         _context = context;
-        _ndar1Service = ndar1Service;
+        _reportProvisioner = reportProvisioner;
     }
 
     public async Task<NDAR1EditGridViewModel> BuildGridAsync(Guid ndar1Id, string? currentUserId = null)
@@ -603,10 +605,12 @@ public class NDAR1RowEditService : INDAR1RowEditService
 
             if (sourceReport != null)
             {
-                ndarRefreshOutcome = await _ndar1Service.RefreshExistingReportForMonthAsync(
+                ndarRefreshOutcome = await _reportProvisioner.EnsureNdar1ForMonthAsync(
                     sourceReport.FacilityId,
                     reportMonth,
                     reportYear);
+                await _reportProvisioner.EnsureNdmrForMonthAsync(sourceReport.FacilityId, reportMonth, reportYear);
+                await _reportProvisioner.EnsureNdmlrForMonthAsync(sourceReport.FacilityId, reportMonth, reportYear);
             }
             else
             {

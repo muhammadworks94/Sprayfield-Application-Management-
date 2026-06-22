@@ -16,12 +16,18 @@ public class OperatorLogService : IOperatorLogService
     private readonly ApplicationDbContext _context;
     private readonly ILogger<OperatorLogService> _logger;
     private readonly INDAR1Service _ndar1Service;
+    private readonly IMonthlyReportProvisionerService _reportProvisioner;
 
-    public OperatorLogService(ApplicationDbContext context, ILogger<OperatorLogService> logger, INDAR1Service ndar1Service)
+    public OperatorLogService(
+        ApplicationDbContext context,
+        ILogger<OperatorLogService> logger,
+        INDAR1Service ndar1Service,
+        IMonthlyReportProvisionerService reportProvisioner)
     {
         _context = context;
         _logger = logger;
         _ndar1Service = ndar1Service;
+        _reportProvisioner = reportProvisioner;
     }
 
     public async Task<IEnumerable<OperatorLog>> GetAllAsync(Guid? companyId = null, Guid? facilityId = null)
@@ -82,9 +88,9 @@ public class OperatorLogService : IOperatorLogService
 
         _context.OperatorLogs.Add(operatorLog);
         await _context.SaveChangesAsync();
-        var outcome = await RefreshNdar1ForMonthAsync(operatorLog.FacilityId, operatorLog.LogDate);
+        var outcome = await ProvisionReportsForOperatorLogMonthAsync(operatorLog.FacilityId, operatorLog.LogDate);
 
-        _logger.LogInformation("Operator log created for facility '{FacilityName}' on {LogDate} (ID: {LogId})", 
+        _logger.LogInformation("Operator log created for facility '{FacilityName}' on {LogDate} (ID: {LogId})",
             facility.Name, operatorLog.LogDate, operatorLog.Id);
         return new OperatorLogMutationResult
         {
@@ -142,14 +148,14 @@ public class OperatorLogService : IOperatorLogService
         await _context.SaveChangesAsync();
         var outcomes = new List<NdarRefreshOutcome>
         {
-            await RefreshNdar1ForMonthAsync(oldFacilityId, oldLogDate)
+            await ProvisionReportsForOperatorLogMonthAsync(oldFacilityId, oldLogDate)
         };
 
         if (oldFacilityId != existing.FacilityId ||
             oldLogDate.Month != existing.LogDate.Month ||
             oldLogDate.Year != existing.LogDate.Year)
         {
-            outcomes.Add(await RefreshNdar1ForMonthAsync(existing.FacilityId, existing.LogDate));
+            outcomes.Add(await ProvisionReportsForOperatorLogMonthAsync(existing.FacilityId, existing.LogDate));
         }
 
         _logger.LogInformation("Operator log updated (ID: {LogId})", operatorLog.Id);
@@ -211,6 +217,30 @@ public class OperatorLogService : IOperatorLogService
             .Where(o => o.LogDate >= startDate && o.LogDate <= endDate)
             .OrderByDescending(o => o.LogDate)
             .ToListAsync();
+    }
+
+    private async Task<NdarRefreshOutcome> ProvisionReportsForOperatorLogMonthAsync(Guid facilityId, DateTime date)
+    {
+        try
+        {
+            var outcome = await _reportProvisioner.EnsureNdar1ForMonthAsync(facilityId, date.Month, date.Year);
+            await _reportProvisioner.EnsureNdmrForMonthAsync(facilityId, date.Month, date.Year);
+            return outcome;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Monthly report provisioning failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
+                facilityId, date.Month, date.Year);
+            return new NdarRefreshOutcome
+            {
+                FacilityId = facilityId,
+                Month = date.Month,
+                Year = date.Year,
+                Status = NdarRefreshStatus.Failed,
+                Message = $"NDAR-1 sync for {new DateTime(date.Year, date.Month, 1):MMM yyyy} failed."
+            };
+        }
     }
 
     private async Task<NdarRefreshOutcome> RefreshNdar1ForMonthAsync(Guid facilityId, DateTime date)
