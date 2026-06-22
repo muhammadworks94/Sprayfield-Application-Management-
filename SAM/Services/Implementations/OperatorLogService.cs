@@ -221,16 +221,15 @@ public class OperatorLogService : IOperatorLogService
 
     private async Task<NdarRefreshOutcome> ProvisionReportsForOperatorLogMonthAsync(Guid facilityId, DateTime date)
     {
+        NdarRefreshOutcome outcome;
         try
         {
-            var outcome = await _reportProvisioner.EnsureNdar1ForMonthAsync(facilityId, date.Month, date.Year);
-            await _reportProvisioner.EnsureNdmrForMonthAsync(facilityId, date.Month, date.Year);
-            return outcome;
+            outcome = await _reportProvisioner.EnsureNdar1ForMonthAsync(facilityId, date.Month, date.Year);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "Monthly report provisioning failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
+                "NDAR-1 provisioning failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
                 facilityId, date.Month, date.Year);
             return new NdarRefreshOutcome
             {
@@ -241,6 +240,21 @@ public class OperatorLogService : IOperatorLogService
                 Message = $"NDAR-1 sync for {new DateTime(date.Year, date.Month, 1):MMM yyyy} failed."
             };
         }
+
+        try
+        {
+            await _reportProvisioner.EnsureNdmrForMonthAsync(facilityId, date.Month, date.Year);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "NDMR auto-provision failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
+                facilityId, date.Month, date.Year);
+            outcome.SecondaryWarnings.Add(
+                $"NDMR for {new DateTime(date.Year, date.Month, 1):MMM yyyy} could not be auto-created.");
+        }
+
+        return outcome;
     }
 
     private async Task<NdarRefreshOutcome> RefreshNdar1ForMonthAsync(Guid facilityId, DateTime date)

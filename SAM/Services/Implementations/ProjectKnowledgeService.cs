@@ -404,7 +404,8 @@ flowchart TD
                         "Daily/period operational observations are captured.",
                         "Operator Logs are the single source of truth for ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours).",
                         "WWChar and NDAR edit experiences act as proxies that read/write those date-level values through Operator Logs.",
-                        "On successful create/update, MonthlyReportProvisionerService ensures NDAR-1 (create or refresh) and NDMR (create if missing) for the log month/year.",
+                        "On successful create/update, MonthlyReportProvisionerService ensures NDAR-1 (create or refresh) for the log month/year.",
+                        "NDMR (IrrRprt) auto-create is best-effort: skipped until at least one application log exists for that month (same rule as manual Generate NDMR).",
                         "Deletes refresh NDAR-1 only when a report already exists; they do not auto-create new report records.",
                         "These records support operational traceability, cross-module consistency, and analytics."
                     }
@@ -416,7 +417,7 @@ flowchart TD
                     {
                         "MonthlyReportProvisionerService (Services/Implementations/MonthlyReportProvisionerService.cs) runs after operational saves commit, outside the original save transaction.",
                         "Application Log (MonthlyApplication) create/update: ensures NDAR-1 for that month (generate + create if missing, else refresh computed fields) and NDMLR (bare identity row if missing).",
-                        "Operator Log create/update: ensures NDAR-1 (create or refresh) and NDMR/IrrRprt (generate + create if missing).",
+                        "Operator Log create/update: ensures NDAR-1 (create or refresh). NDMR/IrrRprt is created only when irrigation records exist for that month.",
                         "WWChar create/update: ensures NDMR for WWChar month/year after operator-log proxy, WWChar save, and template values are persisted.",
                         "NDAR-1 grid row edit (reverse-write into Operator Logs + Monthly Applications): ensures NDAR-1, NDMR, and NDMLR for the edited row month when refresh is not skipped.",
                         "Manual Reports > Generate actions remain available; duplicate month/facility requests reuse the existing record instead of overwriting curated NDAR-1 data.",
@@ -475,7 +476,7 @@ flowchart TD
                     Rows =
                     {
                         new List<string> { "MonthlyApplication (create/update)", "ApplicationDate month/year", "NDAR-1 + NDMLR", "NDAR-1 refreshed; NDMLR unchanged" },
-                        new List<string> { "OperatorLog (create/update)", "LogDate month/year", "NDAR-1 + NDMR (IrrRprt)", "NDAR-1 refreshed; NDMR unchanged" },
+                        new List<string> { "OperatorLog (create/update)", "LogDate month/year", "NDAR-1 (+ NDMR when applications exist)", "NDAR-1 refreshed; NDMR unchanged or deferred until application log exists" },
                         new List<string> { "WWChar (create/update)", "WWChar Month/Year", "NDMR (IrrRprt)", "No change" },
                         new List<string> { "NDAR-1 grid row edit", "Edited row date month/year", "NDAR-1 + NDMR + NDMLR", "NDAR-1 refreshed; NDMR/NDMLR unchanged if present" },
                         new List<string> { "OperatorLog / MonthlyApplication delete", "Affected month/year", "—", "NDAR-1 refreshed only if report exists; no auto-create" },
@@ -517,9 +518,9 @@ flowchart TD
                     Entity = "MonthlyReportProvisionerService",
                     StorageField = "N/A (orchestration service)",
                     UsedInModule = "Operational Data + Reports",
-                    FormulaOrTransformation = "Idempotent ensure: NDAR-1 via GenerateMonthlyReportAsync + CreateAsync or RefreshExistingReportForMonthAsync; NDMR via IrrRprtService; NDMLR via bare NDMLR insert",
+                    FormulaOrTransformation = "Idempotent ensure: NDAR-1 via GenerateMonthlyReportAsync + CreateAsync or RefreshExistingReportForMonthAsync (365-day floating totals use hydraulic volume only, not WWChar PAN); NDMR via IrrRprtService when irrigation records exist; NDMLR via bare NDMLR insert",
                     ReportOutput = "NDAR-1, NDMR (IrrRprt), and NDMLR monthly/annual identity records in Reports lists",
-                    FallbackOrValidation = "Duplicate month/facility races are caught; manual Generate reuses existing records; NDAR-1 refresh never overwrites curated dynamic fields on existing reports.",
+                    FallbackOrValidation = "Duplicate month/facility races are caught; manual Generate reuses existing records; NDAR-1 refresh never overwrites curated dynamic fields on existing reports; NDMR auto-create is skipped when no application logs exist for the month.",
                     Reference = new TraceReferenceViewModel
                     {
                         Label = "Monthly Report Auto-Provisioning",
@@ -536,13 +537,14 @@ flowchart TD
                     Usages =
                     {
                         new TraceUsageViewModel { Module = "Operational Data", Report = "NDAR1", Destination = "Auto-create or refresh after application/operator log saves." },
-                        new TraceUsageViewModel { Module = "Operational Data", Report = "NDMR", Destination = "Auto-create IrrRprt after operator log or WWChar save." },
+                        new TraceUsageViewModel { Module = "Operational Data", Report = "NDMR", Destination = "Auto-create IrrRprt after operator log or WWChar save when irrigation records exist for the month." },
                         new TraceUsageViewModel { Module = "Operational Data", Report = "NDMLR (annual)", Destination = "Auto-create identity after application log save." },
                         new TraceUsageViewModel { Module = "Reports", Report = "NDAR1", Destination = "Grid row edit reverse-write also provisions all three monthly report types." }
                     },
                     FallbackRules =
                     {
                         new TraceFallbackRuleViewModel { Condition = "Report already exists for month", Behavior = "NDAR-1 refreshes; NDMR/NDMLR left unchanged." },
+                        new TraceFallbackRuleViewModel { Condition = "No application logs for month", Behavior = "NDMR auto-create skipped; NDAR-1 still created/refreshed from operator log weather data." },
                         new TraceFallbackRuleViewModel { Condition = "Delete operational record", Behavior = "NDAR-1 refreshes if present; no auto-create on delete." }
                     }
                 },
@@ -1052,7 +1054,7 @@ flowchart TD
                         new List<string> { "No permit versions for facility", "WWChar template section shows setup warning", "Add permit version in System Administration > Facilities > Permit Versions." },
                         new List<string> { "Permit versions exist but none active for month/year", "WWChar shows date-range warning", "Adjust effective dates or application/report period." },
                         new List<string> { "Permit active but no NDMR template rows", "WWChar shows template-row warning", "Add PCS rows under permit version template." },
-                        new List<string> { "Report missing in Reports list after operational save", "Auto-provision may have failed silently for NDMR/NDMLR (check logs) or NDAR-1 refresh returned Failed", "Confirm save succeeded; retry save or use Reports > Generate; check application/operator log month matches expected report period." },
+                        new List<string> { "Report missing in Reports list after operational save", "NDAR-1 auto-create may have failed (check logs); NDMR is deferred until application logs exist for that month", "Confirm save succeeded; for operator-log-only months expect NDAR-1 but not NDMR; retry save or use Reports > Generate." },
                         new List<string> { "Duplicate report on manual Generate", "System reuses existing NDAR-1/NDMLR or IrrRprt for facility/month/year", "Expected idempotent behavior; operational auto-create uses the same uniqueness rules." },
                         new List<string> { "Permit unarchive causes overlap", "Unarchive blocked with message", "Adjust date ranges or archive conflicting active permit." },
                         new List<string> { "Duplicate permit number+version on create", "Create either restores soft-deleted match or shows friendly duplicate message", "Use archived section or update existing record." },

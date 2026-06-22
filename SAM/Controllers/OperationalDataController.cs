@@ -4419,14 +4419,25 @@ namespace SAM.Controllers;
                     successParts.Add($"NDAR-1 ({period}) refreshed.");
                     break;
                 case NdarRefreshStatus.Created:
-                    successParts.Add($"NDAR-1 ({period}) auto-created.");
+                    successParts.Add(!string.IsNullOrWhiteSpace(outcome.Message)
+                        ? outcome.Message
+                        : $"NDAR-1 ({period}) auto-created.");
                     break;
                 case NdarRefreshStatus.NoReport:
-                    successParts.Add($"No NDAR-1 exists for {period}, so no refresh was needed.");
+                    successParts.Add(!string.IsNullOrWhiteSpace(outcome.Message)
+                        ? outcome.Message
+                        : $"No NDAR-1 exists for {period}, so no refresh was needed.");
                     break;
                 case NdarRefreshStatus.Failed:
-                    warningParts.Add($"NDAR-1 refresh failed for {period}. Please retry.");
+                    warningParts.Add(!string.IsNullOrWhiteSpace(outcome.Message)
+                        ? outcome.Message
+                        : $"NDAR-1 refresh failed for {period}. Please retry.");
                     break;
+            }
+
+            if (outcome.SecondaryWarnings?.Count > 0)
+            {
+                warningParts.AddRange(outcome.SecondaryWarnings);
             }
         }
 

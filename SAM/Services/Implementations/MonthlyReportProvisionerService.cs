@@ -49,14 +49,25 @@ public class MonthlyReportProvisionerService : IMonthlyReportProvisionerService
                 month,
                 year);
         }
-        catch (BusinessRuleException ex) when (IsDuplicateReportMessage(ex.Message))
+        catch (BusinessRuleException ex) when (IsDuplicateReportMessage(ex.Message) || IsNoIrrigationRecordsMessage(ex.Message))
         {
-            _logger.LogDebug(
-                ex,
-                "NDMR report already exists for facility {FacilityId} month {Month} year {Year} (race).",
-                facilityId,
-                month,
-                year);
+            if (IsNoIrrigationRecordsMessage(ex.Message))
+            {
+                _logger.LogInformation(
+                    "Skipped NDMR auto-create for facility {FacilityId} month {Month} year {Year}: no irrigation records for the month.",
+                    facilityId,
+                    month,
+                    year);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    ex,
+                    "NDMR report already exists for facility {FacilityId} month {Month} year {Year} (race).",
+                    facilityId,
+                    month,
+                    year);
+            }
         }
         catch (DbUpdateException ex)
         {
@@ -128,4 +139,7 @@ public class MonthlyReportProvisionerService : IMonthlyReportProvisionerService
 
     private static bool IsDuplicateReportMessage(string message) =>
         message.Contains("already exists", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsNoIrrigationRecordsMessage(string message) =>
+        message.Contains("No irrigation records", StringComparison.OrdinalIgnoreCase);
 }

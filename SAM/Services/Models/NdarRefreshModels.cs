@@ -25,6 +25,8 @@ public sealed class NdarRefreshOutcome
     public bool SkippedNoReport => Status == NdarRefreshStatus.NoReport;
     public bool Failed => Status == NdarRefreshStatus.Failed;
     public bool WasCreated => Status == NdarRefreshStatus.Created || Created;
+
+    public List<string> SecondaryWarnings { get; set; } = new();
 }
 
 public sealed class MonthlyApplicationMutationResult

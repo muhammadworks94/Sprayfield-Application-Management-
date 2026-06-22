@@ -125,10 +125,17 @@ public class NDAR1Service : INDAR1Service
         if (facility.CompanyId != ndar1.CompanyId)
             throw new BusinessRuleException("Facility must belong to the same company.");
 
-        // Check if report already exists for this facility/month/year
-        var existing = await GetByFacilityMonthYearAsync(ndar1.FacilityId, (int)ndar1.Month, ndar1.Year);
-        if (existing != null)
+        // Check if report already exists for this facility/month/year (including soft-deleted shadow rows)
+        var shadow = await GetByFacilityMonthYearIncludingDeletedAsync(ndar1.FacilityId, (int)ndar1.Month, ndar1.Year);
+        if (shadow != null)
+        {
+            if (shadow.IsDeleted)
+            {
+                return await RestoreAndRefreshSoftDeletedReportAsync(shadow, facility.Name);
+            }
+
             throw new BusinessRuleException($"An NDAR-1 report already exists for facility {facility.Name} for {ndar1.Month} {ndar1.Year}.");
+        }
 
         // Initialize daily arrays if empty
         InitializeDailyArrays(ndar1);
@@ -139,7 +146,27 @@ public class NDAR1Service : INDAR1Service
             (int)ndar1.Month);
 
         _context.NDAR1s.Add(ndar1);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsDuplicateFacilityMonthYearException(ex))
+        {
+            _context.ChangeTracker.Clear();
+            shadow = await GetByFacilityMonthYearIncludingDeletedAsync(ndar1.FacilityId, (int)ndar1.Month, ndar1.Year);
+            if (shadow != null)
+            {
+                return await RestoreAndRefreshSoftDeletedReportAsync(shadow, facility.Name);
+            }
+
+            var raced = await GetByFacilityMonthYearAsync(ndar1.FacilityId, (int)ndar1.Month, ndar1.Year);
+            if (raced != null)
+            {
+                throw new BusinessRuleException($"An NDAR-1 report already exists for facility {facility.Name} for {ndar1.Month} {ndar1.Year}.");
+            }
+
+            throw;
+        }
 
         _logger.LogInformation("NDAR-1 report created for facility '{FacilityName}' for {Month} {Year} (ID: {ReportId})",
             facility.Name, ndar1.Month, ndar1.Year, ndar1.Id);
@@ -293,10 +320,72 @@ public class NDAR1Service : INDAR1Service
             .FirstOrDefaultAsync(n => n.FacilityId == facilityId && (int)n.Month == month && n.Year == year);
     }
 
+    private async Task<NDAR1?> GetByFacilityMonthYearIncludingDeletedAsync(Guid facilityId, int month, int year)
+    {
+        return await _context.NDAR1s
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(n => n.FacilityId == facilityId && (int)n.Month == month && n.Year == year);
+    }
+
+    private async Task<bool> TryRestoreSoftDeletedReportAsync(Guid facilityId, int month, int year)
+    {
+        var shadow = await GetByFacilityMonthYearIncludingDeletedAsync(facilityId, month, year);
+        if (shadow == null || !shadow.IsDeleted)
+        {
+            return false;
+        }
+
+        shadow.IsDeleted = false;
+        await _context.SaveChangesAsync();
+        _logger.LogInformation(
+            "Restored soft-deleted NDAR-1 report {ReportId} for facility {FacilityId} month {Month} year {Year}.",
+            shadow.Id,
+            facilityId,
+            month,
+            year);
+        return true;
+    }
+
+    private async Task<NDAR1> RestoreAndRefreshSoftDeletedReportAsync(NDAR1 shadow, string facilityName)
+    {
+        if (shadow.IsDeleted)
+        {
+            shadow.IsDeleted = false;
+            await _context.SaveChangesAsync();
+            _logger.LogInformation(
+                "Restored soft-deleted NDAR-1 report {ReportId} for facility '{FacilityName}' for {Month} {Year}.",
+                shadow.Id,
+                facilityName,
+                shadow.Month,
+                shadow.Year);
+        }
+
+        await RefreshExistingReportForMonthAsync(shadow.FacilityId, (int)shadow.Month, shadow.Year);
+        return await GetByIdAsync(shadow.Id) ?? shadow;
+    }
+
+    private static bool IsDuplicateFacilityMonthYearException(Exception ex)
+    {
+        for (var current = ex; current != null; current = current.InnerException)
+        {
+            if (current is SqlException sql && (sql.Number == 2601 || sql.Number == 2627))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public async Task<NdarRefreshOutcome> EnsureAndRefreshForMonthAsync(Guid facilityId, int month, int year)
     {
         var existing = await GetByFacilityMonthYearAsync(facilityId, month, year);
         if (existing != null)
+        {
+            return await RefreshExistingReportForMonthAsync(facilityId, month, year);
+        }
+
+        if (await TryRestoreSoftDeletedReportAsync(facilityId, month, year))
         {
             return await RefreshExistingReportForMonthAsync(facilityId, month, year);
         }
@@ -322,6 +411,40 @@ public class NDAR1Service : INDAR1Service
                 Created = true,
                 Message = $"NDAR-1 report for {periodText} auto-created."
             };
+        }
+        catch (DbUpdateException ex) when (IsDuplicateFacilityMonthYearException(ex))
+        {
+            _logger.LogWarning(
+                ex,
+                "NDAR-1 auto-create insert conflict for facility {FacilityId} month {Month} year {Year}; reconciling.",
+                facilityId,
+                month,
+                year);
+            _context.ChangeTracker.Clear();
+
+            if (await TryRestoreSoftDeletedReportAsync(facilityId, month, year)
+                || await GetByFacilityMonthYearAsync(facilityId, month, year) != null)
+            {
+                return await RefreshExistingReportForMonthAsync(facilityId, month, year);
+            }
+
+            return new NdarRefreshOutcome
+            {
+                FacilityId = facilityId,
+                Month = month,
+                Year = year,
+                Status = NdarRefreshStatus.Failed,
+                Message = $"NDAR-1 auto-create failed for {periodText}. Please retry."
+            };
+        }
+        catch (BusinessRuleException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation(
+                "NDAR-1 auto-create reused existing report for facility {FacilityId} month {Month} year {Year}.",
+                facilityId,
+                month,
+                year);
+            return await RefreshExistingReportForMonthAsync(facilityId, month, year);
         }
         catch (Exception ex)
         {
@@ -650,7 +773,7 @@ public class NDAR1Service : INDAR1Service
 
         // Calculate rolling 365-day hydraulic totals from zone-model applications.
         await CalculateRollingFloatingTotals(report, endDate);
-        BuildDynamicFields(report, sprayfieldList, sprayfieldById, fieldApplications, startDate, daysInMonth, endDate);
+        await BuildDynamicFieldsAsync(report, sprayfieldList, sprayfieldById, fieldApplications, startDate, daysInMonth, endDate);
 
         return report;
     }
@@ -820,7 +943,7 @@ public class NDAR1Service : INDAR1Service
             .AnyAsync();
     }
 
-    private void BuildDynamicFields(
+    private async Task BuildDynamicFieldsAsync(
         NDAR1 report,
         List<Sprayfield> sprayfieldList,
         Dictionary<Guid, Sprayfield> sprayfieldById,
@@ -850,7 +973,7 @@ public class NDAR1Service : INDAR1Service
                 TwelveMonthFloatingTotal = 0m
             };
 
-            field.TwelveMonthFloatingTotal = GetRollingHydraulicInchesAsync(report.FacilityId, sprayfield.Id, asOfDate).GetAwaiter().GetResult();
+            field.TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, sprayfield.Id, asOfDate);
 
             for (var day = 1; day <= 31; day++)
             {
@@ -1018,8 +1141,10 @@ public class NDAR1Service : INDAR1Service
             return 0m;
         }
 
-        var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(facilityId, sprayfieldId.Value, asOfDate);
-        return metrics.RollingHydraulicInches;
+        return await _applicationComplianceService.GetFieldRollingHydraulicInchesAsync(
+            facilityId,
+            sprayfieldId.Value,
+            asOfDate);
     }
 
     private void InitializeDailyArrays(NDAR1 ndar1)

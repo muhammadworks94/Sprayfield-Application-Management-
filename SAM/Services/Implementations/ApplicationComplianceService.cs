@@ -3,6 +3,7 @@ using SAM.Data;
 using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
+using SAM.Utilities;
 
 namespace SAM.Services.Implementations;
 
@@ -153,6 +154,46 @@ public class ApplicationComplianceService : IApplicationComplianceService
             historicalData.HistoricalGallons,
             endDate,
             startDate);
+    }
+
+    public async Task<decimal> GetFieldRollingHydraulicInchesAsync(
+        Guid facilityId,
+        Guid sprayfieldId,
+        DateTime asOfDate,
+        Guid? excludeApplicationId = null)
+    {
+        var field = await _context.Sprayfields
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == sprayfieldId);
+
+        if (field == null)
+        {
+            throw new InvalidOperationException("Sprayfield not found.");
+        }
+
+        var fieldAcres = SprayfieldReportHelper.GetReportAcres(field);
+        if (fieldAcres <= 0)
+        {
+            return 0m;
+        }
+
+        var endDate = asOfDate.Date;
+        var startDate = endDate.AddDays(-364);
+
+        var query = _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(a => a.FacilityId == facilityId
+                        && a.SprayfieldId == sprayfieldId
+                        && a.ApplicationDate >= startDate
+                        && a.ApplicationDate <= endDate);
+
+        if (excludeApplicationId.HasValue)
+        {
+            query = query.Where(a => a.Id != excludeApplicationId.Value);
+        }
+
+        var rollingGallons = await query.SumAsync(a => a.VolumeGallons);
+        return rollingGallons / (fieldAcres * MonthlyApplicationCalculationHelper.GallonsPerAcreInch);
     }
 
     private async Task<(decimal HistoricalPanLbs, decimal HistoricalGallons)> GetHistoricalDataAsync(
