@@ -3155,6 +3155,7 @@ public class ReportsController : BaseController
         public required List<TimeSpan?> OrcArrivalByDay { get; init; }
         public required List<decimal?> OrcTimeOnSiteByDay { get; init; }
         public required List<List<NdmrPdfParameter>> ParameterChunks { get; init; }
+        public NdmrPdfParameter? FlowParameter { get; init; }
         public ComplianceStatusEnum? ComplianceStatus { get; init; }
     }
 
@@ -3180,20 +3181,12 @@ public class ReportsController : BaseController
         var tinyBold = new XFont("Arial", 7, XFontStyle.Bold);
 
         var currentPage = 1;
-        // Flow (50050) is already a dedicated template column. Dynamic parameters start at next column (E).
-        var parameterXs = Enumerable.Range(0, 15).Select(i => 168d + (i * 43d)).ToArray();
-        const double parameterColumnWidth = 39d;
+        var parameterColumns = NdmrPdfCalibration.ParameterGrid.DynamicColumns;
+        var flowColumn = NdmrPdfCalibration.ParameterGrid.FlowColumn;
         const double day1Y = 154.7d;
         const double dayRowHeight = 11.66d;
         const double orcArrivalX = 39d;
         const double orcTimeOnSiteX = 78d;
-        const double codeY = 75d;
-        const double parameterNameCellTopY = 76d;
-        const double parameterNameCellHeight = 80d;
-        const double parameterNameCellXOffset = -43d;
-        const double unitsY = 145d;
-        const double unitsCellXInset = -14d;
-        const double unitsCellWidth = 34d;
         // Footer block anchors off daily-grid end so values never collide with day rows.
         var footerStartY = day1Y + (31 * dayRowHeight) + 2d;
         const double footerRowStep = 11.5d;
@@ -3205,6 +3198,7 @@ public class ReportsController : BaseController
         var dailyLimitY = footerStartY + (5d * footerRowStep);
         var sampleFreqY = footerStartY + (6d * footerRowStep);
 
+        var chunkIndex = 0;
         foreach (var chunk in snapshot.ParameterChunks)
         {
             document.AddPage(templateDoc.Pages[0]);
@@ -3219,27 +3213,32 @@ public class ReportsController : BaseController
             Draw(gfx, currentPage.ToString(), font, new NdarPdfPoint(685, 16));
             Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
 
-            for (var slot = 0; slot < chunk.Count && slot < parameterXs.Length; slot++)
+            if (chunkIndex == 0 && snapshot.FlowParameter is { } flow)
+            {
+                DrawFlowColumn(gfx, flow, flowColumn, font, avgY, maxY, minY, sampleTypeY, monthlyLimitY, dailyLimitY, sampleFreqY, snapshot.DaysInMonth, day1Y, dayRowHeight);
+            }
+
+            for (var slot = 0; slot < chunk.Count && slot < parameterColumns.Count; slot++)
             {
                 var p = chunk[slot];
-                var x = parameterXs[slot];
-                Draw(gfx, p.PcsCode, boldFont, new NdarPdfPoint(x, codeY));
+                var col = parameterColumns[slot];
+                DrawInCell(gfx, p.PcsCode, boldFont, col.Left, col.CodeY, col.Width, bold: true);
                 DrawVerticalInCell(
                     gfx,
-                    FormatVerticalLabel(p.DisplayName),
+                    FormatVerticalColumnLabel(p.DisplayName),
                     tinyBold,
-                    x + parameterNameCellXOffset,
-                    parameterNameCellTopY,
-                    parameterColumnWidth,
-                    parameterNameCellHeight);
-                DrawInCell(gfx, p.Units, boldFont, x + unitsCellXInset, unitsY, unitsCellWidth, bold: true);
-                Draw(gfx, p.SampleType, font, new NdarPdfPoint(x, sampleTypeY));
-                Draw(gfx, p.MonthlyLimitText, font, new NdarPdfPoint(x, monthlyLimitY));
-                Draw(gfx, p.DailyLimitText, font, new NdarPdfPoint(x, dailyLimitY));
-                Draw(gfx, p.SampleFrequency, font, new NdarPdfPoint(x, sampleFreqY));
-                Draw(gfx, p.Average?.ToString("0.00"), font, new NdarPdfPoint(x, avgY));
-                Draw(gfx, p.DailyMaximum?.ToString("0.00"), font, new NdarPdfPoint(x, maxY));
-                Draw(gfx, p.DailyMinimum?.ToString("0.00"), font, new NdarPdfPoint(x, minY));
+                    col.Left,
+                    col.NameTopY,
+                    col.Width,
+                    col.NameHeight);
+                DrawInCell(gfx, p.Units, boldFont, col.Left, col.UnitsY, col.Width, bold: true);
+                DrawInCell(gfx, p.SampleType, font, col.Left, sampleTypeY, col.Width);
+                DrawInCell(gfx, p.MonthlyLimitText, font, col.Left, monthlyLimitY, col.Width);
+                DrawInCell(gfx, p.DailyLimitText, font, col.Left, dailyLimitY, col.Width);
+                DrawInCell(gfx, p.SampleFrequency, font, col.Left, sampleFreqY, col.Width);
+                DrawInCell(gfx, p.Average?.ToString("0.00"), font, col.Left, avgY, col.Width);
+                DrawInCell(gfx, p.DailyMaximum?.ToString("0.00"), font, col.Left, maxY, col.Width);
+                DrawInCell(gfx, p.DailyMinimum?.ToString("0.00"), font, col.Left, minY, col.Width);
             }
 
             for (var day = 1; day <= snapshot.DaysInMonth; day++)
@@ -3248,10 +3247,11 @@ public class ReportsController : BaseController
                 Draw(gfx, snapshot.OrcArrivalByDay[day - 1]?.ToString(@"hh\:mm"), font, new NdarPdfPoint(orcArrivalX, y));
                 Draw(gfx, snapshot.OrcTimeOnSiteByDay[day - 1]?.ToString("0.00"), font, new NdarPdfPoint(orcTimeOnSiteX, y));
 
-                for (var slot = 0; slot < chunk.Count && slot < parameterXs.Length; slot++)
+                for (var slot = 0; slot < chunk.Count && slot < parameterColumns.Count; slot++)
                 {
                     var dayValue = chunk[slot].DailyValues[day - 1];
-                    Draw(gfx, dayValue?.ToString("0.00"), font, new NdarPdfPoint(parameterXs[slot], y));
+                    var col = parameterColumns[slot];
+                    DrawInCell(gfx, dayValue?.ToString("0.00"), font, col.Left, y, col.Width);
                 }
             }
 
@@ -3260,6 +3260,7 @@ public class ReportsController : BaseController
                 DrawCoordinateGrid(gfx, page.Width.Point, page.Height.Point);
             }
             currentPage++;
+            chunkIndex++;
         }
 
         if (hasCertificationTemplate)
@@ -3384,55 +3385,33 @@ public class ReportsController : BaseController
             .OrderByDescending(i => i.UpdatedDate)
             .FirstOrDefaultAsync();
 
+        var flowTemplateRow = permitTemplateRows.FirstOrDefault(row =>
+            string.Equals(row.PcsParameterCatalog?.PcsCode, "50050", StringComparison.OrdinalIgnoreCase));
+        NdmrPdfParameter? flowParameter = flowTemplateRow == null
+            ? null
+            : BuildNdmrPdfParameter(
+                flowTemplateRow,
+                wwDailyValueByKey,
+                wwChar,
+                gwMonits,
+                year,
+                monthNumber,
+                daysInMonth);
+
         var parameters = permitTemplateRows
             .Select(row =>
             {
                 var code = row.PcsParameterCatalog?.PcsCode ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(code)) return null;
                 if (string.Equals(code, "50050", StringComparison.OrdinalIgnoreCase)) return null;
-                var name = row.ParameterDisplayOverride
-                    ?? row.PcsParameterCatalog?.UserFriendlyName
-                    ?? row.PcsParameterCatalog?.OfficialParameterName;
-                if (string.IsNullOrWhiteSpace(name)) name = $"PCS {code}";
-                var units = row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty;
-                var daily = Enumerable.Range(1, 31).Select(day =>
-                {
-                    decimal? value = null;
-                    if (wwDailyValueByKey.TryGetValue((row.Id, day), out var wwValue))
-                    {
-                        value = wwValue;
-                    }
-                    value ??= ResolveNdmrPdfFallbackDailyValue(code, new DateTime(year, monthNumber, day), wwChar, gwMonits);
-                    return value;
-                }).ToList();
-
-                var days = daily.Take(daysInMonth).Where(v => v.HasValue).Select(v => v!.Value).ToList();
-                decimal? average = null;
-                if (days.Count > 0)
-                {
-                    average = string.Equals(code, "31616", StringComparison.OrdinalIgnoreCase) && days.All(v => v > 0m)
-                        ? (decimal)Math.Exp(days.Select(v => Math.Log((double)v)).Average())
-                        : days.Average();
-                }
-
-                return new NdmrPdfParameter
-                {
-                    PcsCode = code,
-                    DisplayName = name ?? string.Empty,
-                    Units = units,
-                    SampleType = row.SampleType.ToString(),
-                    SampleFrequency = row.MeasurementFrequency.ToDisplayLabel(),
-                    MonthlyLimitText = row.MonthlyAverageLimit?.ToString("0.##")
-                        ?? row.MonthlyGeometricMeanLimit?.ToString("0.##")
-                        ?? string.Empty,
-                    DailyLimitText = row.DailyMaximumLimit?.ToString("0.##")
-                        ?? row.DailyMinimumLimit?.ToString("0.##")
-                        ?? string.Empty,
-                    DailyValues = daily,
-                    Average = average,
-                    DailyMaximum = days.Count > 0 ? days.Max() : null,
-                    DailyMinimum = days.Count > 0 ? days.Min() : null
-                };
+                return BuildNdmrPdfParameter(
+                    row,
+                    wwDailyValueByKey,
+                    wwChar,
+                    gwMonits,
+                    year,
+                    monthNumber,
+                    daysInMonth);
             })
             .Where(x => x != null)
             .Cast<NdmrPdfParameter>()
@@ -3486,8 +3465,101 @@ public class ReportsController : BaseController
             OrcArrivalByDay = orcArrival,
             OrcTimeOnSiteByDay = orcTimeOnSite,
             ParameterChunks = chunks,
+            FlowParameter = flowParameter,
             ComplianceStatus = irrigationReport?.ComplianceStatus
         };
+    }
+
+    private static NdmrPdfParameter BuildNdmrPdfParameter(
+        FacilityPermitTemplateParameter row,
+        IReadOnlyDictionary<(Guid FacilityPermitTemplateParameterId, int DayNo), decimal?> wwDailyValueByKey,
+        WWChar? wwChar,
+        IReadOnlyList<GWMonit> gwMonits,
+        int year,
+        int monthNumber,
+        int daysInMonth)
+    {
+        var code = row.PcsParameterCatalog?.PcsCode ?? string.Empty;
+        var name = row.ParameterDisplayOverride
+            ?? row.PcsParameterCatalog?.UserFriendlyName
+            ?? row.PcsParameterCatalog?.OfficialParameterName;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = $"PCS {code}";
+        }
+
+        var units = row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty;
+        var daily = Enumerable.Range(1, 31).Select(day =>
+        {
+            decimal? value = null;
+            if (wwDailyValueByKey.TryGetValue((row.Id, day), out var wwValue))
+            {
+                value = wwValue;
+            }
+
+            value ??= ResolveNdmrPdfFallbackDailyValue(code, new DateTime(year, monthNumber, day), wwChar, gwMonits);
+            return value;
+        }).ToList();
+
+        var days = daily.Take(daysInMonth).Where(v => v.HasValue).Select(v => v!.Value).ToList();
+        decimal? average = null;
+        if (days.Count > 0)
+        {
+            average = string.Equals(code, "31616", StringComparison.OrdinalIgnoreCase) && days.All(v => v > 0m)
+                ? (decimal)Math.Exp(days.Select(v => Math.Log((double)v)).Average())
+                : days.Average();
+        }
+
+        return new NdmrPdfParameter
+        {
+            PcsCode = code,
+            DisplayName = name ?? string.Empty,
+            Units = units,
+            SampleType = row.SampleType.ToString(),
+            SampleFrequency = row.MeasurementFrequency.ToDisplayLabel(),
+            MonthlyLimitText = row.MonthlyAverageLimit?.ToString("0.##")
+                ?? row.MonthlyGeometricMeanLimit?.ToString("0.##")
+                ?? string.Empty,
+            DailyLimitText = row.DailyMaximumLimit?.ToString("0.##")
+                ?? row.DailyMinimumLimit?.ToString("0.##")
+                ?? string.Empty,
+            DailyValues = daily,
+            Average = average,
+            DailyMaximum = days.Count > 0 ? days.Max() : null,
+            DailyMinimum = days.Count > 0 ? days.Min() : null
+        };
+    }
+
+    private static void DrawFlowColumn(
+        XGraphics gfx,
+        NdmrPdfParameter flow,
+        NdmrParameterColumnSlot col,
+        XFont font,
+        double avgY,
+        double maxY,
+        double minY,
+        double sampleTypeY,
+        double monthlyLimitY,
+        double dailyLimitY,
+        double sampleFreqY,
+        int daysInMonth,
+        double day1Y,
+        double dayRowHeight)
+    {
+        DrawInCell(gfx, flow.SampleType, font, col.Left, sampleTypeY, col.Width);
+        DrawInCell(gfx, flow.MonthlyLimitText, font, col.Left, monthlyLimitY, col.Width);
+        DrawInCell(gfx, flow.DailyLimitText, font, col.Left, dailyLimitY, col.Width);
+        DrawInCell(gfx, flow.SampleFrequency, font, col.Left, sampleFreqY, col.Width);
+        DrawInCell(gfx, flow.Average?.ToString("0.00"), font, col.Left, avgY, col.Width);
+        DrawInCell(gfx, flow.DailyMaximum?.ToString("0.00"), font, col.Left, maxY, col.Width);
+        DrawInCell(gfx, flow.DailyMinimum?.ToString("0.00"), font, col.Left, minY, col.Width);
+
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var y = day1Y + ((day - 1) * dayRowHeight);
+            var dayValue = flow.DailyValues[day - 1];
+            DrawInCell(gfx, dayValue?.ToString("0.00"), font, col.Left, y, col.Width);
+        }
     }
 
     private static decimal? ResolveNdmrPdfFallbackDailyValue(
@@ -3516,6 +3588,7 @@ public class ReportsController : BaseController
 
         return pcsCode switch
         {
+            "50050" => WwAt(wwChar?.FlowRateDaily),
             "00310" => WwAt(wwChar?.BOD5Daily),
             "00620" => Avg(g => g.NO3N),
             "00610" => Avg(g => g.NH3N),
@@ -3610,28 +3683,242 @@ public class ReportsController : BaseController
             return;
         }
 
-        var lines = text
+        var words = text
             .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        if (lines.Length == 0)
+        if (words.Length == 0)
         {
             return;
         }
 
+        const double segmentGap = 0.5d;
+        const double minFontSize = 5.5d;
+        var maxRowWidth = Math.Max(8d, cellWidth - 2d);
+        var maxBlockHeight = Math.Max(8d, cellHeight - 2d);
+
+        static double WordPitch(XFont drawFont) => drawFont.Height * 1.05d;
+
+        static double WordVerticalExtent(XGraphics g, string word, XFont drawFont) =>
+            g.MeasureString(word, drawFont).Width;
+
+        static double RowHorizontalSpan(IReadOnlyList<string> row, XFont drawFont)
+        {
+            const double gap = 0.5d;
+            return (row.Count * WordPitch(drawFont)) + (gap * Math.Max(0, row.Count - 1));
+        }
+
+        static double RowVerticalExtent(XGraphics g, IReadOnlyList<string> row, XFont drawFont) =>
+            row.Max(word => WordVerticalExtent(g, word, drawFont));
+
+        static double LayoutVerticalExtent(XGraphics g, IReadOnlyList<List<string>> rows, XFont drawFont) =>
+            rows.Max(row => RowVerticalExtent(g, row, drawFont));
+
+        static List<List<string>> PackRows(IReadOnlyList<string> parts, XFont drawFont, double rowWidthLimit)
+        {
+            const double gap = 0.5d;
+            var packed = new List<List<string>>();
+            var row = new List<string>();
+            var rowWidth = 0d;
+
+            foreach (var part in parts)
+            {
+                var pitch = WordPitch(drawFont);
+                var addGap = row.Count > 0 ? gap : 0d;
+                if (row.Count > 0 && rowWidth + addGap + pitch > rowWidthLimit)
+                {
+                    packed.Add(row);
+                    row = new List<string>();
+                    rowWidth = 0d;
+                    addGap = 0d;
+                }
+
+                row.Add(part);
+                rowWidth += addGap + pitch;
+            }
+
+            if (row.Count > 0)
+            {
+                packed.Add(row);
+            }
+
+            return packed;
+        }
+
+        static IEnumerable<List<List<string>>> ContiguousPartitions(string[] parts, int rowCount)
+        {
+            if (rowCount <= 0 || rowCount > parts.Length)
+            {
+                yield break;
+            }
+
+            if (rowCount == 1)
+            {
+                yield return new List<List<string>> { parts.ToList() };
+                yield break;
+            }
+
+            foreach (var split in BuildPartitionIndices(parts.Length, rowCount))
+            {
+                var rows = new List<List<string>>();
+                var start = 0;
+                foreach (var end in split)
+                {
+                    rows.Add(parts[start..end].ToList());
+                    start = end;
+                }
+
+                rows.Add(parts[start..].ToList());
+                yield return rows;
+            }
+        }
+
+        static List<int[]> BuildPartitionIndices(int length, int rowCount)
+        {
+            var results = new List<int[]>();
+            var indices = new int[rowCount - 1];
+
+            void Visit(int depth, int minNext)
+            {
+                if (depth == rowCount - 1)
+                {
+                    if (indices[^1] < length)
+                    {
+                        results.Add((int[])indices.Clone());
+                    }
+
+                    return;
+                }
+
+                var max = length - (rowCount - depth - 1);
+                for (var i = minNext; i <= max; i++)
+                {
+                    indices[depth] = i;
+                    Visit(depth + 1, i + 1);
+                }
+            }
+
+            Visit(0, 1);
+            return results;
+        }
+
+        static bool LayoutFits(
+            IReadOnlyList<List<string>> rows,
+            XGraphics g,
+            XFont drawFont,
+            double rowWidthLimit,
+            double blockHeightLimit)
+        {
+            if (rows.Count == 0)
+            {
+                return false;
+            }
+
+            var bandHeight = blockHeightLimit / rows.Count;
+            foreach (var row in rows)
+            {
+                if (RowHorizontalSpan(row, drawFont) > rowWidthLimit)
+                {
+                    return false;
+                }
+
+                if (RowVerticalExtent(g, row, drawFont) > bandHeight)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        static List<List<string>>? FindBestRows(
+            string[] parts,
+            XGraphics g,
+            XFont drawFont,
+            double rowWidthLimit,
+            double blockHeightLimit)
+        {
+            for (var rowCount = 1; rowCount <= parts.Length; rowCount++)
+            {
+                List<List<string>>? best = null;
+                foreach (var candidate in ContiguousPartitions(parts, rowCount))
+                {
+                    if (!LayoutFits(candidate, g, drawFont, rowWidthLimit, blockHeightLimit))
+                    {
+                        continue;
+                    }
+
+                    if (best == null
+                        || LayoutVerticalExtent(g, candidate, drawFont) < LayoutVerticalExtent(g, best, drawFont))
+                    {
+                        best = candidate;
+                    }
+                }
+
+                if (best != null)
+                {
+                    return best;
+                }
+            }
+
+            return null;
+        }
+
+        var activeFont = font;
+        List<List<string>> rows;
+        do
+        {
+            rows = FindBestRows(words, gfx, activeFont, maxRowWidth, maxBlockHeight)
+                ?? PackRows(words, activeFont, maxRowWidth);
+            if (LayoutFits(rows, gfx, activeFont, maxRowWidth, maxBlockHeight))
+            {
+                break;
+            }
+
+            if (activeFont.Size <= minFontSize)
+            {
+                break;
+            }
+
+            activeFont = new XFont(activeFont.Name, activeFont.Size - 0.25, activeFont.Style);
+        }
+        while (true);
+
+        var pitch = WordPitch(activeFont);
+        var rowExtents = rows
+            .Select(row => RowVerticalExtent(gfx, row, activeFont))
+            .ToArray();
+        var rowStep = rows.Count > 1
+            ? maxBlockHeight / rows.Count
+            : maxBlockHeight;
+
         gfx.Save();
+        gfx.IntersectClip(new XRect(cellX, cellY, cellWidth, cellHeight));
         gfx.TranslateTransform(cellX + (cellWidth / 2d), cellY + (cellHeight / 2d));
         gfx.RotateTransform(-90);
 
-        const double lineHeight = 7.2d;
-        var totalHeight = lines.Length * lineHeight;
-        var startY = Math.Max(0d, ((cellWidth - 2d) - totalHeight) / 2d);
-        for (var i = 0; i < lines.Length; i++)
+        var blockStartX = -(maxBlockHeight / 2d);
+        for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
-            gfx.DrawString(
-                lines[i],
-                font,
-                XBrushes.Black,
-                new XRect(-(cellHeight / 2d), startY + (i * lineHeight), cellHeight, 9),
-                XStringFormats.TopCenter);
+            var row = rows[rowIndex];
+            var rowExtent = rowExtents[rowIndex];
+            var bandCenterX = blockStartX + (rowStep * rowIndex) + (rowStep / 2d);
+            var rowSpan = RowHorizontalSpan(row, activeFont);
+            var currentY = -(rowSpan / 2d);
+
+            foreach (var word in row)
+            {
+                gfx.DrawString(
+                    word,
+                    activeFont,
+                    XBrushes.Black,
+                    new XRect(
+                        bandCenterX - (rowExtent / 2d),
+                        currentY,
+                        rowExtent,
+                        pitch),
+                    XStringFormats.Center);
+
+                currentY += pitch + segmentGap;
+            }
         }
 
         gfx.Restore();
@@ -3664,6 +3951,20 @@ public class ReportsController : BaseController
         }
 
         gfx.Restore();
+    }
+
+    private static string FormatVerticalColumnLabel(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+
+        var words = name
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return words.Length <= 1
+            ? words[0]
+            : string.Join('\n', words);
     }
 
     private static string FormatVerticalLabel(string? name)
