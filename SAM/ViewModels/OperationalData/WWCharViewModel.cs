@@ -72,7 +72,7 @@ public class WWCharViewModel
     public List<decimal?> LagoonFreeboard { get; set; } = new();
 
     [Display(Name = "ORC Arrival Time Daily")]
-    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+    public List<string?> ORCArrivalTime { get; set; } = new();
 
     [Display(Name = "ORC Time On Site Daily (hours)")]
     public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
@@ -197,7 +197,7 @@ public class WWCharCreateViewModel
     public List<decimal?> LagoonFreeboard { get; set; } = new();
 
     [Display(Name = "ORC Arrival Time Daily")]
-    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+    public List<string?> ORCArrivalTime { get; set; } = new();
 
     [Display(Name = "ORC Time On Site Daily (hours)")]
     public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
@@ -323,7 +323,7 @@ public class WWCharEditViewModel
     public List<decimal?> LagoonFreeboard { get; set; } = new();
 
     [Display(Name = "ORC Arrival Time Daily")]
-    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+    public List<string?> ORCArrivalTime { get; set; } = new();
 
     [Display(Name = "ORC Time On Site Daily (hours)")]
     public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
@@ -417,7 +417,7 @@ public class WWCharTemplateSectionViewModel
     public string? TemplateParametersStatusMessage { get; set; }
     public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
     public List<decimal?> LagoonFreeboard { get; set; } = new();
-    public List<TimeSpan?> ORCArrivalTime { get; set; } = new();
+    public List<string?> ORCArrivalTime { get; set; } = new();
     public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
 }

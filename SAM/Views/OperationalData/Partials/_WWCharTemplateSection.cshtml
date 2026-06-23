@@ -87,7 +87,7 @@
                                 </select>
                             </td>
                             <td><input name="LagoonFreeboard[@d]" type="number" step="0.01" class="form-control form-control-sm" value="@((Model.LagoonFreeboard != null && Model.LagoonFreeboard.Count > d && Model.LagoonFreeboard[d].HasValue) ? Model.LagoonFreeboard[d]!.Value.ToString() : string.Empty)" /></td>
-                            <td><input name="ORCArrivalTime[@d]" type="time" step="900" class="form-control form-control-sm" value="@((Model.ORCArrivalTime != null && Model.ORCArrivalTime.Count > d && Model.ORCArrivalTime[d].HasValue) ? Model.ORCArrivalTime[d]!.Value.ToString(@"hh\:mm") : string.Empty)" /></td>
+                            <td><input name="ORCArrivalTime[@d]" type="time" step="900" class="form-control form-control-sm" value="@((Model.ORCArrivalTime != null && Model.ORCArrivalTime.Count > d && !string.IsNullOrWhiteSpace(Model.ORCArrivalTime[d])) ? Model.ORCArrivalTime[d] : string.Empty)" /></td>
                             <td><input name="ORCTimeOnSiteHours[@d]" type="number" step="0.25" class="form-control form-control-sm" value="@((Model.ORCTimeOnSiteHours != null && Model.ORCTimeOnSiteHours.Count > d && Model.ORCTimeOnSiteHours[d].HasValue) ? Model.ORCTimeOnSiteHours[d]!.Value.ToString() : string.Empty)" /></td>
                             @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                             {

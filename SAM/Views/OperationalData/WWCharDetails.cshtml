@@ -206,7 +206,7 @@
                                 <th scope="row"><strong>@(d + 1)</strong></th>
                                 <td>@(Model.ORCOnSite != null && d < Model.ORCOnSite.Count && Model.ORCOnSite[d].HasValue ? Model.ORCOnSite[d].Value.ToString() : "-")</td>
                                 <td>@(Model.LagoonFreeboard != null && d < Model.LagoonFreeboard.Count && Model.LagoonFreeboard[d].HasValue ? Model.LagoonFreeboard[d].Value.ToString("F2") : "-")</td>
-                                <td>@(Model.ORCArrivalTime != null && d < Model.ORCArrivalTime.Count && Model.ORCArrivalTime[d].HasValue ? Model.ORCArrivalTime[d].Value.ToString(@"hh\:mm") : "-")</td>
+                                <td>@(Model.ORCArrivalTime != null && d < Model.ORCArrivalTime.Count && !string.IsNullOrWhiteSpace(Model.ORCArrivalTime[d]) ? Model.ORCArrivalTime[d] : "-")</td>
                                 <td>@(Model.ORCTimeOnSiteHours != null && d < Model.ORCTimeOnSiteHours.Count && Model.ORCTimeOnSiteHours[d].HasValue ? Model.ORCTimeOnSiteHours[d].Value.ToString("F2") : "-")</td>
                                 @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                                 {
