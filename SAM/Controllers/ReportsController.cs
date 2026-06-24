@@ -1305,6 +1305,39 @@ public class ReportsController : BaseController
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
+    public async Task<IActionResult> NDAR1RefreshStoredReport(Guid ndar1Id)
+    {
+        try
+        {
+            var report = await _ndar1Service.GetByIdAsync(ndar1Id);
+            if (report == null)
+            {
+                return NotFound();
+            }
+
+            await EnsureCompanyAccessAsync(report.CompanyId);
+            var outcome = await _ndar1RowEditService.RefreshStoredReportAsync(ndar1Id);
+            return Json(new
+            {
+                success = outcome.Updated || outcome.WasCreated,
+                status = outcome.Status.ToString(),
+                message = outcome.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "NDAR1 stored report refresh failed for NDAR1 {Ndar1Id}", ndar1Id);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "We couldn't refresh the stored NDAR-1 report right now. Please try again."
+            });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1UpdateRow([FromBody] NDAR1DayRowUpdateRequest request, Guid ndar1Id)
     {
         try

@@ -249,10 +249,14 @@
 
             const rowStates = new Map();
             let ndarRefreshTimer = null;
+            let storedReportRefreshTimer = null;
+            let storedReportRefreshPromise = null;
+            let needsStoredReportRefresh = false;
             let isLeavingPage = false;
             let activeEditRow = null;
             const heldLockTokens = new Set();
             const ROW_SAVE_DEBOUNCE_MS = 400;
+            const STORED_REPORT_REFRESH_DEBOUNCE_MS = 2500;
 
             const recalcFooterTotals = () => {
                 const volumeTotals = {};
@@ -311,6 +315,59 @@
             const scheduleNdarRefresh = () => {
                 if (ndarRefreshTimer) clearTimeout(ndarRefreshTimer);
                 ndarRefreshTimer = setTimeout(refreshFloatingTotals, 2500);
+            };
+
+            const refreshStoredNdarReport = async () => {
+                if (!needsStoredReportRefresh) {
+                    return true;
+                }
+
+                if (storedReportRefreshPromise) {
+                    return storedReportRefreshPromise;
+                }
+
+                storedReportRefreshPromise = (async () => {
+                    try {
+                        const resp = await fetch(`@Url.Action("NDAR1RefreshStoredReport", "Reports")?ndar1Id=${ndar1Id}`, {
+                            method: 'POST',
+                            headers: { 'RequestVerificationToken': antiForgery }
+                        });
+                        const result = await tryReadJson(resp);
+                        if (!resp.ok || !result?.success) {
+                            showError(result?.message || 'Unable to refresh the stored NDAR-1 report. NDMLR volume may be stale until you try again.');
+                            return false;
+                        }
+
+                        needsStoredReportRefresh = false;
+                        return true;
+                    } catch {
+                        showError('Unable to refresh the stored NDAR-1 report. NDMLR volume may be stale until you try again.');
+                        return false;
+                    } finally {
+                        storedReportRefreshPromise = null;
+                    }
+                })();
+
+                return storedReportRefreshPromise;
+            };
+
+            const scheduleStoredReportRefresh = () => {
+                needsStoredReportRefresh = true;
+                if (storedReportRefreshPromise) {
+                    return;
+                }
+                if (storedReportRefreshTimer) clearTimeout(storedReportRefreshTimer);
+                storedReportRefreshTimer = setTimeout(async () => {
+                    storedReportRefreshTimer = null;
+                    await refreshStoredNdarReport();
+                }, STORED_REPORT_REFRESH_DEBOUNCE_MS);
+            };
+
+            const cancelScheduledStoredReportRefresh = () => {
+                if (storedReportRefreshTimer) {
+                    clearTimeout(storedReportRefreshTimer);
+                    storedReportRefreshTimer = null;
+                }
             };
 
             const showError = (message) => {
@@ -380,7 +437,7 @@
                     fiveDayUpsetFt: numOrNull('input[data-field="fiveDayUpsetFt"]'),
                     applications: Object.values(apps),
                     keepLockAfterSave: true,
-                    skipNdarRefresh: options.skipNdarRefresh !== false
+                    skipNdarRefresh: options.skipNdarRefresh ?? true
                 };
             };
 
@@ -521,6 +578,7 @@
                     recalcFooterTotals();
                     setRowStatus(tr, 'saved', 'Saved');
                     scheduleNdarRefresh();
+                    scheduleStoredReportRefresh();
 
                     if (payload.lockToken) {
                         heldLockTokens.add(payload.lockToken);
@@ -678,13 +736,22 @@
                 if (isLeavingPage) return;
                 e.preventDefault();
                 isLeavingPage = true;
+                cancelScheduledStoredReportRefresh();
                 await flushDirtyRows();
+                await refreshStoredNdarReport();
                 await refreshFloatingTotals();
                 releaseAllLocks();
                 window.location.href = e.currentTarget.href;
             });
 
             window.addEventListener('beforeunload', () => {
+                if (needsStoredReportRefresh && !storedReportRefreshPromise && !isLeavingPage) {
+                    fetch(`@Url.Action("NDAR1RefreshStoredReport", "Reports")?ndar1Id=${ndar1Id}`, {
+                        method: 'POST',
+                        headers: { 'RequestVerificationToken': antiForgery },
+                        keepalive: true
+                    }).catch(() => { });
+                }
                 releaseAllLocks();
             });
 

@@ -11,6 +11,7 @@ using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
 using SAM.Utilities;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
@@ -22,6 +23,11 @@ namespace SAM.Services.Implementations;
 public class NDAR1Service : INDAR1Service
 {
     //private const decimal GALLONS_PER_ACRE_INCH = 27154m;
+    private const int RefreshCommandTimeoutSeconds = 180;
+    private const int RefreshLockTimeoutMs = 90_000;
+
+    private static readonly ConcurrentDictionary<string, Task<NdarRefreshOutcome>> InflightRefreshes = new();
+
     private readonly ApplicationDbContext _context;
     private readonly ILogger<NDAR1Service> _logger;
     private readonly ISprayfieldService _sprayfieldService;
@@ -98,6 +104,7 @@ public class NDAR1Service : INDAR1Service
                     .ThenInclude(s => s!.Crop)
             .Include(n => n.Fields)
                 .ThenInclude(f => f.DailyValues)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(n => n.Id == id);
 
         if (report != null)
@@ -466,7 +473,34 @@ public class NDAR1Service : INDAR1Service
         }
     }
 
-    public async Task<NdarRefreshOutcome> RefreshExistingReportForMonthAsync(Guid facilityId, int month, int year)
+    public Task<NdarRefreshOutcome> RefreshExistingReportForMonthAsync(Guid facilityId, int month, int year)
+    {
+        var key = BuildRefreshCoalesceKey(facilityId, year, month);
+        var refreshTask = InflightRefreshes.GetOrAdd(
+            key,
+            _ => StartCoalescedRefreshAsync(key, facilityId, month, year));
+        return refreshTask;
+    }
+
+    private Task<NdarRefreshOutcome> StartCoalescedRefreshAsync(string key, Guid facilityId, int month, int year)
+    {
+        return RefreshExistingReportForMonthCoreAsync(facilityId, month, year)
+            .ContinueWith(
+                task =>
+                {
+                    InflightRefreshes.TryRemove(key, out _);
+                    return task;
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.RunContinuationsAsynchronously,
+                TaskScheduler.Default)
+            .Unwrap();
+    }
+
+    private static string BuildRefreshCoalesceKey(Guid facilityId, int year, int month) =>
+        $"NDAR1:{facilityId:D}:{year:D4}:{month:D2}";
+
+    private async Task<NdarRefreshOutcome> RefreshExistingReportForMonthCoreAsync(Guid facilityId, int month, int year)
     {
         var outcome = new NdarRefreshOutcome
         {
@@ -475,12 +509,15 @@ public class NDAR1Service : INDAR1Service
             Year = year
         };
         var periodText = new DateTime(year, month, 1).ToString("MMM yyyy");
-        var lockResource = $"NDAR1:{facilityId:D}:{year:D4}:{month:D2}";
-        var lockTimeoutMs = 60000;
+        var lockResource = BuildRefreshCoalesceKey(facilityId, year, month);
         var refreshStopwatch = Stopwatch.StartNew();
+        int? previousCommandTimeout = null;
 
         try
         {
+            previousCommandTimeout = _context.Database.GetCommandTimeout();
+            _context.Database.SetCommandTimeout(RefreshCommandTimeoutSeconds);
+
             Guid? refreshedReportId = null;
             var noReport = false;
             const int maxConcurrencyAttempts = 2;
@@ -494,7 +531,7 @@ public class NDAR1Service : INDAR1Service
                     await strategy.ExecuteAsync(async () =>
                     {
                         await using var tx = await _context.Database.BeginTransactionAsync();
-                        var lockResult = await AcquireNdarRefreshLockAsync(lockResource, lockTimeoutMs);
+                        var lockResult = await AcquireNdarRefreshLockAsync(lockResource, RefreshLockTimeoutMs);
 
                         if (lockResult < 0)
                         {
@@ -592,6 +629,18 @@ public class NDAR1Service : INDAR1Service
                 refreshStopwatch.ElapsedMilliseconds, outcome.Status, facilityId, month, year);
             return outcome;
         }
+        catch (SqlException sqlEx) when (sqlEx.Number == -2)
+        {
+            _logger.LogWarning(sqlEx,
+                "NDAR-1 refresh timed out waiting for lock or completing work for facility {FacilityId} month {Month} year {Year}.",
+                facilityId, month, year);
+            outcome.Status = NdarRefreshStatus.Failed;
+            outcome.Message = $"NDAR-1 refresh is still in progress for {periodText}; please retry in a moment.";
+            _logger.LogInformation(
+                "NDAR-1 refresh finished in {DurationMs} ms with outcome {Outcome} for facility {FacilityId} month {Month} year {Year}.",
+                refreshStopwatch.ElapsedMilliseconds, outcome.Status, facilityId, month, year);
+            return outcome;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex,
@@ -603,6 +652,10 @@ public class NDAR1Service : INDAR1Service
                 "NDAR-1 refresh finished in {DurationMs} ms with outcome {Outcome} for facility {FacilityId} month {Month} year {Year}.",
                 refreshStopwatch.ElapsedMilliseconds, outcome.Status, facilityId, month, year);
             return outcome;
+        }
+        finally
+        {
+            _context.Database.SetCommandTimeout(previousCommandTimeout);
         }
     }
 

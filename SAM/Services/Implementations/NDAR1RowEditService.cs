@@ -4,6 +4,7 @@ using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 using SAM.Utilities;
 using SAM.ViewModels.Reports;
 
@@ -649,6 +650,20 @@ public class NDAR1RowEditService : INDAR1RowEditService
             Row = refreshed.Rows.First(x => x.DayNo == request.DayNo),
             SaveSummary = saveSummary
         };
+    }
+
+    public async Task<NdarRefreshOutcome> RefreshStoredReportAsync(Guid ndar1Id)
+    {
+        var report = await _context.NDAR1s
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == ndar1Id)
+            ?? throw new EntityNotFoundException(nameof(NDAR1), ndar1Id);
+
+        var month = (int)report.Month;
+        var outcome = await _reportProvisioner.EnsureNdar1ForMonthAsync(report.FacilityId, month, report.Year);
+        await _reportProvisioner.EnsureNdmrForMonthAsync(report.FacilityId, month, report.Year);
+        await _reportProvisioner.EnsureNdmlrForMonthAsync(report.FacilityId, month, report.Year);
+        return outcome;
     }
 
     private static NDAR1RowEntityChangeViewModel ToEntityChange(Sprayfield sprayfield) =>
