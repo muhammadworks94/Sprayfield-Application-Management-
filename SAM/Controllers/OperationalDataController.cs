@@ -715,16 +715,16 @@ namespace SAM.Controllers;
                 }
                 else
                 {
-                    if (!sprayfield.HourlyRateInches.HasValue)
+                    if (!sprayfield.ActualHourlyRateInches.HasValue)
                     {
-                        ModelState.AddModelError("SprayfieldId", "Permitted (Max) Hourly Rate must be configured for this sprayfield before saving this monthly application.");
+                        ModelState.AddModelError("SprayfieldId", "Actual Hourly Rate must be configured for this sprayfield before saving this monthly application.");
                     }
                     else
                     {
-                        viewModel.MaximumHourlyLoadingInchesPerAcre = sprayfield.HourlyRateInches.Value;
+                        viewModel.MaximumHourlyLoadingInchesPerAcre = sprayfield.ActualHourlyRateInches.Value;
                         viewModel.DailyLoadingInches = MonthlyApplicationCalculationHelper.ComputeDailyLoadingInches(
                             viewModel.TimeIrrigatedMinutes,
-                            sprayfield.HourlyRateInches.Value);
+                            sprayfield.ActualHourlyRateInches.Value);
                         computedVolumeGallons = viewModel.DailyLoadingInches.HasValue
                             ? MonthlyApplicationCalculationHelper.ComputeVolumeGallons(viewModel.DailyLoadingInches.Value, acres)
                             : 0m;
@@ -781,7 +781,7 @@ namespace SAM.Controllers;
             ApplicationDate = viewModel.ApplicationDate,
             VolumeGallons = computedVolumeGallons,
             TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes,
-            MaximumHourlyLoadingInchesPerAcre = sprayfield!.HourlyRateInches!.Value,
+            MaximumHourlyLoadingInchesPerAcre = sprayfield!.ActualHourlyRateInches!.Value,
             OperatorUserId = currentUser?.Id,
             OperatorSnapshotName = snapshotName,
             Comments = viewModel.Comments ?? string.Empty
@@ -840,7 +840,7 @@ namespace SAM.Controllers;
             DailyLoadingInches = MonthlyApplicationCalculationHelper.ComputeDailyLoadingFromVolume(application.VolumeGallons, areaAcres),
             VolumeGallons = application.VolumeGallons,
             TimeIrrigatedMinutes = application.TimeIrrigatedMinutes,
-            MaximumHourlyLoadingInchesPerAcre = application.Sprayfield?.HourlyRateInches ?? application.MaximumHourlyLoadingInchesPerAcre,
+            MaximumHourlyLoadingInchesPerAcre = application.Sprayfield?.ActualHourlyRateInches ?? application.MaximumHourlyLoadingInchesPerAcre,
             Comments = application.Comments
         });
     }
@@ -882,16 +882,16 @@ namespace SAM.Controllers;
                 {
                     ModelState.AddModelError("SprayfieldId", "Sprayfield area (acres) must be configured before saving this monthly application.");
                 }
-                else if (!sprayfield.HourlyRateInches.HasValue)
+                else if (!sprayfield.ActualHourlyRateInches.HasValue)
                 {
-                    ModelState.AddModelError("SprayfieldId", "Permitted (Max) Hourly Rate must be configured for this sprayfield before saving this monthly application.");
+                    ModelState.AddModelError("SprayfieldId", "Actual Hourly Rate must be configured for this sprayfield before saving this monthly application.");
                 }
                 else
                 {
-                    viewModel.MaximumHourlyLoadingInchesPerAcre = sprayfield.HourlyRateInches.Value;
+                    viewModel.MaximumHourlyLoadingInchesPerAcre = sprayfield.ActualHourlyRateInches.Value;
                     viewModel.DailyLoadingInches = MonthlyApplicationCalculationHelper.ComputeDailyLoadingInches(
                         viewModel.TimeIrrigatedMinutes,
-                        sprayfield.HourlyRateInches.Value);
+                        sprayfield.ActualHourlyRateInches.Value);
                     computedVolumeGallons = viewModel.DailyLoadingInches.HasValue
                         ? MonthlyApplicationCalculationHelper.ComputeVolumeGallons(viewModel.DailyLoadingInches.Value, acres)
                         : 0m;
@@ -947,7 +947,7 @@ namespace SAM.Controllers;
         application.ApplicationDate = viewModel.ApplicationDate;
         application.VolumeGallons = computedVolumeGallons;
         application.TimeIrrigatedMinutes = viewModel.TimeIrrigatedMinutes;
-        application.MaximumHourlyLoadingInchesPerAcre = sprayfield!.HourlyRateInches!.Value;
+        application.MaximumHourlyLoadingInchesPerAcre = sprayfield!.ActualHourlyRateInches!.Value;
         application.Comments = viewModel.Comments ?? string.Empty;
 
         try
@@ -1060,7 +1060,7 @@ namespace SAM.Controllers;
                 id = s.Id,
                 name = s.PermitFieldName ?? s.FieldId,
                 acres = SprayfieldReportHelper.GetReportAcres(s),
-                hourlyRateInches = s.HourlyRateInches
+                actualHourlyRateInches = s.ActualHourlyRateInches
             })
             .ToList();
 
@@ -1101,9 +1101,9 @@ namespace SAM.Controllers;
             return BadRequest(new { message = "Sprayfield area (acres) must be configured before saving this monthly application." });
         }
 
-        if (!sprayfield.HourlyRateInches.HasValue)
+        if (!sprayfield.ActualHourlyRateInches.HasValue)
         {
-            return BadRequest(new { message = "Permitted (Max) Hourly Rate must be configured for this sprayfield before saving this monthly application." });
+            return BadRequest(new { message = "Actual Hourly Rate must be configured for this sprayfield before saving this monthly application." });
         }
 
         ComplianceProjectionResult projection;

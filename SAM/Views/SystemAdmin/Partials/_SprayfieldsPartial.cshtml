@@ -53,6 +53,7 @@
                             <th>Field</th>
                             <th>Size (Wetted)</th>
                             <th>Permitted (Max) Hourly Rate</th>
+                            <th>Actual Hourly Rate</th>
                             <th>Permitted (Max) Annual Rate</th>
                             <th>Weekly Rate (Planning)</th>
                             <th class="table-actions">Actions</th>
@@ -71,6 +72,7 @@
                                 <td><a asp-action="SprayfieldDetails" asp-route-id="@sprayfield.Id">@sprayfield.FieldId</a></td>
                                 <td>@sprayfield.SizeAcres.ToString("F2") Acres</td>
                                 <td>@(sprayfield.HourlyRateInches.HasValue ? $"{sprayfield.HourlyRateInches.Value:F2} in/hr" : "-")</td>
+                                <td>@(sprayfield.ActualHourlyRateInches.HasValue ? $"{sprayfield.ActualHourlyRateInches.Value:F2} in/hr" : "-")</td>
                                 <td>@(sprayfield.AnnualRateInches.HasValue ? $"{sprayfield.AnnualRateInches.Value:F2} in/yr" : "-")</td>
                                 <td>@(sprayfield.WeeklyRateInches.HasValue ? $"{sprayfield.WeeklyRateInches.Value:F2} in/week" : "-")</td>
                                 <td class="table-actions">
@@ -109,6 +111,7 @@
                                 <dl class="row small mb-3 responsive-detail-list">
                                     <dt class="col-6">Size</dt><dd class="col-6 mb-1">@sprayfield.SizeAcres.ToString("F2") acres</dd>
                                     <dt class="col-6">Permitted (Max) Hourly</dt><dd class="col-6 mb-1">@((sprayfield.HourlyRateInches?.ToString("F2") ?? "-")) in/hr</dd>
+                                    <dt class="col-6">Actual Hourly</dt><dd class="col-6 mb-1">@((sprayfield.ActualHourlyRateInches?.ToString("F2") ?? "-")) in/hr</dd>
                                     <dt class="col-6">Permitted (Max) Annual</dt><dd class="col-6 mb-1">@((sprayfield.AnnualRateInches?.ToString("F2") ?? "-")) in/yr</dd>
                                     <dt class="col-6">Weekly</dt><dd class="col-6 mb-1">@((sprayfield.WeeklyRateInches?.ToString("F2") ?? "-")) in/week</dd>
                                     <dt class="col-6">Soil</dt><dd class="col-6 mb-1">@(sprayfield.SoilName ?? "-")</dd>
@@ -186,6 +189,10 @@
                             <div class="col-md-6">
                                 <label class="form-label" for="bulkHourlyRate">Permitted (Max) Hourly Rate</label>
                                 <input type="number" step="0.01" min="0" class="form-control" id="bulkHourlyRate" name="HourlyRateInches" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="bulkActualHourlyRate">Actual Hourly Rate</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="bulkActualHourlyRate" name="ActualHourlyRateInches" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="bulkWeeklyRate">Weekly Rate (Planning)</label>

@@ -41,6 +41,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
         }
 
         var fieldColumns = GetFieldColumns(report);
+        var sprayfieldById = GetSprayfieldsById(report);
         var start = new DateTime(report.Year, (int)report.Month, 1);
         var end = start.AddMonths(1);
         var daysInMonth = DateTime.DaysInMonth(report.Year, (int)report.Month);
@@ -116,15 +117,19 @@ public class NDAR1RowEditService : INDAR1RowEditService
             foreach (var field in fieldColumns)
             {
                 var app = monthlyApps.FirstOrDefault(x => x.ApplicationDate.Date == date.Date && x.SprayfieldId == field.SprayfieldId);
+                sprayfieldById.TryGetValue(field.SprayfieldId, out var sprayfield);
                 decimal? dailyLoading = app != null && field.Acres.HasValue && field.Acres.Value > 0m
                     ? app.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch)
                     : null;
+                decimal? maxHourlyLoading = app?.TimeIrrigatedMinutes is > 0
+                    ? (sprayfield?.ActualHourlyRateInches ?? app.MaximumHourlyLoadingInchesPerAcre)
+                    : app?.MaximumHourlyLoadingInchesPerAcre;
                 row.Applications.Add(new NDAR1GridApplicationCellViewModel
                 {
                     SprayfieldId = field.SprayfieldId,
                     VolumeGallons = app != null ? Math.Round(app.VolumeGallons, 0, MidpointRounding.AwayFromZero) : null,
                     TimeIrrigatedMinutes = app?.TimeIrrigatedMinutes.HasValue == true ? Math.Round(app.TimeIrrigatedMinutes.Value, 0, MidpointRounding.AwayFromZero) : null,
-                    MaximumHourlyLoadingInchesPerAcre = app?.MaximumHourlyLoadingInchesPerAcre,
+                    MaximumHourlyLoadingInchesPerAcre = maxHourlyLoading,
                     DailyLoadingInches = dailyLoading
                 });
             }
@@ -390,9 +395,9 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     setupErrors.Add($"Sprayfield {sprayfield.FieldId} is missing Area (acres).");
                 }
 
-                if (!sprayfield.HourlyRateInches.HasValue)
+                if (!sprayfield.ActualHourlyRateInches.HasValue)
                 {
-                    setupErrors.Add($"Sprayfield {sprayfield.FieldId} is missing Permitted (Max) Hourly Rate.");
+                    setupErrors.Add($"Sprayfield {sprayfield.FieldId} is missing Actual Hourly Rate.");
                 }
             }
 
@@ -488,7 +493,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 }
 
                 var acres = MonthlyApplicationCalculationHelper.ResolveAcres(sprayfield);
-                var computedMaxHourly = sprayfield.HourlyRateInches.Value;
+                var computedMaxHourly = sprayfield.ActualHourlyRateInches.Value;
                 var computedDailyLoading = MonthlyApplicationCalculationHelper.ComputeDailyLoadingInches(cell.TimeIrrigatedMinutes, computedMaxHourly);
                 var computedVolumeGallons = computedDailyLoading.HasValue
                     ? MonthlyApplicationCalculationHelper.ComputeVolumeGallons(computedDailyLoading.Value, acres)
@@ -696,6 +701,26 @@ public class NDAR1RowEditService : INDAR1RowEditService
         lockRow.ReleasedAtUtc = DateTime.UtcNow;
         lockRow.ExpiresAtUtc = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+    }
+
+    private static Dictionary<Guid, Sprayfield> GetSprayfieldsById(NDAR1 report)
+    {
+        var sprayfields = new List<Sprayfield>();
+        if (report.Fields.Any())
+        {
+            sprayfields.AddRange(report.Fields.Where(f => f.Sprayfield != null).Select(f => f.Sprayfield!));
+        }
+        else
+        {
+            if (report.Field1 != null) sprayfields.Add(report.Field1);
+            if (report.Field2 != null) sprayfields.Add(report.Field2);
+            if (report.Field3 != null) sprayfields.Add(report.Field3);
+            if (report.Field4 != null) sprayfields.Add(report.Field4);
+        }
+
+        return sprayfields
+            .DistinctBy(s => s.Id)
+            .ToDictionary(s => s.Id);
     }
 
     private List<NDAR1GridFieldColumnViewModel> GetFieldColumns(NDAR1 report)

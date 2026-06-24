@@ -170,6 +170,7 @@ public partial class SystemAdminController : BaseController
                     FacilityName = s.Facility?.Name,
                     HydraulicLoadingLimitInPerYr = s.HydraulicLoadingLimitInPerYr,
                     HourlyRateInches = s.HourlyRateInches,
+                    ActualHourlyRateInches = s.ActualHourlyRateInches,
                     AnnualRateInches = s.AnnualRateInches,
                     WeeklyRateInches = s.WeeklyRateInches
                 });

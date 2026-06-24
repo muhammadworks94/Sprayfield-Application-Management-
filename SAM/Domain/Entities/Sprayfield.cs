@@ -55,6 +55,11 @@ public class Sprayfield : CompanyScopedEntity
     public decimal? HourlyRateInches { get; set; }
 
     /// <summary>
+    /// Actual hourly application rate in inches per hour.
+    /// </summary>
+    public decimal? ActualHourlyRateInches { get; set; }
+
+    /// <summary>
     /// Weekly irrigation rate in inches per week.
     /// </summary>
     public decimal? WeeklyRateInches { get; set; }

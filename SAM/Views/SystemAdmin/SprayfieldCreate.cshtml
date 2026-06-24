@@ -108,7 +108,15 @@
                             <label asp-for="HourlyRateInches" class="form-label"></label>
                             <input asp-for="HourlyRateInches" type="number" step="0.01" min="0" class="form-control" />
                             <span asp-validation-for="HourlyRateInches" class="text-danger"></span>
-                            <small class="form-text text-muted">Design hourly application rate in inches per hour.</small>
+                            <small class="form-text text-muted">Permitted hourly application rate in inches per hour.</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="ActualHourlyRateInches" class="form-label"></label>
+                            <input asp-for="ActualHourlyRateInches" type="number" step="0.01" min="0" class="form-control" />
+                            <span asp-validation-for="ActualHourlyRateInches" class="text-danger"></span>
+                            <small class="form-text text-muted">Actual hourly application rate in inches per hour.</small>
                         </div>
                     </div>
                     <div class="col-md-4">

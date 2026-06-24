@@ -123,6 +123,7 @@ public class SprayfieldService : ISprayfieldService
         existing.FacilityId = sprayfield.FacilityId;
         existing.HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr;
         existing.HourlyRateInches = sprayfield.HourlyRateInches;
+        existing.ActualHourlyRateInches = sprayfield.ActualHourlyRateInches;
         existing.AnnualRateInches = sprayfield.AnnualRateInches;
         existing.WeeklyRateInches = sprayfield.WeeklyRateInches;
 

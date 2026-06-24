@@ -34,6 +34,7 @@ public partial class SystemAdminController
             FacilityName = sprayfield.Facility?.Name,
             HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr,
             HourlyRateInches = sprayfield.HourlyRateInches,
+            ActualHourlyRateInches = sprayfield.ActualHourlyRateInches,
             AnnualRateInches = sprayfield.AnnualRateInches,
             WeeklyRateInches = sprayfield.WeeklyRateInches
         };
@@ -79,6 +80,7 @@ public partial class SystemAdminController
                 FacilityId = viewModel.FacilityId,
                 HydraulicLoadingLimitInPerYr = viewModel.HydraulicLoadingLimitInPerYr,
                 HourlyRateInches = viewModel.HourlyRateInches,
+                ActualHourlyRateInches = viewModel.ActualHourlyRateInches,
                 AnnualRateInches = viewModel.AnnualRateInches,
                 WeeklyRateInches = viewModel.WeeklyRateInches
             };
@@ -116,6 +118,7 @@ public partial class SystemAdminController
             FacilityId = sprayfield.FacilityId,
             HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr,
             HourlyRateInches = sprayfield.HourlyRateInches,
+            ActualHourlyRateInches = sprayfield.ActualHourlyRateInches,
             AnnualRateInches = sprayfield.AnnualRateInches,
             WeeklyRateInches = sprayfield.WeeklyRateInches
         };
@@ -149,10 +152,12 @@ public partial class SystemAdminController
             sprayfield.FacilityId = viewModel.FacilityId;
             sprayfield.HydraulicLoadingLimitInPerYr = viewModel.HydraulicLoadingLimitInPerYr;
             sprayfield.HourlyRateInches = viewModel.HourlyRateInches;
+            sprayfield.ActualHourlyRateInches = viewModel.ActualHourlyRateInches;
             sprayfield.AnnualRateInches = viewModel.AnnualRateInches;
             sprayfield.WeeklyRateInches = viewModel.WeeklyRateInches;
 
             await _sprayfieldService.UpdateAsync(sprayfield);
+
             TempData["SuccessMessage"] = $"Sprayfield '{sprayfield.FieldId}' updated successfully.";
             return RedirectToAction("SystemAdmin", new { tab = "sprayfields" });
         }
@@ -190,6 +195,7 @@ public partial class SystemAdminController
 
             if (viewModel.SizeAcres.HasValue) sprayfield.SizeAcres = viewModel.SizeAcres.Value;
             if (viewModel.HourlyRateInches.HasValue) sprayfield.HourlyRateInches = viewModel.HourlyRateInches;
+            if (viewModel.ActualHourlyRateInches.HasValue) sprayfield.ActualHourlyRateInches = viewModel.ActualHourlyRateInches;
             if (viewModel.AnnualRateInches.HasValue) sprayfield.AnnualRateInches = viewModel.AnnualRateInches;
             if (viewModel.WeeklyRateInches.HasValue) sprayfield.WeeklyRateInches = viewModel.WeeklyRateInches;
             if (viewModel.FacilityId.HasValue && viewModel.FacilityId.Value != Guid.Empty) sprayfield.FacilityId = viewModel.FacilityId.Value;
@@ -237,6 +243,7 @@ public partial class SystemAdminController
                 FacilityId = sprayfield.FacilityId,
                 HydraulicLoadingLimitInPerYr = sprayfield.HydraulicLoadingLimitInPerYr,
                 HourlyRateInches = sprayfield.HourlyRateInches,
+                ActualHourlyRateInches = sprayfield.ActualHourlyRateInches,
                 AnnualRateInches = sprayfield.AnnualRateInches,
                 WeeklyRateInches = sprayfield.WeeklyRateInches
             };

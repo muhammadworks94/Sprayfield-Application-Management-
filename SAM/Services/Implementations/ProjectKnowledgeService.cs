@@ -324,7 +324,7 @@ flowchart TD
                     Steps =
                     {
                         "User selects facility/sprayfield/date and enters Time Irrigated (minutes).",
-                        "Maximum Hourly Loading is sourced from System Admin > Sprayfield > Permitted (Max) Hourly Rate.",
+                        "Maximum Hourly Loading is sourced from System Admin > Sprayfield > Actual Hourly Rate.",
                         "System computes Daily Loading (inches) = MaximumHourlyLoading * (TimeIrrigatedMinutes / 60).",
                         "System computes Volume (gallons) = DailyLoading * SprayfieldArea * 27,154.",
                         "Compliance endpoint validates WWChar chemistry dependency for same month/year (TKN/NO3 sourced from template PCS 00625/00620).",
@@ -443,7 +443,7 @@ flowchart TD
                     Headers = { "Logic", "Formula", "Notes" },
                     Rows =
                     {
-                        new List<string> { "Maximum Hourly Loading", "MaxHourlyLoading(in/hr) = Sprayfield Permitted (Max) Hourly Rate", "Static source from sprayfield setup." },
+                        new List<string> { "Maximum Hourly Loading", "MaxHourlyLoading(in/hr) = Sprayfield Actual Hourly Rate", "Static source from sprayfield setup; NDAR header Hourly Rate uses Permitted (Max) Hourly Rate." },
                         new List<string> { "Daily Loading", "DailyLoading(in) = MaxHourlyLoading(in/hr) * (TimeIrrigatedMinutes / 60)", "Time-based operational formula." },
                         new List<string> { "Monthly App Volume", "Volume(gal) = DailyLoading(in) * Area(acres) * 27,154", "Used in monthly application create/edit flow." },
                         new List<string> { "NDAR Daily Loading", "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,154)", "Derived for NDAR displays/totals from stored volume." },
@@ -583,7 +583,7 @@ flowchart TD
                         new TraceFormulaViewModel
                         {
                             Name = "Max Hourly source",
-                            Expression = "MaxHourly(in/hr) = Sprayfield Permitted (Max) Hourly Rate",
+                            Expression = "MaxHourly(in/hr) = Sprayfield Actual Hourly Rate",
                             Notes = "Static source; not a duration branch formula."
                         }
                     },
@@ -606,7 +606,7 @@ flowchart TD
                     UsedInModule = "Operational Data > Monthly Applications",
                     FormulaOrTransformation = "Volume(gal) = DailyLoading(in) * ReportAcres * 27,154",
                     ReportOutput = "Feeds NDAR1 source records and monthly operational summaries",
-                    FallbackOrValidation = "Save blocked when sprayfield area missing/zero; permitted max hourly rate required for max hourly assignment.",
+                    FallbackOrValidation = "Save blocked when sprayfield area missing/zero; actual hourly rate required for max hourly assignment.",
                     Reference = new TraceReferenceViewModel
                     {
                         Label = "Monthly Application Create/Edit",
@@ -637,7 +637,7 @@ flowchart TD
                     FallbackRules =
                     {
                         new TraceFallbackRuleViewModel { Condition = "Acres missing/zero", Behavior = "Save blocked with validation message." },
-                        new TraceFallbackRuleViewModel { Condition = "Permitted max hourly rate missing", Behavior = "Save blocked; configure sprayfield permitted max hourly rate first." }
+                        new TraceFallbackRuleViewModel { Condition = "Actual hourly rate missing", Behavior = "Save blocked; configure sprayfield actual hourly rate first." }
                     }
                 },
                 new TraceabilityItemViewModel

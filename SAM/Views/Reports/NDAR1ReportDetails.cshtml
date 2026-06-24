@@ -120,6 +120,8 @@
                                     <dd class="col-sm-7 mb-2">@(field.Sprayfield != null ? SprayfieldZoneSummaryHelper.GetCropSummary(field.Sprayfield) ?? "N/A" : "N/A")</dd>
                                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-speedometer2 me-1"></i>Permitted (Max) Hourly Rate:</dt>
                                     <dd class="col-sm-7 mb-2">@((field.Sprayfield?.HourlyRateInches?.ToString("F2") ?? "0.00")) in/hr</dd>
+                                    <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-speedometer me-1"></i>Actual Hourly Rate:</dt>
+                                    <dd class="col-sm-7 mb-2">@((field.Sprayfield?.ActualHourlyRateInches?.ToString("F2") ?? "-")) in/hr</dd>
                                     <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-calendar-range me-1"></i>Permitted (Max) Annual Rate:</dt>
                                     <dd class="col-sm-7 mb-2">
                                         @(((field.Sprayfield?.AnnualRateInches ?? field.Sprayfield?.HydraulicLoadingLimitInPerYr ?? 0m).ToString("F2"))) in/yr

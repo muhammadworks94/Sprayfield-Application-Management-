@@ -1052,13 +1052,9 @@ public class NDAR1Service : INDAR1Service
             {
                 maxHourlyLoadingDaily[dayIndex] = null;
             }
-            else if (minutesFromApplications.Value < 60m)
-            {
-                maxHourlyLoadingDaily[dayIndex] = dailyLoading;
-            }
             else
             {
-                maxHourlyLoadingDaily[dayIndex] = (dailyLoading.Value / minutesFromApplications.Value) * 60m;
+                maxHourlyLoadingDaily[dayIndex] = sprayfield.ActualHourlyRateInches;
             }
         }
     }
@@ -1272,8 +1268,7 @@ public class NDAR1Service : INDAR1Service
                 worksheet.Cell($"H{row}").Value = RoundWholeForDisplay(report.Field1TimeIrrigatedDaily[dayIndex]);
                 // Daily Loading formula: =IF(ISBLANK(G{row})," ",G{row}/($G$3*27154))
                 worksheet.Cell($"I{row}").FormulaA1 = $"=IF(ISBLANK(G{row}),\" \",G{row}/(${fieldValueColumns[0]}$3*27154))";
-                // Maximum Hourly Loading formula: =IF(OR(ISBLANK(G{row}),ISBLANK(H{row}))," ",IF(H{row}<60,I{row},(I{row}/H{row})*60))
-                worksheet.Cell($"J{row}").FormulaA1 = $"=IF(OR(ISBLANK(G{row}),ISBLANK(H{row})),\" \",IF(H{row}<60,I{row},(I{row}/H{row})*60))";
+                worksheet.Cell($"J{row}").Value = report.Field1MaxHourlyLoadingDaily[dayIndex];
             }
 
             // Field 2 data (Columns K-N: Volume, Time, Daily Loading, Max Hourly)
@@ -1283,8 +1278,7 @@ public class NDAR1Service : INDAR1Service
                 worksheet.Cell($"L{row}").Value = RoundWholeForDisplay(report.Field2TimeIrrigatedDaily[dayIndex]);
                 // Daily Loading formula: =IF(ISBLANK(K{row})," ",K{row}/($K$3*27154))
                 worksheet.Cell($"M{row}").FormulaA1 = $"=IF(ISBLANK(K{row}),\" \",K{row}/(${fieldValueColumns[1]}$3*27154))";
-                // Maximum Hourly Loading formula: =IF(OR(ISBLANK(K{row}),ISBLANK(L{row}))," ",IF(L{row}<60,M{row},(M{row}/L{row})*60))
-                worksheet.Cell($"N{row}").FormulaA1 = $"=IF(OR(ISBLANK(K{row}),ISBLANK(L{row})),\" \",IF(L{row}<60,M{row},(M{row}/L{row})*60))";
+                worksheet.Cell($"N{row}").Value = report.Field2MaxHourlyLoadingDaily[dayIndex];
             }
 
             // Field 3 data (Columns O-R: Volume, Time, Daily Loading, Max Hourly)
@@ -1294,8 +1288,7 @@ public class NDAR1Service : INDAR1Service
                 worksheet.Cell($"P{row}").Value = RoundWholeForDisplay(report.Field3TimeIrrigatedDaily[dayIndex]);
                 // Daily Loading formula: =IF(ISBLANK(O{row})," ",O{row}/($O$3*27154))
                 worksheet.Cell($"Q{row}").FormulaA1 = $"=IF(ISBLANK(O{row}),\" \",O{row}/(${fieldValueColumns[2]}$3*27154))";
-                // Maximum Hourly Loading formula: =IF(OR(ISBLANK(O{row}),ISBLANK(P{row}))," ",IF(P{row}<60,Q{row},(Q{row}/P{row})*60))
-                worksheet.Cell($"R{row}").FormulaA1 = $"=IF(OR(ISBLANK(O{row}),ISBLANK(P{row})),\" \",IF(P{row}<60,Q{row},(Q{row}/P{row})*60))";
+                worksheet.Cell($"R{row}").Value = report.Field3MaxHourlyLoadingDaily[dayIndex];
             }
 
             // Field 4 data (Columns S-V: Volume, Time, Daily Loading, Max Hourly)
@@ -1305,8 +1298,7 @@ public class NDAR1Service : INDAR1Service
                 worksheet.Cell($"T{row}").Value = RoundWholeForDisplay(report.Field4TimeIrrigatedDaily[dayIndex]);
                 // Daily Loading formula: =IF(ISBLANK(S{row})," ",S{row}/($S$3*27154))
                 worksheet.Cell($"U{row}").FormulaA1 = $"=IF(ISBLANK(S{row}),\" \",S{row}/(${fieldValueColumns[3]}$3*27154))";
-                // Maximum Hourly Loading formula: =IF(OR(ISBLANK(S{row}),ISBLANK(T{row}))," ",IF(T{row}<60,U{row},(U{row}/T{row})*60))
-                worksheet.Cell($"V{row}").FormulaA1 = $"=IF(OR(ISBLANK(S{row}),ISBLANK(T{row})),\" \",IF(T{row}<60,U{row},(U{row}/T{row})*60))";
+                worksheet.Cell($"V{row}").Value = report.Field4MaxHourlyLoadingDaily[dayIndex];
             }
         }
 

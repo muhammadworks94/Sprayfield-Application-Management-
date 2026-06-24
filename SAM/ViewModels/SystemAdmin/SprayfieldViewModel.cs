@@ -35,6 +35,10 @@ public class SprayfieldViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
     public decimal? HourlyRateInches { get; set; }
 
+    [Display(Name = "Actual Hourly Rate (inches/hour)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Actual hourly rate must be a positive number.")]
+    public decimal? ActualHourlyRateInches { get; set; }
+
     [Display(Name = "Permitted (Max) Annual Rate (inches/year)")]
     [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
     public decimal? AnnualRateInches { get; set; }
@@ -83,6 +87,10 @@ public class SprayfieldCreateViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
     public decimal? HourlyRateInches { get; set; }
 
+    [Display(Name = "Actual Hourly Rate (inches/hour)")]
+    [Range(0, double.MaxValue, ErrorMessage = "Actual hourly rate must be a positive number.")]
+    public decimal? ActualHourlyRateInches { get; set; }
+
     [Display(Name = "Permitted (Max) Annual Rate (inches/year)")]
     [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
     public decimal? AnnualRateInches { get; set; }
@@ -106,6 +114,9 @@ public class SprayfieldBulkEditViewModel
 
     [Range(0, double.MaxValue, ErrorMessage = "Hourly rate must be a positive number.")]
     public decimal? HourlyRateInches { get; set; }
+
+    [Range(0, double.MaxValue, ErrorMessage = "Actual hourly rate must be a positive number.")]
+    public decimal? ActualHourlyRateInches { get; set; }
 
     [Range(0, double.MaxValue, ErrorMessage = "Annual rate must be a positive number.")]
     public decimal? AnnualRateInches { get; set; }

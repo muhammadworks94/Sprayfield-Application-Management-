@@ -127,7 +127,7 @@
                 const selected = sprayfieldSelect?.value || '';
                 const meta = sprayfieldMeta[selected];
                 const acres = meta && meta.acres != null ? Number(meta.acres) : NaN;
-                const hourlyRate = meta && meta.hourlyRateInches != null ? Number(meta.hourlyRateInches) : NaN;
+                const hourlyRate = meta && meta.actualHourlyRateInches != null ? Number(meta.actualHourlyRateInches) : NaN;
                 const timeIrrigated = Number(timeIrrigatedInput?.value || 0);
                 const hasTime = !Number.isNaN(timeIrrigated) && timeIrrigated > 0;
                 const hasAcres = !Number.isNaN(acres) && acres > 0;
@@ -166,7 +166,7 @@
                     const option = document.createElement('option');
                     option.value = sf.id;
                     option.textContent = sf.name;
-                    sprayfieldMeta[sf.id] = { acres: sf.acres, hourlyRateInches: sf.hourlyRateInches };
+                    sprayfieldMeta[sf.id] = { acres: sf.acres, actualHourlyRateInches: sf.actualHourlyRateInches };
                     if (sf.id === selectedSprayfieldId) option.selected = true;
                     sprayfieldSelect.appendChild(option);
                 });

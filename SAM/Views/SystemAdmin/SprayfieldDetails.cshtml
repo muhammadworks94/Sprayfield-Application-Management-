@@ -3,6 +3,7 @@
     ViewData["Title"] = "Sprayfield Details";
     var canDuplicate = ViewBag.CanDuplicate is bool allowed && allowed;
     var hourlyRate = Model.HourlyRateInches?.ToString("F2") ?? "-";
+    var actualHourlyRate = Model.ActualHourlyRateInches?.ToString("F2") ?? "-";
     var annualRate = Model.AnnualRateInches?.ToString("F2") ?? "-";
     var weeklyRate = Model.WeeklyRateInches?.ToString("F2") ?? "-";
 }
@@ -114,6 +115,9 @@
 
                         <dt class="col-sm-5 text-muted">Permitted (Max) Hourly Rate</dt>
                         <dd class="col-sm-7">@hourlyRate in/hr</dd>
+
+                        <dt class="col-sm-5 text-muted">Actual Hourly Rate</dt>
+                        <dd class="col-sm-7">@actualHourlyRate in/hr</dd>
 
                         <dt class="col-sm-5 text-muted">Permitted (Max) Annual Rate</dt>
                         <dd class="col-sm-7">
