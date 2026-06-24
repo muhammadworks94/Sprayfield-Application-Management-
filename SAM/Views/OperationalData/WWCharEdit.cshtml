@@ -296,6 +296,7 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/grid-keyboard-navigation.js" asp-append-version="true"></script>
     <script>
         (function () {
             var removeButtons = document.querySelectorAll('.js-remove-attachment-btn');
@@ -484,6 +485,12 @@
 
             initTooltips(document);
             updatePermitButtonLink();
+
+            SAM.gridKeyboardNavigation.init({
+                root: sectionContainer,
+                cellSelector: '.wwchar-daily-table tbody input:not(:disabled), .wwchar-daily-table tbody select:not(:disabled)',
+                rowSelector: '.wwchar-daily-table tbody tr'
+            });
         })();
     </script>
 }

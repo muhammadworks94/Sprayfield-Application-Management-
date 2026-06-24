@@ -231,6 +231,7 @@
 </style>
 
 @section Scripts {
+    <script src="~/js/grid-keyboard-navigation.js" asp-append-version="true"></script>
     <script>
         (() => {
             const ndar1Id = "@Model.NDAR1Id";
@@ -757,6 +758,13 @@
 
             initializeGridLocks();
             recalcFooterTotals();
+
+            SAM.gridKeyboardNavigation.init({
+                root: grid,
+                cellSelector: '.ndar-editable:not(:disabled)',
+                rowSelector: 'tbody tr[data-day]',
+                skipRow: (tr) => tr.dataset.lockedByOther === 'true'
+            });
         })();
     </script>
 }

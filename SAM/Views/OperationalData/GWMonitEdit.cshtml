@@ -325,6 +325,7 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/grid-keyboard-navigation.js" asp-append-version="true"></script>
     <script>
         (function () {
             const facilitySelect = document.getElementById('facilitySelect');
@@ -541,6 +542,15 @@
             monitoringWellSelect?.addEventListener('change', function () {
                 loadWellData(monitoringWellSelect.value);
             });
+
+            const gwTemplateContainer = document.getElementById('gwTemplateSectionContainer');
+            if (gwTemplateContainer) {
+                SAM.gridKeyboardNavigation.init({
+                    root: gwTemplateContainer,
+                    cellSelector: 'input[name$=".EnteredValue"]:not(:disabled)',
+                    rowSelector: 'tbody tr'
+                });
+            }
         })();
     </script>
 }
