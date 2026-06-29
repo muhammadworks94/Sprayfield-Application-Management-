@@ -626,11 +626,12 @@ public class GWMonitFilterViewModel
     public Guid? MonitoringWellId { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 25;
+    public bool GroupByDate { get; set; } = true;
 }
 
 public class GWMonitSortViewModel
 {
-    public string SortBy { get; set; } = "sampleDate";
+    public string SortBy { get; set; } = "sampledate";
     public string SortDir { get; set; } = "desc";
 }
 
@@ -643,4 +644,5 @@ public class GWMonitsIndexViewModel
     public GWMonitFilterViewModel Filter { get; set; } = new();
     public GWMonitSortViewModel Sort { get; set; } = new();
     public PagedResult<GWMonitViewModel> GWMonits { get; set; } = new();
+    public Dictionary<DateTime, int> RecordCountsBySampleDate { get; set; } = new();
 }

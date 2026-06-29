@@ -22,10 +22,13 @@
 
     bool IsActiveSort(string column) => string.Equals(Model.Sort.SortBy, column, StringComparison.OrdinalIgnoreCase);
 
-    var sampleDateNextSortDir = NextSortDir("sampleDate");
+    var sampleDateNextSortDir = NextSortDir("sampledate");
     var facilityNextSortDir = NextSortDir("facility");
-    var wellIdNextSortDir = NextSortDir("wellId");
+    var wellIdNextSortDir = NextSortDir("wellid");
     var conductivityNextSortDir = NextSortDir("conductivity");
+
+    var startRecord = Model.GWMonits.TotalCount == 0 ? 0 : (Model.GWMonits.Page - 1) * Model.Filter.PageSize + 1;
+    var endRecord = Math.Min(Model.GWMonits.Page * Model.Filter.PageSize, Model.GWMonits.TotalCount);
 }
 
 @section PageTitleExtra {
@@ -49,8 +52,14 @@
 <div class="collapse mb-3" id="gwMonitFiltersCollapse">
     <div class="card">
         <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
+            <form method="get" asp-action="GWMonits" class="row g-3">
+                <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
+                <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
+                <input type="hidden" name="pageSize" value="@Model.Filter.PageSize" />
+                <input type="hidden" name="groupByDate" value="@Model.Filter.GroupByDate.ToString().ToLowerInvariant()" />
+                <input type="hidden" name="page" value="1" />
+
+                <div class="col-md-5">
                     <label for="facilityId" class="form-label"><i class="bi bi-building me-1"></i>Facility:</label>
                     <select name="facilityId" id="facilityId" class="form-select">
                         <option value="">All Facilities</option>
@@ -65,7 +74,7 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-5">
                     <label for="monitoringWellId" class="form-label"><i class="bi bi-droplet-half me-1"></i>Monitoring Well:</label>
                     <select name="monitoringWellId" id="monitoringWellId" class="form-select">
                         <option value="">All Wells</option>
@@ -80,31 +89,12 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label for="pageSize" class="form-label">Size:</label>
-                    <select name="pageSize" id="pageSize" class="form-select">
-                        @foreach (var size in new[] { 25, 50, 100, 200 })
-                        {
-                            if (Model.Filter.PageSize == size)
-                            {
-                                <option value="@size" selected>@size</option>
-                            }
-                            else
-                            {
-                                <option value="@size">@size</option>
-                            }
-                        }
-                    </select>
-                </div>
                 <div class="col-md-2 d-flex align-items-end gap-2">
-                    <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
-                    <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
-                    <input type="hidden" name="page" value="1" />
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-funnel"></i> 
+                        <i class="bi bi-funnel"></i>
                     </button>
                     <a asp-action="GWMonits" class="btn btn-outline-secondary w-100">
-                        <i class="bi bi-x-circle"></i> 
+                        <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
             </form>
@@ -112,55 +102,100 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card gwmonits-list-card">
     <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
-            <h4 class="mb-0"> Groundwater Monitoring List</h4>
-            <div class="d-flex page-section-actions">
-                <div class="btn-group me-2" role="group" aria-label="View mode toggle">
-                    <button type="button"
-                            class="btn btn-outline-secondary btn-sm active"
-                            id="gwmonitsTableViewBtn">
-                        <i class="bi bi-table"></i> Table
-                    </button>
-                    <button type="button"
-                            class="btn btn-sm btn-outline-secondary"
-                            id="gwmonitsCardViewBtn">
-                        <i class="bi bi-grid-3x3-gap"></i> Cards
-                    </button>
+        <div class="d-flex align-items-center justify-content-between mb-3 page-section-header">
+            <h4 class="mb-0">Groundwater Monitoring List</h4>
+            <div class="d-flex align-items-center gap-3">
+                <div class="gw-list-toolbar-summary text-muted">
+                    @if (Model.GWMonits.TotalCount == 0)
+                    {
+                        <span>No records</span>
+                    }
+                    else
+                    {
+                        <span>@startRecord–@endRecord of @Model.GWMonits.TotalCount</span>
+                    }
                 </div>
-                @if (canEdit)
-                {
-                    <a asp-action="GWMonitCreate" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary btn-sm">
-                        <i class="bi bi-plus-circle"></i> Create New Record
-                    </a>
-                }
+                <div class="d-flex page-section-actions">
+                    <div class="btn-group me-2" role="group" aria-label="View mode toggle">
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm active"
+                                id="gwmonitsTableViewBtn">
+                            <i class="bi bi-table"></i> Table
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                id="gwmonitsCardViewBtn">
+                            <i class="bi bi-grid-3x3-gap"></i> Cards
+                        </button>
+                    </div>
+                    @if (canEdit)
+                    {
+                        <a asp-action="GWMonitCreate" asp-route-facilityId="@selectedFacilityId" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-circle"></i> Create New Record
+                        </a>
+                    }
+                </div>
             </div>
         </div>
+
+        <form method="get" asp-action="GWMonits" id="gwmonitsListToolbarForm" class="gw-list-toolbar mb-3">
+            <input type="hidden" name="facilityId" value="@Model.Filter.FacilityId" />
+            <input type="hidden" name="monitoringWellId" value="@Model.Filter.MonitoringWellId" />
+            <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
+            <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
+            <input type="hidden" name="page" value="1" />
+
+            <div class="gw-list-toolbar-group">
+                <div class="gw-toolbar-item">
+                    <input type="hidden" name="groupByDate" id="groupByDateHidden" value="@Model.Filter.GroupByDate.ToString().ToLowerInvariant()" />
+                    <div class="form-check form-switch gw-group-toggle mb-0">
+                        <input class="form-check-input" type="checkbox" id="groupByDateToggle" checked="@Model.Filter.GroupByDate" role="switch" aria-label="Group records by sample date" />
+                        <label class="form-check-label" for="groupByDateToggle">Group by date</label>
+                    </div>
+                </div>
+
+                <div class="gw-toolbar-divider" aria-hidden="true"></div>
+
+                <div class="gw-toolbar-item gw-toolbar-item--select">
+                    <label class="gw-toolbar-label" for="gwmonitsPageSize">Rows per page</label>
+                    <select name="pageSize" id="gwmonitsPageSize" class="form-select form-select-sm gw-page-size-select" aria-label="Rows per page">
+                        <option value="25" selected="@(Model.Filter.PageSize == 25)">25</option>
+                        <option value="50" selected="@(Model.Filter.PageSize == 50)">50</option>
+                        <option value="100" selected="@(Model.Filter.PageSize == 100)">100</option>
+                        <option value="200" selected="@(Model.Filter.PageSize == 200)">200</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+
         @if (items.Any())
         {
-            <div id="gwmonitsTableView" class="table-responsive responsive-table gwmonits-table-wrapper fixed-height-table-wrapper">
-                <table class="table table-hover gwmonits-table">
+            <div id="gwmonitsTableView" class="table-responsive responsive-table gwmonits-table-wrapper fixed-height-table-wrapper gwmonits-quality-table">
+                <table class="table table-hover gwmonits-table align-middle">
                     <thead>
                         <tr>
                             <th>
-                                <a asp-action="GWMonits"
+                                <a class="text-decoration-none" asp-action="GWMonits"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-groupByDate="@Model.Filter.GroupByDate"
                                    asp-route-page="1"
                                    asp-route-pageSize="@Model.Filter.PageSize"
-                                   asp-route-sortBy="sampleDate"
+                                   asp-route-sortBy="sampledate"
                                    asp-route-sortDir="@sampleDateNextSortDir">Sample Date
-                                    @if (IsActiveSort("sampleDate"))
+                                    @if (IsActiveSort("sampledate"))
                                     {
                                         <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
                                     }
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="GWMonits"
+                                <a class="text-decoration-none" asp-action="GWMonits"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-groupByDate="@Model.Filter.GroupByDate"
                                    asp-route-page="1"
                                    asp-route-pageSize="@Model.Filter.PageSize"
                                    asp-route-sortBy="facility"
@@ -172,23 +207,25 @@
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="GWMonits"
+                                <a class="text-decoration-none" asp-action="GWMonits"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-groupByDate="@Model.Filter.GroupByDate"
                                    asp-route-page="1"
                                    asp-route-pageSize="@Model.Filter.PageSize"
-                                   asp-route-sortBy="wellId"
+                                   asp-route-sortBy="wellid"
                                    asp-route-sortDir="@wellIdNextSortDir">Well ID
-                                    @if (IsActiveSort("wellId"))
+                                    @if (IsActiveSort("wellid"))
                                     {
                                         <i class="bi @(Model.Sort.SortDir == "asc" ? "bi-sort-up" : "bi-sort-down") ms-1"></i>
                                     }
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="GWMonits"
+                                <a class="text-decoration-none" asp-action="GWMonits"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-groupByDate="@Model.Filter.GroupByDate"
                                    asp-route-page="1"
                                    asp-route-pageSize="@Model.Filter.PageSize"
                                    asp-route-sortBy="conductivity"
@@ -199,12 +236,38 @@
                                     }
                                 </a>
                             </th>
-                            <th class="table-actions"> Actions</th>
+                            <th class="table-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @{
+                            DateTime? tablePreviousDate = null;
+                        }
                         @foreach (var gwMonit in items)
                         {
+                            if (Model.Filter.GroupByDate)
+                            {
+                                var sampleDate = gwMonit.SampleDate.Date;
+                                if (tablePreviousDate != sampleDate)
+                                {
+                                    tablePreviousDate = sampleDate;
+                                    var totalForDate = Model.RecordCountsBySampleDate.TryGetValue(sampleDate, out var count)
+                                        ? count
+                                        : 1;
+
+                                    <tr class="gw-date-group-header">
+                                        <td colspan="5">
+                                            <div class="gw-date-band">
+                                                <div class="gw-date-band-meta">
+                                                    <span class="gw-date-band-label">@sampleDate.ToString("MMMM d, yyyy")</span>
+                                                    <span class="gw-date-band-count">@totalForDate record@(totalForDate == 1 ? string.Empty : "s")</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+
                             <tr>
                                 <td>
                                     <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id">
@@ -257,62 +320,87 @@
                 </table>
             </div>
 
-            <div id="gwmonitsCardView" class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 d-none responsive-card-grid">
-                @foreach (var gwMonit in items)
-                {
-                    <div class="col">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-header-light d-flex justify-content-between align-items-start">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-0">
-                                        <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id">
-                                            @gwMonit.SampleDate.ToString("MM/dd/yyyy")
-                                        </a>
-                                    </h6>
-                                    <small class="text-muted d-block">
-                                        <i class="bi bi-building me-1"></i>@gwMonit.FacilityName
-                                    </small>
-                                    <small class="text-muted d-block">
-                                        <i class="bi bi-droplet-half me-1"></i>@gwMonit.MonitoringWellName
-                                    </small>
-                                </div>
-                            </div>
-                            <div class="card-body d-flex flex-column">
+            <div id="gwmonitsCardView" class="d-none responsive-card-grid">
+                <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+                    @{
+                        DateTime? cardPreviousDate = null;
+                    }
+                    @foreach (var gwMonit in items)
+                    {
+                        if (Model.Filter.GroupByDate)
+                        {
+                            var sampleDate = gwMonit.SampleDate.Date;
+                            if (cardPreviousDate != sampleDate)
+                            {
+                                cardPreviousDate = sampleDate;
+                                var totalForDate = Model.RecordCountsBySampleDate.TryGetValue(sampleDate, out var count)
+                                    ? count
+                                    : 1;
 
-                                <dl class="row small mb-3">
-                                    <dt class="col-6"><i class="bi bi-rulers me-1"></i>Sample Depth</dt>
-                                    <dd class="col-6 mb-1">@((gwMonit.SampleDepth?.ToString("F2") ?? "N/A"))</dd>
-
-                                    <dt class="col-6"><i class="bi bi-water me-1"></i>Water Level</dt>
-                                    <dd class="col-6 mb-1">@((gwMonit.WaterLevel?.ToString("F2") ?? "N/A"))</dd>
-
-                                    <dt class="col-6"><i class="bi bi-thermometer-half me-1"></i>Temp.</dt>
-                                    <dd class="col-6 mb-1">@((gwMonit.Temperature?.ToString("F1") ?? "N/A"))</dd>
-
-                                    <dt class="col-6"><i class="bi bi-lightning me-1"></i>Conductivity</dt>
-                                    <dd class="col-6 mb-1">@((gwMonit.Conductivity?.ToString("F2") ?? "N/A"))</dd>
-                                </dl>
-
-                                <div class="mt-auto d-flex justify-content-between">
-                                    <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
-                                    @if (canEdit)
-                                    {
-                                        <div class="btn-group">
-                                            <a asp-action="GWMonitEdit" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-pencil"></i> Edit
-                                            </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(gwMonit.Id.ToString().Replace("-", ""))">
-                                                <i class="bi bi-trash"></i> Delete
-                                            </button>
+                                <div class="col-12">
+                                    <div class="gw-date-band gw-date-band--card">
+                                        <div class="gw-date-band-meta">
+                                            <span class="gw-date-band-label">@sampleDate.ToString("MMMM d, yyyy")</span>
+                                            <span class="gw-date-band-count">@totalForDate record@(totalForDate == 1 ? string.Empty : "s")</span>
                                         </div>
-                                    }
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        <div class="col">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header-light d-flex justify-content-between align-items-start">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-0">
+                                            <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id">
+                                                @gwMonit.SampleDate.ToString("MM/dd/yyyy")
+                                            </a>
+                                        </h6>
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-building me-1"></i>@gwMonit.FacilityName
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-droplet-half me-1"></i>@gwMonit.MonitoringWellName
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <dl class="row small mb-3">
+                                        <dt class="col-6"><i class="bi bi-rulers me-1"></i>Sample Depth</dt>
+                                        <dd class="col-6 mb-1">@((gwMonit.SampleDepth?.ToString("F2") ?? "N/A"))</dd>
+
+                                        <dt class="col-6"><i class="bi bi-water me-1"></i>Water Level</dt>
+                                        <dd class="col-6 mb-1">@((gwMonit.WaterLevel?.ToString("F2") ?? "N/A"))</dd>
+
+                                        <dt class="col-6"><i class="bi bi-thermometer-half me-1"></i>Temp.</dt>
+                                        <dd class="col-6 mb-1">@((gwMonit.Temperature?.ToString("F1") ?? "N/A"))</dd>
+
+                                        <dt class="col-6"><i class="bi bi-lightning me-1"></i>Conductivity</dt>
+                                        <dd class="col-6 mb-1">@((gwMonit.Conductivity?.ToString("F2") ?? "N/A"))</dd>
+                                    </dl>
+
+                                    <div class="mt-auto d-flex justify-content-between">
+                                        <a asp-action="GWMonitDetails" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                        @if (canEdit)
+                                        {
+                                            <div class="btn-group">
+                                                <a asp-action="GWMonitEdit" asp-route-id="@gwMonit.Id" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-pencil"></i> Edit
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(gwMonit.Id.ToString().Replace("-", ""))">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                }
+                    }
+                </div>
             </div>
 
             @if (totalPages > 1)
@@ -326,6 +414,7 @@
                                    asp-action="GWMonits"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
+                                   asp-route-groupByDate="@Model.Filter.GroupByDate"
                                    asp-route-page="@pageNumber"
                                    asp-route-pageSize="@Model.Filter.PageSize"
                                    asp-route-sortBy="@Model.Sort.SortBy"
@@ -353,8 +442,184 @@
 </div>
 
 @section Scripts {
+    <style>
+        .gw-list-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem 1rem;
+            padding: 0.625rem 0.875rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+        }
+
+        .gw-list-toolbar-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem 1rem;
+        }
+
+        .gw-toolbar-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .gw-toolbar-item--select {
+            gap: 0.625rem;
+        }
+
+        .gw-toolbar-label {
+            margin: 0;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #64748b;
+            white-space: nowrap;
+        }
+
+        .gw-group-toggle .form-check-input {
+            width: 2.25em;
+            height: 1.125em;
+            margin-top: 0;
+            cursor: pointer;
+        }
+
+        .gw-group-toggle .form-check-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #334155;
+            cursor: pointer;
+            padding-left: 0.375rem;
+            user-select: none;
+        }
+
+        .gw-page-size-select {
+            width: auto;
+            min-width: 4.25rem;
+            font-size: 0.875rem;
+            border-color: #cbd5e1;
+            background-color: #fff;
+        }
+
+        .gw-toolbar-divider {
+            width: 1px;
+            height: 1.5rem;
+            background: #cbd5e1;
+            flex-shrink: 0;
+        }
+
+        .gw-list-toolbar-summary {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #64748b;
+        }
+
+        .gw-date-group-header > td {
+            padding: 0 !important;
+            border-top: none !important;
+            background: transparent !important;
+        }
+
+        .gw-date-band {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem 1rem;
+            margin: 0.75rem 0 0.375rem;
+            padding: 0.5rem 0.75rem;
+            background: linear-gradient(to right, #f1f5f9 0%, #f8fafc 100%);
+            border-left: 3px solid var(--bs-primary, #0d6efd);
+            border-radius: 0 0.375rem 0.375rem 0;
+        }
+
+        .gwmonits-quality-table tbody .gw-date-group-header:first-child .gw-date-band {
+            margin-top: 0.25rem;
+        }
+
+        .gw-date-band--card {
+            margin-top: 0.5rem;
+            margin-bottom: 0;
+        }
+
+        .gw-date-band-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0.5rem 0.75rem;
+            min-width: 0;
+        }
+
+        .gw-date-band-label {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #1e293b;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        }
+
+        .gw-date-band-count {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #64748b;
+        }
+
+        @@media (max-width: 575.98px) {
+            .gw-list-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .gw-list-toolbar-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .gw-toolbar-divider {
+                display: none;
+            }
+
+            .gw-toolbar-item--select {
+                justify-content: space-between;
+            }
+
+            .gw-page-size-select {
+                flex: 1;
+                max-width: 6rem;
+            }
+
+            .gw-date-band {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const toolbarForm = document.getElementById('gwmonitsListToolbarForm');
+            const groupByDateToggle = document.getElementById('groupByDateToggle');
+            const groupByDateHidden = document.getElementById('groupByDateHidden');
+            const pageSizeSelect = document.getElementById('gwmonitsPageSize');
+
+            function syncGroupByDateHidden() {
+                if (groupByDateHidden && groupByDateToggle) {
+                    groupByDateHidden.value = groupByDateToggle.checked ? 'true' : 'false';
+                }
+            }
+
+            syncGroupByDateHidden();
+
+            groupByDateToggle?.addEventListener('change', function () {
+                syncGroupByDateHidden();
+                toolbarForm?.submit();
+            });
+            pageSizeSelect?.addEventListener('change', function () {
+                toolbarForm?.submit();
+            });
+
             const deleteModals = document.querySelectorAll('.modal[id^="deleteModal"]');
             deleteModals.forEach(modal => {
                 modal.addEventListener('show.bs.modal', function (event) {

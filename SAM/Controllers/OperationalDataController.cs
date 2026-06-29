@@ -2072,9 +2072,16 @@ namespace SAM.Controllers;
         Guid? monitoringWellId = null,
         string? sortBy = null,
         string? sortDir = null,
+        bool groupByDate = true,
         int page = 1,
         int pageSize = 25)
     {
+        if (Request.Query.ContainsKey("groupByDate"))
+        {
+            groupByDate = Request.Query["groupByDate"]
+                .Any(v => string.Equals(v, "true", StringComparison.OrdinalIgnoreCase));
+        }
+
         var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
@@ -2125,8 +2132,12 @@ namespace SAM.Controllers;
                 ? query.OrderBy(g => g.Conductivity).ThenByDescending(g => g.CreatedDate)
                 : query.OrderByDescending(g => g.Conductivity).ThenByDescending(g => g.CreatedDate),
             _ => normalizedSortDir == "asc"
-                ? query.OrderBy(g => g.SampleDate).ThenByDescending(g => g.CreatedDate)
-                : query.OrderByDescending(g => g.SampleDate).ThenByDescending(g => g.CreatedDate)
+                ? query.OrderBy(g => g.SampleDate)
+                    .ThenBy(g => g.MonitoringWell != null ? g.MonitoringWell.WellId : string.Empty)
+                    .ThenByDescending(g => g.CreatedDate)
+                : query.OrderByDescending(g => g.SampleDate)
+                    .ThenBy(g => g.MonitoringWell != null ? g.MonitoringWell.WellId : string.Empty)
+                    .ThenByDescending(g => g.CreatedDate)
         };
 
         var totalCount = await query.CountAsync();
@@ -2194,6 +2205,34 @@ namespace SAM.Controllers;
             GW59ASignedDate = g.GW59ASignedDate
         }).ToList();
 
+        var recordCountsBySampleDate = new Dictionary<DateTime, int>();
+        if (groupByDate && items.Count > 0)
+        {
+            var datesOnPage = items.Select(r => r.SampleDate.Date).Distinct().ToList();
+            var countQuery = _context.GWMonits.AsNoTracking().AsQueryable();
+            if (companyId.HasValue)
+            {
+                countQuery = countQuery.Where(g => g.CompanyId == companyId.Value);
+            }
+
+            if (facilityId.HasValue)
+            {
+                countQuery = countQuery.Where(g => g.FacilityId == facilityId.Value);
+            }
+
+            if (monitoringWellId.HasValue)
+            {
+                countQuery = countQuery.Where(g => g.MonitoringWellId == monitoringWellId.Value);
+            }
+
+            var counts = await countQuery
+                .Where(x => datesOnPage.Contains(x.SampleDate.Date))
+                .GroupBy(x => x.SampleDate.Date)
+                .Select(g => new { Date = g.Key, Count = g.Count() })
+                .ToListAsync();
+            recordCountsBySampleDate = counts.ToDictionary(x => x.Date, x => x.Count);
+        }
+
         var model = new GWMonitsIndexViewModel
         {
             IsGlobalAdmin = isGlobalAdmin,
@@ -2205,7 +2244,8 @@ namespace SAM.Controllers;
                 FacilityId = facilityId,
                 MonitoringWellId = monitoringWellId,
                 Page = normalizedPage,
-                PageSize = normalizedPageSize
+                PageSize = normalizedPageSize,
+                GroupByDate = groupByDate
             },
             Sort = new GWMonitSortViewModel
             {
@@ -2218,7 +2258,8 @@ namespace SAM.Controllers;
                 TotalCount = totalCount,
                 Page = normalizedPage,
                 PageSize = normalizedPageSize
-            }
+            },
+            RecordCountsBySampleDate = recordCountsBySampleDate
         };
 
         return View(model);
