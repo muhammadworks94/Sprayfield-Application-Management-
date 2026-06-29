@@ -187,7 +187,7 @@ flowchart TD
                         new List<string> { "GWMonit", "Groundwater monitoring record", "Facility, MonitoringWell, GWMonitTemplateValue", "NDMR and annual NDMLR related workflows" },
                         new List<string> { "MonthlyApplication", "Sprayfield-level monthly application record", "Facility, Sprayfield", "Compliance + NDAR1 inputs; auto-provisions NDAR-1 + NDMLR for application month" },
                         new List<string> { "NDAR1", "Non-discharge report data model", "Facility, Sprayfields, dynamic field rows", "NDAR1 report screens/exports; auto-created/refreshed from application/operator logs and grid edit" },
-                        new List<string> { "IrrRprt", "Monthly NDMR report identity and compliance summary", "Facility, Month, Year", "NDMR list/details/exports; auto-created from operator logs and WWChar" },
+                        new List<string> { "IrrRprt", "Monthly NDMR report identity and compliance summary", "Facility, Month, Year", "NDMR list/details/exports anchor on this record; PDF/Excel export aggregate live WWChar, GWMonit, OperatorLog, and permit template data (NDAR-1 not required)." },
                         new List<string> { "NDMLR", "Annual non-discharge mass loading report identity", "Facility, Company, Year, Month (window end)", "NDMLR annual list/details/exports; auto-created from application logs" },
                         new List<string> { "OperatorLog", "Canonical per-day operations record", "Facility, date-level ORC On Site + Storage Lagoon Freeboard (ft)", "WWChar + NDAR proxy read/write source; auto-provisions NDAR-1 + NDMR for log month" }
                     }
@@ -341,6 +341,7 @@ flowchart TD
                         "System loads permit template PCS rows flagged for NDMR.",
                         "If none found, page shows guided status message describing missing setup.",
                         "Chemistry/template entry values are saved on WWChar + WWCharTemplateValue rows.",
+                        "Flow Measuring Point and Parameter Monitoring Point selections are stored on WWChar and drive NDMR PDF header checkboxes.",
                         "ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours) are proxy fields: WWChar reads/writes these values through Operator Logs for each exact date.",
                         "If a day value is edited in WWChar and no Operator Log exists for that date, SAM creates a log record and saves canonical values there.",
                         "After WWChar + template values are saved, MonthlyReportProvisionerService ensures NDMR (IrrRprt) exists for that facility/month/year (create only if missing)."
@@ -398,6 +399,22 @@ flowchart TD
                 },
                 new ProjectStepFlowViewModel
                 {
+                    Name = "NDMR Reports",
+                    Steps =
+                    {
+                        "Company Admin opens Reports > NDMR and selects a monthly IrrRprt record (or uses Generate when irrigation data exists for the period).",
+                        "Export PDF and Export Excel both use the NDMR record id directly — a matching NDAR-1 report is not required.",
+                        "Export resolves facility/month/year from IrrRprt, then aggregates live WWChar, GWMonit, OperatorLog, and permit-template PCS rows flagged for NDMR.",
+                        "PDF uses template Non-Discharge Monitoring Report (NDMR) Form 0312.pdf with coordinates in Utilities/NdmrPdfCalibration.cs.",
+                        "PDF header PPI is always exported as 002; Flow Measuring Point and Parameter Monitoring Point checkboxes come from WWChar.",
+                        "PCS 50050 Flow exports in MGD with daily values formatted 0.000; permit monthly average limit converted from GPD to MGD (e.g. 1076000 → 1.076).",
+                        "First two daily columns (ORC Arrival Time, ORC Time On Site) use canonical Operator Logs; footer rows and daily cells are vertically centered.",
+                        "Certification page uses WWChar lab options and sampling persons; compliance checkbox uses IrrRprt.ComplianceStatus.",
+                        "Short-month exports only build DateTime values for valid days in the month (no day-31 errors for April, June, September, November, or February)."
+                    }
+                },
+                new ProjectStepFlowViewModel
+                {
                     Name = "Operator Logs",
                     Steps =
                     {
@@ -448,7 +465,26 @@ flowchart TD
                         new List<string> { "Monthly App Volume", "Volume(gal) = DailyLoading(in) * Area(acres) * 27,154", "Used in monthly application create/edit flow." },
                         new List<string> { "NDAR Daily Loading", "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,154)", "Derived for NDAR displays/totals from stored volume." },
                         new List<string> { "Monthly Loading", "Sum of daily loading values", "Per field." },
-                        new List<string> { "12-Month Floating Total", "Current month monthly loading + previous 11 months monthly loading", "Per field." }
+                        new List<string> { "12-Month Floating Total", "Current month monthly loading + previous 11 months monthly loading", "Per field." },
+                        new List<string> { "NDMR Flow (PCS 50050)", "Values >= 100 treated as GPD and divided by 1,000,000; otherwise assumed MGD", "Exported as 0.000 in PDF and Excel via NdmrFlowFormatting." }
+                    }
+                },
+                new ProjectTableViewModel
+                {
+                    Caption = "NDMR PDF Field Mapping (Form 03-12)",
+                    Headers = { "Form Label", "Primary Source", "Fallback / Notes" },
+                    Rows =
+                    {
+                        new List<string> { "Export anchor", "IrrRprt (facility + month + year)", "ReportsController.ExportNDMRReportPdf / NDMRService.ExportToExcelAsync; NDAR-1 not required." },
+                        new List<string> { "PPI", "Constant 002", "Drawn on every NDMR PDF export." },
+                        new List<string> { "Flow Measuring Point", "WWChar.FlowMeasuringPoint", "PDF draws X in calibrated checkbox slot (Influent / Effluent / No flow generated)." },
+                        new List<string> { "Parameter Monitoring Point", "WWChar.ParameterMonitoringPoint", "PDF draws X in calibrated checkbox slot (Influent / Effluent / Groundwater Lowering / Surface Water)." },
+                        new List<string> { "PCS 50050 units", "Constant MGD", "Gray patch covers pre-printed GPD on template; NdmrFlowFormatting.FlowUnitsLabel." },
+                        new List<string> { "PCS 50050 daily values", "WWChar.FlowRateDaily + WWCharTemplateValue fallback", "Formatted 0.000; GPD magnitudes normalized to MGD." },
+                        new List<string> { "PCS 50050 Monthly Avg. Limit", "FacilityPermitTemplateParameter.MonthlyAverageLimit (or geometric mean)", "Converted GPD → MGD via NdmrFlowFormatting (0.000); e.g. 1076000 → 1.076." },
+                        new List<string> { "ORC Arrival / Time On Site", "OperatorLog (canonical)", "First log by arrival time; canonical log for time on site." },
+                        new List<string> { "Other parameters", "WWChar arrays + GWMonit + WWCharTemplateValue", "Template-driven PCS columns from active permit version." },
+                        new List<string> { "Compliance (page 2)", "IrrRprt.ComplianceStatus", "Compliant / Non-compliant checkbox marks." }
                     }
                 },
                 new ProjectTableViewModel
@@ -490,7 +526,7 @@ flowchart TD
                     Rows =
                     {
                         new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Permit number and county from resolved FacilityPermit for report month (Gw59FacilityFieldResolver)", "Auto-created/refreshed from application/operator logs; grid edit can reverse-write operational rows; export layout includes facility/field checkboxes and footer columns through V." },
-                        new List<string> { "NDMR", "WWChar + GWMonit + OperatorLog + permit template PCS rows", "Permit number/version and county from FacilityPermit; certification page uses WWChar LabOptionId + SecondaryLabOptionId and SamplingPerson1/2", "IrrRprt identity auto-created from operator logs or WWChar; export still aggregates live operational data; first two daily columns use canonical Operator Logs; PDF compliance uses X-only checkbox marks with no signature dates." },
+                        new List<string> { "NDMR", "IrrRprt + WWChar + GWMonit + OperatorLog + permit template PCS rows", "PPI 002; Flow/Parameter monitoring points from WWChar; permit number/county from FacilityPermit; certification from WWChar labs/sampling persons", "Export uses IrrRprt id directly (NDAR-1 not required); aggregates live operational data; PCS 50050 in MGD 0.000 format including monthly avg limit; PDF checkbox marks via NdmrPdfCalibration." },
                         new List<string> { "NDMLR (annual)", "NDAR-1 + GWMonit + sprayfield volumes", "Permit number and county from resolved FacilityPermit for report period", "Identity row auto-created from application logs (window end = application month/year); export math runs at export time." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
                         new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + CompanyLabOption + MonitoringWell + Facility", "Permit version resolved by facility default selection or sample date; address/county from permit; operation type checkboxes from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. Lab from GWMonit.LabOptionId (CompanyLabOption); no. of wells from permit sprayfield count with monitoring-well fallback." },
@@ -761,42 +797,83 @@ flowchart TD
                 {
                     Id = "trace-flow-50050",
                     KeywordOrProperty = "Flow (PCS 50050)",
-                    Aliases = { "50050", "Flow", "GPD" },
-                    Entity = "PcsParameterCatalog + FacilityPermitTemplateParameter",
-                    StorageField = "PcsCode=50050 template row (required)",
-                    UsedInModule = "System Admin > Permit Template setup",
-                    FormulaOrTransformation = "Template gate requires Flow row before permit template activation",
-                    ReportOutput = "NDMR first parameter position / required output structure",
-                    FallbackOrValidation = "Template publish/usage blocked when 50050 is missing.",
+                    Aliases = { "50050", "Flow", "MGD", "GPD" },
+                    Entity = "WWChar + PcsParameterCatalog + FacilityPermitTemplateParameter",
+                    StorageField = "FlowRateDaily / WWCharTemplateValue; catalog PCS 50050 units MGD",
+                    UsedInModule = "Operational Data > WWChar + Reports > NDMR",
+                    FormulaOrTransformation = "NdmrFlowFormatting: values with magnitude >= 100 treated as GPD and divided by 1,000,000; exported as 0.000 MGD in PDF and Excel",
+                    ReportOutput = "NDMR flow column (first parameter position); units labeled MGD; monthly avg limit in MGD 0.000",
+                    FallbackOrValidation = "Permit template must include required PCS 50050 row; export blocked if missing.",
                     Reference = new TraceReferenceViewModel
                     {
-                        Label = "Permit Template Requirement",
-                        Location = "Permit Template validation/service logic"
+                        Label = "NDMR Flow Formatting",
+                        Location = "Utilities/NdmrFlowFormatting.cs + Controllers/ReportsController.cs + Services/Implementations/NDMRService.cs"
                     },
                     UsedByReports = { "NDMR" },
                     Steps =
                     {
-                        new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "Admin adds PCS 50050 in permit template parameters." },
-                        new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "Stored as permit-bound template row with required flag." },
-                        new TraceStepViewModel { Order = 3, Label = "Validation", Detail = "Template enforce rule checks for required Flow presence." },
-                        new TraceStepViewModel { Order = 4, Label = "Report Surface", Detail = "NDMR output uses Flow as required lead behavior." }
+                        new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "Daily flow entered in WWChar FlowRateDaily or template value rows for PCS 50050." },
+                        new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "Raw values stored on WWChar; permit catalog/template use MGD for PCS 50050." },
+                        new TraceStepViewModel { Order = 3, Label = "Computation", Detail = "Export normalizes GPD magnitudes to MGD and formats 0.000." },
+                        new TraceStepViewModel { Order = 4, Label = "Report Surface", Detail = "PDF Form 03-12 flow column and Excel PPI sheets including monthly avg limit in MGD." }
                     },
                     Formulas =
                     {
                         new TraceFormulaViewModel
                         {
+                            Name = "GPD to MGD normalization",
+                            Expression = "MGD = value / 1,000,000 when |value| >= 100; else value treated as MGD",
+                            Notes = "Used for daily flow and summary rows on export."
+                        },
+                        new TraceFormulaViewModel
+                        {
                             Name = "Template gate",
                             Expression = "Permit template must include PCS 50050 Flow as required",
-                            Notes = "Precondition for expected NDMR structure."
+                            Notes = "Precondition for NDMR export."
                         }
                     },
                     Usages =
                     {
-                        new TraceUsageViewModel { Module = "System Admin", Report = "NDMR", Destination = "Required template parameter structure." }
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDMR", Destination = "Flow column daily values, averages, and MGD unit label." }
                     },
                     FallbackRules =
                     {
-                        new TraceFallbackRuleViewModel { Condition = "50050 missing", Behavior = "Template cannot be activated/used for compliant NDMR flow." }
+                        new TraceFallbackRuleViewModel { Condition = "50050 missing from template", Behavior = "Export fails with business-rule message." },
+                        new TraceFallbackRuleViewModel { Condition = "Monthly Avg. Limit stored as GPD magnitude", Behavior = "Values >= 100 divided by 1,000,000 and shown as MGD (0.000)." }
+                    }
+                },
+                new TraceabilityItemViewModel
+                {
+                    Id = "trace-ndmr-export",
+                    KeywordOrProperty = "NDMR export / IrrRprt export",
+                    Aliases = { "ExportNDMRReportPdf", "NDMR PDF", "NDMR Excel", "Form 0312", "NdmrPdfCalibration" },
+                    Entity = "IrrRprt",
+                    StorageField = "FacilityId, Month, Year, ComplianceStatus",
+                    UsedInModule = "Reports > NDMR",
+                    FormulaOrTransformation = "Export loads IrrRprt by id; BuildNdmrPdfSnapshotAsync aggregates operational sources for facility/month/year",
+                    ReportOutput = "NDMR PDF (Form 03-12) and Excel workbook",
+                    FallbackOrValidation = "NDMR record must exist; NDAR-1 is not required. Permit template must include PCS 50050.",
+                    Reference = new TraceReferenceViewModel
+                    {
+                        Label = "NDMR Export Pipeline",
+                        Location = "Controllers/ReportsController.cs + Services/Implementations/NDMRService.cs + Utilities/NdmrPdfCalibration.cs"
+                    },
+                    UsedByReports = { "NDMR" },
+                    Steps =
+                    {
+                        new TraceStepViewModel { Order = 1, Label = "Anchor", Detail = "User exports from NDMR list/details using IrrRprt id." },
+                        new TraceStepViewModel { Order = 2, Label = "Resolve period", Detail = "Facility, month, and year taken from IrrRprt." },
+                        new TraceStepViewModel { Order = 3, Label = "Aggregate", Detail = "WWChar, GWMonit, OperatorLog, and NDMR permit-template rows loaded for the period." },
+                        new TraceStepViewModel { Order = 4, Label = "Render", Detail = "PDF drawn on Form 0312 template or Excel populated from NDMR template workbook." }
+                    },
+                    Usages =
+                    {
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDMR", Destination = "Download PDF / Download Excel actions on NDMR screens." }
+                    },
+                    FallbackRules =
+                    {
+                        new TraceFallbackRuleViewModel { Condition = "NDMR record not found", Behavior = "Export returns not-found message." },
+                        new TraceFallbackRuleViewModel { Condition = "No NDAR-1 for same month", Behavior = "Export still succeeds; NDAR-1 is independent." }
                     }
                 },
                 new TraceabilityItemViewModel
@@ -1054,6 +1131,8 @@ flowchart TD
                         new List<string> { "No permit versions for facility", "WWChar template section shows setup warning", "Add permit version in System Administration > Facilities > Permit Versions." },
                         new List<string> { "Permit versions exist but none active for month/year", "WWChar shows date-range warning", "Adjust effective dates or application/report period." },
                         new List<string> { "Permit active but no NDMR template rows", "WWChar shows template-row warning", "Add PCS rows under permit version template." },
+                        new List<string> { "NDMR export fails — report not found", "ExportNDMRReportPdf / ExportNDMRReport could not load IrrRprt by id", "Open Reports > NDMR and export from an existing record, or Generate NDMR for the facility/month/year first." },
+                        new List<string> { "NDMR PDF missing flow or chemistry values", "Source WWChar/GWMonit/OperatorLog data missing for that month", "Enter wastewater monitoring and operator log data for the export period; confirm permit template PCS rows exist." },
                         new List<string> { "Report missing in Reports list after operational save", "NDAR-1 auto-create may have failed (check logs); NDMR is deferred until application logs exist for that month", "Confirm save succeeded; for operator-log-only months expect NDAR-1 but not NDMR; retry save or use Reports > Generate." },
                         new List<string> { "Duplicate report on manual Generate", "System reuses existing NDAR-1/NDMLR or IrrRprt for facility/month/year", "Expected idempotent behavior; operational auto-create uses the same uniqueness rules." },
                         new List<string> { "Permit unarchive causes overlap", "Unarchive blocked with message", "Adjust date ranges or archive conflicting active permit." },
@@ -1097,6 +1176,7 @@ flowchart TD
                         "Confirm required operational records exist for month/year (saving data may have already auto-created NDAR-1, NDMR, or NDMLR).",
                         "Check Reports lists before using manual Generate — duplicate Generate reuses the existing record.",
                         "For WWChar/NDMR paths, confirm permit version + template PCS setup.",
+                        "For NDMR export, confirm the IrrRprt record exists — NDAR-1 is not required for PDF/Excel download.",
                         "Check compliance warnings shown on entry pages; resolve prerequisites."
                     }
                 }

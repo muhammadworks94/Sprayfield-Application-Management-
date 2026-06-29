@@ -171,25 +171,10 @@ public class NDMRService : INDMRService
     }
 
     private static IReadOnlyList<(string Text, bool Selected)> BuildFlowMonitoringPointOptions(FlowMeasuringPointEnum? selected)
-    {
-        return new List<(string Text, bool Selected)>
-        {
-            ("Influent", selected == FlowMeasuringPointEnum.Influent),
-            ("Effluent", selected == FlowMeasuringPointEnum.Effluent),
-            ("No flow generated", selected == FlowMeasuringPointEnum.NoFlowGenerated)
-        };
-    }
+        => NdmrMonitoringPointOptions.BuildFlowOptions(selected);
 
     private static IReadOnlyList<(string Text, bool Selected)> BuildParameterMonitoringPointOptions(ParameterMonitoringPointEnum? selected)
-    {
-        return new List<(string Text, bool Selected)>
-        {
-            ("Influent", selected == ParameterMonitoringPointEnum.Influent),
-            ("Effluent", selected == ParameterMonitoringPointEnum.Effluent),
-            ("Groundwater Lowering", selected == ParameterMonitoringPointEnum.GroundwaterLowering),
-            ("Surface Water", selected == ParameterMonitoringPointEnum.SurfaceWater)
-        };
-    }
+        => NdmrMonitoringPointOptions.BuildParameterOptions(selected);
 
     private static void WriteMonitoringPointOptions(
         IXLCell cell,
@@ -272,23 +257,28 @@ public class NDMRService : INDMRService
         return months.Any(m => m == month);
     }
 
-    private static string BuildDailyLimitText(FacilityPermitTemplateParameter row)
+    private static string BuildDailyLimitText(FacilityPermitTemplateParameter row, string pcsCode)
     {
         if (row.DailyMaximumLimit.HasValue)
         {
-            return row.DailyMaximumLimit.Value.ToString("0.##");
+            return row.DailyMaximumLimit.Value.ToString(NdmrFlowFormatting.IsFlowPcs(pcsCode) ? NdmrFlowFormatting.FlowNumericFormat : "0.##");
         }
 
         if (row.DailyMinimumLimit.HasValue)
         {
-            return row.DailyMinimumLimit.Value.ToString("0.##");
+            return row.DailyMinimumLimit.Value.ToString(NdmrFlowFormatting.IsFlowPcs(pcsCode) ? NdmrFlowFormatting.FlowNumericFormat : "0.##");
         }
 
         return string.Empty;
     }
 
-    private static string BuildMonthlyLimitText(FacilityPermitTemplateParameter row)
+    private static string BuildMonthlyLimitText(FacilityPermitTemplateParameter row, string pcsCode)
     {
+        if (NdmrFlowFormatting.IsFlowPcs(pcsCode))
+        {
+            return NdmrFlowFormatting.BuildFlowMonthlyLimitText(row);
+        }
+
         if (row.MonthlyAverageLimit.HasValue)
         {
             return row.MonthlyAverageLimit.Value.ToString("0.##");
@@ -429,33 +419,34 @@ public class NDMRService : INDMRService
             avgCell.Value = averageValue;
             maxCell.Value = values.Max();
             minCell.Value = values.Min();
-            avgCell.Style.NumberFormat.Format = "0.00";
-            maxCell.Style.NumberFormat.Format = "0.00";
-            minCell.Style.NumberFormat.Format = "0.00";
+            var summaryFormat = NdmrFlowFormatting.IsFlowPcs(parameter.PcsCode)
+                ? NdmrFlowFormatting.FlowNumericFormat
+                : "0.00";
+            avgCell.Style.NumberFormat.Format = summaryFormat;
+            maxCell.Style.NumberFormat.Format = summaryFormat;
+            minCell.Style.NumberFormat.Format = summaryFormat;
         }
     }
 
     /// <summary>
-    /// Exports an NDMR Excel file for the specified NDAR-1 report.
-    /// The NDAR-1 report is used only as a convenient way to select
-    /// the facility, month, and year for the monitoring period.
+    /// Exports an NDMR Excel file for the specified NDMR report.
     /// </summary>
-    public async Task<byte[]> ExportToExcelAsync(Guid ndar1Id)
+    public async Task<byte[]> ExportToExcelAsync(Guid ndmrId)
     {
-        var ndar1 = await _context.NDAR1s
+        var ndmrReport = await _context.IrrRprts
             .Include(r => r.Facility)
             .Include(r => r.Company)
-            .FirstOrDefaultAsync(r => r.Id == ndar1Id);
+            .FirstOrDefaultAsync(r => r.Id == ndmrId);
 
-        if (ndar1 == null)
-            throw new EntityNotFoundException(nameof(NDAR1), ndar1Id);
+        if (ndmrReport == null)
+            throw new EntityNotFoundException(nameof(IrrRprt), ndmrId);
 
-        var facility = ndar1.Facility;
+        var facility = ndmrReport.Facility;
         if (facility == null)
-            throw new BusinessRuleException("Facility not found for this NDAR-1 report.");
+            throw new BusinessRuleException("Facility not found for this NDMR report.");
 
-        var month = (int)ndar1.Month;
-        var year = ndar1.Year;
+        var month = (int)ndmrReport.Month;
+        var year = ndmrReport.Year;
         var startDate = new DateTime(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
         var daysInMonth = DateTime.DaysInMonth(year, month);
@@ -487,7 +478,7 @@ public class NDMRService : INDMRService
             flowWorksheet,
             facility,
             permit,
-            ndar1.Month,
+            ndmrReport.Month,
             year,
             "002",
             "00310",
@@ -534,9 +525,11 @@ public class NDMRService : INDMRService
                     name = string.IsNullOrWhiteSpace(code) ? string.Empty : $"PCS {code}";
                 }
 
-                var units = row.UnitsOverride
-                    ?? row.PcsParameterCatalog?.AcceptedUnits
-                    ?? string.Empty;
+                var units = NdmrFlowFormatting.IsFlowPcs(code)
+                    ? NdmrFlowFormatting.FlowUnitsLabel
+                    : row.UnitsOverride
+                        ?? row.PcsParameterCatalog?.AcceptedUnits
+                        ?? string.Empty;
 
                 return new NdmrParameterRow
                 {
@@ -589,12 +582,7 @@ public class NDMRService : INDMRService
             .ThenByDescending(o => o.CreatedDate)
             .ToListAsync();
 
-        var irrigationReport = await _context.IrrRprts
-            .Where(i => i.FacilityId == facility.Id &&
-                        (int)i.Month == month &&
-                        i.Year == year)
-            .OrderByDescending(i => i.UpdatedDate)
-            .FirstOrDefaultAsync();
+        var irrigationReport = ndmrReport;
 
         var parameterChunks = parameterRows
             .Select((row, idx) => new { row, idx })
@@ -635,7 +623,7 @@ public class NDMRService : INDMRService
                 worksheet,
                 facility,
                 permit,
-                ndar1.Month,
+                ndmrReport.Month,
                 year,
                 "002",
                 chunk.FirstOrDefault()?.PcsCode ?? "50050",
@@ -670,11 +658,13 @@ public class NDMRService : INDMRService
                 var parameter = chunk[slot];
                 codeCell.Value = parameter.PcsCode;
                 nameCell.Value = parameter.DisplayName;
-                unitCell.Value = parameter.Units;
+                unitCell.Value = NdmrFlowFormatting.IsFlowPcs(parameter.PcsCode)
+                    ? NdmrFlowFormatting.FlowUnitsLabel
+                    : parameter.Units;
                 samplingCell.Value = parameter.TemplateRow.SampleType.ToString();
                 frequencyCell.Value = parameter.TemplateRow.MeasurementFrequency.ToDisplayLabel();
-                monthlyLimitCell.Value = BuildMonthlyLimitText(parameter.TemplateRow);
-                dailyLimitCell.Value = BuildDailyLimitText(parameter.TemplateRow);
+                monthlyLimitCell.Value = BuildMonthlyLimitText(parameter.TemplateRow, parameter.PcsCode);
+                dailyLimitCell.Value = BuildDailyLimitText(parameter.TemplateRow, parameter.PcsCode);
             }
 
             for (int day = 1; day <= daysInMonth; day++)
@@ -731,8 +721,15 @@ public class NDMRService : INDMRService
                     value ??= ResolveFallbackDailyValue(parameter.PcsCode, currentDate, wwChar, gwMonits);
                     if (value.HasValue)
                     {
+                        if (NdmrFlowFormatting.IsFlowPcs(parameter.PcsCode))
+                        {
+                            value = NdmrFlowFormatting.NormalizeFlowValueToMgd(value);
+                        }
+
                         valueCell.Value = value.Value;
-                        valueCell.Style.NumberFormat.Format = "0.00";
+                        valueCell.Style.NumberFormat.Format = NdmrFlowFormatting.IsFlowPcs(parameter.PcsCode)
+                            ? NdmrFlowFormatting.FlowNumericFormat
+                            : "0.00";
                     }
                 }
             }
@@ -777,12 +774,12 @@ public class NDMRService : INDMRService
         workbook.SaveAs(stream);
 
         _logger.LogInformation(
-            "Generated NDMR Excel report for facility {FacilityName} ({FacilityId}) for {Month}/{Year} based on NDAR-1 report {ReportId}.",
+            "Generated NDMR Excel report for facility {FacilityName} ({FacilityId}) for {Month}/{Year} based on NDMR report {ReportId}.",
             facility.Name,
             facility.Id,
             month,
             year,
-            ndar1Id);
+            ndmrId);
 
         return stream.ToArray();
     }

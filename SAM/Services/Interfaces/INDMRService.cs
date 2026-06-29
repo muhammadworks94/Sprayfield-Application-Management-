@@ -9,12 +9,10 @@ namespace SAM.Services.Interfaces;
 public interface INDMRService
 {
     /// <summary>
-    /// Exports an NDMR Excel file for the specified NDAR-1 report.
-    /// The NDAR-1 report provides the facility, month, and year context
-    /// used to aggregate monitoring data into the NDMR template.
+    /// Exports an NDMR Excel file for the specified NDMR report.
     /// </summary>
-    /// <param name="ndar1Id">The ID of the NDAR-1 report to base the NDMR on.</param>
+    /// <param name="ndmrId">The ID of the NDMR (IrrRprt) report to export.</param>
     /// <returns>Byte array containing the generated Excel workbook.</returns>
-    Task<byte[]> ExportToExcelAsync(Guid ndar1Id);
+    Task<byte[]> ExportToExcelAsync(Guid ndmrId);
 }
 

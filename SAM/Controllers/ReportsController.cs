@@ -1583,49 +1583,29 @@ public class ReportsController : BaseController
     [HttpGet]
     public async Task<IActionResult> ExportNDMRReport(Guid id)
     {
-        NDAR1? report;
         var ndmrReport = await _irrRprtService.GetByIdAsync(id);
-
-        if (ndmrReport != null)
-        {
-            report = await _context.NDAR1s
-                .AsNoTracking()
-                .Include(r => r.Facility)
-                .FirstOrDefaultAsync(r =>
-                    r.CompanyId == ndmrReport.CompanyId &&
-                    r.FacilityId == ndmrReport.FacilityId &&
-                    r.Year == ndmrReport.Year &&
-                    r.Month == ndmrReport.Month);
-        }
-        else
-        {
-            report = await _ndar1Service.GetByIdAsync(id);
-        }
-
-        if (report == null)
+        if (ndmrReport == null)
         {
             if (IsFetchRequest())
             {
-                return BadRequest(new ProblemDetails
+                return NotFound(new ProblemDetails
                 {
                     Title = "NDMR export failed",
-                    Detail = "No matching NDAR-1 report exists for this NDMR period.",
-                    Status = StatusCodes.Status400BadRequest
+                    Detail = "NDMR report not found.",
+                    Status = StatusCodes.Status404NotFound
                 });
             }
 
-            TempData["ErrorMessage"] = "No matching NDAR-1 report exists for this NDMR period.";
-            return ndmrReport != null
-                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
-                : RedirectToAction(nameof(NDAR1Reports));
+            TempData["ErrorMessage"] = "NDMR report not found.";
+            return RedirectToAction(nameof(NDMRReports));
         }
 
-        await EnsureCompanyAccessAsync(report.CompanyId);
+        await EnsureCompanyAccessAsync(ndmrReport.CompanyId);
 
         try
         {
-            var excelBytes = await _ndmrService.ExportToExcelAsync(report.Id);
-            var fileName = $"NDMR_{report.Facility?.Name}_{report.Month}_{report.Year}.xlsx";
+            var excelBytes = await _ndmrService.ExportToExcelAsync(ndmrReport.Id);
+            var fileName = $"NDMR_{ndmrReport.Facility?.Name}_{ndmrReport.Month}_{ndmrReport.Year}.xlsx";
             return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
         catch (Exception ex)
@@ -1641,59 +1621,37 @@ public class ReportsController : BaseController
             }
 
             TempData["ErrorMessage"] = $"Error exporting NDMR report: {ex.Message}";
-            return ndmrReport != null
-                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
-                : RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+            return RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id });
         }
     }
 
     [HttpGet]
     public async Task<IActionResult> ExportNDMRReportPdf(Guid id, bool showGrid = false)
     {
-        NDAR1? report;
         var ndmrReport = await _irrRprtService.GetByIdAsync(id);
-
-        if (ndmrReport != null)
-        {
-            report = await _context.NDAR1s
-                .AsNoTracking()
-                .Include(r => r.Facility)
-                .FirstOrDefaultAsync(r =>
-                    r.CompanyId == ndmrReport.CompanyId &&
-                    r.FacilityId == ndmrReport.FacilityId &&
-                    r.Year == ndmrReport.Year &&
-                    r.Month == ndmrReport.Month);
-        }
-        else
-        {
-            report = await _ndar1Service.GetByIdAsync(id);
-        }
-
-        if (report == null)
+        if (ndmrReport == null)
         {
             if (IsFetchRequest())
             {
-                return BadRequest(new ProblemDetails
+                return NotFound(new ProblemDetails
                 {
                     Title = "NDMR PDF export failed",
-                    Detail = "No matching NDAR-1 report exists for this NDMR period.",
-                    Status = StatusCodes.Status400BadRequest
+                    Detail = "NDMR report not found.",
+                    Status = StatusCodes.Status404NotFound
                 });
             }
 
-            TempData["ErrorMessage"] = "No matching NDAR-1 report exists for this NDMR period.";
-            return ndmrReport != null
-                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
-                : RedirectToAction(nameof(NDAR1Reports));
+            TempData["ErrorMessage"] = "NDMR report not found.";
+            return RedirectToAction(nameof(NDMRReports));
         }
 
-        await EnsureCompanyAccessAsync(report.CompanyId);
+        await EnsureCompanyAccessAsync(ndmrReport.CompanyId);
 
         try
         {
-            var pdfBytes = await RenderNdmrPdfAsync(report, showGrid);
-            var safeFacility = Regex.Replace(report.Facility?.Name ?? "Facility", @"[^\w\-]+", "_");
-            var fileName = $"NDMR_{safeFacility}_{report.Month}_{report.Year}.pdf";
+            var pdfBytes = await RenderNdmrPdfAsync(ndmrReport, showGrid);
+            var safeFacility = Regex.Replace(ndmrReport.Facility?.Name ?? "Facility", @"[^\w\-]+", "_");
+            var fileName = $"NDMR_{safeFacility}_{ndmrReport.Month}_{ndmrReport.Year}.pdf";
             return File(pdfBytes, "application/pdf", fileName);
         }
         catch (Exception ex)
@@ -1709,9 +1667,7 @@ public class ReportsController : BaseController
             }
 
             TempData["ErrorMessage"] = $"Error exporting NDMR PDF: {ex.Message}";
-            return ndmrReport != null
-                ? RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id })
-                : RedirectToAction(nameof(NDAR1ReportDetails), new { id });
+            return RedirectToAction(nameof(NDMRReportDetails), new { id = ndmrReport.Id });
         }
     }
 
@@ -3190,9 +3146,12 @@ public class ReportsController : BaseController
         public required List<List<NdmrPdfParameter>> ParameterChunks { get; init; }
         public NdmrPdfParameter? FlowParameter { get; init; }
         public ComplianceStatusEnum? ComplianceStatus { get; init; }
+        public required string PpiLabel { get; init; }
+        public FlowMeasuringPointEnum? FlowMeasuringPoint { get; init; }
+        public ParameterMonitoringPointEnum? ParameterMonitoringPoint { get; init; }
     }
 
-    private async Task<byte[]> RenderNdmrPdfAsync(NDAR1 report, bool showGrid = false)
+    private async Task<byte[]> RenderNdmrPdfAsync(IrrRprt report, bool showGrid = false)
     {
         _ = report ?? throw new ArgumentNullException(nameof(report));
         var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Monitoring Report (NDMR) Form 0312.pdf");
@@ -3219,10 +3178,13 @@ public class ReportsController : BaseController
         const double day1Y = 154.7d;
         const double dayRowHeight = 11.66d;
         const double orcArrivalX = 39d;
+        const double orcArrivalWidth = 36d;
         const double orcTimeOnSiteX = 78d;
-        // Footer block anchors off daily-grid end so values never collide with day rows.
-        var footerStartY = day1Y + (31 * dayRowHeight) + 2d;
-        const double footerRowStep = 11.5d;
+        const double orcTimeOnSiteWidth = 30d;
+        // Footer rows continue the daily grid rhythm (row 32+).
+        var footerStartY = day1Y + (31 * dayRowHeight);
+        var footerRowHeight = dayRowHeight;
+        var footerRowStep = dayRowHeight;
         var avgY = footerStartY;
         var maxY = footerStartY + footerRowStep;
         var minY = footerStartY + (2d * footerRowStep);
@@ -3246,9 +3208,30 @@ public class ReportsController : BaseController
             Draw(gfx, currentPage.ToString(), font, new NdarPdfPoint(685, 16));
             Draw(gfx, totalPages.ToString(), font, new NdarPdfPoint(720, 16));
 
+            if (chunkIndex == 0)
+            {
+                DrawNdmrHeader(gfx, snapshot, boldFont);
+            }
+
             if (chunkIndex == 0 && snapshot.FlowParameter is { } flow)
             {
-                DrawFlowColumn(gfx, flow, flowColumn, font, avgY, maxY, minY, sampleTypeY, monthlyLimitY, dailyLimitY, sampleFreqY, snapshot.DaysInMonth, day1Y, dayRowHeight);
+                DrawFlowColumn(
+                    gfx,
+                    flow,
+                    flowColumn,
+                    font,
+                    boldFont,
+                    avgY,
+                    maxY,
+                    minY,
+                    sampleTypeY,
+                    monthlyLimitY,
+                    dailyLimitY,
+                    sampleFreqY,
+                    snapshot.DaysInMonth,
+                    day1Y,
+                    dayRowHeight,
+                    footerRowHeight);
             }
 
             for (var slot = 0; slot < chunk.Count && slot < parameterColumns.Count; slot++)
@@ -3265,26 +3248,26 @@ public class ReportsController : BaseController
                     col.Width,
                     col.NameHeight);
                 DrawInCell(gfx, p.Units, boldFont, col.Left, col.UnitsY, col.Width, bold: true);
-                DrawInCell(gfx, p.SampleType, font, col.Left, sampleTypeY, col.Width);
-                DrawInCell(gfx, p.MonthlyLimitText, font, col.Left, monthlyLimitY, col.Width);
-                DrawInCell(gfx, p.DailyLimitText, font, col.Left, dailyLimitY, col.Width);
-                DrawInCell(gfx, p.SampleFrequency, font, col.Left, sampleFreqY, col.Width);
-                DrawInCell(gfx, p.Average?.ToString("0.00"), font, col.Left, avgY, col.Width);
-                DrawInCell(gfx, p.DailyMaximum?.ToString("0.00"), font, col.Left, maxY, col.Width);
-                DrawInCell(gfx, p.DailyMinimum?.ToString("0.00"), font, col.Left, minY, col.Width);
+                DrawInCell(gfx, p.SampleType, font, col.Left, sampleTypeY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+                DrawInCell(gfx, p.MonthlyLimitText, font, col.Left, monthlyLimitY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+                DrawInCell(gfx, p.DailyLimitText, font, col.Left, dailyLimitY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+                DrawInCell(gfx, p.SampleFrequency, font, col.Left, sampleFreqY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+                DrawInCell(gfx, p.Average?.ToString("0.00"), font, col.Left, avgY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+                DrawInCell(gfx, p.DailyMaximum?.ToString("0.00"), font, col.Left, maxY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+                DrawInCell(gfx, p.DailyMinimum?.ToString("0.00"), font, col.Left, minY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
             }
 
             for (var day = 1; day <= snapshot.DaysInMonth; day++)
             {
                 var y = day1Y + ((day - 1) * dayRowHeight);
-                Draw(gfx, snapshot.OrcArrivalByDay[day - 1]?.ToString(@"hh\:mm"), font, new NdarPdfPoint(orcArrivalX, y));
-                Draw(gfx, snapshot.OrcTimeOnSiteByDay[day - 1]?.ToString("0.00"), font, new NdarPdfPoint(orcTimeOnSiteX, y));
+                DrawInCell(gfx, snapshot.OrcArrivalByDay[day - 1]?.ToString(@"hh\:mm"), font, orcArrivalX, y, orcArrivalWidth, cellHeight: dayRowHeight, verticalCenter: true);
+                DrawInCell(gfx, snapshot.OrcTimeOnSiteByDay[day - 1]?.ToString("0.00"), font, orcTimeOnSiteX, y, orcTimeOnSiteWidth, cellHeight: dayRowHeight, verticalCenter: true);
 
                 for (var slot = 0; slot < chunk.Count && slot < parameterColumns.Count; slot++)
                 {
                     var dayValue = chunk[slot].DailyValues[day - 1];
                     var col = parameterColumns[slot];
-                    DrawInCell(gfx, dayValue?.ToString("0.00"), font, col.Left, y, col.Width);
+                    DrawInCell(gfx, dayValue?.ToString("0.00"), font, col.Left, y, col.Width, cellHeight: dayRowHeight, verticalCenter: true);
                 }
             }
 
@@ -3339,7 +3322,7 @@ public class ReportsController : BaseController
         return output.ToArray();
     }
 
-    private async Task<NdmrPdfSnapshot> BuildNdmrPdfSnapshotAsync(NDAR1 report)
+    private async Task<NdmrPdfSnapshot> BuildNdmrPdfSnapshotAsync(IrrRprt report)
     {
         var facility = report.Facility
             ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId)
@@ -3411,12 +3394,6 @@ public class ReportsController : BaseController
             .AsNoTracking()
             .Where(g => g.FacilityId == report.FacilityId && g.SampleDate >= startDate && g.SampleDate <= endDate)
             .ToListAsync();
-
-        var irrigationReport = await _context.IrrRprts
-            .AsNoTracking()
-            .Where(i => i.FacilityId == report.FacilityId && (int)i.Month == monthNumber && i.Year == year)
-            .OrderByDescending(i => i.UpdatedDate)
-            .FirstOrDefaultAsync();
 
         var flowTemplateRow = permitTemplateRows.FirstOrDefault(row =>
             string.Equals(row.PcsParameterCatalog?.PcsCode, "50050", StringComparison.OrdinalIgnoreCase));
@@ -3499,7 +3476,10 @@ public class ReportsController : BaseController
             OrcTimeOnSiteByDay = orcTimeOnSite,
             ParameterChunks = chunks,
             FlowParameter = flowParameter,
-            ComplianceStatus = irrigationReport?.ComplianceStatus
+            ComplianceStatus = report.ComplianceStatus,
+            PpiLabel = "002",
+            FlowMeasuringPoint = wwChar?.FlowMeasuringPoint,
+            ParameterMonitoringPoint = wwChar?.ParameterMonitoringPoint
         };
     }
 
@@ -3521,8 +3501,12 @@ public class ReportsController : BaseController
             name = $"PCS {code}";
         }
 
-        var units = row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty;
-        var daily = Enumerable.Range(1, 31).Select(day =>
+        var units = NdmrFlowFormatting.IsFlowPcs(code)
+            ? NdmrFlowFormatting.FlowUnitsLabel
+            : row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty;
+
+        var daily = new List<decimal?>(31);
+        for (var day = 1; day <= daysInMonth; day++)
         {
             decimal? value = null;
             if (wwDailyValueByKey.TryGetValue((row.Id, day), out var wwValue))
@@ -3530,14 +3514,47 @@ public class ReportsController : BaseController
                 value = wwValue;
             }
 
-            value ??= ResolveNdmrPdfFallbackDailyValue(code, new DateTime(year, monthNumber, day), wwChar, gwMonits);
-            return value;
-        }).ToList();
+            value ??= ResolveNdmrPdfFallbackDailyValue(
+                code,
+                new DateTime(year, monthNumber, day),
+                wwChar,
+                gwMonits);
+            daily.Add(value);
+        }
+
+        for (var day = daysInMonth + 1; day <= 31; day++)
+        {
+            daily.Add(null);
+        }
 
         var days = daily.Take(daysInMonth).Where(v => v.HasValue).Select(v => v!.Value).ToList();
         decimal? average = null;
         if (days.Count > 0)
         {
+            if (NdmrFlowFormatting.IsFlowPcs(code))
+            {
+                var mgdDays = days.Select(v => NdmrFlowFormatting.NormalizeFlowValueToMgd(v)!.Value).ToList();
+                average = mgdDays.Average();
+                return new NdmrPdfParameter
+                {
+                    PcsCode = code,
+                    DisplayName = name ?? string.Empty,
+                    Units = units,
+                    SampleType = row.SampleType.ToString(),
+                    SampleFrequency = row.MeasurementFrequency.ToDisplayLabel(),
+                    MonthlyLimitText = NdmrFlowFormatting.BuildFlowMonthlyLimitText(row),
+                    DailyLimitText = row.DailyMaximumLimit.HasValue
+                        ? NdmrFlowFormatting.FormatFlowLimit(row.DailyMaximumLimit)
+                        : row.DailyMinimumLimit.HasValue
+                            ? NdmrFlowFormatting.FormatFlowLimit(row.DailyMinimumLimit)
+                            : string.Empty,
+                    DailyValues = daily,
+                    Average = average,
+                    DailyMaximum = mgdDays.Max(),
+                    DailyMinimum = mgdDays.Min()
+                };
+            }
+
             average = string.Equals(code, "31616", StringComparison.OrdinalIgnoreCase) && days.All(v => v > 0m)
                 ? (decimal)Math.Exp(days.Select(v => Math.Log((double)v)).Average())
                 : days.Average();
@@ -3550,9 +3567,11 @@ public class ReportsController : BaseController
             Units = units,
             SampleType = row.SampleType.ToString(),
             SampleFrequency = row.MeasurementFrequency.ToDisplayLabel(),
-            MonthlyLimitText = row.MonthlyAverageLimit?.ToString("0.##")
-                ?? row.MonthlyGeometricMeanLimit?.ToString("0.##")
-                ?? string.Empty,
+            MonthlyLimitText = NdmrFlowFormatting.IsFlowPcs(code)
+                ? NdmrFlowFormatting.BuildFlowMonthlyLimitText(row)
+                : row.MonthlyAverageLimit?.ToString("0.##")
+                    ?? row.MonthlyGeometricMeanLimit?.ToString("0.##")
+                    ?? string.Empty,
             DailyLimitText = row.DailyMaximumLimit?.ToString("0.##")
                 ?? row.DailyMinimumLimit?.ToString("0.##")
                 ?? string.Empty,
@@ -3568,6 +3587,7 @@ public class ReportsController : BaseController
         NdmrPdfParameter flow,
         NdmrParameterColumnSlot col,
         XFont font,
+        XFont boldFont,
         double avgY,
         double maxY,
         double minY,
@@ -3577,22 +3597,100 @@ public class ReportsController : BaseController
         double sampleFreqY,
         int daysInMonth,
         double day1Y,
-        double dayRowHeight)
+        double dayRowHeight,
+        double footerRowHeight)
     {
-        DrawInCell(gfx, flow.SampleType, font, col.Left, sampleTypeY, col.Width);
-        DrawInCell(gfx, flow.MonthlyLimitText, font, col.Left, monthlyLimitY, col.Width);
-        DrawInCell(gfx, flow.DailyLimitText, font, col.Left, dailyLimitY, col.Width);
-        DrawInCell(gfx, flow.SampleFrequency, font, col.Left, sampleFreqY, col.Width);
-        DrawInCell(gfx, flow.Average?.ToString("0.00"), font, col.Left, avgY, col.Width);
-        DrawInCell(gfx, flow.DailyMaximum?.ToString("0.00"), font, col.Left, maxY, col.Width);
-        DrawInCell(gfx, flow.DailyMinimum?.ToString("0.00"), font, col.Left, minY, col.Width);
+        DrawFlowUnitsLabel(gfx, col, boldFont);
+        DrawInCell(gfx, flow.SampleType, font, col.Left, sampleTypeY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+        DrawInCell(gfx, flow.MonthlyLimitText, font, col.Left, monthlyLimitY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+        DrawInCell(gfx, flow.DailyLimitText, font, col.Left, dailyLimitY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+        DrawInCell(gfx, flow.SampleFrequency, font, col.Left, sampleFreqY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+        DrawInCell(gfx, NdmrFlowFormatting.FormatFlowValue(flow.Average), font, col.Left, avgY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+        DrawInCell(gfx, NdmrFlowFormatting.FormatFlowValue(flow.DailyMaximum), font, col.Left, maxY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
+        DrawInCell(gfx, NdmrFlowFormatting.FormatFlowValue(flow.DailyMinimum), font, col.Left, minY, col.Width, cellHeight: footerRowHeight, verticalCenter: true);
 
         for (var day = 1; day <= daysInMonth; day++)
         {
             var y = day1Y + ((day - 1) * dayRowHeight);
             var dayValue = flow.DailyValues[day - 1];
-            DrawInCell(gfx, dayValue?.ToString("0.00"), font, col.Left, y, col.Width);
+            DrawInCell(gfx, NdmrFlowFormatting.FormatFlowValue(dayValue), font, col.Left, y, col.Width, cellHeight: dayRowHeight, verticalCenter: true);
         }
+    }
+
+    private static void DrawFlowUnitsLabel(XGraphics gfx, NdmrParameterColumnSlot col, XFont boldFont)
+    {
+        var cover = NdmrPdfCalibration.FlowUnitsGpdCover;
+        var shadeBrush = new XSolidBrush(XColor.FromArgb(
+            255,
+            NdmrPdfCalibration.FlowColumnShadeRed,
+            NdmrPdfCalibration.FlowColumnShadeGreen,
+            NdmrPdfCalibration.FlowColumnShadeBlue));
+        gfx.DrawRectangle(shadeBrush, new XRect(cover.Left, cover.Top, cover.Width, cover.Height));
+        var unitsY = col.UnitsY + NdmrPdfCalibration.FlowUnitsLabelOffsetY;
+        DrawInCell(
+            gfx,
+            NdmrFlowFormatting.FlowUnitsLabel,
+            boldFont,
+            col.Left,
+            unitsY,
+            col.Width,
+            cellHeight: cover.Top + cover.Height - unitsY,
+            verticalCenter: true,
+            bold: true);
+    }
+
+    private static void DrawNdmrHeader(
+        XGraphics gfx,
+        NdmrPdfSnapshot snapshot,
+        XFont boldFont)
+    {
+        var header = NdmrPdfCalibration.Header;
+        DrawInCell(
+            gfx,
+            snapshot.PpiLabel,
+            boldFont,
+            header.Ppi.X,
+            header.HeaderRowTop,
+            header.PpiWidth,
+            cellHeight: header.HeaderRowHeight,
+            verticalCenter: true,
+            bold: true);
+
+        DrawMonitoringPointCheckboxes(
+            gfx,
+            NdmrMonitoringPointOptions.BuildFlowOptions(snapshot.FlowMeasuringPoint),
+            header.FlowOptions);
+
+        DrawMonitoringPointCheckboxes(
+            gfx,
+            NdmrMonitoringPointOptions.BuildParameterOptions(snapshot.ParameterMonitoringPoint),
+            header.ParameterOptions);
+    }
+
+    private static void DrawMonitoringPointCheckboxes(
+        XGraphics gfx,
+        IReadOnlyList<(string Text, bool Selected)> options,
+        IReadOnlyList<NdmrPdfMonitoringOptionSlot> slots)
+    {
+        for (var i = 0; i < options.Count && i < slots.Count; i++)
+        {
+            if (!options[i].Selected)
+            {
+                continue;
+            }
+
+            var slot = slots[i];
+            DrawNdmrCheckboxMark(gfx, slot);
+        }
+    }
+
+    private static void DrawNdmrCheckboxMark(XGraphics gfx, NdmrPdfMonitoringOptionSlot slot)
+    {
+        const double half = 1.85d;
+        var cx = slot.BoxLeft + (slot.BoxSize / 2d) + slot.MarkOffsetX;
+        var cy = slot.BoxTop + (slot.BoxSize / 2d) + slot.MarkOffsetY;
+        gfx.DrawLine(XPens.Black, cx - half, cy - half, cx + half, cy + half);
+        gfx.DrawLine(XPens.Black, cx + half, cy - half, cx - half, cy + half);
     }
 
     private static decimal? ResolveNdmrPdfFallbackDailyValue(
@@ -3692,13 +3790,29 @@ public class ReportsController : BaseController
         double x,
         double y,
         double width,
-        bool bold = false)
+        double? cellHeight = null,
+        bool bold = false,
+        bool verticalCenter = false)
     {
+        var value = text ?? string.Empty;
+        var height = cellHeight ?? (font.Height + 2);
+
+        if (verticalCenter)
+        {
+            gfx.DrawString(
+                value,
+                font,
+                XBrushes.Black,
+                new XRect(x, y, width, height),
+                XStringFormats.Center);
+            return;
+        }
+
         gfx.DrawString(
-            text ?? string.Empty,
+            value,
             font,
             XBrushes.Black,
-            new XRect(x, y, width, font.Height + 2),
+            new XRect(x, y, width, height),
             XStringFormats.TopCenter);
     }
 

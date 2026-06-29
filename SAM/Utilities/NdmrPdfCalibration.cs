@@ -12,6 +12,34 @@ public sealed class NdmrPdfTextSlot
     public double? BoxSize { get; init; }
 }
 
+public sealed class NdmrPdfMonitoringOptionSlot
+{
+    public double BoxLeft { get; init; }
+    public double BoxTop { get; init; }
+    public double BoxSize { get; init; } = 6.75d;
+    /// <summary>Fine-tune X mark placement on the imported template.</summary>
+    public double MarkOffsetX { get; init; }
+    public double MarkOffsetY { get; init; } = 0.5d;
+}
+
+public sealed class NdmrPdfRectSlot
+{
+    public double Left { get; init; }
+    public double Top { get; init; }
+    public double Width { get; init; }
+    public double Height { get; init; }
+}
+
+public sealed class NdmrPdfHeaderFieldMap
+{
+    public NdmrPdfTextSlot Ppi { get; init; } = null!;
+    public double PpiWidth { get; init; }
+    public double HeaderRowTop { get; init; }
+    public double HeaderRowHeight { get; init; }
+    public IReadOnlyList<NdmrPdfMonitoringOptionSlot> FlowOptions { get; init; } = Array.Empty<NdmrPdfMonitoringOptionSlot>();
+    public IReadOnlyList<NdmrPdfMonitoringOptionSlot> ParameterOptions { get; init; } = Array.Empty<NdmrPdfMonitoringOptionSlot>();
+}
+
 public sealed class NdmrParameterColumnSlot
 {
     public double Left { get; init; }
@@ -57,8 +85,57 @@ public static class NdmrPdfCalibration
     public const string TemplateFileName = "Non-Discharge Monitoring Report (NDMR) Form 0312.pdf";
     private const double CheckboxSize = 8d;
 
+    /// <summary>Pre-printed flow column stripe on the NDMR template (#cccccc).</summary>
+    public const byte FlowColumnShadeRed = 204;
+    public const byte FlowColumnShadeGreen = 204;
+    public const byte FlowColumnShadeBlue = 204;
+
     public static NdmrParameterGridMap ParameterGrid { get; } = BuildParameterGridMap();
     public static NdmrCertificationFieldMap Certification { get; } = BuildCertificationMap();
+    public static NdmrPdfHeaderFieldMap Header { get; } = BuildHeaderMap();
+
+    /// <summary>Inset patch over pre-printed GPD in the flow units cell (template-measured).</summary>
+    public static NdmrPdfRectSlot FlowUnitsGpdCover { get; } = new()
+    {
+        Left = 122.5d,
+        Top = 143.2d,
+        Width = 20d,
+        Height = 6.8d
+    };
+
+    /// <summary>Vertical fine-tune for the MGD units label in the flow column.</summary>
+    public const double FlowUnitsLabelOffsetY = 2d;
+
+    private static NdmrPdfHeaderFieldMap BuildHeaderMap() => new()
+    {
+        // Value only — "PPI:" label is pre-printed on the template.
+        Ppi = Slot(60d, 58d),
+        PpiWidth = 18d,
+        HeaderRowTop = 54d,
+        HeaderRowHeight = 10d,
+        FlowOptions = new[]
+        {
+            MonitoringOption(230.75d, 54.75d, -18.2d),
+            MonitoringOption(270.38d, 54.75d, -17d),
+            MonitoringOption(305.5d, 54.12d, -18.1d)
+        },
+        ParameterOptions = new[]
+        {
+            MonitoringOption(548.5d, 54.38d, -20.2d),
+            MonitoringOption(591.5d, 54.5d, -21.5d),
+            MonitoringOption(633.5d, 54.25d, -23d),
+            MonitoringOption(677.25d, 54.25d, -21.5d)
+        }
+    };
+
+    private static NdmrPdfMonitoringOptionSlot MonitoringOption(double boxLeft, double boxTop, double markOffsetX) =>
+        new()
+        {
+            BoxLeft = boxLeft,
+            BoxTop = boxTop,
+            MarkOffsetX = markOffsetX,
+            MarkOffsetY = 1.25d
+        };
 
     private static NdmrParameterGridMap BuildParameterGridMap() => new()
     {
