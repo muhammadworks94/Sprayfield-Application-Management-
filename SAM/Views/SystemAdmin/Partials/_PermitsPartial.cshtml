@@ -82,9 +82,17 @@
                                 @if (canManageRecords)
                                 {
                                     <td class="table-actions">
-                                        <a asp-action="FacilityPermits" asp-route-facilityId="@permit.FacilityId" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil"></i> Manage
-                                        </a>
+                                        <div class="d-flex gap-2">
+                                            @if (permit.HasPdf)
+                                            {
+                                                <a class="btn btn-sm btn-outline-primary" asp-action="FacilityPermitPdf" asp-route-permitId="@permit.Id">
+                                                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                                                </a>
+                                            }
+                                            <a asp-action="FacilityPermits" asp-route-facilityId="@permit.FacilityId" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Manage
+                                            </a>
+                                        </div>
                                     </td>
                                 }
                             </tr>

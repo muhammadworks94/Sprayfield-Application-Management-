@@ -234,7 +234,8 @@ public partial class SystemAdminController : BaseController
                         City = p.City,
                         State = p.State,
                         ZipCode = p.ZipCode,
-                        TotalNumberOfSprayfields = p.TotalNumberOfSprayfields
+                        TotalNumberOfSprayfields = p.TotalNumberOfSprayfields,
+                        HasPdf = !string.IsNullOrWhiteSpace(p.PermitPdfStoragePath)
                     })
                     .ToListAsync();
                 break;

@@ -18,4 +18,5 @@ public class PermitListItemViewModel
     public string? State { get; set; }
     public string? ZipCode { get; set; }
     public int? TotalNumberOfSprayfields { get; set; }
+    public bool HasPdf { get; set; }
 }
