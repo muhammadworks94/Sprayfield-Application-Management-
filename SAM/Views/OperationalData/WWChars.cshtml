@@ -188,6 +188,9 @@
                                     }
                                 </a>
                             </th>
+                            <th>ORC</th>
+                            <th>Flow</th>
+                            <th>pH</th>
                             <th class="table-actions"> Actions</th>
                         </tr>
                     </thead>
@@ -204,6 +207,15 @@
                                 </td>
                                 <td>@wwChar.Month</td>
                                 <td>@wwChar.Year</td>
+                                <td title="Days with ORC On Site, Arrival Time (24H), and Time on Site (hours) all entered">
+                                    @wwChar.OrcCompleteDays/@wwChar.DaysInMonth · @wwChar.OrcCompletePercent%
+                                </td>
+                                <td title="Days with Flow (GPD) entered">
+                                    @wwChar.FlowCompleteDays/@wwChar.DaysInMonth · @wwChar.FlowCompletePercent%
+                                </td>
+                                <td title="Days with pH (su) entered">
+                                    @wwChar.PhCompleteDays/@wwChar.DaysInMonth · @wwChar.PhCompletePercent%
+                                </td>
                                 <td class="table-actions">
                                     @if (canEdit)
                                     {
@@ -260,6 +272,15 @@
                             <div class="card-body d-flex flex-column">
 
                                 <dl class="row small mb-3 responsive-detail-list">
+                                    <dt class="col-5"><i class="bi bi-person-check me-1"></i>ORC</dt>
+                                    <dd class="col-7 mb-1">@wwChar.OrcCompleteDays/@wwChar.DaysInMonth · @wwChar.OrcCompletePercent%</dd>
+
+                                    <dt class="col-5"><i class="bi bi-water me-1"></i>Flow</dt>
+                                    <dd class="col-7 mb-1">@wwChar.FlowCompleteDays/@wwChar.DaysInMonth · @wwChar.FlowCompletePercent%</dd>
+
+                                    <dt class="col-5"><i class="bi bi-droplet me-1"></i>pH</dt>
+                                    <dd class="col-7 mb-1">@wwChar.PhCompleteDays/@wwChar.DaysInMonth · @wwChar.PhCompletePercent%</dd>
+
                                     <dt class="col-5"><i class="bi bi-building me-1"></i>Lab</dt>
                                     <dd class="col-7 mb-1">@((string.IsNullOrEmpty(wwChar.SelectedLabOptionName) ? "-" : wwChar.SelectedLabOptionName))</dd>
 

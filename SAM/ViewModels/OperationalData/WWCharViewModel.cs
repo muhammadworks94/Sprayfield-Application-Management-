@@ -25,6 +25,14 @@ public class WWCharViewModel
     [Display(Name = "Year")]
     [Range(2000, 2100)]
     public int Year { get; set; }
+
+    public int DaysInMonth { get; set; }
+    public int OrcCompleteDays { get; set; }
+    public int FlowCompleteDays { get; set; }
+    public int PhCompleteDays { get; set; }
+    public int OrcCompletePercent { get; set; }
+    public int FlowCompletePercent { get; set; }
+    public int PhCompletePercent { get; set; }
     
     [Display(Name = "BOD5 Daily (mg/L)")]
     public List<decimal?> BOD5Daily { get; set; } = new();

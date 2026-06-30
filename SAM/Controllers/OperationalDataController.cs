@@ -1261,6 +1261,8 @@ namespace SAM.Controllers;
             ParameterMonitoringPoint = w.ParameterMonitoringPoint
         }).ToList();
 
+        await PopulateWwCharListCompletenessAsync(items, wwChars);
+
         foreach (var item in items)
         {
             var labDisplay = await ResolveLabOptionDisplayAsync(item.LabOptionId, item.CompanyId);
@@ -3345,6 +3347,88 @@ namespace SAM.Controllers;
 
         var monitoringWells = await _lookupQueryService.GetMonitoringWellsAsync(companyId, facilityId);
         return new SelectList(monitoringWells, "Id", "WellId");
+    }
+
+    private async Task PopulateWwCharListCompletenessAsync(
+        IReadOnlyList<WWCharViewModel> items,
+        IReadOnlyList<WWChar> entities)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        var entityById = entities.ToDictionary(w => w.Id);
+        var wwCharIds = items.Select(i => i.Id).ToList();
+
+        var templateValues = await _context.WWCharTemplateValues
+            .AsNoTracking()
+            .Where(v => wwCharIds.Contains(v.WWCharId))
+            .ToListAsync();
+
+        var parameterIds = templateValues
+            .Select(v => v.FacilityPermitTemplateParameterId)
+            .Distinct()
+            .ToList();
+
+        var pcsByTemplateParameterId = parameterIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.FacilityPermitTemplateParameters
+                .AsNoTracking()
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => parameterIds.Contains(x.Id))
+                .ToDictionaryAsync(
+                    x => x.Id,
+                    x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty);
+
+        var facilityIds = items.Select(i => i.FacilityId).Distinct().ToList();
+        var minDate = items.Min(i => new DateTime(i.Year, (int)i.Month, 1));
+        var maxDate = items.Max(i => new DateTime(i.Year, (int)i.Month, 1).AddMonths(1));
+
+        var logs = facilityIds.Count == 0
+            ? new List<OperatorLog>()
+            : await _context.OperatorLogs
+                .AsNoTracking()
+                .Where(o => facilityIds.Contains(o.FacilityId) && o.LogDate >= minDate && o.LogDate < maxDate)
+                .ToListAsync();
+
+        foreach (var item in items)
+        {
+            var entity = entityById[item.Id];
+            var daysInMonth = DateTime.DaysInMonth(item.Year, (int)item.Month);
+            item.DaysInMonth = daysInMonth;
+
+            var monthStart = new DateTime(item.Year, (int)item.Month, 1);
+            var monthEnd = monthStart.AddMonths(1);
+            var monthLogs = logs.Where(o => o.FacilityId == item.FacilityId && o.LogDate >= monthStart && o.LogDate < monthEnd);
+            var (orcOnSite, orcArrivalTime, orcTimeOnSiteHours) =
+                WWCharCompletenessCalculator.BuildCanonicalOrcDailyFromLogs(monthLogs);
+
+            item.OrcCompleteDays = WWCharCompletenessCalculator.CountOrcCompleteDays(
+                orcOnSite,
+                orcArrivalTime,
+                orcTimeOnSiteHours,
+                daysInMonth);
+            item.OrcCompletePercent = WWCharCompletenessCalculator.ToCompletePercent(item.OrcCompleteDays, daysInMonth);
+
+            var flowDaily = WWCharCompletenessCalculator.BuildMergedDailyFromTemplate(
+                item.Id,
+                WWCharCompletenessCalculator.FlowPcsCode,
+                templateValues,
+                pcsByTemplateParameterId,
+                entity.FlowRateDaily);
+            item.FlowCompleteDays = WWCharCompletenessCalculator.CountDailyValueDays(flowDaily, daysInMonth);
+            item.FlowCompletePercent = WWCharCompletenessCalculator.ToCompletePercent(item.FlowCompleteDays, daysInMonth);
+
+            var phDaily = WWCharCompletenessCalculator.BuildMergedDailyFromTemplate(
+                item.Id,
+                WWCharCompletenessCalculator.PhPcsCode,
+                templateValues,
+                pcsByTemplateParameterId,
+                entity.PHDaily);
+            item.PhCompleteDays = WWCharCompletenessCalculator.CountDailyValueDays(phDaily, daysInMonth);
+            item.PhCompletePercent = WWCharCompletenessCalculator.ToCompletePercent(item.PhCompleteDays, daysInMonth);
+        }
     }
 
     private async Task<(List<ORCOnSiteEnum?> ORCOnSite, List<decimal?> StorageLagoonFreeboardFt, List<string?> ORCArrivalTime, List<decimal?> ORCTimeOnSiteHours)> LoadCanonicalOperatorLogDailyValuesAsync(
