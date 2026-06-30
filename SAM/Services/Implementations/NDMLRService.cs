@@ -6,6 +6,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Services.Helpers;
 using SAM.Services.Models;
 using SAM.Utilities;
 using System.Text.RegularExpressions;
@@ -15,13 +16,11 @@ namespace SAM.Services.Implementations;
 /// <summary>
 /// Service implementation for generating Non-Discharge Mass Loading Reports (NDMLR)
 /// in Excel format using the client-provided NDMLR template.
-/// Uses NDAR-1 report data plus GWMonit for average concentration; applies the
-/// client formula: Monthly Load (lbs/ac) = (Volume gal × Avg Conc mg/L × 8.34e-6) / Area acres.
+/// Uses NDAR-1 report data plus WWChar monthly average PAN for concentration; applies the
+/// client formula: Monthly Load (lbs/ac) = (Volume gal × PAN mg/L × 8.34e-6) / Area acres.
 /// </summary>
 public class NDMLRService : INDMLRService
 {
-    private const decimal MonthlyLoadConversionFactor = 8.34e-6m; // lbs / (gal * mg/L)
-
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<NDMLRService> _logger;
@@ -91,11 +90,34 @@ public class NDMLRService : INDMLRService
             .GroupBy(r => BuildMonthKey(r.Year, (int)r.Month))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
 
-        var gwMonits = await _context.GWMonits
-            .Where(g => g.FacilityId == facility.Id &&
-                        g.SampleDate >= windowStart &&
-                        g.SampleDate <= windowEnd)
+        var wwChars = await _context.WWChars
+            .AsNoTracking()
+            .Where(w => w.FacilityId == facility.Id && w.Year >= startYear && w.Year <= endYear)
             .ToListAsync();
+
+        var wwCharIds = wwChars.Select(w => w.Id).ToList();
+        var templateValues = wwCharIds.Count == 0
+            ? new List<WWCharTemplateValue>()
+            : await _context.WWCharTemplateValues
+                .AsNoTracking()
+                .Where(v => wwCharIds.Contains(v.WWCharId))
+                .ToListAsync();
+        var templateParameterIds = templateValues.Select(v => v.FacilityPermitTemplateParameterId).Distinct().ToList();
+        var pcsByTemplateParameterId = templateParameterIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.FacilityPermitTemplateParameters
+                .AsNoTracking()
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => templateParameterIds.Contains(x.Id))
+                .ToDictionaryAsync(
+                    x => x.Id,
+                    x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty);
+
+        var chemistryByMonth = NdmlrExportCalculationHelper.BuildChemistryByMonth(
+            wwChars,
+            templateValues,
+            pcsByTemplateParameterId);
+        var (mineralizationRate, volatilizationRate) = NdmlrExportCalculationHelper.ResolvePanRates(facility);
 
         var fieldMetaById = new Dictionary<Guid, NdmlrFieldMeta>();
         foreach (var report in ndarReports)
@@ -193,7 +215,7 @@ public class NDMLRService : INDMLRService
             var chunk = chunks[chunkIndex];
             WriteHeader(reportSheet, facility, permit, year, ndmlr.Month);
             WriteFieldBlocks(reportSheet, chunk, monthlyVolumesByFieldByMonth);
-            WriteDataRows(reportSheet, chunk, monthlyVolumesByFieldByMonth, gwMonits, monthKeys);
+            WriteDataRows(reportSheet, chunk, monthlyVolumesByFieldByMonth, monthKeys, chemistryByMonth, mineralizationRate, volatilizationRate);
             await WriteFooterAsync(reportSheet, ndmlr, chunk, windowEnd);
 
             if (certificationTemplate != null)
@@ -247,20 +269,116 @@ public class NDMLRService : INDMLRService
         }
     }
 
-    private static decimal? ComputeAverageTotalNMgl(List<GWMonit> gwMonits)
+    private static void WriteDataRows(
+        IXLWorksheet worksheet,
+        List<Sprayfield> selectedFields,
+        Dictionary<int, Dictionary<Guid, decimal>> monthlyVolumesByFieldByMonth,
+        List<int> monthKeys,
+        IReadOnlyDictionary<(int Year, int Month), NdmlrPanChemistryInputs> chemistryByMonth,
+        decimal mineralizationRate,
+        decimal volatilizationRate)
     {
-        var values = gwMonits
-            .Select(g =>
+        var monthKeysAscending = monthKeys.OrderBy(k => k).ToList();
+        var monthlyLoadsByField = NdmlrExportCalculationHelper.BuildMonthlyLoadsByFieldAndMonth(
+            selectedFields,
+            monthKeys,
+            monthlyVolumesByFieldByMonth,
+            chemistryByMonth,
+            mineralizationRate,
+            volatilizationRate);
+
+        var cumulativeByField = new Dictionary<Guid, Dictionary<int, decimal>>();
+        foreach (var field in selectedFields)
+        {
+            monthlyLoadsByField.TryGetValue(field.Id, out var loads);
+            cumulativeByField[field.Id] = NdmlrExportCalculationHelper.BuildForwardCumulativeLoadsByMonthKey(
+                monthKeysAscending,
+                loads ?? new Dictionary<int, decimal>());
+        }
+
+        var colSets = new[] { ("C", "D", "E", "F"), ("G", "H", "I", "J"), ("K", "L", "M", "N"), ("O", "P", "Q", "R"), ("S", "T", "U", "V") };
+
+        for (int index = 0; index < monthKeys.Count; index++)
+        {
+            var monthKey = monthKeys[index];
+            var (monthYear, monthNo) = ParseMonthKey(monthKey);
+            var row = 9 + index;
+            var monthDate = new DateTime(monthYear, monthNo, 1);
+            worksheet.Cell($"A{row}").Value = monthDate;
+            worksheet.Cell($"B{row}").Value = monthDate.ToString("MMMM");
+            var monthAvgConc = NdmlrExportCalculationHelper.TryGetMonthlyAveragePanMgL(
+                monthYear,
+                monthNo,
+                chemistryByMonth,
+                mineralizationRate,
+                volatilizationRate);
+            monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes);
+
+            for (int i = 0; i < 5; i++)
             {
-                if (!g.TKN.HasValue && !g.NO3N.HasValue)
-                    return (decimal?)null;
-                return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
-            })
-            .Where(v => v.HasValue)
-            .ToList();
-        if (values.Count == 0)
-            return null;
-        return values.Average();
+                var (volCol, concCol, monthlyCol, cumulCol) = colSets[i];
+                var field = i < selectedFields.Count ? selectedFields[i] : null;
+                var volume = 0m;
+                if (field != null && monthVolumes != null && monthVolumes.TryGetValue(field.Id, out var mappedVolume))
+                {
+                    volume = mappedVolume;
+                }
+
+                if (volume > 0)
+                {
+                    worksheet.Cell($"{volCol}{row}").Value = volume;
+                }
+                else
+                {
+                    worksheet.Cell($"{volCol}{row}").Clear(XLClearOptions.Contents);
+                }
+
+                if (monthAvgConc.HasValue)
+                {
+                    worksheet.Cell($"{concCol}{row}").Value = monthAvgConc.Value;
+                    worksheet.Cell($"{concCol}{row}").Style.NumberFormat.Format = "0.00";
+                }
+                else
+                {
+                    worksheet.Cell($"{concCol}{row}").Clear(XLClearOptions.Contents);
+                }
+
+                decimal? monthlyLoad = null;
+                if (field != null &&
+                    monthlyLoadsByField.TryGetValue(field.Id, out var fieldLoads) &&
+                    fieldLoads.TryGetValue(monthKey, out var loadValue))
+                {
+                    monthlyLoad = loadValue;
+                }
+
+                if (monthlyLoad.HasValue)
+                {
+                    worksheet.Cell($"{monthlyCol}{row}").Value = monthlyLoad.Value;
+                    worksheet.Cell($"{monthlyCol}{row}").Style.NumberFormat.Format = "0.00";
+                }
+                else
+                {
+                    worksheet.Cell($"{monthlyCol}{row}").Clear(XLClearOptions.Contents);
+                }
+
+                decimal? cumulativeLoad = null;
+                if (field != null &&
+                    NdmlrExportCalculationHelper.TryGetCumulativeLoadForDisplay(field.Id, monthKey, cumulativeByField, out var cumulativeValue))
+                {
+                    cumulativeLoad = cumulativeValue;
+                }
+
+                if (cumulativeLoad.HasValue)
+                {
+                    worksheet.Cell($"{cumulCol}{row}").Value = cumulativeLoad.Value;
+                    worksheet.Cell($"{cumulCol}{row}").Style.NumberFormat.Format = "0.00";
+                }
+                else
+                {
+                    worksheet.Cell($"{cumulCol}{row}").Clear(XLClearOptions.Contents);
+                }
+            }
+        }
     }
 
     private static void WriteHeader(IXLWorksheet worksheet, Facility facility, FacilityPermit? permit, int year, MonthEnum month)
@@ -321,64 +439,6 @@ public class NDMLRService : INDMLRService
                 foreach (var row in new[] { 2, 3, 4, 6 })
                 {
                     worksheet.Cell($"{col}{row}").Clear(XLClearOptions.Contents);
-                }
-            }
-        }
-    }
-
-    private static void WriteDataRows(IXLWorksheet worksheet, List<Sprayfield> selectedFields, Dictionary<int, Dictionary<Guid, decimal>> monthlyVolumesByFieldByMonth, List<GWMonit> gwMonits, List<int> monthKeys)
-    {
-        var runningTotals = new decimal[5];
-        var colSets = new[] { ("C", "D", "E", "F"), ("G", "H", "I", "J"), ("K", "L", "M", "N"), ("O", "P", "Q", "R"), ("S", "T", "U", "V") };
-
-        for (int index = 0; index < monthKeys.Count; index++)
-        {
-            var monthKey = monthKeys[index];
-            var (monthYear, monthNo) = ParseMonthKey(monthKey);
-            var row = 9 + index;
-            var monthDate = new DateTime(monthYear, monthNo, 1);
-            worksheet.Cell($"A{row}").Value = monthDate;
-            worksheet.Cell($"B{row}").Value = monthDate.ToString("MMMM");
-            var monthAvgConc = ComputeAverageTotalNMgl(gwMonits.Where(g => g.SampleDate.Year == monthYear && g.SampleDate.Month == monthNo).ToList());
-            monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes);
-
-            for (int i = 0; i < 5; i++)
-            {
-                var (volCol, concCol, monthlyCol, cumulCol) = colSets[i];
-                var field = i < selectedFields.Count ? selectedFields[i] : null;
-                var volume = 0m;
-                if (field != null && monthVolumes != null && monthVolumes.TryGetValue(field.Id, out var mappedVolume))
-                {
-                    volume = mappedVolume;
-                }
-                var area = field != null ? SprayfieldReportHelper.GetReportAcres(field) : 0m;
-
-                if (volume > 0)
-                    worksheet.Cell($"{volCol}{row}").Value = volume;
-                else
-                    worksheet.Cell($"{volCol}{row}").Clear(XLClearOptions.Contents);
-
-                if (monthAvgConc.HasValue && volume > 0)
-                {
-                    worksheet.Cell($"{concCol}{row}").Value = monthAvgConc.Value;
-                    worksheet.Cell($"{concCol}{row}").Style.NumberFormat.Format = "0.00";
-                }
-                else
-                    worksheet.Cell($"{concCol}{row}").Clear(XLClearOptions.Contents);
-
-                if (field != null && area > 0 && monthAvgConc.HasValue && volume > 0)
-                {
-                    var monthlyLoad = (volume * monthAvgConc.Value * MonthlyLoadConversionFactor) / area;
-                    runningTotals[i] += monthlyLoad;
-                    worksheet.Cell($"{monthlyCol}{row}").Value = monthlyLoad;
-                    worksheet.Cell($"{cumulCol}{row}").Value = runningTotals[i];
-                    worksheet.Cell($"{monthlyCol}{row}").Style.NumberFormat.Format = "0.00";
-                    worksheet.Cell($"{cumulCol}{row}").Style.NumberFormat.Format = "0.00";
-                }
-                else
-                {
-                    worksheet.Cell($"{monthlyCol}{row}").Clear(XLClearOptions.Contents);
-                    worksheet.Cell($"{cumulCol}{row}").Clear(XLClearOptions.Contents);
                 }
             }
         }
@@ -555,14 +615,14 @@ public class NDMLRService : INDMLRService
         certificationWorksheet.Cell("C8").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("I8").Value = facility.OperatorPhone ?? string.Empty;
         certificationWorksheet.Cell("B9").Value = $"Has the ORC changed since the previous NDMLR? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
-        certificationWorksheet.Cell("K10").Value = DateTime.Today.ToString("MM/dd/yyyy");
+        certificationWorksheet.Cell("K10").Clear(XLClearOptions.Contents);
 
         certificationWorksheet.Cell("O6").Value = facility.Permittee ?? string.Empty;
         certificationWorksheet.Cell("P7").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("P8").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("O9").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("T9").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
-        certificationWorksheet.Cell("U10").Value = DateTime.Today.ToString("MM/dd/yyyy");
+        certificationWorksheet.Cell("U10").Clear(XLClearOptions.Contents);
     }
 
     private sealed class NdmlrFieldMeta

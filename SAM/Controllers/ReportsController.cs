@@ -16,6 +16,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Extensions;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
+using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
 using SAM.Utilities;
@@ -572,9 +573,42 @@ public class ReportsController : BaseController
         return View(model);
     }
 
+    private async Task<IReadOnlyDictionary<(int Year, int Month), NdmlrPanChemistryInputs>> LoadNdmlrChemistryByMonthAsync(
+        Guid facilityId,
+        int startYear,
+        int endYear)
+    {
+        var wwChars = await _context.WWChars
+            .AsNoTracking()
+            .Where(w => w.FacilityId == facilityId && w.Year >= startYear && w.Year <= endYear)
+            .ToListAsync();
+
+        var wwCharIds = wwChars.Select(w => w.Id).ToList();
+        var templateValues = wwCharIds.Count == 0
+            ? new List<WWCharTemplateValue>()
+            : await _context.WWCharTemplateValues
+                .AsNoTracking()
+                .Where(v => wwCharIds.Contains(v.WWCharId))
+                .ToListAsync();
+        var templateParameterIds = templateValues.Select(v => v.FacilityPermitTemplateParameterId).Distinct().ToList();
+        var pcsByTemplateParameterId = templateParameterIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.FacilityPermitTemplateParameters
+                .AsNoTracking()
+                .Include(x => x.PcsParameterCatalog)
+                .Where(x => templateParameterIds.Contains(x.Id))
+                .ToDictionaryAsync(
+                    x => x.Id,
+                    x => x.PcsParameterCatalog != null ? x.PcsParameterCatalog.PcsCode : string.Empty);
+
+        return NdmlrExportCalculationHelper.BuildChemistryByMonth(
+            wwChars,
+            templateValues,
+            pcsByTemplateParameterId);
+    }
+
     private async Task<List<NDMLRFieldDetailsViewModel>> BuildNdmlrDetailFieldsAsync(NDMLR report)
     {
-        const decimal monthlyLoadConversionFactor = 8.34e-6m;
         var (windowStart, windowEnd) = GetNdmlrWindow(report.Year, report.Month);
         var monthKeys = BuildDescendingNdmlrWindowMonthKeys(report.Year, report.Month);
         var startYear = windowStart.Year;
@@ -603,12 +637,10 @@ public class ReportsController : BaseController
             .GroupBy(r => BuildMonthKey(r.Year, (int)r.Month))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First());
 
-        var gwMonits = await _context.GWMonits
-            .Where(g => g.FacilityId == report.FacilityId &&
-                        g.SampleDate >= windowStart &&
-                        g.SampleDate <= windowEnd)
-            .AsNoTracking()
-            .ToListAsync();
+        var chemistryByMonth = await LoadNdmlrChemistryByMonthAsync(report.FacilityId, startYear, endYear);
+        var facility = report.Facility
+            ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId);
+        var (mineralizationRate, volatilizationRate) = NdmlrExportCalculationHelper.ResolvePanRates(facility);
 
         var fieldMetaById = new Dictionary<Guid, (Sprayfield Sprayfield, int? PreferredOrder)>();
 
@@ -664,6 +696,29 @@ public class ReportsController : BaseController
         }
 
         var monthlyVolumesByFieldByMonth = BuildMonthlyFieldVolumesByMonth(reportsByMonth);
+        var monthlyLoadsByField = NdmlrExportCalculationHelper.BuildMonthlyLoadsByFieldAndMonth(
+            orderedFields,
+            monthKeys,
+            monthlyVolumesByFieldByMonth,
+            chemistryByMonth,
+            mineralizationRate,
+            volatilizationRate);
+
+        var annualPanConcentrations = monthKeys
+            .Select(monthKey =>
+            {
+                var (monthYear, monthNo) = ParseMonthKey(monthKey);
+                return NdmlrExportCalculationHelper.TryGetMonthlyAveragePanMgL(
+                    monthYear,
+                    monthNo,
+                    chemistryByMonth,
+                    mineralizationRate,
+                    volatilizationRate);
+            })
+            .Where(v => v.HasValue)
+            .Select(v => v!.Value)
+            .ToList();
+        var annualAvgConc = annualPanConcentrations.Count > 0 ? annualPanConcentrations.Average() : (decimal?)null;
 
         var annualVolumesByFieldId = new Dictionary<Guid, decimal>();
         foreach (var monthly in monthlyVolumesByFieldByMonth.Values)
@@ -679,38 +734,15 @@ public class ReportsController : BaseController
             }
         }
 
-        var annualAvgConc = ComputeAverageTotalNMgl(gwMonits);
         var result = new List<NDMLRFieldDetailsViewModel>();
 
         foreach (var field in orderedFields)
         {
             var annualVolume = annualVolumesByFieldId.TryGetValue(field.Id, out var volume) ? volume : 0m;
             var area = SprayfieldReportHelper.GetReportAcres(field);
-            var annualLoad = 0m;
-
-            if (area > 0m)
-            {
-                foreach (var monthKey in monthKeys)
-                {
-                    if (!monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes) ||
-                        !monthVolumes.TryGetValue(field.Id, out var monthVolume) ||
-                        monthVolume <= 0m)
-                    {
-                        continue;
-                    }
-
-                    var (monthYear, monthNo) = ParseMonthKey(monthKey);
-                    var monthConc = ComputeAverageTotalNMgl(gwMonits
-                        .Where(g => g.SampleDate.Year == monthYear && g.SampleDate.Month == monthNo)
-                        .ToList());
-                    if (!monthConc.HasValue)
-                    {
-                        continue;
-                    }
-
-                    annualLoad += (monthVolume * monthConc.Value * monthlyLoadConversionFactor) / area;
-                }
-            }
+            var annualLoad = monthlyLoadsByField.TryGetValue(field.Id, out var fieldLoads)
+                ? fieldLoads.Values.Sum()
+                : 0m;
 
             var metrics = await _applicationComplianceService.GetFieldRollingMetricsAsync(report.FacilityId, field.Id, windowEnd);
 
@@ -730,29 +762,6 @@ public class ReportsController : BaseController
         }
 
         return result;
-    }
-
-    private static decimal? ComputeAverageTotalNMgl(List<GWMonit> gwMonits)
-    {
-        var values = gwMonits
-            .Select(g =>
-            {
-                if (!g.TKN.HasValue && !g.NO3N.HasValue)
-                {
-                    return (decimal?)null;
-                }
-
-                return (g.TKN ?? 0m) + (g.NO3N ?? 0m);
-            })
-            .Where(v => v.HasValue)
-            .ToList();
-
-        if (values.Count == 0)
-        {
-            return null;
-        }
-
-        return values.Average();
     }
 
     private static Dictionary<int, Dictionary<Guid, decimal>> BuildMonthlyFieldVolumesByMonth(Dictionary<int, NDAR1> reportsByMonth)
@@ -2819,7 +2828,6 @@ public class ReportsController : BaseController
             throw new Infrastructure.Exceptions.BusinessRuleException("NDMLR template PDF not found in wwwroot/forms.");
         }
 
-        const decimal monthlyLoadConversionFactor = 8.34e-6m;
         var (windowStart, windowEnd) = GetNdmlrWindow(report.Year, report.Month);
         var monthKeys = BuildDescendingNdmlrWindowMonthKeys(report.Year, report.Month);
         var ndmlrFacility = report.Facility
@@ -2849,13 +2857,6 @@ public class ReportsController : BaseController
                     .ThenInclude(s => s!.Crop)
             .Include(r => r.Fields)
                 .ThenInclude(f => f.DailyValues)
-            .AsNoTracking()
-            .ToListAsync();
-
-        var gwMonits = await _context.GWMonits
-            .Where(g => g.FacilityId == report.FacilityId &&
-                        g.SampleDate >= windowStart &&
-                        g.SampleDate <= windowEnd)
             .AsNoTracking()
             .ToListAsync();
 
@@ -2934,6 +2935,25 @@ public class ReportsController : BaseController
             .Select(g => g.Select(x => x.field).ToList())
             .ToList();
 
+        var chemistryByMonth = await LoadNdmlrChemistryByMonthAsync(report.FacilityId, startYear, endYear);
+        var (mineralizationRate, volatilizationRate) = NdmlrExportCalculationHelper.ResolvePanRates(ndmlrFacility);
+        var monthKeysAscending = monthKeys.OrderBy(k => k).ToList();
+        var monthlyLoadsByField = NdmlrExportCalculationHelper.BuildMonthlyLoadsByFieldAndMonth(
+            orderedFields,
+            monthKeys,
+            monthlyVolumesByFieldByMonth,
+            chemistryByMonth,
+            mineralizationRate,
+            volatilizationRate);
+        var cumulativeByField = new Dictionary<Guid, Dictionary<int, decimal>>();
+        foreach (var field in orderedFields)
+        {
+            monthlyLoadsByField.TryGetValue(field.Id, out var loads);
+            cumulativeByField[field.Id] = NdmlrExportCalculationHelper.BuildForwardCumulativeLoadsByMonthKey(
+                monthKeysAscending,
+                loads ?? new Dictionary<int, decimal>());
+        }
+
         using var output = new MemoryStream();
         using var document = new PdfDocument();
         var templateForm = XPdfForm.FromFile(templatePath);
@@ -2991,7 +3011,6 @@ public class ReportsController : BaseController
             }
 
             // Monthly rows (selected month descending for rolling 12-month window)
-            var runningTotals = new decimal[5];
             for (var rowIndex = 0; rowIndex < monthKeys.Count; rowIndex++)
             {
                 var monthKey = monthKeys[rowIndex];
@@ -3000,9 +3019,12 @@ public class ReportsController : BaseController
                 var monthDate = new DateTime(monthYear, monthNo, 1);
                 Draw(gfx, monthDate.ToString("MMMM"), font, new NdarPdfPoint(28, rowY));
 
-                var monthAvgConc = ComputeAverageTotalNMgl(gwMonits
-                    .Where(g => g.SampleDate.Year == monthYear && g.SampleDate.Month == monthNo)
-                    .ToList());
+                var monthAvgConc = NdmlrExportCalculationHelper.TryGetMonthlyAveragePanMgL(
+                    monthYear,
+                    monthNo,
+                    chemistryByMonth,
+                    mineralizationRate,
+                    volatilizationRate);
                 monthlyVolumesByFieldByMonth.TryGetValue(monthKey, out var monthVolumes);
 
                 for (var i = 0; i < 5; i++)
@@ -3030,18 +3052,20 @@ public class ReportsController : BaseController
                         Draw(gfx, volume.ToString("N0"), font, new NdarPdfPoint(volX, rowY));
                     }
 
-                    if (monthAvgConc.HasValue && volume > 0m)
+                    if (monthAvgConc.HasValue)
                     {
                         Draw(gfx, monthAvgConc.Value.ToString("F2"), font, new NdarPdfPoint(concX, rowY));
                     }
 
-                    var area = SprayfieldReportHelper.GetReportAcres(field);
-                    if (area > 0m && monthAvgConc.HasValue && volume > 0m)
+                    if (monthlyLoadsByField.TryGetValue(field.Id, out var fieldLoads) &&
+                        fieldLoads.TryGetValue(monthKey, out var monthlyLoad))
                     {
-                        var monthlyLoad = (volume * monthAvgConc.Value * monthlyLoadConversionFactor) / area;
-                        runningTotals[i] += monthlyLoad;
                         Draw(gfx, monthlyLoad.ToString("F2"), font, new NdarPdfPoint(monthlyLoadX, rowY));
-                        Draw(gfx, runningTotals[i].ToString("F2"), font, new NdarPdfPoint(cumulativeLoadX, rowY));
+                    }
+
+                    if (NdmlrExportCalculationHelper.TryGetCumulativeLoadForDisplay(field.Id, monthKey, cumulativeByField, out var cumulativeLoad))
+                    {
+                        Draw(gfx, cumulativeLoad.ToString("F2"), font, new NdarPdfPoint(cumulativeLoadX, rowY));
                     }
                 }
             }
@@ -3082,24 +3106,23 @@ public class ReportsController : BaseController
                 var operatorPhone = facility?.OperatorPhone ?? string.Empty;
                 var permittee = facility?.Permittee ?? string.Empty;
                 var permitPhone = facility?.PermitPhone ?? string.Empty;
-                var exportDate = DateTime.Today.ToString("MM/dd/yyyy");
 
                 Draw(certGfx, currentPageNumber.ToString(), certFont, new NdarPdfPoint(685, 16));
                 Draw(certGfx, totalPages.ToString(), certFont, new NdarPdfPoint(720, 16));
                 Draw(certGfx, orcName, certFont, new NdarPdfPoint(50, 315));
                 Draw(certGfx, operatorNumber, certFont, new NdarPdfPoint(110, 338));
-                Draw(certGfx, operatorGrade, certFont, new NdarPdfPoint(60, 360));
-                Draw(certGfx, operatorPhone, certFont, new NdarPdfPoint(250, 360));
+                Draw(certGfx, operatorGrade, certFont, new NdarPdfPoint(53, 362));
+                Draw(certGfx, operatorPhone, certFont, new NdarPdfPoint(250, 362));
                 Draw(certGfx, facility?.ChangeInOrc == true ? "X" : string.Empty, certFont, new NdarPdfPoint(313, 377));
                 Draw(certGfx, facility?.ChangeInOrc == true ? string.Empty : "X", certFont, new NdarPdfPoint(340, 385));
-                Draw(certGfx, exportDate, certFont, new NdarPdfPoint(360, 429));
 
                 Draw(certGfx, permittee, certFont, new NdarPdfPoint(473, 315));
-                Draw(certGfx, orcName, certFont, new NdarPdfPoint(500, 338));
-                Draw(certGfx, operatorGrade, certFont, new NdarPdfPoint(530, 360));
-                Draw(certGfx, permitPhone, certFont, new NdarPdfPoint(480, 383));
+                Draw(certGfx, orcName, certFont, new NdarPdfPoint(499, 338));
+                Draw(certGfx, operatorGrade, certFont, new NdarPdfPoint(523, 362));
+                Draw(certGfx, permitPhone, certFont, new NdarPdfPoint(480, 386));
                 Draw(certGfx, ndmlrPermitExpiration?.ToString("MM/dd/yyyy"), certFont, new NdarPdfPoint(650, 387));
-                Draw(certGfx, exportDate, certFont, new NdarPdfPoint(710, 429));
+
+                CoverNdmlrCertificationDateFields(certGfx);
 
                 if (showGrid)
                 {
@@ -3111,6 +3134,13 @@ public class ReportsController : BaseController
 
         document.Save(output, false);
         return output.ToArray();
+    }
+
+    private static void CoverNdmlrCertificationDateFields(XGraphics gfx)
+    {
+        var coverBrush = new XSolidBrush(XColors.White);
+        gfx.DrawRectangle(coverBrush, new XRect(330, 422, 75, 14));
+        gfx.DrawRectangle(coverBrush, new XRect(680, 422, 75, 14));
     }
 
     private sealed class NdmrPdfParameter
