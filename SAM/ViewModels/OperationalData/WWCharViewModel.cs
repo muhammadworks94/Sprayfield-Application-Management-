@@ -244,11 +244,11 @@ public class WWCharCreateViewModel
 
     [StringLength(200)]
     [Display(Name = "Sampling Person 1")]
-    public string SamplingPerson1 { get; set; } = string.Empty;
+    public string? SamplingPerson1 { get; set; }
 
     [StringLength(200)]
     [Display(Name = "Sampling Person 2")]
-    public string SamplingPerson2 { get; set; } = string.Empty;
+    public string? SamplingPerson2 { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]
@@ -370,11 +370,11 @@ public class WWCharEditViewModel
 
     [StringLength(200)]
     [Display(Name = "Sampling Person 1")]
-    public string SamplingPerson1 { get; set; } = string.Empty;
+    public string? SamplingPerson1 { get; set; }
 
     [StringLength(200)]
     [Display(Name = "Sampling Person 2")]
-    public string SamplingPerson2 { get; set; } = string.Empty;
+    public string? SamplingPerson2 { get; set; }
     
     [StringLength(200)]
     [Display(Name = "Collected By")]

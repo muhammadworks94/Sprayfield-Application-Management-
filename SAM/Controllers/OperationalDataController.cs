@@ -1584,8 +1584,8 @@ namespace SAM.Controllers;
                 CompositeTime = viewModel.CompositeTime,
                 LabOptionId = viewModel.LabOptionId,
                 SecondaryLabOptionId = viewModel.SecondaryLabOptionId,
-                SamplingPerson1 = viewModel.SamplingPerson1,
-                SamplingPerson2 = viewModel.SamplingPerson2,
+                SamplingPerson1 = viewModel.SamplingPerson1 ?? string.Empty,
+                SamplingPerson2 = viewModel.SamplingPerson2 ?? string.Empty,
                 CollectedBy = viewModel.CollectedBy,
                 AnalyzedBy = viewModel.AnalyzedBy,
                 FacilityPermitId = viewModel.FacilityPermitId,
@@ -1890,8 +1890,8 @@ namespace SAM.Controllers;
             wwChar.CompositeTime = viewModel.CompositeTime;
             wwChar.LabOptionId = viewModel.LabOptionId;
             wwChar.SecondaryLabOptionId = viewModel.SecondaryLabOptionId;
-            wwChar.SamplingPerson1 = viewModel.SamplingPerson1;
-            wwChar.SamplingPerson2 = viewModel.SamplingPerson2;
+            wwChar.SamplingPerson1 = viewModel.SamplingPerson1 ?? string.Empty;
+            wwChar.SamplingPerson2 = viewModel.SamplingPerson2 ?? string.Empty;
             wwChar.CollectedBy = viewModel.CollectedBy;
             wwChar.AnalyzedBy = viewModel.AnalyzedBy;
             wwChar.FacilityPermitId = viewModel.FacilityPermitId;
