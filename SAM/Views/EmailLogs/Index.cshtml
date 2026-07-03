@@ -1,0 +1,261 @@
+@model SAM.ViewModels.EmailLogs.EmailLogsIndexViewModel
+@using SAM.Domain.Enums
+@{
+    ViewData["Title"] = "Email Logs";
+    ViewData["PageSubtitle"] = "Admin timeline for outbound email delivery";
+}
+
+@section PageTitleExtra {
+    <button class="btn btn-sm btn-outline-secondary"
+            type="button"
+            id="toggleEmailLogFilters"
+            data-bs-toggle="collapse"
+            data-bs-target="#emailLogFiltersCollapse"
+            aria-expanded="true"
+            aria-controls="emailLogFiltersCollapse">
+        <i class="bi bi-funnel me-1"></i><span>Hide Filters</span>
+    </button>
+}
+
+<div class="collapse show" id="emailLogFiltersCollapse">
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Template</label>
+                    <select name="TemplateKey" class="form-select" asp-items="Model.TemplateKeys">
+                        <option value="">All</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="Status" class="form-select" asp-items="Model.Statuses">
+                        <option value="">All</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input name="SearchTerm" class="form-control" value="@Model.Filter.SearchTerm" placeholder="To, subject, initiator..." />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">From (UTC)</label>
+                    <input type="date" name="FromUtc" class="form-control" value="@(Model.Filter.FromUtc?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">To (UTC)</label>
+                    <input type="date" name="ToUtc" class="form-control" value="@(Model.Filter.ToUtc?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Page Size</label>
+                    <select name="PageSize" class="form-select">
+                        @foreach (var size in new[] { 25, 50, 100, 200 })
+                        {
+                            if (Model.Filter.PageSize == size)
+                            {
+                                <option value="@size" selected>@size</option>
+                            }
+                            else
+                            {
+                                <option value="@size">@size</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary">Apply</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                </div>
+                <input type="hidden" name="Page" value="1" />
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Sent (UTC)</th>
+                        <th>Status</th>
+                        <th>To</th>
+                        <th>Subject</th>
+                        <th>Template</th>
+                        <th>Initiated By</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Logs.Items.Any())
+                {
+                    foreach (var log in Model.Logs.Items)
+                    {
+                        var statusBadgeClass = log.Status == EmailLogStatus.Sent ? "bg-success" : "bg-danger";
+                        var initiator = !string.IsNullOrWhiteSpace(log.InitiatedByDisplayName)
+                            ? log.InitiatedByDisplayName
+                            : (log.InitiatedByEmail ?? "N/A");
+                        <tr>
+                            <td>@log.SentAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td><span class="badge @statusBadgeClass">@log.Status</span></td>
+                            <td>@log.ToEmail</td>
+                            <td>@log.Subject</td>
+                            <td>@(log.TemplateDisplayName ?? log.TemplateKey ?? "N/A")</td>
+                            <td>@initiator</td>
+                            <td class="text-end">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary view-email-log-btn"
+                                        data-log-id="@log.Id">
+                                    <i class="bi bi-eye"></i> View
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">No email logs found.</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@{
+    var totalPages = Model.Logs.TotalPages;
+    var currentPage = Model.Logs.Page;
+}
+
+<div class="modal fade" id="emailLogPreviewModal" tabindex="-1" aria-labelledby="emailLogPreviewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailLogPreviewLabel"><i class="bi bi-envelope-check me-2"></i>Email Log Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="emailLogErrorAlert" class="alert alert-danger d-none"></div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Subject</label>
+                    <div id="emailLogPreviewSubject" class="form-control bg-light"></div>
+                </div>
+                <div>
+                    <label class="form-label fw-semibold">Body</label>
+                    <iframe id="emailLogPreviewFrame" class="w-100 border rounded ui-min-h-460"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const storageKey = 'emailLogsFiltersCollapsed';
+        const toggleBtn = document.getElementById('toggleEmailLogFilters');
+        const collapseElement = document.getElementById('emailLogFiltersCollapse');
+
+        if (toggleBtn && collapseElement && typeof bootstrap !== 'undefined') {
+            const collapse = bootstrap.Collapse.getOrCreateInstance(collapseElement, { toggle: false });
+            const label = toggleBtn.querySelector('span');
+
+            function setToggleState(isExpanded) {
+                toggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                if (label) {
+                    label.textContent = isExpanded ? 'Hide Filters' : 'Show Filters';
+                }
+            }
+
+            const savedCollapsed = window.localStorage ? localStorage.getItem(storageKey) === 'true' : false;
+            if (savedCollapsed) {
+                collapse.hide();
+                setToggleState(false);
+            } else {
+                collapse.show();
+                setToggleState(true);
+            }
+
+            collapseElement.addEventListener('shown.bs.collapse', function () {
+                setToggleState(true);
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, 'false');
+                }
+            });
+
+            collapseElement.addEventListener('hidden.bs.collapse', function () {
+                setToggleState(false);
+                if (window.localStorage) {
+                    localStorage.setItem(storageKey, 'true');
+                }
+            });
+        }
+
+        const modalElement = document.getElementById('emailLogPreviewModal');
+        const previewSubject = document.getElementById('emailLogPreviewSubject');
+        const previewFrame = document.getElementById('emailLogPreviewFrame');
+        const errorAlert = document.getElementById('emailLogErrorAlert');
+
+        document.querySelectorAll('.view-email-log-btn').forEach(function (btn) {
+            btn.addEventListener('click', async function () {
+                if (!modalElement || !previewSubject || !previewFrame) {
+                    return;
+                }
+
+                const logId = btn.getAttribute('data-log-id');
+                if (!logId) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/EmailLogs/Detail?id=${encodeURIComponent(logId)}`);
+                    if (!response.ok) {
+                        return;
+                    }
+
+                    const data = await response.json();
+                    previewSubject.textContent = data.subject || '(No subject)';
+                    previewFrame.srcdoc = data.htmlBody || '<p>No body content.</p>';
+
+                    if (errorAlert) {
+                        if (data.errorMessage) {
+                            errorAlert.textContent = data.errorMessage;
+                            errorAlert.classList.remove('d-none');
+                        } else {
+                            errorAlert.textContent = '';
+                            errorAlert.classList.add('d-none');
+                        }
+                    }
+
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                    modal.show();
+                } catch (err) {
+                    console.error('Failed to load email log detail.', err);
+                }
+            });
+        });
+    });
+</script>
+
+@if (totalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination">
+            @for (var pageNumber = 1; pageNumber <= totalPages; pageNumber++)
+            {
+                <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-page="@pageNumber"
+                       asp-route-pageSize="@Model.Filter.PageSize"
+                       asp-route-templateKey="@Model.Filter.TemplateKey"
+                       asp-route-status="@Model.Filter.Status"
+                       asp-route-fromUtc="@Model.Filter.FromUtc?.ToString("o")"
+                       asp-route-toUtc="@Model.Filter.ToUtc?.ToString("o")"
+                       asp-route-searchTerm="@Model.Filter.SearchTerm">@pageNumber</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

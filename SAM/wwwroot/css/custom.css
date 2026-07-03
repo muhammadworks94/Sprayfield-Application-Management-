@@ -4228,6 +4228,13 @@ i.bi-question-circle {
   color: rgba(255, 255, 255, 0.8) !important;
 }
 
+.email-template-placeholders {
+  color: #c026d3;
+  font-weight: 600;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.9rem;
+}
+
 /* ============================================
    Enterprise Modern Refresh (Low-Risk Layer)
    ============================================ */

@@ -2,6 +2,7 @@ namespace SAM.Services.Models;
 
 /// <summary>
 /// System email template keys and supported tokens.
+/// All outbound system emails render from the EmailTemplates table via IEmailTemplateService.
 /// </summary>
 public static class EmailTemplateCatalog
 {
@@ -31,6 +32,20 @@ public static class EmailTemplateCatalog
     {
         var index = Array.IndexOf(SystemKeys, templateKey);
         return index >= 0 ? index : int.MaxValue;
+    }
+
+    public static string GetDisplayName(string templateKey)
+    {
+        return templateKey switch
+        {
+            PasswordReset => "Password Reset",
+            UserCredentials => "User Credentials",
+            SmtpTest => "SMTP Test Email",
+            CompanyRequestApproved => "Company Request Approved",
+            CompanyRequestRejected => "Company Request Rejected",
+            UserRequestRejected => "User Request Rejected",
+            _ => templateKey
+        };
     }
 
     public static IReadOnlyList<string> GetAllowedTokens(string templateKey)

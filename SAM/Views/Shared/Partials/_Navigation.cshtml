@@ -138,9 +138,9 @@
                     </button>
                     <ul class="nav-dropdown" id="dropdown-logs" role="menu">
                         <li class="nav-item" role="none">
-                            <a class="nav-link" asp-controller="UserActivityLogs" asp-action="Index" role="menuitem" data-tooltip="User Activity Logs">
+                            <a class="nav-link" asp-controller="UserActivityLogs" asp-action="Index" role="menuitem" data-tooltip="User activity">
                                 <i class="bi bi-clock-history"></i>
-                                <span class="nav-link-text">User Activity Logs</span>
+                                <span class="nav-link-text">User activity</span>
                             </a>
                         </li>
                         <li class="nav-item" role="none">
@@ -149,7 +149,19 @@
                                 <span class="nav-link-text">Error Logs</span>
                             </a>
                         </li>
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="EmailLogs" asp-action="Index" role="menuitem" data-tooltip="Email Logs">
+                                <i class="bi bi-envelope-check"></i>
+                                <span class="nav-link-text">Email Logs</span>
+                            </a>
+                        </li>
                     </ul>
+                </li>
+                <li class="nav-item" role="none">
+                    <a class="nav-link" asp-controller="EmailTemplates" asp-action="Index" role="menuitem" data-tooltip="Email Templates">
+                        <i class="bi bi-envelope-paper"></i>
+                        <span class="nav-link-text">Email Templates</span>
+                    </a>
                 </li>
                 <li class="nav-item" role="none">
                     <a class="nav-link" asp-controller="CompanyManagement" asp-action="Index" role="menuitem" data-tooltip="Manage Companies">

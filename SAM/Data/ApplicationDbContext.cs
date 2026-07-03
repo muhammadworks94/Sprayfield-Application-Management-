@@ -54,6 +54,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<UserActivityLog> UserActivityLogs => Set<UserActivityLog>();
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
+    public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
 
     private static readonly HashSet<string> IgnoredActivityFields = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -117,6 +118,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new EmailTemplateConfiguration());
         builder.ApplyConfiguration(new UserActivityLogConfiguration());
         builder.ApplyConfiguration(new ErrorLogConfiguration());
+        builder.ApplyConfiguration(new EmailLogConfiguration());
 
         // Configure Identity table names and ApplicationUser
         builder.Entity<ApplicationUser>(entity =>

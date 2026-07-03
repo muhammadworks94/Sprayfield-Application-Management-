@@ -121,6 +121,7 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ISearchService, SearchService
 builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyRequestService,CompanyRequestService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailService, EmailService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IEmailLogService, EmailLogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISmtpSettingsService, SmtpSettingsService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IUserActivityLogService, UserActivityLogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IErrorLogService, ErrorLogService>();

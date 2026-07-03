@@ -4,6 +4,7 @@
 @using SAM.Data
 @using SAM.Domain.Entities
 @using SAM.Domain.Enums
+@using SAM.Infrastructure.Helpers
 @inject UserManager<ApplicationUser> UserManager
 @inject ApplicationDbContext DbContext
 
@@ -11,7 +12,9 @@
     var user = await UserManager.GetUserAsync(User);
     var isAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
     var isCompanyAdmin = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
-    var roleLabel = isAdmin ? "System Administrator" : (isCompanyAdmin ? "Company Administrator" : "User");
+    var roleLabel = user != null
+        ? RoleDisplayHelper.GetPrimaryRoleDisplayName(await UserManager.GetRolesAsync(user))
+        : "User";
 
     var pendingUserRequestCount = 0;
     var pendingCompanyRequestCount = 0;

@@ -29,8 +29,10 @@ public class BreadcrumbService : IBreadcrumbService
         ["SystemAdmin"] = "System Administration",
         ["UserManagement"] = "Users",
         ["CompanyManagement"] = "Manage Companies",
-        ["UserActivityLogs"] = "User Activity Logs",
+        ["UserActivityLogs"] = "User activity",
         ["ErrorLogs"] = "Error Logs",
+        ["EmailLogs"] = "Email Logs",
+        ["EmailTemplates"] = "Email Templates",
         ["SystemSettings"] = "System Settings",
         ["Account"] = "Account",
         ["Home"] = "Home"

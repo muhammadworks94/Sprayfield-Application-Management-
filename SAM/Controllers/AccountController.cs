@@ -24,7 +24,6 @@ public class AccountController : Controller
     private readonly ICompanyService _companyService;
     private readonly IUserRequestService _userRequestService;
     private readonly ICompanyRequestService _companyRequestService;
-    private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
     private readonly IUserActivityLogService _userActivityLogService;
 
@@ -35,7 +34,6 @@ public class AccountController : Controller
         ICompanyService companyService,
         IUserRequestService userRequestService,
         ICompanyRequestService companyRequestService,
-        IEmailService emailService,
         IEmailTemplateService emailTemplateService,
         IUserActivityLogService userActivityLogService)
     {
@@ -45,7 +43,6 @@ public class AccountController : Controller
         _companyService = companyService;
         _userRequestService = userRequestService;
         _companyRequestService = companyRequestService;
-        _emailService = emailService;
         _emailTemplateService = emailTemplateService;
         _userActivityLogService = userActivityLogService;
     }
@@ -142,16 +139,21 @@ public class AccountController : Controller
 
             try
             {
-                var renderedEmail = await _emailTemplateService.RenderAsync(
+                await _emailTemplateService.SendTemplatedEmailAsync(
+                    model.Email,
                     EmailTemplateCatalog.PasswordReset,
                     new Dictionary<string, string>
                     {
                         ["AppName"] = EmailTemplateCatalog.AppName,
                         ["ResetLink"] = callbackUrl,
                         ["RecipientEmail"] = model.Email
+                    },
+                    new EmailSendContext
+                    {
+                        InitiatedByUserId = user.Id,
+                        InitiatedByEmail = user.Email,
+                        InitiatedByDisplayName = user.FullName
                     });
-
-                await _emailService.SendEmailAsync(model.Email, renderedEmail.Subject, renderedEmail.HtmlBody);
             }
             catch (Exception ex)
             {

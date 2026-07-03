@@ -16,11 +16,16 @@ public class EmailTemplateService : IEmailTemplateService
     private const string EmergencyBody = "<p>This is an automated message from SAM.</p>";
 
     private readonly ApplicationDbContext _context;
+    private readonly IEmailService _emailService;
     private readonly ILogger<EmailTemplateService> _logger;
 
-    public EmailTemplateService(ApplicationDbContext context, ILogger<EmailTemplateService> logger)
+    public EmailTemplateService(
+        ApplicationDbContext context,
+        IEmailService emailService,
+        ILogger<EmailTemplateService> logger)
     {
         _context = context;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -144,6 +149,30 @@ public class EmailTemplateService : IEmailTemplateService
         }
     }
 
+    public async Task SendTemplatedEmailAsync(
+        string to,
+        string templateKey,
+        IReadOnlyDictionary<string, string> tokens,
+        EmailSendContext? context = null,
+        CancellationToken cancellationToken = default)
+    {
+        var rendered = await RenderAsync(templateKey, tokens);
+
+        if (rendered.UsedEmergencyFallback)
+        {
+            _logger.LogWarning(
+                "Email to {Recipient} used emergency fallback for template {TemplateKey}.",
+                to,
+                templateKey);
+        }
+
+        var sendContext = context ?? new EmailSendContext();
+        sendContext.TemplateKey ??= templateKey;
+        sendContext.TemplateDisplayName ??= EmailTemplateCatalog.GetDisplayName(templateKey);
+
+        await _emailService.SendEmailAsync(to, rendered.Subject, rendered.HtmlBody, sendContext);
+    }
+
     private RenderedEmail EmergencyFallback(string templateKey, string reason)
     {
         _logger.LogWarning("Using emergency fallback for template {TemplateKey}. Reason: {Reason}", templateKey, reason);
@@ -168,6 +197,7 @@ public class EmailTemplateService : IEmailTemplateService
 
         if (!missingKeys.Any())
         {
+            await UpgradeLegacyTemplateBodiesAsync();
             return;
         }
 
@@ -177,6 +207,44 @@ public class EmailTemplateService : IEmailTemplateService
 
         _context.EmailTemplates.AddRange(defaults);
         await _context.SaveChangesAsync();
+        await UpgradeLegacyTemplateBodiesAsync();
+    }
+
+    private async Task UpgradeLegacyTemplateBodiesAsync()
+    {
+        var legacyKeys = new[]
+        {
+            EmailTemplateCatalog.CompanyRequestApproved,
+            EmailTemplateCatalog.CompanyRequestRejected,
+            EmailTemplateCatalog.UserRequestRejected
+        };
+
+        var templates = await _context.EmailTemplates
+            .Where(t => legacyKeys.Contains(t.TemplateKey))
+            .ToListAsync();
+
+        if (templates.Count == 0)
+        {
+            return;
+        }
+
+        var defaults = BuildDefaultTemplates().ToDictionary(t => t.TemplateKey);
+        var changed = false;
+
+        foreach (var template in templates)
+        {
+            if (template.BodyTemplate.StartsWith("<p>Hello", StringComparison.Ordinal) &&
+                defaults.TryGetValue(template.TemplateKey, out var defaultTemplate))
+            {
+                template.BodyTemplate = defaultTemplate.BodyTemplate;
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            await _context.SaveChangesAsync();
+        }
     }
 
     private static IEnumerable<EmailTemplate> BuildDefaultTemplates()
@@ -185,7 +253,7 @@ public class EmailTemplateService : IEmailTemplateService
         {
             TemplateKey = EmailTemplateCatalog.PasswordReset,
             DisplayName = "Password Reset",
-            Description = "Sent when a user requests a password reset.",
+            Description = "Sent when a user submits Forgot Password and requests a reset link.",
             SubjectTemplate = "Reset your {{AppName}} password",
             BodyTemplate =
                 "<div style=\"margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;\">" +
@@ -267,12 +335,22 @@ public class EmailTemplateService : IEmailTemplateService
             Description = "Sent when a company signup request is approved.",
             SubjectTemplate = "Your {{AppName}} company request has been approved",
             BodyTemplate =
-                "<p>Hello {{RecipientEmail}},</p>" +
-                "<p>Your request to create company <strong>{{CompanyName}}</strong> has been approved.</p>" +
-                "<p>Your role is <strong>{{RoleName}}</strong>.</p>" +
-                "<p>Temporary password: <strong>{{TemporaryPassword}}</strong></p>" +
-                "<p>Please sign in and change your password immediately.</p>" +
-                "<p>- {{AppName}}</p>",
+                "<div style=\"margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;\">" +
+                "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;padding:24px 0;background-color:#f3f4f6;\">" +
+                "<tr><td align=\"center\">" +
+                "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:640px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;\">" +
+                "<tr><td style=\"padding:20px 24px;background-color:#1d4ed8;color:#ffffff;\"><h2 style=\"margin:0;font-size:20px;line-height:1.3;\">{{AppName}} Company Approved</h2></td></tr>" +
+                "<tr><td style=\"padding:24px;color:#111827;font-size:14px;line-height:1.6;\">" +
+                "<p style=\"margin:0 0 14px;\">Hello <strong>{{RecipientEmail}}</strong>,</p>" +
+                "<p style=\"margin:0 0 14px;\">Your request to create company <strong>{{CompanyName}}</strong> has been approved.</p>" +
+                "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;border:1px solid #e5e7eb;border-radius:8px;background-color:#f9fafb;margin:0 0 16px;\">" +
+                "<tr><td style=\"padding:12px 14px;border-bottom:1px solid #e5e7eb;\"><strong>Role:</strong> {{RoleName}}</td></tr>" +
+                "<tr><td style=\"padding:12px 14px;\"><strong>Temporary Password:</strong> <span style=\"font-family:Consolas,Monaco,monospace;color:#b91c1c;font-weight:700;\">{{TemporaryPassword}}</span></td></tr>" +
+                "</table>" +
+                "<p style=\"margin:0 0 12px;padding:12px;background-color:#ecfdf5;border-left:4px solid #10b981;color:#065f46;\">Please sign in and change your password immediately.</p>" +
+                "</td></tr>" +
+                "<tr><td style=\"padding:14px 24px;background-color:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;\">This is an automated message from {{AppName}}. Please do not reply.</td></tr>" +
+                "</table></td></tr></table></div>",
             IsSystemTemplate = true,
             IsActive = true
         };
@@ -284,10 +362,18 @@ public class EmailTemplateService : IEmailTemplateService
             Description = "Sent when a company signup request is rejected.",
             SubjectTemplate = "Your {{AppName}} company request was not approved",
             BodyTemplate =
-                "<p>Hello {{RecipientEmail}},</p>" +
-                "<p>Your request to create company <strong>{{CompanyName}}</strong> was not approved.</p>" +
-                "<p>Reason: {{RejectionReason}}</p>" +
-                "<p>- {{AppName}}</p>",
+                "<div style=\"margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;\">" +
+                "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;padding:24px 0;background-color:#f3f4f6;\">" +
+                "<tr><td align=\"center\">" +
+                "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:640px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;\">" +
+                "<tr><td style=\"padding:20px 24px;background-color:#1d4ed8;color:#ffffff;\"><h2 style=\"margin:0;font-size:20px;line-height:1.3;\">{{AppName}} Company Request Update</h2></td></tr>" +
+                "<tr><td style=\"padding:24px;color:#111827;font-size:14px;line-height:1.6;\">" +
+                "<p style=\"margin:0 0 14px;\">Hello <strong>{{RecipientEmail}}</strong>,</p>" +
+                "<p style=\"margin:0 0 14px;\">Your request to create company <strong>{{CompanyName}}</strong> was not approved.</p>" +
+                "<p style=\"margin:0 0 12px;padding:12px;background-color:#fef2f2;border-left:4px solid #ef4444;color:#991b1b;\"><strong>Reason:</strong> {{RejectionReason}}</p>" +
+                "</td></tr>" +
+                "<tr><td style=\"padding:14px 24px;background-color:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;\">This is an automated message from {{AppName}}. Please do not reply.</td></tr>" +
+                "</table></td></tr></table></div>",
             IsSystemTemplate = true,
             IsActive = true
         };
@@ -299,10 +385,18 @@ public class EmailTemplateService : IEmailTemplateService
             Description = "Sent when a user access request is rejected.",
             SubjectTemplate = "Your {{AppName}} user access request was not approved",
             BodyTemplate =
-                "<p>Hello {{RecipientEmail}},</p>" +
-                "<p>Your request to join <strong>{{CompanyName}}</strong> was not approved.</p>" +
-                "<p>Reason: {{RejectionReason}}</p>" +
-                "<p>- {{AppName}}</p>",
+                "<div style=\"margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;\">" +
+                "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;padding:24px 0;background-color:#f3f4f6;\">" +
+                "<tr><td align=\"center\">" +
+                "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:640px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;\">" +
+                "<tr><td style=\"padding:20px 24px;background-color:#1d4ed8;color:#ffffff;\"><h2 style=\"margin:0;font-size:20px;line-height:1.3;\">{{AppName}} Access Request Update</h2></td></tr>" +
+                "<tr><td style=\"padding:24px;color:#111827;font-size:14px;line-height:1.6;\">" +
+                "<p style=\"margin:0 0 14px;\">Hello <strong>{{RecipientEmail}}</strong>,</p>" +
+                "<p style=\"margin:0 0 14px;\">Your request to join <strong>{{CompanyName}}</strong> was not approved.</p>" +
+                "<p style=\"margin:0 0 12px;padding:12px;background-color:#fef2f2;border-left:4px solid #ef4444;color:#991b1b;\"><strong>Reason:</strong> {{RejectionReason}}</p>" +
+                "</td></tr>" +
+                "<tr><td style=\"padding:14px 24px;background-color:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;\">This is an automated message from {{AppName}}. Please do not reply.</td></tr>" +
+                "</table></td></tr></table></div>",
             IsSystemTemplate = true,
             IsActive = true
         };

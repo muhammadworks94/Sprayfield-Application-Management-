@@ -19,20 +19,17 @@ public class UserService : IUserService
     private readonly ApplicationDbContext _context;
     private readonly ILogger<UserService> _logger;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
 
     public UserService(
         ApplicationDbContext context,
         ILogger<UserService> logger,
         UserManager<ApplicationUser> userManager,
-        IEmailService emailService,
         IEmailTemplateService emailTemplateService)
     {
         _context = context;
         _logger = logger;
         _userManager = userManager;
-        _emailService = emailService;
         _emailTemplateService = emailTemplateService;
     }
 
@@ -111,7 +108,8 @@ public class UserService : IUserService
                 // Format role for display
                 var roleDisplayName = FormatRoleForDisplay(role);
 
-                var renderedEmail = await _emailTemplateService.RenderAsync(
+                await _emailTemplateService.SendTemplatedEmailAsync(
+                    email,
                     EmailTemplateCatalog.UserCredentials,
                     new Dictionary<string, string>
                     {
@@ -121,8 +119,6 @@ public class UserService : IUserService
                         ["CompanyName"] = companyName ?? "N/A",
                         ["RoleName"] = roleDisplayName
                     });
-
-                await _emailService.SendEmailAsync(email, renderedEmail.Subject, renderedEmail.HtmlBody);
 
                 _logger.LogInformation("User creation email sent to {Email}", email);
             }

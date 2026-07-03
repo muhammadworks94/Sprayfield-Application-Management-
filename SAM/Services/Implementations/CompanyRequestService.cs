@@ -17,20 +17,17 @@ public class CompanyRequestService : ICompanyRequestService
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
     private readonly ILogger<CompanyRequestService> _logger;
 
     public CompanyRequestService(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        IEmailService emailService,
         IEmailTemplateService emailTemplateService,
         ILogger<CompanyRequestService> logger)
     {
         _context = context;
         _userManager = userManager;
-        _emailService = emailService;
         _emailTemplateService = emailTemplateService;
         _logger = logger;
     }
@@ -219,7 +216,8 @@ public class CompanyRequestService : ICompanyRequestService
         await TrySendNotificationWithRetryAsync(
             request.RequesterEmail,
             EmailTemplateCatalog.CompanyRequestRejected,
-            rejectedTokens);
+            rejectedTokens,
+            new EmailSendContext { InitiatedByEmail = rejectedByEmail });
 
         return request;
     }
@@ -289,9 +287,12 @@ public class CompanyRequestService : ICompanyRequestService
     private async Task TrySendNotificationWithRetryAsync(
         string to,
         string templateKey,
-        IReadOnlyDictionary<string, string> tokens)
+        IReadOnlyDictionary<string, string> tokens,
+        EmailSendContext? context = null)
     {
-        var rendered = await _emailTemplateService.RenderAsync(templateKey, tokens);
+        var sendContext = context ?? new EmailSendContext();
+        sendContext.TemplateKey ??= templateKey;
+        sendContext.TemplateDisplayName ??= EmailTemplateCatalog.GetDisplayName(templateKey);
         var delays = new[]
         {
             TimeSpan.FromMilliseconds(500),
@@ -303,7 +304,7 @@ public class CompanyRequestService : ICompanyRequestService
         {
             try
             {
-                await _emailService.SendEmailAsync(to, rendered.Subject, rendered.HtmlBody);
+                await _emailTemplateService.SendTemplatedEmailAsync(to, templateKey, tokens, sendContext);
                 return;
             }
             catch (Exception ex)

@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using SAM.Services.Models;
 
 namespace SAM.Services.Interfaces;
 
@@ -13,7 +14,6 @@ public interface IEmailService
     /// <param name="to">Recipient email address.</param>
     /// <param name="subject">Email subject.</param>
     /// <param name="htmlBody">HTML body content.</param>
-    Task SendEmailAsync(string to, string subject, string htmlBody);
+    /// <param name="context">Optional context for email logging.</param>
+    Task SendEmailAsync(string to, string subject, string htmlBody, EmailSendContext? context = null);
 }
-
-

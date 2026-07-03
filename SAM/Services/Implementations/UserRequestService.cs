@@ -19,7 +19,6 @@ public class UserRequestService : IUserRequestService
     private readonly ILogger<UserRequestService> _logger;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IUserService _userService;
-    private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
 
     public UserRequestService(
@@ -27,14 +26,12 @@ public class UserRequestService : IUserRequestService
         ILogger<UserRequestService> logger,
         UserManager<ApplicationUser> userManager,
         IUserService userService,
-        IEmailService emailService,
         IEmailTemplateService emailTemplateService)
     {
         _context = context;
         _logger = logger;
         _userManager = userManager;
         _userService = userService;
-        _emailService = emailService;
         _emailTemplateService = emailTemplateService;
     }
 
@@ -227,7 +224,8 @@ public class UserRequestService : IUserRequestService
         await TrySendNotificationWithRetryAsync(
             request.Email,
             EmailTemplateCatalog.UserRequestRejected,
-            rejectedTokens);
+            rejectedTokens,
+            new EmailSendContext { InitiatedByEmail = rejectedByEmail });
 
         return request;
     }
@@ -235,9 +233,12 @@ public class UserRequestService : IUserRequestService
     private async Task TrySendNotificationWithRetryAsync(
         string to,
         string templateKey,
-        IReadOnlyDictionary<string, string> tokens)
+        IReadOnlyDictionary<string, string> tokens,
+        EmailSendContext? context = null)
     {
-        var rendered = await _emailTemplateService.RenderAsync(templateKey, tokens);
+        var sendContext = context ?? new EmailSendContext();
+        sendContext.TemplateKey ??= templateKey;
+        sendContext.TemplateDisplayName ??= EmailTemplateCatalog.GetDisplayName(templateKey);
         var delays = new[]
         {
             TimeSpan.FromMilliseconds(500),
@@ -249,7 +250,7 @@ public class UserRequestService : IUserRequestService
         {
             try
             {
-                await _emailService.SendEmailAsync(to, rendered.Subject, rendered.HtmlBody);
+                await _emailTemplateService.SendTemplatedEmailAsync(to, templateKey, tokens, sendContext);
                 return;
             }
             catch (Exception ex)

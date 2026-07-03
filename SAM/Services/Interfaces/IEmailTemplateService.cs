@@ -12,4 +12,10 @@ public interface IEmailTemplateService
     Task<EmailTemplate?> GetByKeyAsync(string templateKey);
     Task UpdateSystemTemplateAsync(string templateKey, string subjectTemplate, string bodyTemplate);
     Task<RenderedEmail> RenderAsync(string templateKey, IReadOnlyDictionary<string, string> tokens);
+    Task SendTemplatedEmailAsync(
+        string to,
+        string templateKey,
+        IReadOnlyDictionary<string, string> tokens,
+        EmailSendContext? context = null,
+        CancellationToken cancellationToken = default);
 }
