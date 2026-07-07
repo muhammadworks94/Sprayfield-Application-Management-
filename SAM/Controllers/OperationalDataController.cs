@@ -1605,6 +1605,7 @@ namespace SAM.Controllers;
             ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
             var savedWwChar = await _wwCharService.CreateAsync(wwChar);
+            ReportingDetectionLimitHelper.ApplyWwReportingDetectionLimitsFromForm(Request.Form, viewModel.TemplateParameters);
             await SaveWwCharTemplateValuesAsync(savedWwChar, viewModel.TemplateParameters);
             await _reportProvisioner.EnsureNdmrForMonthAsync(
                 savedWwChar.FacilityId,
@@ -1910,6 +1911,7 @@ namespace SAM.Controllers;
             ApplyLegacyChemistrySnapshotsFromTemplate(wwChar, viewModel.TemplateParameters);
 
             await _wwCharService.UpdateAsync(wwChar);
+            ReportingDetectionLimitHelper.ApplyWwReportingDetectionLimitsFromForm(Request.Form, viewModel.TemplateParameters);
             await SaveWwCharTemplateValuesAsync(wwChar, viewModel.TemplateParameters);
             await _reportProvisioner.EnsureNdmrForMonthAsync(
                 wwChar.FacilityId,
@@ -2526,6 +2528,7 @@ namespace SAM.Controllers;
                     ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.AcceptedUnits
                     ?? string.Empty,
                 Value = x.NumericValue,
+                IsReportingDetectionLimit = x.IsReportingDetectionLimit,
                 DailyMaximumLimit = x.FacilityPermitTemplateParameter.DailyMaximumLimit,
                 IsGw59 = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0,
                 IsGw59A = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0
@@ -2714,7 +2717,8 @@ namespace SAM.Controllers;
                 viewModel.FacilityId,
                 resolvedPermit?.Id,
                 viewModel.SampleDate,
-                viewModel.TemplateParameters);
+                viewModel.TemplateParameters,
+                form: Request.Form);
         }
         else
         {
@@ -3049,7 +3053,8 @@ namespace SAM.Controllers;
                 resolvedPermit?.Id,
                 viewModel.SampleDate,
                 viewModel.TemplateParameters,
-                viewModel.Id);
+                viewModel.Id,
+                Request.Form);
 
         var badTemplateRows = await ValidateGwTemplateRowScopeAsync(resolvedPermit?.Id, viewModel.TemplateParameters);
         if (badTemplateRows.Count > 0)
@@ -3949,6 +3954,8 @@ namespace SAM.Controllers;
         {
             while (parameter.DailyValues.Count < 31) parameter.DailyValues.Add(null);
             while (parameter.DailyValues.Count > 31) parameter.DailyValues.RemoveAt(parameter.DailyValues.Count - 1);
+            while (parameter.DailyIsReportingDetectionLimit.Count < 31) parameter.DailyIsReportingDetectionLimit.Add(false);
+            while (parameter.DailyIsReportingDetectionLimit.Count > 31) parameter.DailyIsReportingDetectionLimit.RemoveAt(parameter.DailyIsReportingDetectionLimit.Count - 1);
         }
     }
 
@@ -4000,12 +4007,14 @@ namespace SAM.Controllers;
                 MonthlyGeometricMeanLimit = row.MonthlyGeometricMeanLimit,
                 DailyMinimumLimit = row.DailyMinimumLimit,
                 DailyMaximumLimit = row.DailyMaximumLimit,
-                DailyValues = Enumerable.Repeat<decimal?>(null, 31).ToList()
+                DailyValues = Enumerable.Repeat<decimal?>(null, 31).ToList(),
+                DailyIsReportingDetectionLimit = Enumerable.Repeat(false, 31).ToList()
             };
 
             foreach (var value in existingValues.Where(v => v.FacilityPermitTemplateParameterId == row.Id && v.DayNo >= 1 && v.DayNo <= 31))
             {
                 vm.DailyValues[value.DayNo - 1] = value.NumericValue;
+                vm.DailyIsReportingDetectionLimit[value.DayNo - 1] = value.IsReportingDetectionLimit;
             }
 
             result.Add(vm);
@@ -4028,6 +4037,9 @@ namespace SAM.Controllers;
                 var value = parameter.DailyValues[day - 1];
                 if (!value.HasValue) continue;
 
+                var isRdl = parameter.DailyIsReportingDetectionLimit.Count >= day
+                    && parameter.DailyIsReportingDetectionLimit[day - 1];
+
                 _context.WWCharTemplateValues.Add(new WWCharTemplateValue
                 {
                     Id = Guid.NewGuid(),
@@ -4036,6 +4048,7 @@ namespace SAM.Controllers;
                     FacilityPermitTemplateParameterId = parameter.FacilityPermitTemplateParameterId,
                     DayNo = day,
                     NumericValue = value,
+                    IsReportingDetectionLimit = isRdl,
                     CreatedBy = User?.Identity?.Name ?? "System"
                 });
             }
@@ -4090,6 +4103,7 @@ namespace SAM.Controllers;
                 GWMonitId = gwMonit.Id,
                 FacilityPermitTemplateParameterId = parameter.FacilityPermitTemplateParameterId,
                 NumericValue = parameter.EnteredValue,
+                IsReportingDetectionLimit = parameter.IsReportingDetectionLimit,
                 CreatedBy = User?.Identity?.Name ?? "System"
             });
         }
@@ -4102,7 +4116,8 @@ namespace SAM.Controllers;
         Guid? resolvedPermitId,
         DateTime sampleDate,
         List<GWMonitTemplateParameterViewModel>? postedParameters,
-        Guid? gwMonitId = null)
+        Guid? gwMonitId = null,
+        IFormCollection? form = null)
     {
         var rows = await BuildGwMonitTemplateInputsAsync(facilityId, resolvedPermitId, sampleDate, gwMonitId);
         if (postedParameters == null || postedParameters.Count == 0)
@@ -4110,13 +4125,19 @@ namespace SAM.Controllers;
             return rows;
         }
 
-        var postedByTemplateId = postedParameters.ToDictionary(x => x.FacilityPermitTemplateParameterId, x => x.EnteredValue);
+        var postedByTemplateId = postedParameters.ToDictionary(x => x.FacilityPermitTemplateParameterId);
         foreach (var row in rows)
         {
-            if (postedByTemplateId.TryGetValue(row.FacilityPermitTemplateParameterId, out var enteredValue))
+            if (postedByTemplateId.TryGetValue(row.FacilityPermitTemplateParameterId, out var posted))
             {
-                row.EnteredValue = enteredValue;
+                row.EnteredValue = posted.EnteredValue;
+                row.IsReportingDetectionLimit = posted.IsReportingDetectionLimit;
             }
+        }
+
+        if (form != null)
+        {
+            ReportingDetectionLimitHelper.ApplyGwReportingDetectionLimitsFromForm(form, rows);
         }
 
         return rows;
@@ -4159,8 +4180,12 @@ namespace SAM.Controllers;
         var no3Row = templateParameters.FirstOrDefault(p => string.Equals(p.PcsCode, WWCharChemistryResolver.No3PcsCode, StringComparison.OrdinalIgnoreCase));
         var nh3Row = templateParameters.FirstOrDefault(p => string.Equals(p.PcsCode, "00610", StringComparison.OrdinalIgnoreCase));
 
-        var tknAverage = tknRow == null ? null : WWCharChemistryResolver.AverageNonNull(tknRow.DailyValues);
-        var no3Average = no3Row == null ? null : WWCharChemistryResolver.AverageNonNull(no3Row.DailyValues);
+        var tknAverage = tknRow == null
+            ? null
+            : WWCharChemistryResolver.AverageNonNull(tknRow.DailyValues, tknRow.DailyIsReportingDetectionLimit, WWCharChemistryResolver.TknPcsCode);
+        var no3Average = no3Row == null
+            ? null
+            : WWCharChemistryResolver.AverageNonNull(no3Row.DailyValues, no3Row.DailyIsReportingDetectionLimit, WWCharChemistryResolver.No3PcsCode);
 
         wwChar.NO2N = 0m;
         if (tknAverage.HasValue)
@@ -4277,6 +4302,7 @@ namespace SAM.Controllers;
             DailyMaximumLimit = row.DailyMaximumLimit,
             Notes = row.Notes,
             EnteredValue = existingValues.FirstOrDefault(v => v.FacilityPermitTemplateParameterId == row.Id)?.NumericValue,
+            IsReportingDetectionLimit = existingValues.FirstOrDefault(v => v.FacilityPermitTemplateParameterId == row.Id)?.IsReportingDetectionLimit ?? false,
             IsRequiredForSelectedMonth = IsTemplateRowApplicableForMonth(row, sampleDate.Month),
             RequirementMessage = IsTemplateRowApplicableForMonth(row, sampleDate.Month)
                 ? $"Required for {sampleDate:MMM yyyy} based on permit schedule."

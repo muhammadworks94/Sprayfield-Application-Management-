@@ -604,6 +604,7 @@ public class GWMonitTemplateParameterViewModel
     public decimal? DailyMaximumLimit { get; set; }
     public string? Notes { get; set; }
     public decimal? EnteredValue { get; set; }
+    public bool IsReportingDetectionLimit { get; set; }
     public bool IsRequiredForSelectedMonth { get; set; }
     public string? RequirementMessage { get; set; }
 }

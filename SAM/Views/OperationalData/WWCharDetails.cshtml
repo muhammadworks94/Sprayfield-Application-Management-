@@ -1,6 +1,7 @@
 @model SAM.ViewModels.OperationalData.WWCharViewModel
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
+@using SAM.Utilities
 @inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Wastewater Characteristics Details";
@@ -210,7 +211,20 @@
                                 <td>@(Model.ORCTimeOnSiteHours != null && d < Model.ORCTimeOnSiteHours.Count && Model.ORCTimeOnSiteHours[d].HasValue ? Model.ORCTimeOnSiteHours[d].Value.ToString("F2") : "-")</td>
                                 @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                                 {
-                                    <td>@(Model.TemplateParameters[p].DailyValues != null && d < Model.TemplateParameters[p].DailyValues.Count && Model.TemplateParameters[p].DailyValues[d].HasValue ? Model.TemplateParameters[p].DailyValues[d]!.Value.ToString("F6") : "-")</td>
+                                    <td>
+                                        @{
+                                            var dailyValue = Model.TemplateParameters[p].DailyValues != null
+                                                && d < Model.TemplateParameters[p].DailyValues.Count
+                                                ? Model.TemplateParameters[p].DailyValues[d]
+                                                : null;
+                                            var isRdl = Model.TemplateParameters[p].DailyIsReportingDetectionLimit != null
+                                                && d < Model.TemplateParameters[p].DailyIsReportingDetectionLimit.Count
+                                                && Model.TemplateParameters[p].DailyIsReportingDetectionLimit[d];
+                                        }
+                                        @(dailyValue.HasValue
+                                            ? ReportingDetectionLimitHelper.FormatDisplayValue(dailyValue.Value, isRdl, "F6")
+                                            : "-")
+                                    </td>
                                 }
                             </tr>
                         }

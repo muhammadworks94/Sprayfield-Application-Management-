@@ -141,19 +141,20 @@ public static class Gw59PdfCalibration
     public static string GetSlotPositionKey(Gw59LabPdfSlot slot) =>
         $"{slot.X:0.##}:{slot.Y:0.##}";
 
-    public static string FormatSlotValue(decimal value, Gw59LabPdfSlot slot) =>
-        value.ToString(slot.ValueFormat);
+    public static string FormatSlotValue(decimal value, Gw59LabPdfSlot slot, bool isReportingDetectionLimit = false) =>
+        ReportingDetectionLimitHelper.FormatDisplayValue(value, isReportingDetectionLimit, slot.ValueFormat);
 
     public static double GetBaselineY(double underlineY) => underlineY - BaselineAboveUnderline;
 
     public static string FormatOtherLine(Gw59OtherParameterLine line) =>
-        FormatOtherLine(line.ParameterName, line.Value, line.Units);
+        FormatOtherLine(line.ParameterName, line.Value, line.Units, line.IsReportingDetectionLimit);
 
-    public static string FormatOtherLine(string parameterName, decimal value, string? units)
+    public static string FormatOtherLine(string parameterName, decimal value, string? units, bool isReportingDetectionLimit = false)
     {
         var unitsSuffix = string.IsNullOrWhiteSpace(units) ? string.Empty : $" {units.Trim()}";
         var name = AbbreviateOtherParameterName(parameterName);
-        return $"{name}, {value:0.######}{unitsSuffix}";
+        var formattedValue = ReportingDetectionLimitHelper.FormatDisplayValue(value, isReportingDetectionLimit, "0.######");
+        return $"{name}, {formattedValue}{unitsSuffix}";
     }
 
     public static IReadOnlyList<Gw59ParameterSnapshot> SelectNamedSnapshots(IEnumerable<Gw59ParameterSnapshot>? snapshots)

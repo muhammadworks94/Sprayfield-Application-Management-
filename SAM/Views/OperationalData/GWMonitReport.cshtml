@@ -127,7 +127,7 @@
                             {
                                 var units = string.IsNullOrWhiteSpace(snapshot.Units) ? string.Empty : $" {snapshot.Units}";
                                 <dt>@snapshot.ParameterName (@snapshot.PcsCode)</dt>
-                                <dd>@snapshot.Value!.Value.ToString("0.######")@units</dd>
+                                <dd>@ReportingDetectionLimitHelper.FormatDisplayValue(snapshot.Value!.Value, snapshot.IsReportingDetectionLimit, "0.######")@units</dd>
                             }
                         </dl>
                     </div>

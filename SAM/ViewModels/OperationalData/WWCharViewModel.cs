@@ -411,6 +411,7 @@ public class WWCharTemplateParameterInputViewModel
     public decimal? DailyMinimumLimit { get; set; }
     public decimal? DailyMaximumLimit { get; set; }
     public List<decimal?> DailyValues { get; set; } = new();
+    public List<bool> DailyIsReportingDetectionLimit { get; set; } = new();
 }
 
 public class WWCharTemplateSectionViewModel

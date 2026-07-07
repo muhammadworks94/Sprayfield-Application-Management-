@@ -365,7 +365,13 @@ public class NDMRService : INDMRService
         IReadOnlyList<NdmrParameterRow> chunk,
         IReadOnlyList<string> codeSlots,
         int daysInMonth,
-        int startRow)
+        int startRow,
+        int year,
+        int monthNumber,
+        WWChar? wwChar,
+        IReadOnlyList<GWMonit> gwMonits,
+        IReadOnlyDictionary<(Guid FacilityPermitTemplateParameterId, int DayNo), decimal?> wwDailyValueByKey,
+        IReadOnlyDictionary<(Guid FacilityPermitTemplateParameterId, int DayNo), bool> wwDailyRdlByKey)
     {
         const int averageRow = 37;
         const int dailyMaxRow = 38;
@@ -387,38 +393,49 @@ public class NDMRService : INDMRService
                 continue;
             }
 
-            var values = new List<decimal>();
-            for (var day = 0; day < daysInMonth; day++)
+            var parameter = chunk[slot];
+            var dailyValues = new List<decimal?>(daysInMonth);
+            var dailyRdlFlags = new List<bool>(daysInMonth);
+            for (var day = 1; day <= daysInMonth; day++)
             {
-                var cell = worksheet.Cell($"{col}{startRow + day}");
-                if (!cell.TryGetValue<decimal>(out var numericValue))
+                decimal? value = null;
+                var isRdl = false;
+                if (parameter.TemplateRow.Id != Guid.Empty &&
+                    wwDailyValueByKey.TryGetValue((parameter.TemplateRow.Id, day), out var wwValue))
                 {
-                    continue;
+                    value = wwValue;
+                    wwDailyRdlByKey.TryGetValue((parameter.TemplateRow.Id, day), out isRdl);
                 }
-                values.Add(numericValue);
+
+                value ??= ResolveFallbackDailyValue(
+                    parameter.PcsCode,
+                    new DateTime(year, monthNumber, day),
+                    wwChar,
+                    gwMonits);
+                if (value.HasValue && NdmrFlowFormatting.IsFlowPcs(parameter.PcsCode))
+                {
+                    value = NdmrFlowFormatting.NormalizeFlowValueToMgd(value);
+                }
+
+                dailyValues.Add(value);
+                dailyRdlFlags.Add(isRdl);
             }
 
-            if (values.Count == 0)
+            var rawValues = dailyValues.Where(v => v.HasValue).Select(v => v!.Value).ToList();
+            if (rawValues.Count == 0)
             {
                 continue;
             }
 
-            var parameter = chunk[slot];
-            decimal averageValue;
-            if (string.Equals(parameter.PcsCode, "31616", StringComparison.OrdinalIgnoreCase) && values.All(v => v > 0m))
+            var averageValue = ReportingDetectionLimitHelper.AverageForReporting(dailyValues, dailyRdlFlags, parameter.PcsCode);
+            if (!averageValue.HasValue)
             {
-                // Fecal coliform average is represented as geometric mean when daily values are positive.
-                var logAverage = values.Select(v => Math.Log((double)v)).Average();
-                averageValue = (decimal)Math.Exp(logAverage);
-            }
-            else
-            {
-                averageValue = values.Average();
+                continue;
             }
 
-            avgCell.Value = averageValue;
-            maxCell.Value = values.Max();
-            minCell.Value = values.Min();
+            avgCell.Value = averageValue.Value;
+            maxCell.Value = rawValues.Max();
+            minCell.Value = rawValues.Min();
             var summaryFormat = NdmrFlowFormatting.IsFlowPcs(parameter.PcsCode)
                 ? NdmrFlowFormatting.FlowNumericFormat
                 : "0.00";
@@ -566,6 +583,9 @@ public class NDMRService : INDMRService
         var wwDailyValueByKey = wwCharTemplateValues
             .GroupBy(x => (x.FacilityPermitTemplateParameterId, x.DayNo))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First().NumericValue);
+        var wwDailyRdlByKey = wwCharTemplateValues
+            .GroupBy(x => (x.FacilityPermitTemplateParameterId, x.DayNo))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First().IsReportingDetectionLimit);
 
         // Preload irrigation events and groundwater samples for the month
         var gwMonits = await _context.GWMonits
@@ -712,10 +732,12 @@ public class NDMRService : INDMRService
 
                     var parameter = chunk[slot];
                     decimal? value = null;
+                    var isRdl = false;
                     if (parameter.TemplateRow.Id != Guid.Empty &&
                         wwDailyValueByKey.TryGetValue((parameter.TemplateRow.Id, day), out var wwValue))
                     {
                         value = wwValue;
+                        wwDailyRdlByKey.TryGetValue((parameter.TemplateRow.Id, day), out isRdl);
                     }
 
                     value ??= ResolveFallbackDailyValue(parameter.PcsCode, currentDate, wwChar, gwMonits);
@@ -724,17 +746,34 @@ public class NDMRService : INDMRService
                         if (NdmrFlowFormatting.IsFlowPcs(parameter.PcsCode))
                         {
                             value = NdmrFlowFormatting.NormalizeFlowValueToMgd(value);
+                            valueCell.Value = value.Value;
+                            valueCell.Style.NumberFormat.Format = NdmrFlowFormatting.FlowNumericFormat;
                         }
-
-                        valueCell.Value = value.Value;
-                        valueCell.Style.NumberFormat.Format = NdmrFlowFormatting.IsFlowPcs(parameter.PcsCode)
-                            ? NdmrFlowFormatting.FlowNumericFormat
-                            : "0.00";
+                        else if (isRdl)
+                        {
+                            valueCell.Value = ReportingDetectionLimitHelper.FormatDisplayValue(value.Value, true, "0.00");
+                        }
+                        else
+                        {
+                            valueCell.Value = value.Value;
+                            valueCell.Style.NumberFormat.Format = "0.00";
+                        }
                     }
                 }
             }
 
-            PopulateSummaryRowsForChunk(worksheet, chunk, codeSlots, daysInMonth, startRow);
+            PopulateSummaryRowsForChunk(
+                worksheet,
+                chunk,
+                codeSlots,
+                daysInMonth,
+                startRow,
+                year,
+                month,
+                wwChar,
+                gwMonits,
+                wwDailyValueByKey,
+                wwDailyRdlByKey);
             SanitizeErrorCells(worksheet);
         }
 

@@ -363,7 +363,8 @@
 
             function captureTemplateValues() {
                 const values = {};
-                if (!container) return values;
+                const rdlFlags = {};
+                if (!container) return { values, rdlFlags };
                 const rowInputs = container.querySelectorAll('input[name^="TemplateParameters["][name$="].EnteredValue"]');
                 rowInputs.forEach(function (input) {
                     const idxMatch = input.name.match(/^TemplateParameters\[(\d+)\]\.EnteredValue$/);
@@ -375,11 +376,23 @@
                         values[key] = input.value;
                     }
                 });
-                return values;
+                container.querySelectorAll('input[name^="TemplateParameters["][name$="].IsReportingDetectionLimit"][type="checkbox"]').forEach(function (input) {
+                    const idxMatch = input.name.match(/^TemplateParameters\[(\d+)\]\.IsReportingDetectionLimit$/);
+                    if (!idxMatch) return;
+                    const idx = idxMatch[1];
+                    const idInput = container.querySelector(`input[name="TemplateParameters[${idx}].FacilityPermitTemplateParameterId"]`);
+                    const key = idInput?.value;
+                    if (key) {
+                        rdlFlags[key] = input.checked;
+                    }
+                });
+                return { values, rdlFlags };
             }
 
-            function restoreTemplateValues(values) {
-                if (!container || !values) return;
+            function restoreTemplateValues(snapshot) {
+                if (!container || !snapshot) return;
+                const values = snapshot.values || snapshot;
+                const rdlFlags = snapshot.rdlFlags || {};
                 const rowInputs = container.querySelectorAll('input[name^="TemplateParameters["][name$="].EnteredValue"]');
                 rowInputs.forEach(function (input) {
                     const idxMatch = input.name.match(/^TemplateParameters\[(\d+)\]\.EnteredValue$/);
@@ -389,6 +402,16 @@
                     const key = idInput?.value;
                     if (key && Object.prototype.hasOwnProperty.call(values, key)) {
                         input.value = values[key];
+                    }
+                });
+                container.querySelectorAll('input[name^="TemplateParameters["][name$="].IsReportingDetectionLimit"][type="checkbox"]').forEach(function (input) {
+                    const idxMatch = input.name.match(/^TemplateParameters\[(\d+)\]\.IsReportingDetectionLimit$/);
+                    if (!idxMatch) return;
+                    const idx = idxMatch[1];
+                    const idInput = container.querySelector(`input[name="TemplateParameters[${idx}].FacilityPermitTemplateParameterId"]`);
+                    const key = idInput?.value;
+                    if (key && Object.prototype.hasOwnProperty.call(rdlFlags, key)) {
+                        input.checked = rdlFlags[key];
                     }
                 });
             }

@@ -55,6 +55,7 @@ public sealed class Gw59ParameterSnapshot
     public string ParameterName { get; set; } = string.Empty;
     public string Units { get; set; } = string.Empty;
     public decimal? Value { get; set; }
+    public bool IsReportingDetectionLimit { get; set; }
     public decimal? DailyMaximumLimit { get; set; }
     public bool IsGw59 { get; set; }
     public bool IsGw59A { get; set; }
@@ -66,6 +67,7 @@ public sealed class Gw59OtherParameterLine
     public string ParameterName { get; set; } = string.Empty;
     public string Units { get; set; } = string.Empty;
     public decimal Value { get; set; }
+    public bool IsReportingDetectionLimit { get; set; }
 }
 
 public sealed class Gw59ExportModel

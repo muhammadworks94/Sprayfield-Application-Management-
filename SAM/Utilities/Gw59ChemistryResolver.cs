@@ -94,7 +94,8 @@ public static class Gw59ChemistryResolver
                 PcsCode = x.PcsCode,
                 ParameterName = x.ParameterName,
                 Units = x.Units,
-                Value = x.Value!.Value
+                Value = x.Value!.Value,
+                IsReportingDetectionLimit = x.IsReportingDetectionLimit
             })
             .ToList();
     }

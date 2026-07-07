@@ -2237,6 +2237,7 @@ public class ReportsController : BaseController
                     ?? x.FacilityPermitTemplateParameter.PcsParameterCatalog?.AcceptedUnits
                     ?? string.Empty,
                 Value = x.NumericValue,
+                IsReportingDetectionLimit = x.IsReportingDetectionLimit,
                 DailyMaximumLimit = x.FacilityPermitTemplateParameter.DailyMaximumLimit,
                 IsGw59 = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59) != 0,
                 IsGw59A = (x.FacilityPermitTemplateParameter.ReportTypes & PermitTemplateReportTypeEnum.Gw59A) != 0
@@ -2470,7 +2471,7 @@ public class ReportsController : BaseController
                 }
 
                 DrawBaselineText(
-                    Gw59PdfCalibration.FormatSlotValue(snapshot.Value!.Value, slot),
+                    Gw59PdfCalibration.FormatSlotValue(snapshot.Value!.Value, slot, snapshot.IsReportingDetectionLimit),
                     slot.X,
                     slot.Y,
                     slot.Width,
@@ -3153,6 +3154,7 @@ public class ReportsController : BaseController
         public required string MonthlyLimitText { get; init; }
         public required string DailyLimitText { get; init; }
         public required List<decimal?> DailyValues { get; init; }
+        public required List<bool> DailyIsReportingDetectionLimit { get; init; }
         public decimal? Average { get; init; }
         public decimal? DailyMaximum { get; init; }
         public decimal? DailyMinimum { get; init; }
@@ -3296,8 +3298,12 @@ public class ReportsController : BaseController
                 for (var slot = 0; slot < chunk.Count && slot < parameterColumns.Count; slot++)
                 {
                     var dayValue = chunk[slot].DailyValues[day - 1];
+                    var isRdl = ReportingDetectionLimitHelper.IsRdlAtIndex(chunk[slot].DailyIsReportingDetectionLimit, day - 1);
                     var col = parameterColumns[slot];
-                    DrawInCell(gfx, dayValue?.ToString("0.00"), font, col.Left, y, col.Width, cellHeight: dayRowHeight, verticalCenter: true);
+                    var displayValue = dayValue.HasValue
+                        ? ReportingDetectionLimitHelper.FormatDisplayValue(dayValue.Value, isRdl, "0.00")
+                        : null;
+                    DrawInCell(gfx, displayValue, font, col.Left, y, col.Width, cellHeight: dayRowHeight, verticalCenter: true);
                 }
             }
 
@@ -3412,6 +3418,9 @@ public class ReportsController : BaseController
         var wwDailyValueByKey = wwCharTemplateValues
             .GroupBy(x => (x.FacilityPermitTemplateParameterId, x.DayNo))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First().NumericValue);
+        var wwDailyRdlByKey = wwCharTemplateValues
+            .GroupBy(x => (x.FacilityPermitTemplateParameterId, x.DayNo))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CreatedDate).First().IsReportingDetectionLimit);
 
         var operatorLogs = await _context.OperatorLogs
             .AsNoTracking()
@@ -3432,6 +3441,7 @@ public class ReportsController : BaseController
             : BuildNdmrPdfParameter(
                 flowTemplateRow,
                 wwDailyValueByKey,
+                wwDailyRdlByKey,
                 wwChar,
                 gwMonits,
                 year,
@@ -3447,6 +3457,7 @@ public class ReportsController : BaseController
                 return BuildNdmrPdfParameter(
                     row,
                     wwDailyValueByKey,
+                    wwDailyRdlByKey,
                     wwChar,
                     gwMonits,
                     year,
@@ -3516,6 +3527,7 @@ public class ReportsController : BaseController
     private static NdmrPdfParameter BuildNdmrPdfParameter(
         FacilityPermitTemplateParameter row,
         IReadOnlyDictionary<(Guid FacilityPermitTemplateParameterId, int DayNo), decimal?> wwDailyValueByKey,
+        IReadOnlyDictionary<(Guid FacilityPermitTemplateParameterId, int DayNo), bool> wwDailyRdlByKey,
         WWChar? wwChar,
         IReadOnlyList<GWMonit> gwMonits,
         int year,
@@ -3536,12 +3548,15 @@ public class ReportsController : BaseController
             : row.UnitsOverride ?? row.PcsParameterCatalog?.AcceptedUnits ?? string.Empty;
 
         var daily = new List<decimal?>(31);
+        var dailyRdl = new List<bool>(31);
         for (var day = 1; day <= daysInMonth; day++)
         {
             decimal? value = null;
+            var isRdl = false;
             if (wwDailyValueByKey.TryGetValue((row.Id, day), out var wwValue))
             {
                 value = wwValue;
+                wwDailyRdlByKey.TryGetValue((row.Id, day), out isRdl);
             }
 
             value ??= ResolveNdmrPdfFallbackDailyValue(
@@ -3550,21 +3565,22 @@ public class ReportsController : BaseController
                 wwChar,
                 gwMonits);
             daily.Add(value);
+            dailyRdl.Add(isRdl);
         }
 
         for (var day = daysInMonth + 1; day <= 31; day++)
         {
             daily.Add(null);
+            dailyRdl.Add(false);
         }
 
         var days = daily.Take(daysInMonth).Where(v => v.HasValue).Select(v => v!.Value).ToList();
-        decimal? average = null;
+        decimal? average = ReportingDetectionLimitHelper.AverageForReporting(daily, dailyRdl, code);
         if (days.Count > 0)
         {
             if (NdmrFlowFormatting.IsFlowPcs(code))
             {
                 var mgdDays = days.Select(v => NdmrFlowFormatting.NormalizeFlowValueToMgd(v)!.Value).ToList();
-                average = mgdDays.Average();
                 return new NdmrPdfParameter
                 {
                     PcsCode = code,
@@ -3579,15 +3595,12 @@ public class ReportsController : BaseController
                             ? NdmrFlowFormatting.FormatFlowLimit(row.DailyMinimumLimit)
                             : string.Empty,
                     DailyValues = daily,
-                    Average = average,
+                    DailyIsReportingDetectionLimit = dailyRdl,
+                    Average = mgdDays.Average(),
                     DailyMaximum = mgdDays.Max(),
                     DailyMinimum = mgdDays.Min()
                 };
             }
-
-            average = string.Equals(code, "31616", StringComparison.OrdinalIgnoreCase) && days.All(v => v > 0m)
-                ? (decimal)Math.Exp(days.Select(v => Math.Log((double)v)).Average())
-                : days.Average();
         }
 
         return new NdmrPdfParameter
@@ -3606,6 +3619,7 @@ public class ReportsController : BaseController
                 ?? row.DailyMinimumLimit?.ToString("0.##")
                 ?? string.Empty,
             DailyValues = daily,
+            DailyIsReportingDetectionLimit = dailyRdl,
             Average = average,
             DailyMaximum = days.Count > 0 ? days.Max() : null,
             DailyMinimum = days.Count > 0 ? days.Min() : null

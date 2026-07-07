@@ -8,6 +8,7 @@ public class GWMonitTemplateValue : CompanyScopedEntity
     public Guid FacilityPermitTemplateParameterId { get; set; }
     public decimal? NumericValue { get; set; }
     public string? TextValue { get; set; }
+    public bool IsReportingDetectionLimit { get; set; }
 
     public GWMonit? GWMonit { get; set; }
     public FacilityPermitTemplateParameter? FacilityPermitTemplateParameter { get; set; }

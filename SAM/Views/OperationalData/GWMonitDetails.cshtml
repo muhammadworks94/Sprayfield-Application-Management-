@@ -196,7 +196,17 @@
                                         <td>@parameter.PcsCode</td>
                                         <td>@parameter.ParameterName</td>
                                         <td>@parameter.Units</td>
-                                        <td>@parameter.EnteredValue?.ToString("0.######")</td>
+                                        <td>
+                                            @{
+                                                var displayValue = parameter.EnteredValue.HasValue
+                                                    ? ReportingDetectionLimitHelper.FormatDisplayValue(
+                                                        parameter.EnteredValue.Value,
+                                                        parameter.IsReportingDetectionLimit,
+                                                        "0.######")
+                                                    : "-";
+                                            }
+                                            @displayValue
+                                        </td>
                                     </tr>
                                 }
                                 </tbody>

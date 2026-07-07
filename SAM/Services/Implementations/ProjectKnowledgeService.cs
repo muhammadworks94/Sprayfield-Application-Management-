@@ -12,7 +12,7 @@ public class ProjectKnowledgeService : IProjectKnowledgeService
     {
         var model = new ProjectKnowledgeViewModel
         {
-            Summary = "This page explains how SAM is structured, how major workflows run, how reports are generated, and which formulas and fallback rules are applied. Monthly NDAR-1, NDMR, and NDMLR report records can be auto-created when operational data is saved (bidirectional with manual Generate and NDAR grid edit). Groundwater monitoring uses permit-template PCS rows as the chemistry source of truth, combines GW-59 and GW-59A into one PDF export, and manages VOC attachments through the reports flow."
+            Summary = "This page explains how SAM is structured, how major workflows run, how reports are generated, and which formulas and fallback rules are applied. Monthly NDAR-1, NDMR, and NDMLR report records can be auto-created when operational data is saved (bidirectional with manual Generate and NDAR grid edit). Groundwater monitoring uses permit-template PCS rows as the chemistry source of truth, combines GW-59 and GW-59A into one PDF export, and manages VOC attachments through the reports flow. GW and WW template entry support Reporting Detection Limit (RDL) checkboxes: exports prefix values with < and monthly averages count RDL entries as zero."
         };
 
         model.Sections.Add(BuildSystemOverview());
@@ -243,6 +243,7 @@ flowchart TD
                         "When GW Monitoring Create/Edit is opened for a facility/sample date, system resolves active permit and loads groundwater template rows.",
                         "Operator enters groundwater values directly in the template-entry column; SAM stores values tied to the exact permit template row.",
                         "Groundwater and wastewater template values are stored separately (GWMonitTemplateValues vs WWCharTemplateValues) even when sharing the same PCS catalog entry (for example pH).",
+                        "Reporting Detection Limit (RDL): operators can mark a template numeric value as below the lab reporting limit. Stored on GWMonitTemplateValue.IsReportingDetectionLimit and WWCharTemplateValue.IsReportingDetectionLimit. WW entry exposes a per-day checkbox for every PCS column except Flow 50050.",
                         "Rows required for the selected sample month are highlighted and enforced at save with user-friendly unblock guidance.",
                         "PAN chemistry in WWChar workflow is sourced from template PCS rows: 00625 (TKN) and 00620 (NO3). NO2 is treated as 0 for PAN.",
                         "Groundwater chemistry previously stored as direct TDS/Turbidity fields was cut over to permit-template PCS values; GW reporting now resolves chemistry from saved GWMonitTemplateValues.",
@@ -341,6 +342,7 @@ flowchart TD
                         "System loads permit template PCS rows flagged for NDMR.",
                         "If none found, page shows guided status message describing missing setup.",
                         "Chemistry/template entry values are saved on WWChar + WWCharTemplateValue rows.",
+                        "Optional RDL checkbox per daily template cell (all PCS columns except Flow 50050): when checked with a numeric value, NDMR PDF/Excel daily cells export as <value and monthly averages count the day but use 0 for the average calculation.",
                         "Flow Measuring Point and Parameter Monitoring Point selections are stored on WWChar and drive NDMR PDF header checkboxes.",
                         "ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours) are proxy fields: WWChar reads/writes these values through Operator Logs for each exact date.",
                         "If a day value is edited in WWChar and no Operator Log exists for that date, SAM creates a log record and saves canonical values there.",
@@ -358,6 +360,7 @@ flowchart TD
                         "Rows required for the selected sample month (from frequency + scheduled months) must be entered before save.",
                         "GW-59 well-static fields (well depth, diameter, screened interval from/to, measuring point, relative M.P. elevation) are stored on MonitoringWell and can be edited from GWMonit create/edit as a proxy that updates the selected well master record.",
                         "Per-sample GWMonit fields include water level, gallons pumped, field observations, template PCS values, and optional metals Y/N (MetalsSamplesCollectedUnfiltered, MetalSamplesFieldAcidified).",
+                        "Optional RDL checkbox per Attachment C template row: when checked with a numeric value, GW-59 PDF and preview prefix the concentration with < (for example <0.02).",
                         "Metals Y/N are optional on save; unset values export as blank yes/no boxes on GW-59 PDF (same behavior as GW-59A unanswered questions).",
                         "GW-59A compliance answers (Q1-Q7, detail text, due date, signer/date) are captured on GWMonit create/edit as a separate questionnaire workflow.",
                         "If Attachment C row 78732 (Volatile Compounds) is required for the selected month, save requires a VOC PDF, forces VOC Report Attached to true, and requires VOC Method #.",
@@ -391,8 +394,8 @@ flowchart TD
                         "GW-59 Sampling Information well-static slots (well depth, diameter, screened interval, measuring point, relative M.P. elevation) come from MonitoringWell for the well selected on the GWMonit record.",
                         "GW-59 per-sample slots (date, depth to water level, volume pumped, metals Y/N) come from GWMonit; metals Y/N export blank when unset.",
                         "GW-59 Date sample collected exports from GWMonit.SampleDate; Date sample analyzed exports from GWMonit.LabSampleAnalyzedDate (Laboratory Information block).",
-                        "GW-59 field pH comes from GWMonit.PH. Laboratory Information named rows (COD, coliform, TDS, lab pH, TOC, metals, etc.) are drawn from GWMonitTemplateValue snapshots via Gw59PdfCalibration (Utilities/Gw59PdfCalibration.cs), which maps each PCS code to fixed PDF coordinates on the letter-size template.",
-                        "GW-59 Other section accepts up to 10 remaining GW-59 PCS rows with values that do not have a named PDF slot (excluding VOC 78732, water level 82546, and recoverable parameters), in permit sort order. Slots #1–#5 export in the left column (x≈495, width≈83) and #6–#10 in the right column (x≈582.5, width≈81) on the letter-size template; text is clipped to each column box using format: Compound, concentration units.",
+                        "GW-59 field pH comes from GWMonit.PH. Laboratory Information named rows (COD, coliform, TDS, lab pH, TOC, metals, etc.) are drawn from GWMonitTemplateValue snapshots via Gw59PdfCalibration (Utilities/Gw59PdfCalibration.cs), which maps each PCS code to fixed PDF coordinates on the letter-size template. RDL-flagged values export with a leading < via ReportingDetectionLimitHelper.",
+                        "GW-59 Other section accepts up to 10 remaining GW-59 PCS rows with values that do not have a named PDF slot (excluding VOC 78732, water level 82546, and recoverable parameters), in permit sort order. Slots #1–#5 export in the left column (x≈495, width≈83) and #6–#10 in the right column (x≈582.5, width≈81) on the letter-size template; text is clipped to each column box using format: Compound, concentration units. RDL applies to Other-line concentrations as well.",
                         "VOC merge reads Azure blobs into memory before PdfSharpCore import so valid PDFs no longer fail on non-seekable Azure streams.",
                         "Exports fail with actionable messages when template files or required source data are missing."
                     }
@@ -407,7 +410,8 @@ flowchart TD
                         "Export resolves facility/month/year from IrrRprt, then aggregates live WWChar, GWMonit, OperatorLog, and permit-template PCS rows flagged for NDMR.",
                         "PDF uses template Non-Discharge Monitoring Report (NDMR) Form 0312.pdf with coordinates in Utilities/NdmrPdfCalibration.cs.",
                         "PDF header PPI is always exported as 002; Flow Measuring Point and Parameter Monitoring Point checkboxes come from WWChar.",
-                        "PCS 50050 Flow exports in MGD with daily values formatted 0.000; permit monthly average limit converted from GPD to MGD (e.g. 1076000 → 1.076).",
+                        "PCS 50050 Flow exports in MGD with daily values formatted 0.000; permit monthly average limit converted from GPD to MGD (e.g. 1076000 → 1.076). Flow does not use RDL checkboxes.",
+                        "Non-flow NDMR parameter daily cells export RDL values as text with a leading < (for example <0.02). Monthly average footer uses ReportingDetectionLimitHelper: RDL days count toward the average but contribute 0; daily max/min keep the entered numeric value.",
                         "First two daily columns (ORC Arrival Time, ORC Time On Site) use canonical Operator Logs; footer rows and daily cells are vertically centered.",
                         "Certification page uses WWChar lab options and sampling persons; compliance checkbox uses IrrRprt.ComplianceStatus.",
                         "Short-month exports only build DateTime values for valid days in the month (no day-31 errors for April, June, September, November, or February)."
@@ -466,7 +470,9 @@ flowchart TD
                         new List<string> { "NDAR Daily Loading", "DailyLoading(in) = Volume(gal) / (Area(acres) * 27,154)", "Derived for NDAR displays/totals from stored volume." },
                         new List<string> { "Monthly Loading", "Sum of daily loading values", "Per field." },
                         new List<string> { "12-Month Floating Total", "Current month monthly loading + previous 11 months monthly loading", "Per field." },
-                        new List<string> { "NDMR Flow (PCS 50050)", "Values >= 100 treated as GPD and divided by 1,000,000; otherwise assumed MGD", "Exported as 0.000 in PDF and Excel via NdmrFlowFormatting." }
+                        new List<string> { "NDMR Flow (PCS 50050)", "Values >= 100 treated as GPD and divided by 1,000,000; otherwise assumed MGD", "Exported as 0.000 in PDF and Excel via NdmrFlowFormatting." },
+                        new List<string> { "RDL display", "Checked template value exports as <{formatted value}", "GW-59 PDF/preview and NDMR PDF/Excel daily cells via ReportingDetectionLimitHelper.FormatDisplayValue." },
+                        new List<string> { "RDL monthly average", "Average uses 0 for RDL-flagged days; day still counts if a numeric value is present", "Arithmetic mean by default; PCS 31616 uses geometric mean only when all calculation values are > 0. Daily max/min are not zeroed." }
                     }
                 },
                 new ProjectTableViewModel
@@ -484,6 +490,7 @@ flowchart TD
                         new List<string> { "PCS 50050 Monthly Avg. Limit", "FacilityPermitTemplateParameter.MonthlyAverageLimit (or geometric mean)", "Converted GPD → MGD via NdmrFlowFormatting (0.000); e.g. 1076000 → 1.076." },
                         new List<string> { "ORC Arrival / Time On Site", "OperatorLog (canonical)", "First log by arrival time; canonical log for time on site." },
                         new List<string> { "Other parameters", "WWChar arrays + GWMonit + WWCharTemplateValue", "Template-driven PCS columns from active permit version." },
+                        new List<string> { "RDL (non-flow parameters)", "WWCharTemplateValue.IsReportingDetectionLimit", "Daily cells export <value in PDF/Excel; monthly average counts day but uses 0. Flow PCS 50050 excluded." },
                         new List<string> { "Compliance (page 2)", "IrrRprt.ComplianceStatus", "Compliant / Non-compliant checkbox marks." }
                     }
                 },
@@ -502,7 +509,8 @@ flowchart TD
                         new List<string> { "Telephone", "Facility.FacilityContactPersonPhone", "System Admin > Facilities." },
                         new List<string> { "Well Location / Site Name", "MonitoringWell.LocationDescription", "Well selected on GWMonit; explicit load if navigation property is null." },
                         new List<string> { "No. of wells to be sampled", "FacilityPermit.TotalNumberOfSprayfields", "Monitoring-well count fallback when permit sprayfield count unset." },
-                        new List<string> { "Lab Name / Certification No.", "CompanyLabOption (record LabOptionId on WWChar/GWMonit)", "Each monitoring record selects its lab; exports resolve from that record (single active company lab used when unset)." }
+                        new List<string> { "Lab Name / Certification No.", "CompanyLabOption (record LabOptionId on WWChar/GWMonit)", "Each monitoring record selects its lab; exports resolve from that record (single active company lab used when unset)." },
+                        new List<string> { "Laboratory concentrations (named + Other)", "GWMonitTemplateValue.NumericValue + IsReportingDetectionLimit", "RDL-flagged values export with leading < in PDF and GWMonitReport preview." }
                     }
                 },
                 new ProjectTableViewModel

@@ -13,6 +13,7 @@ public class GWMonitTemplateValueConfiguration : IEntityTypeConfiguration<GWMoni
 
         builder.Property(x => x.NumericValue).HasPrecision(18, 6);
         builder.Property(x => x.TextValue).HasMaxLength(500);
+        builder.Property(x => x.IsReportingDetectionLimit).HasDefaultValue(false);
 
         builder.HasIndex(x => x.CompanyId);
         builder.HasIndex(x => x.GWMonitId);

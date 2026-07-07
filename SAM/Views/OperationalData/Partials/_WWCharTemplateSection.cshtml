@@ -1,5 +1,6 @@
 @model SAM.ViewModels.OperationalData.WWCharTemplateSectionViewModel
 @using SAM.Domain.Enums
+@using SAM.Utilities
 @{
     var orcOnSiteOptions = ViewBag.ORCOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var permitHref = Model.FacilityId != Guid.Empty
@@ -52,11 +53,19 @@
                         <th>ORC Time on Site (hours)</th>
                         @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                         {
+                            var isFlowPcs = NdmrFlowFormatting.IsFlowPcs(Model.TemplateParameters[p].PcsCode);
                             <th>
                                 @Model.TemplateParameters[p].PcsCode
                                 <div class="small fw-normal">
                                     @Model.TemplateParameters[p].ParameterName (@Model.TemplateParameters[p].Units)
                                     <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[p].Notes) ? "No notes." : Model.TemplateParameters[p].Notes)"></i>
+                                    @if (!isFlowPcs)
+                                    {
+                                        <span class="d-inline-flex align-items-center gap-1 ms-1 text-nowrap">
+                                            <span>&lt;</span>
+                                            <i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip" title="@ReportingDetectionLimitHelper.TooltipText"></i>
+                                        </span>
+                                    }
                                 </div>
                                 <div class="small text-muted">
                                     @Model.TemplateParameters[p].MeasurementFrequency | @Model.TemplateParameters[p].SampleType | Max: @(Model.TemplateParameters[p].DailyMaximumLimit?.ToString() ?? "-")
@@ -95,13 +104,28 @@
                                 var currentVal = Model.TemplateParameters[p].DailyValues != null && Model.TemplateParameters[p].DailyValues.Count > d
                                     ? Model.TemplateParameters[p].DailyValues[d]
                                     : null;
+                                var isFlowPcs = NdmrFlowFormatting.IsFlowPcs(Model.TemplateParameters[p].PcsCode);
+                                var isRdl = Model.TemplateParameters[p].DailyIsReportingDetectionLimit != null
+                                    && Model.TemplateParameters[p].DailyIsReportingDetectionLimit.Count > d
+                                    && Model.TemplateParameters[p].DailyIsReportingDetectionLimit[d];
                                 <td>
-                                    <input name="TemplateParameters[@p].DailyValues[@d]"
-                                           type="number"
-                                           step="0.000001"
-                                           class="form-control form-control-sm"
-                                           value="@(currentVal?.ToString() ?? string.Empty)"
-                                           data-template-key="@key" />
+                                    <div class="d-flex align-items-center gap-1">
+                                        @if (!isFlowPcs)
+                                        {
+                                            <input type="hidden" name="TemplateParameters[@p].DailyIsReportingDetectionLimit[@d]" value="false" />
+                                            <input name="TemplateParameters[@p].DailyIsReportingDetectionLimit[@d]"
+                                                   type="checkbox"
+                                                   value="true"
+                                                   class="form-check-input flex-shrink-0"
+                                                   @(isRdl ? "checked" : null) />
+                                        }
+                                        <input name="TemplateParameters[@p].DailyValues[@d]"
+                                               type="number"
+                                               step="0.000001"
+                                               class="form-control form-control-sm"
+                                               value="@(currentVal?.ToString() ?? string.Empty)"
+                                               data-template-key="@key" />
+                                    </div>
                                 </td>
                             }
                         </tr>

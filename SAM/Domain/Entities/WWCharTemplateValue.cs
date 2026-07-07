@@ -9,6 +9,7 @@ public class WWCharTemplateValue : CompanyScopedEntity
     public int DayNo { get; set; } // 1..31
     public decimal? NumericValue { get; set; }
     public string? TextValue { get; set; }
+    public bool IsReportingDetectionLimit { get; set; }
 
     public WWChar? WWChar { get; set; }
     public FacilityPermitTemplateParameter? FacilityPermitTemplateParameter { get; set; }

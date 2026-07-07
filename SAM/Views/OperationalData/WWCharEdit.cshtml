@@ -361,6 +361,7 @@
             function captureTemplateValues() {
                 var result = {
                     keyedTemplateValues: {},
+                    keyedRdlFlags: {},
                     namedValues: {}
                 };
 
@@ -370,6 +371,16 @@
 
                     if (el.dataset && el.dataset.templateKey) {
                         result.keyedTemplateValues[el.dataset.templateKey] = el.value;
+                        return;
+                    }
+
+                    var rdlMatch = name.match(/^TemplateParameters\[(\d+)\]\.DailyIsReportingDetectionLimit\[(\d+)\]$/);
+                    if (el.type === 'checkbox' && rdlMatch) {
+                        var idInput = sectionContainer.querySelector('input[name="TemplateParameters[' + rdlMatch[1] + '].FacilityPermitTemplateParameterId"]');
+                        var templateId = idInput ? idInput.value : '';
+                        if (templateId) {
+                            result.keyedRdlFlags[templateId + ':' + rdlMatch[2]] = el.checked;
+                        }
                         return;
                     }
 
@@ -390,6 +401,17 @@
                 sectionContainer.querySelectorAll('input[name], select[name], textarea[name]').forEach(function (el) {
                     if (el.dataset && el.dataset.templateKey && Object.prototype.hasOwnProperty.call(snapshot.keyedTemplateValues, el.dataset.templateKey)) {
                         el.value = snapshot.keyedTemplateValues[el.dataset.templateKey];
+                        return;
+                    }
+
+                    var rdlMatch = el.name && el.name.match(/^TemplateParameters\[(\d+)\]\.DailyIsReportingDetectionLimit\[(\d+)\]$/);
+                    if (el.type === 'checkbox' && rdlMatch) {
+                        var idInput = sectionContainer.querySelector('input[name="TemplateParameters[' + rdlMatch[1] + '].FacilityPermitTemplateParameterId"]');
+                        var templateId = idInput ? idInput.value : '';
+                        var rdlKey = templateId + ':' + rdlMatch[2];
+                        if (templateId && Object.prototype.hasOwnProperty.call(snapshot.keyedRdlFlags || {}, rdlKey)) {
+                            el.checked = snapshot.keyedRdlFlags[rdlKey];
+                        }
                         return;
                     }
 
