@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +30,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Crop> Crops => Set<Crop>();
     public DbSet<Sprayfield> Sprayfields => Set<Sprayfield>();
     public DbSet<MonthlyApplication> MonthlyApplications => Set<MonthlyApplication>();
+    public DbSet<SprayfieldBaselineMonthlyLoading> SprayfieldBaselineMonthlyLoadings => Set<SprayfieldBaselineMonthlyLoading>();
     public DbSet<LoadCalculation> LoadCalculations => Set<LoadCalculation>();
     public DbSet<MonitoringWell> MonitoringWells => Set<MonitoringWell>();
     public DbSet<WWChar> WWChars => Set<WWChar>();
@@ -95,6 +96,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.ApplyConfiguration(new CropConfiguration());
         builder.ApplyConfiguration(new SprayfieldConfiguration());
         builder.ApplyConfiguration(new MonthlyApplicationConfiguration());
+        builder.ApplyConfiguration(new SprayfieldBaselineMonthlyLoadingConfiguration());
         builder.ApplyConfiguration(new LoadCalculationConfiguration());
         builder.ApplyConfiguration(new MonitoringWellConfiguration());
         builder.ApplyConfiguration(new WWCharConfiguration());

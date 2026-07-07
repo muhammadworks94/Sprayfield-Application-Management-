@@ -964,6 +964,101 @@ i.bi-question-circle {
   background-color: var(--white);
 }
 
+.wwchar-daily-table .client-setup-cell-hint {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem 0.25rem;
+  text-align: center;
+}
+
+/* Client Setup baseline grid overrides */
+#clientSetupBaselineTable.wwchar-daily-table {
+  table-layout: fixed;
+  min-width: 0;
+  width: max-content;
+}
+
+#clientSetupBaselineTable thead th:first-child,
+#clientSetupBaselineTable tbody th:first-child {
+  width: 122px;
+  min-width: 122px;
+  max-width: 122px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+#clientSetupBaselineTable tbody th:first-child {
+  padding: 0.6rem 0.75rem !important;
+}
+
+#clientSetupBaselineTable thead th:not(:first-child),
+#clientSetupBaselineTable .client-setup-data-cell {
+  min-width: 108px;
+  width: 108px;
+}
+
+#clientSetupBaselineTable .client-setup-data-cell {
+  position: relative;
+  height: 3.25rem;
+  padding: 0 !important;
+  vertical-align: middle;
+}
+
+#clientSetupBaselineTable .client-setup-data-cell .form-control-sm {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 3.25rem;
+  margin: 0;
+  text-align: right;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#clientSetupBaselineTable .client-setup-sam-cell {
+  background-color: var(--gray-50, #f8f9fa);
+}
+
+#clientSetupBaselineTable .client-setup-sam-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 3.25rem;
+  gap: 0.2rem;
+  padding: 0.35rem 0.4rem;
+  box-sizing: border-box;
+}
+
+#clientSetupBaselineTable .client-setup-sam-value {
+  display: block;
+  width: 100%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--body-color, #212529);
+}
+
+#clientSetupBaselineTable .badge.client-setup-sam-badge {
+  display: inline-block;
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 600;
+  padding: 0.2em 0.5em;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#clientSetupBaselineTable.table-hover > tbody > tr:hover > .client-setup-sam-cell {
+  --bs-table-hover-bg: rgba(var(--bs-emphasis-color-rgb, 0, 0, 0), 0.04);
+  background-color: color-mix(in srgb, var(--gray-50, #f8f9fa) 70%, var(--bs-table-hover-bg) 30%);
+}
+
 /* ============================================
    NDAR Daily Edit Tables
    ============================================ */

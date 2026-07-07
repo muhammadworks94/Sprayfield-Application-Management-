@@ -15,13 +15,16 @@ public class NDAR1RowEditService : INDAR1RowEditService
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMinutes(10);
     private readonly ApplicationDbContext _context;
     private readonly IMonthlyReportProvisionerService _reportProvisioner;
+    private readonly IMonthlyLoadingResolutionService _monthlyLoadingResolution;
 
     public NDAR1RowEditService(
         ApplicationDbContext context,
-        IMonthlyReportProvisionerService reportProvisioner)
+        IMonthlyReportProvisionerService reportProvisioner,
+        IMonthlyLoadingResolutionService monthlyLoadingResolution)
     {
         _context = context;
         _reportProvisioner = reportProvisioner;
+        _monthlyLoadingResolution = monthlyLoadingResolution;
     }
 
     public async Task<NDAR1EditGridViewModel> BuildGridAsync(Guid ndar1Id, string? currentUserId = null)
@@ -75,11 +78,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
             FieldColumns = fieldColumns
         };
 
-        var rollingStart = start.AddMonths(-11);
-        var rollingEndExclusive = end;
-        var rollingApps = await _context.MonthlyApplications
-            .Where(x => x.FacilityId == report.FacilityId && x.ApplicationDate >= rollingStart && x.ApplicationDate < rollingEndExclusive)
-            .ToListAsync();
+        var rollingAsOfDate = start.AddDays(daysInMonth - 1);
 
         foreach (var field in vm.FieldColumns)
         {
@@ -89,10 +88,12 @@ public class NDAR1RowEditService : INDAR1RowEditService
             if (field.Acres.HasValue && field.Acres.Value > 0m)
             {
                 field.MonthlyDailyLoadingTotalInches = monthlyForField.Sum(x => x.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch));
-                field.TwelveMonthFloatingTotalInches = rollingApps
-                    .Where(x => x.SprayfieldId == field.SprayfieldId)
-                    .Sum(x => x.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch));
             }
+
+            field.TwelveMonthFloatingTotalInches = await _monthlyLoadingResolution.GetCalendar12MonthRollingInchesAsync(
+                report.FacilityId,
+                field.SprayfieldId,
+                rollingAsOfDate);
         }
 
         for (var day = 1; day <= daysInMonth; day++)

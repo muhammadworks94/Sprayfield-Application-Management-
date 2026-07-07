@@ -23,7 +23,7 @@ namespace SAM.Controllers;
 ///    These requests are approved/rejected via CompanyRequestApprove/CompanyRequestReject actions in this controller.
 /// </summary>
 [Authorize(Policy = Policies.RequireAdmin)]
-public class CompanyManagementController : BaseController
+public partial class CompanyManagementController : BaseController
 {
     private readonly ICompanyService _companyService;
     private readonly ICompanyRequestService _companyRequestService;
@@ -35,6 +35,7 @@ public class CompanyManagementController : BaseController
     private readonly ISprayfieldService _sprayfieldService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly IUserService _userService;
+    private readonly IBaselineMonthlyLoadingService _baselineMonthlyLoadingService;
     private readonly ApplicationDbContext _context;
 
     public CompanyManagementController(
@@ -48,6 +49,7 @@ public class CompanyManagementController : BaseController
         ISprayfieldService sprayfieldService,
         IMonitoringWellService monitoringWellService,
         IUserService userService,
+        IBaselineMonthlyLoadingService baselineMonthlyLoadingService,
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         ILogger<CompanyManagementController> logger)
@@ -63,6 +65,7 @@ public class CompanyManagementController : BaseController
         _sprayfieldService = sprayfieldService;
         _monitoringWellService = monitoringWellService;
         _userService = userService;
+        _baselineMonthlyLoadingService = baselineMonthlyLoadingService;
         _context = context;
     }
 

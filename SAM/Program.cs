@@ -103,6 +103,8 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ISprayfieldService,Sprayfield
 builder.Services.AddScoped<SAM.Services.Interfaces.IMonitoringWellService, MonitoringWellService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IOperatorLogService, OperatorLogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IApplicationComplianceService, ApplicationComplianceService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IMonthlyLoadingResolutionService, MonthlyLoadingResolutionService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IBaselineMonthlyLoadingService, BaselineMonthlyLoadingService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IMonthlyApplicationService, MonthlyApplicationService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ILoadCalculationService, LoadCalculationService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IFieldAggregationService, FieldAggregationService>();

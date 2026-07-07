@@ -16,7 +16,6 @@ namespace SAM.Controllers;
 [Authorize]
 public class DashboardController : BaseController
 {
-    private const decimal GallonsPerAcreInch = 27152m;
     private const decimal WarningThresholdPercent = 75m;
     private const decimal CriticalThresholdPercent = 90m;
 
@@ -31,6 +30,7 @@ public class DashboardController : BaseController
     private readonly IGWMonitService _gwMonitService;
     private readonly IIrrRprtService _irrRprtService;
     private readonly IPermitAlertService _permitAlertService;
+    private readonly IMonthlyLoadingResolutionService _monthlyLoadingResolution;
 
     public DashboardController(
         IFacilityService facilityService,
@@ -44,6 +44,7 @@ public class DashboardController : BaseController
         IGWMonitService gwMonitService,
         IIrrRprtService irrRprtService,
         IPermitAlertService permitAlertService,
+        IMonthlyLoadingResolutionService monthlyLoadingResolution,
         UserManager<ApplicationUser> userManager,
         ILogger<DashboardController> logger)
         : base(userManager, logger)
@@ -59,6 +60,7 @@ public class DashboardController : BaseController
         _gwMonitService = gwMonitService;
         _irrRprtService = irrRprtService;
         _permitAlertService = permitAlertService;
+        _monthlyLoadingResolution = monthlyLoadingResolution;
     }
 
     [HttpGet]
@@ -270,59 +272,32 @@ public class DashboardController : BaseController
         }
         viewModel.ComplianceSummaries = complianceSummaries;
 
-        // Phase 2: live field-wise NDAR decision support from canonical operational data.
+        // Phase 2: live field-wise NDAR decision support from canonical operational + baseline data.
         var now = DateTime.UtcNow;
-        var currentMonthStart = new DateTime(now.Year, now.Month, 1);
-        var nextMonthStart = currentMonthStart.AddMonths(1);
-        var rollingWindowStart = currentMonthStart.AddMonths(-11);
-        var rollingWindowEndExclusive = nextMonthStart;
+        var rollingAsOfDate = new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month));
 
         var visibleFacilityIds = facilities.Select(f => f.Id).ToHashSet();
         sprayfields = sprayfields.Where(s => s.FacilityId.HasValue && visibleFacilityIds.Contains(s.FacilityId.Value)).ToList();
 
-        var applicationsForRollingWindow = (await _monthlyApplicationService.GetAllAsync(companyId))
-            .Where(a => !companyId.HasValue || a.CompanyId == companyId.Value)
-            .Where(a => visibleFacilityIds.Contains(a.FacilityId))
-            .Where(a => a.ApplicationDate >= rollingWindowStart && a.ApplicationDate < rollingWindowEndExclusive)
-            .ToList();
-
-        var sprayfieldById = sprayfields.ToDictionary(s => s.Id, s => s);
         var facilityNameById = facilities.ToDictionary(f => f.Id, f => f.Name);
-
-        var currentMonthInchesByField = applicationsForRollingWindow
-            .Where(a => a.ApplicationDate >= currentMonthStart && a.ApplicationDate < nextMonthStart)
-            .GroupBy(a => a.SprayfieldId)
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                {
-                    if (!sprayfieldById.TryGetValue(g.Key, out var sf) || sf.SizeAcres <= 0m)
-                    {
-                        return 0m;
-                    }
-
-                    return g.Sum(a => a.VolumeGallons / (sf.SizeAcres * GallonsPerAcreInch));
-                });
-
-        var rolling12MonthInchesByField = applicationsForRollingWindow
-            .GroupBy(a => a.SprayfieldId)
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                {
-                    if (!sprayfieldById.TryGetValue(g.Key, out var sf) || sf.SizeAcres <= 0m)
-                    {
-                        return 0m;
-                    }
-
-                    return g.Sum(a => a.VolumeGallons / (sf.SizeAcres * GallonsPerAcreInch));
-                });
 
         foreach (var sf in sprayfields.OrderBy(s => s.FacilityId).ThenBy(s => s.FieldId))
         {
+            if (!sf.FacilityId.HasValue)
+            {
+                continue;
+            }
+
             var annualLimit = sf.AnnualRateInches ?? sf.HydraulicLoadingLimitInPerYr;
-            var currentMonthInches = currentMonthInchesByField.TryGetValue(sf.Id, out var monthVal) ? monthVal : 0m;
-            var rolling12MonthInches = rolling12MonthInchesByField.TryGetValue(sf.Id, out var rollingVal) ? rollingVal : 0m;
+            var currentMonthInches = await _monthlyLoadingResolution.GetEffectiveMonthlyLoadingInchesAsync(
+                sf.FacilityId.Value,
+                sf.Id,
+                now.Year,
+                now.Month);
+            var rolling12MonthInches = await _monthlyLoadingResolution.GetCalendar12MonthRollingInchesAsync(
+                sf.FacilityId.Value,
+                sf.Id,
+                rollingAsOfDate);
 
             var currentMonthUtilPct = annualLimit > 0m ? (currentMonthInches / annualLimit) * 100m : 0m;
             var rolling12UtilPct = annualLimit > 0m ? (rolling12MonthInches / annualLimit) * 100m : 0m;
@@ -330,8 +305,8 @@ public class DashboardController : BaseController
 
             viewModel.FieldLoadingProgress.Add(new FieldLoadingProgressViewModel
             {
-                FacilityId = sf.FacilityId ?? Guid.Empty,
-                FacilityName = sf.FacilityId.HasValue && facilityNameById.TryGetValue(sf.FacilityId.Value, out var facilityName)
+                FacilityId = sf.FacilityId.Value,
+                FacilityName = facilityNameById.TryGetValue(sf.FacilityId.Value, out var facilityName)
                     ? facilityName
                     : "Unknown Facility",
                 SprayfieldId = sf.Id,
