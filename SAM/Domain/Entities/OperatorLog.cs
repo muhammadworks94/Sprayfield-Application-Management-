@@ -44,7 +44,12 @@ public class OperatorLog : CompanyScopedEntity
     public ORCOnSiteEnum? ORCOnSite { get; set; }
 
     /// <summary>
-    /// Daily storage/freeboard value in feet.
+    /// Daily lagoon water depth in feet (user-entered).
+    /// </summary>
+    public decimal? WaterDepthFt { get; set; }
+
+    /// <summary>
+    /// Daily storage/freeboard value in feet (calculated from berm height minus water depth when water depth is entered).
     /// </summary>
     public decimal? StorageFt { get; set; }
 

@@ -60,6 +60,8 @@ public class NDAR1RowEditService : INDAR1RowEditService
             .Where(x => x.FacilityId == report.FacilityId && x.EditDate >= start && x.EditDate < end && x.ExpiresAtUtc > DateTime.UtcNow)
             .ToListAsync();
 
+        var lagoonContext = await GetLagoonContextForFacilityAsync(report.FacilityId);
+
         var vm = new NDAR1EditGridViewModel
         {
             NDAR1Id = report.Id,
@@ -68,6 +70,8 @@ public class NDAR1RowEditService : INDAR1RowEditService
             FacilityName = report.Facility?.Name ?? string.Empty,
             Month = report.Month,
             Year = report.Year,
+            LagoonBermHeightFeet = lagoonContext.LagoonBermHeightFeet,
+            PermittedMinimumFreeboardFeet = lagoonContext.PermittedMinimumFreeboardFeet,
             FieldColumns = fieldColumns
         };
 
@@ -102,6 +106,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 WeatherCode = WeatherCodeCatalog.TryNormalizeAbbreviation(log?.WeatherConditions, out var code) ? code : null,
                 TemperatureF = log?.TemperatureF,
                 PrecipitationIn = log?.PrecipitationIn,
+                WaterDepthFt = log?.WaterDepthFt,
                 StorageFt = log?.StorageFt,
                 FiveDayUpsetFt = log?.FiveDayUpsetFt
             };
@@ -377,12 +382,31 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 .Distinct()
                 .ToList();
 
-            var sprayfields = await _context.Sprayfields
-                .Where(x => x.FacilityId == report.FacilityId && requestedSprayfieldIds.Contains(x.Id))
-                .ToDictionaryAsync(x => x.Id);
+            var existingAppsForDay = await _context.MonthlyApplications
+                .AsNoTracking()
+                .Where(x => x.FacilityId == report.FacilityId && x.ApplicationDate == dayDate)
+                .ToListAsync();
+            var existingAppsBySprayfield = existingAppsForDay.ToDictionary(x => x.SprayfieldId);
+
+            var irrigationSprayfieldIds = request.Applications
+                .Where(x => x.SprayfieldId != Guid.Empty && x.TimeIrrigatedMinutes is > 0)
+                .Where(x =>
+                {
+                    existingAppsBySprayfield.TryGetValue(x.SprayfieldId, out var existing);
+                    return HasIrrigationChange(x, existing);
+                })
+                .Select(x => x.SprayfieldId)
+                .Distinct()
+                .ToList();
+
+            var sprayfields = requestedSprayfieldIds.Count == 0
+                ? new Dictionary<Guid, Sprayfield>()
+                : await _context.Sprayfields
+                    .Where(x => x.FacilityId == report.FacilityId && requestedSprayfieldIds.Contains(x.Id))
+                    .ToDictionaryAsync(x => x.Id);
 
             var setupErrors = new List<string>();
-            foreach (var sprayfieldId in requestedSprayfieldIds)
+            foreach (var sprayfieldId in irrigationSprayfieldIds)
             {
                 if (!sprayfields.TryGetValue(sprayfieldId, out var sprayfield))
                 {
@@ -413,6 +437,22 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 return;
             }
 
+            var lagoonContext = await GetLagoonContextForFacilityAsync(report.FacilityId);
+            if (request.WaterDepthFt.HasValue && !lagoonContext.LagoonBermHeightFeet.HasValue)
+            {
+                lockValidationFailure = new NDAR1RowEditResult
+                {
+                    Success = false,
+                    IsValidationError = true,
+                    Message = LagoonFreeboardCalculationHelper.MissingBermHeightMessage
+                };
+                return;
+            }
+
+            var computedStorageFt = LagoonFreeboardCalculationHelper.CalculateFreeboardFeet(
+                lagoonContext.LagoonBermHeightFeet,
+                request.WaterDepthFt);
+
             await using var tx = await _context.Database.BeginTransactionAsync();
             saveSummary = new NDAR1RowSaveSummaryViewModel
             {
@@ -429,7 +469,8 @@ public class NDAR1RowEditService : INDAR1RowEditService
             var hasWeatherData = !string.IsNullOrWhiteSpace(request.WeatherCode)
                 || request.TemperatureF.HasValue
                 || request.PrecipitationIn.HasValue
-                || request.StorageFt.HasValue
+                || request.WaterDepthFt.HasValue
+                || computedStorageFt.HasValue
                 || request.FiveDayUpsetFt.HasValue;
 
             if (operatorLog == null && hasWeatherData)
@@ -440,7 +481,8 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     normalizedWeatherCode,
                     request.TemperatureF,
                     request.PrecipitationIn,
-                    request.StorageFt,
+                    request.WaterDepthFt,
+                    computedStorageFt,
                     request.FiveDayUpsetFt);
                 operatorLog = new OperatorLog
                 {
@@ -452,7 +494,8 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     WeatherConditions = normalizedWeatherCode ?? string.Empty,
                     TemperatureF = request.TemperatureF,
                     PrecipitationIn = request.PrecipitationIn,
-                    StorageFt = request.StorageFt,
+                    WaterDepthFt = request.WaterDepthFt,
+                    StorageFt = computedStorageFt,
                     FiveDayUpsetFt = request.FiveDayUpsetFt,
                     ArrivalTime = TimeSpan.Zero,
                     TimeOnSiteHours = 0m,
@@ -472,14 +515,20 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     normalizedWeatherCode,
                     request.TemperatureF,
                     request.PrecipitationIn,
-                    request.StorageFt,
+                    request.WaterDepthFt,
+                    computedStorageFt,
                     request.FiveDayUpsetFt);
                 saveSummary.WeatherFieldsChanged = changedWeather;
                 saveSummary.OperatorLogAction = changedWeather.Count > 0 ? "Updated" : "Unchanged";
                 operatorLog.WeatherConditions = normalizedWeatherCode ?? string.Empty;
                 operatorLog.TemperatureF = request.TemperatureF;
                 operatorLog.PrecipitationIn = request.PrecipitationIn;
-                operatorLog.StorageFt = request.StorageFt;
+                LagoonFreeboardCalculationHelper.ApplyWaterDepth(
+                    request.WaterDepthFt,
+                    lagoonContext.LagoonBermHeightFeet,
+                    value => operatorLog.WaterDepthFt = value,
+                    value => operatorLog.StorageFt = value,
+                    operatorLog.StorageFt);
                 operatorLog.FiveDayUpsetFt = request.FiveDayUpsetFt;
             }
 
@@ -493,16 +542,61 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     continue;
                 }
 
+                existingAppsBySprayfield.TryGetValue(cell.SprayfieldId, out var existingAppSnapshot);
+                if (!HasIrrigationChange(cell, existingAppSnapshot))
+                {
+                    continue;
+                }
+
+                var hasIrrigationInput = cell.TimeIrrigatedMinutes is > 0;
+
+                if (!hasIrrigationInput)
+                {
+                    if (app == null)
+                    {
+                        continue;
+                    }
+
+                    var isNdarOrigin = !string.IsNullOrWhiteSpace(app.Comments) &&
+                        app.Comments.Contains("NDAR1 row edit", StringComparison.OrdinalIgnoreCase);
+                    var originalTimeIrrigated = app.TimeIrrigatedMinutes;
+                    var hasStaleComputedValues = app.TimeIrrigatedMinutes.HasValue &&
+                        app.TimeIrrigatedMinutes.Value > 0m &&
+                        (app.VolumeGallons <= 0m || app.MaximumHourlyLoadingInchesPerAcre <= 0m);
+
+                    if (isNdarOrigin && hasStaleComputedValues && originalTimeIrrigated is > 0 &&
+                        sprayfield.ActualHourlyRateInches.HasValue)
+                    {
+                        var backfillAcres = MonthlyApplicationCalculationHelper.ResolveAcres(sprayfield);
+                        var backfillMaxHourly = sprayfield.ActualHourlyRateInches.Value;
+                        var backfilledDaily = MonthlyApplicationCalculationHelper.ComputeDailyLoadingInches(originalTimeIrrigated, backfillMaxHourly);
+                        app.VolumeGallons = backfilledDaily.HasValue
+                            ? MonthlyApplicationCalculationHelper.ComputeVolumeGallons(backfilledDaily.Value, backfillAcres)
+                            : 0m;
+                        app.TimeIrrigatedMinutes = originalTimeIrrigated;
+                        app.MaximumHourlyLoadingInchesPerAcre = backfillMaxHourly;
+                        app.Comments = "Updated from NDAR1 row edit";
+                        saveSummary.MonthlyApplicationsBackfilled.Add(ToEntityChange(sprayfield));
+                    }
+                    else
+                    {
+                        app.VolumeGallons = 0;
+                        app.TimeIrrigatedMinutes = null;
+                        app.Comments = "Updated from NDAR1 row edit";
+                        saveSummary.MonthlyApplicationsUpdated.Add(ToEntityChange(sprayfield));
+                    }
+
+                    continue;
+                }
+
                 var acres = MonthlyApplicationCalculationHelper.ResolveAcres(sprayfield);
-                var computedMaxHourly = sprayfield.ActualHourlyRateInches.Value;
+                var computedMaxHourly = sprayfield.ActualHourlyRateInches!.Value;
                 var computedDailyLoading = MonthlyApplicationCalculationHelper.ComputeDailyLoadingInches(cell.TimeIrrigatedMinutes, computedMaxHourly);
                 var computedVolumeGallons = computedDailyLoading.HasValue
                     ? MonthlyApplicationCalculationHelper.ComputeVolumeGallons(computedDailyLoading.Value, acres)
                     : 0m;
 
-                var hasData = cell.TimeIrrigatedMinutes.HasValue;
-
-                if (app == null && hasData)
+                if (app == null)
                 {
                     saveSummary.MonthlyApplicationsCreated.Add(ToEntityChange(sprayfield));
                     app = new MonthlyApplication
@@ -521,34 +615,13 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     };
                     _context.MonthlyApplications.Add(app);
                 }
-                else if (app != null)
+                else
                 {
-                    var isNdarOrigin = !string.IsNullOrWhiteSpace(app.Comments) &&
-                        app.Comments.Contains("NDAR1 row edit", StringComparison.OrdinalIgnoreCase);
-                    var originalTimeIrrigated = app.TimeIrrigatedMinutes;
-                    var hasStaleComputedValues = app.TimeIrrigatedMinutes.HasValue &&
-                        app.TimeIrrigatedMinutes.Value > 0m &&
-                        (app.VolumeGallons <= 0m || app.MaximumHourlyLoadingInchesPerAcre <= 0m);
-
                     app.VolumeGallons = computedVolumeGallons;
                     app.TimeIrrigatedMinutes = cell.TimeIrrigatedMinutes;
                     app.MaximumHourlyLoadingInchesPerAcre = computedMaxHourly;
                     app.Comments = "Updated from NDAR1 row edit";
-
-                    if (isNdarOrigin && hasStaleComputedValues && !cell.TimeIrrigatedMinutes.HasValue)
-                    {
-                        var backfilledDaily = MonthlyApplicationCalculationHelper.ComputeDailyLoadingInches(originalTimeIrrigated, computedMaxHourly);
-                        app.VolumeGallons = backfilledDaily.HasValue
-                            ? MonthlyApplicationCalculationHelper.ComputeVolumeGallons(backfilledDaily.Value, acres)
-                            : 0m;
-                        app.TimeIrrigatedMinutes = originalTimeIrrigated;
-                        app.MaximumHourlyLoadingInchesPerAcre = computedMaxHourly;
-                        saveSummary.MonthlyApplicationsBackfilled.Add(ToEntityChange(sprayfield));
-                    }
-                    else
-                    {
-                        saveSummary.MonthlyApplicationsUpdated.Add(ToEntityChange(sprayfield));
-                    }
+                    saveSummary.MonthlyApplicationsUpdated.Add(ToEntityChange(sprayfield));
                 }
             }
 
@@ -678,6 +751,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
         string? newWeatherCode,
         decimal? newTemperatureF,
         decimal? newPrecipitationIn,
+        decimal? newWaterDepthFt,
         decimal? newStorageFt,
         decimal? newFiveDayUpsetFt)
     {
@@ -692,10 +766,35 @@ public class NDAR1RowEditService : INDAR1RowEditService
 
         if (existingLog?.TemperatureF != newTemperatureF) changes.Add("Temperature");
         if (existingLog?.PrecipitationIn != newPrecipitationIn) changes.Add("Precipitation");
+        if (existingLog?.WaterDepthFt != newWaterDepthFt) changes.Add("Water Depth");
         if (existingLog?.StorageFt != newStorageFt) changes.Add("Storage");
         if (existingLog?.FiveDayUpsetFt != newFiveDayUpsetFt) changes.Add("5-Day Upset");
 
         return changes;
+    }
+
+    private async Task<(decimal? LagoonBermHeightFeet, decimal? PermittedMinimumFreeboardFeet)> GetLagoonContextForFacilityAsync(Guid facilityId)
+    {
+        var facility = await _context.Facilities
+            .AsNoTracking()
+            .Include(f => f.DefaultFacilityPermit)
+            .FirstOrDefaultAsync(f => f.Id == facilityId);
+        if (facility == null)
+        {
+            return (null, null);
+        }
+
+        var permit = facility.DefaultFacilityPermit;
+        if (permit == null)
+        {
+            permit = await _context.FacilityPermits
+                .AsNoTracking()
+                .Where(p => p.FacilityId == facilityId && p.IsActive)
+                .OrderByDescending(p => p.EffectiveStartDate)
+                .FirstOrDefaultAsync();
+        }
+
+        return (facility.LagoonBermHeightFeet, permit?.PermittedMinimumFreeboardFeet);
     }
 
     public async Task CancelRowEditAsync(Guid ndar1Id, int dayNo, Guid lockToken, string userId)
@@ -737,6 +836,18 @@ public class NDAR1RowEditService : INDAR1RowEditService
             .DistinctBy(s => s.Id)
             .ToDictionary(s => s.Id);
     }
+
+    private static bool HasIrrigationTime(decimal? minutes) => minutes is > 0;
+
+    private static bool IrrigationTimesEqual(decimal? requested, decimal? existing)
+    {
+        var normalizedRequested = HasIrrigationTime(requested) ? requested : null;
+        var normalizedExisting = HasIrrigationTime(existing) ? existing : null;
+        return normalizedRequested == normalizedExisting;
+    }
+
+    private static bool HasIrrigationChange(NDAR1GridApplicationCellViewModel cell, MonthlyApplication? existing)
+        => !IrrigationTimesEqual(cell.TimeIrrigatedMinutes, existing?.TimeIrrigatedMinutes);
 
     private List<NDAR1GridFieldColumnViewModel> GetFieldColumns(NDAR1 report)
     {

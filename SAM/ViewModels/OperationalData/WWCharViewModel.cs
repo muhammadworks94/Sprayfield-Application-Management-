@@ -76,8 +76,11 @@ public class WWCharViewModel
     [Display(Name = "ORC On Site Daily")]
     public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
     
-    [Display(Name = "Lagoon Freeboard Daily (inches)")]
-    public List<decimal?> LagoonFreeboard { get; set; } = new();
+    [Display(Name = "Water Depth Daily (ft)")]
+    public List<decimal?> LagoonWaterDepthFt { get; set; } = new();
+
+    [Display(Name = "Storage Lagoon Freeboard Daily (ft)")]
+    public List<decimal?> StorageLagoonFreeboardFt { get; set; } = new();
 
     [Display(Name = "ORC Arrival Time Daily")]
     public List<string?> ORCArrivalTime { get; set; } = new();
@@ -201,8 +204,11 @@ public class WWCharCreateViewModel
     [Display(Name = "ORC On Site Daily")]
     public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
     
-    [Display(Name = "Lagoon Freeboard Daily (inches)")]
-    public List<decimal?> LagoonFreeboard { get; set; } = new();
+    [Display(Name = "Water Depth Daily (ft)")]
+    public List<decimal?> LagoonWaterDepthFt { get; set; } = new();
+
+    [Display(Name = "Storage Lagoon Freeboard Daily (ft)")]
+    public List<decimal?> StorageLagoonFreeboardFt { get; set; } = new();
 
     [Display(Name = "ORC Arrival Time Daily")]
     public List<string?> ORCArrivalTime { get; set; } = new();
@@ -327,8 +333,11 @@ public class WWCharEditViewModel
     [Display(Name = "ORC On Site Daily")]
     public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
     
-    [Display(Name = "Lagoon Freeboard Daily (inches)")]
-    public List<decimal?> LagoonFreeboard { get; set; } = new();
+    [Display(Name = "Water Depth Daily (ft)")]
+    public List<decimal?> LagoonWaterDepthFt { get; set; } = new();
+
+    [Display(Name = "Storage Lagoon Freeboard Daily (ft)")]
+    public List<decimal?> StorageLagoonFreeboardFt { get; set; } = new();
 
     [Display(Name = "ORC Arrival Time Daily")]
     public List<string?> ORCArrivalTime { get; set; } = new();
@@ -425,7 +434,10 @@ public class WWCharTemplateSectionViewModel
     public bool IsEdit { get; set; }
     public string? TemplateParametersStatusMessage { get; set; }
     public List<ORCOnSiteEnum?> ORCOnSite { get; set; } = new();
-    public List<decimal?> LagoonFreeboard { get; set; } = new();
+    public List<decimal?> LagoonWaterDepthFt { get; set; } = new();
+    public List<decimal?> StorageLagoonFreeboardFt { get; set; } = new();
+    public decimal? LagoonBermHeightFeet { get; set; }
+    public decimal? PermittedMinimumFreeboardFeet { get; set; }
     public List<string?> ORCArrivalTime { get; set; } = new();
     public List<decimal?> ORCTimeOnSiteHours { get; set; } = new();
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();

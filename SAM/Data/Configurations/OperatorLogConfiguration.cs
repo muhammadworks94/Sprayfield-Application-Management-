@@ -31,6 +31,9 @@ public class OperatorLogConfiguration : IEntityTypeConfiguration<OperatorLog>
         builder.Property(o => o.ORCOnSite)
             .HasConversion<int?>();
 
+        builder.Property(o => o.WaterDepthFt)
+            .HasColumnType("decimal(10,2)");
+
         builder.Property(o => o.StorageFt)
             .HasColumnType("decimal(10,2)");
 

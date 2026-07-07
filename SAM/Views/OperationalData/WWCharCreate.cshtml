@@ -124,7 +124,8 @@
                     TemplateParametersStatusMessage = Model.TemplateParametersStatusMessage,
                     TemplateParameters = Model.TemplateParameters,
                     ORCOnSite = Model.ORCOnSite,
-                    LagoonFreeboard = Model.LagoonFreeboard,
+                    LagoonWaterDepthFt = Model.LagoonWaterDepthFt,
+                    StorageLagoonFreeboardFt = Model.StorageLagoonFreeboardFt,
                     ORCArrivalTime = Model.ORCArrivalTime,
                     ORCTimeOnSiteHours = Model.ORCTimeOnSiteHours
                 })
@@ -262,7 +263,7 @@
                     }
 
                     if (name.startsWith('ORCOnSite[') ||
-                        name.startsWith('LagoonFreeboard[') ||
+                        name.startsWith('LagoonWaterDepthFt[') ||
                         name.startsWith('ORCArrivalTime[') ||
                         name.startsWith('ORCTimeOnSiteHours[')) {
                         result.namedValues[name] = el.value;

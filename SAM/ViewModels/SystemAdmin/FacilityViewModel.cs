@@ -115,6 +115,9 @@ public class FacilityViewModel
     public int? PermitSprayfieldCount { get; set; }
 
     public decimal? PermitMinimumFreeboardFeet { get; set; }
+
+    [Display(Name = "Lagoon Berm Height (ft)")]
+    public decimal? LagoonBermHeightFeet { get; set; }
 }
 
 public class FacilityCreateViewModel
@@ -184,6 +187,9 @@ public class FacilityCreateViewModel
     [Display(Name = "Volatilization Rate (%)")]
     [Range(0, 100)]
     public decimal? VolatilizationRatePercent { get; set; }
+
+    [Display(Name = "Lagoon Berm Height (ft)")]
+    public decimal? LagoonBermHeightFeet { get; set; }
 }
 
 public class FacilityEditViewModel
@@ -258,6 +264,9 @@ public class FacilityEditViewModel
 
     [Display(Name = "Select Permit")]
     public Guid? DefaultFacilityPermitId { get; set; }
+
+    [Display(Name = "Lagoon Berm Height (ft)")]
+    public decimal? LagoonBermHeightFeet { get; set; }
 }
 
 

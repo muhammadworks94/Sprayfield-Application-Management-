@@ -94,6 +94,7 @@ public class FacilityService : IFacilityService
         existing.MineralizationRatePercent = facility.MineralizationRatePercent;
         existing.VolatilizationRatePercent = facility.VolatilizationRatePercent;
         existing.DefaultFacilityPermitId = facility.DefaultFacilityPermitId;
+        existing.LagoonBermHeightFeet = facility.LagoonBermHeightFeet;
 
         await _context.SaveChangesAsync();
 

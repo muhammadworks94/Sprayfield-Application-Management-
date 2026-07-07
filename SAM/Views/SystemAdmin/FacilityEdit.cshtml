@@ -113,6 +113,16 @@
                         </div>
                     </div>
                 </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="LagoonBermHeightFeet" class="form-label"></label>
+                            <input asp-for="LagoonBermHeightFeet" type="number" step="0.01" class="form-control" />
+                            <div class="form-text">Used to calculate storage lagoon freeboard from daily water depth.</div>
+                            <span asp-validation-for="LagoonBermHeightFeet" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="form-section">

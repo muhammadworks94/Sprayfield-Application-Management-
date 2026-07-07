@@ -186,6 +186,7 @@ namespace SAM.Controllers;
             TemperatureF = l.TemperatureF,
             PrecipitationIn = l.PrecipitationIn,
             ORCOnSite = l.ORCOnSite,
+            WaterDepthFt = l.WaterDepthFt,
             StorageFt = l.StorageFt,
             FiveDayUpsetFt = l.FiveDayUpsetFt,
             ArrivalTime = l.ArrivalTime.ToString(@"hh\:mm"),
@@ -276,6 +277,7 @@ namespace SAM.Controllers;
             TemperatureF = log.TemperatureF,
             PrecipitationIn = log.PrecipitationIn,
             ORCOnSite = log.ORCOnSite,
+            WaterDepthFt = log.WaterDepthFt,
             StorageFt = log.StorageFt,
             FiveDayUpsetFt = log.FiveDayUpsetFt,
             ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
@@ -286,6 +288,7 @@ namespace SAM.Controllers;
             CorrectiveActions = log.CorrectiveActions,
             NextShiftNotes = log.NextShiftNotes
         };
+        await PopulateOperatorLogLagoonFieldsAsync(viewModel, log.FacilityId, log.StorageFt);
 
         return View(viewModel);
     }
@@ -323,9 +326,14 @@ namespace SAM.Controllers;
             CompanyId = companyId ?? Guid.Empty,
             FacilityId = facilityId ?? Guid.Empty
         };
+        if (viewModel.FacilityId != Guid.Empty)
+        {
+            await PopulateOperatorLogLagoonFieldsAsync(viewModel, viewModel.FacilityId);
+        }
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(companyId);
         ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
+        await SetFacilityLagoonContextViewBagAsync(companyId);
 
         return View(viewModel);
     }
@@ -357,10 +365,20 @@ namespace SAM.Controllers;
 
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
+        await PopulateOperatorLogLagoonFieldsAsync(viewModel, viewModel.FacilityId);
+        if (!ValidateOperatorLogWaterDepth(viewModel))
+        {
+            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
+            ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
+            await SetFacilityLagoonContextViewBagAsync(viewModel.CompanyId);
+            return View(viewModel);
+        }
+
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
+            await SetFacilityLagoonContextViewBagAsync(viewModel.CompanyId);
             return View(viewModel);
         }
 
@@ -381,7 +399,6 @@ namespace SAM.Controllers;
                 TemperatureF = viewModel.TemperatureF,
                 PrecipitationIn = viewModel.PrecipitationIn,
                 ORCOnSite = viewModel.ORCOnSite,
-                StorageFt = viewModel.StorageFt,
                 FiveDayUpsetFt = viewModel.FiveDayUpsetFt,
                 ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime),
                 TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0,
@@ -391,6 +408,7 @@ namespace SAM.Controllers;
                 CorrectiveActions = viewModel.CorrectiveActions ?? string.Empty,
                 NextShiftNotes = viewModel.NextShiftNotes ?? string.Empty
             };
+            ApplyWaterDepthToOperatorLog(operatorLog, viewModel.WaterDepthFt, viewModel.LagoonBermHeightFeet, null);
 
             var saveResult = await _operatorLogService.CreateWithNdarRefreshAsync(operatorLog);
             SetSaveMessagesWithNdarOutcome("Operator log created successfully.", saveResult.NdarRefreshOutcomes);
@@ -401,6 +419,7 @@ namespace SAM.Controllers;
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
+            await SetFacilityLagoonContextViewBagAsync(viewModel.CompanyId);
             return View(viewModel);
         }
     }
@@ -430,6 +449,7 @@ namespace SAM.Controllers;
             TemperatureF = log.TemperatureF,
             PrecipitationIn = log.PrecipitationIn,
             ORCOnSite = log.ORCOnSite,
+            WaterDepthFt = log.WaterDepthFt,
             StorageFt = log.StorageFt,
             FiveDayUpsetFt = log.FiveDayUpsetFt,
             ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
@@ -440,9 +460,11 @@ namespace SAM.Controllers;
             CorrectiveActions = log.CorrectiveActions,
             NextShiftNotes = log.NextShiftNotes
         };
+        await PopulateOperatorLogLagoonFieldsAsync(viewModel, log.FacilityId, log.StorageFt);
 
         ViewBag.Facilities = await GetFacilitySelectListAsync(log.CompanyId);
         ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
+        await SetFacilityLagoonContextViewBagAsync(log.CompanyId);
 
         return View(viewModel);
     }
@@ -453,10 +475,20 @@ namespace SAM.Controllers;
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
+        await PopulateOperatorLogLagoonFieldsAsync(viewModel, viewModel.FacilityId);
+        if (!ValidateOperatorLogWaterDepth(viewModel))
+        {
+            ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
+            ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
+            await SetFacilityLagoonContextViewBagAsync(viewModel.CompanyId);
+            return View(viewModel);
+        }
+
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
+            await SetFacilityLagoonContextViewBagAsync(viewModel.CompanyId);
             return View(viewModel);
         }
 
@@ -466,12 +498,13 @@ namespace SAM.Controllers;
             if (operatorLog == null)
                 return NotFound();
 
+            var existingStorageFt = operatorLog.StorageFt;
             operatorLog.LogDate = viewModel.LogDate;
             operatorLog.WeatherConditions = viewModel.WeatherConditions ?? string.Empty;
             operatorLog.TemperatureF = viewModel.TemperatureF;
             operatorLog.PrecipitationIn = viewModel.PrecipitationIn;
             operatorLog.ORCOnSite = viewModel.ORCOnSite;
-            operatorLog.StorageFt = viewModel.StorageFt;
+            ApplyWaterDepthToOperatorLog(operatorLog, viewModel.WaterDepthFt, viewModel.LagoonBermHeightFeet, existingStorageFt);
             operatorLog.FiveDayUpsetFt = viewModel.FiveDayUpsetFt;
             operatorLog.ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime);
             operatorLog.TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0;
@@ -490,6 +523,7 @@ namespace SAM.Controllers;
             ModelState.AddModelError("", ex.Message);
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
             ViewBag.OperatorLogOrcOnSiteOptions = GetOperatorLogORCOnSiteSelectList();
+            await SetFacilityLagoonContextViewBagAsync(viewModel.CompanyId);
             return View(viewModel);
         }
     }
@@ -1246,7 +1280,8 @@ namespace SAM.Controllers;
             TNDaily = w.TNDaily,
             CompositeTime = w.CompositeTime,
             ORCOnSite = new List<ORCOnSiteEnum?>(),
-            LagoonFreeboard = new List<decimal?>(),
+            LagoonWaterDepthFt = new List<decimal?>(),
+            StorageLagoonFreeboardFt = new List<decimal?>(),
             ORCArrivalTime = new List<string?>(),
             ORCTimeOnSiteHours = new List<decimal?>(),
             LabOptionId = w.LabOptionId,
@@ -1332,7 +1367,8 @@ namespace SAM.Controllers;
             TNDaily = wwChar.TNDaily,
             CompositeTime = wwChar.CompositeTime,
             ORCOnSite = new List<ORCOnSiteEnum?>(),
-            LagoonFreeboard = new List<decimal?>(),
+            LagoonWaterDepthFt = new List<decimal?>(),
+            StorageLagoonFreeboardFt = new List<decimal?>(),
             ORCArrivalTime = new List<string?>(),
             ORCTimeOnSiteHours = new List<decimal?>(),
             LabOptionId = wwChar.LabOptionId,
@@ -1353,7 +1389,8 @@ namespace SAM.Controllers;
 
         var canonicalDetailsValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
         viewModel.ORCOnSite = canonicalDetailsValues.ORCOnSite;
-        viewModel.LagoonFreeboard = canonicalDetailsValues.StorageLagoonFreeboardFt;
+        viewModel.LagoonWaterDepthFt = canonicalDetailsValues.LagoonWaterDepthFt;
+        viewModel.StorageLagoonFreeboardFt = canonicalDetailsValues.StorageLagoonFreeboardFt;
         viewModel.ORCArrivalTime = canonicalDetailsValues.ORCArrivalTime;
         viewModel.ORCTimeOnSiteHours = canonicalDetailsValues.ORCTimeOnSiteHours;
 
@@ -1432,7 +1469,8 @@ namespace SAM.Controllers;
         {
             var canonicalDailyValues = await LoadCanonicalOperatorLogDailyValuesAsync(viewModel.FacilityId, viewModel.Year, (int)viewModel.Month);
             viewModel.ORCOnSite = canonicalDailyValues.ORCOnSite;
-            viewModel.LagoonFreeboard = canonicalDailyValues.StorageLagoonFreeboardFt;
+            viewModel.LagoonWaterDepthFt = canonicalDailyValues.LagoonWaterDepthFt;
+            viewModel.StorageLagoonFreeboardFt = canonicalDailyValues.StorageLagoonFreeboardFt;
             viewModel.ORCArrivalTime = canonicalDailyValues.ORCArrivalTime;
             viewModel.ORCTimeOnSiteHours = canonicalDailyValues.ORCTimeOnSiteHours;
         }
@@ -1598,7 +1636,7 @@ namespace SAM.Controllers;
                 wwChar.Year,
                 (int)wwChar.Month,
                 viewModel.ORCOnSite,
-                viewModel.LagoonFreeboard,
+                viewModel.LagoonWaterDepthFt,
                 viewModel.ORCArrivalTime,
                 viewModel.ORCTimeOnSiteHours,
                 CurrentUserId ?? "system");
@@ -1681,7 +1719,8 @@ namespace SAM.Controllers;
             TNDaily = wwChar.TNDaily,
             CompositeTime = wwChar.CompositeTime,
             ORCOnSite = new List<ORCOnSiteEnum?>(),
-            LagoonFreeboard = new List<decimal?>(),
+            LagoonWaterDepthFt = new List<decimal?>(),
+            StorageLagoonFreeboardFt = new List<decimal?>(),
             ORCArrivalTime = new List<string?>(),
             ORCTimeOnSiteHours = new List<decimal?>(),
             LabOptionId = wwChar.LabOptionId,
@@ -1702,7 +1741,8 @@ namespace SAM.Controllers;
 
         var canonicalEditValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
         viewModel.ORCOnSite = canonicalEditValues.ORCOnSite;
-        viewModel.LagoonFreeboard = canonicalEditValues.StorageLagoonFreeboardFt;
+        viewModel.LagoonWaterDepthFt = canonicalEditValues.LagoonWaterDepthFt;
+        viewModel.StorageLagoonFreeboardFt = canonicalEditValues.StorageLagoonFreeboardFt;
         viewModel.ORCArrivalTime = canonicalEditValues.ORCArrivalTime;
         viewModel.ORCTimeOnSiteHours = canonicalEditValues.ORCTimeOnSiteHours;
 
@@ -1775,14 +1815,17 @@ namespace SAM.Controllers;
             templateParameters.Count);
 
         List<ORCOnSiteEnum?> orcOnSite = new();
+        List<decimal?> lagoonWaterDepth = new();
         List<decimal?> lagoonFreeboard = new();
         List<string?> orcArrivalTime = new();
         List<decimal?> orcTimeOnSiteHours = new();
         var canonicalTemplateValues = await LoadCanonicalOperatorLogDailyValuesAsync(facilityId, year, month);
         orcOnSite = canonicalTemplateValues.ORCOnSite;
+        lagoonWaterDepth = canonicalTemplateValues.LagoonWaterDepthFt;
         lagoonFreeboard = canonicalTemplateValues.StorageLagoonFreeboardFt;
         orcArrivalTime = canonicalTemplateValues.ORCArrivalTime;
         orcTimeOnSiteHours = canonicalTemplateValues.ORCTimeOnSiteHours;
+        var lagoonContext = await GetLagoonContextForFacilityAsync(facilityId);
 
         var vm = new WWCharTemplateSectionViewModel
         {
@@ -1796,7 +1839,10 @@ namespace SAM.Controllers;
             TemplateParametersStatusMessage = statusMessage,
             TemplateParameters = templateParameters,
             ORCOnSite = orcOnSite,
-            LagoonFreeboard = lagoonFreeboard,
+            LagoonWaterDepthFt = lagoonWaterDepth,
+            StorageLagoonFreeboardFt = lagoonFreeboard,
+            LagoonBermHeightFeet = lagoonContext.LagoonBermHeightFeet,
+            PermittedMinimumFreeboardFeet = lagoonContext.PermittedMinimumFreeboardFeet,
             ORCArrivalTime = orcArrivalTime,
             ORCTimeOnSiteHours = orcTimeOnSiteHours
         };
@@ -1904,7 +1950,7 @@ namespace SAM.Controllers;
                 wwChar.Year,
                 (int)wwChar.Month,
                 viewModel.ORCOnSite,
-                viewModel.LagoonFreeboard,
+                viewModel.LagoonWaterDepthFt,
                 viewModel.ORCArrivalTime,
                 viewModel.ORCTimeOnSiteHours,
                 CurrentUserId ?? "system");
@@ -3436,19 +3482,20 @@ namespace SAM.Controllers;
         }
     }
 
-    private async Task<(List<ORCOnSiteEnum?> ORCOnSite, List<decimal?> StorageLagoonFreeboardFt, List<string?> ORCArrivalTime, List<decimal?> ORCTimeOnSiteHours)> LoadCanonicalOperatorLogDailyValuesAsync(
+    private async Task<(List<ORCOnSiteEnum?> ORCOnSite, List<decimal?> LagoonWaterDepthFt, List<decimal?> StorageLagoonFreeboardFt, List<string?> ORCArrivalTime, List<decimal?> ORCTimeOnSiteHours)> LoadCanonicalOperatorLogDailyValuesAsync(
         Guid facilityId,
         int year,
         int month)
     {
         var orc = Enumerable.Repeat<ORCOnSiteEnum?>(null, 31).ToList();
+        var waterDepth = Enumerable.Repeat<decimal?>(null, 31).ToList();
         var storage = Enumerable.Repeat<decimal?>(null, 31).ToList();
         var arrivalTime = Enumerable.Repeat<string?>(null, 31).ToList();
         var timeOnSiteHours = Enumerable.Repeat<decimal?>(null, 31).ToList();
 
         if (facilityId == Guid.Empty || month < 1 || month > 12 || year < 2000 || year > 2100)
         {
-            return (orc, storage, arrivalTime, timeOnSiteHours);
+            return (orc, waterDepth, storage, arrivalTime, timeOnSiteHours);
         }
 
         var start = new DateTime(year, month, 1);
@@ -3468,6 +3515,7 @@ namespace SAM.Controllers;
 
             var canonical = dayGroup.First();
             orc[day - 1] = canonical.ORCOnSite;
+            waterDepth[day - 1] = canonical.WaterDepthFt;
             storage[day - 1] = canonical.StorageFt;
             arrivalTime[day - 1] = canonical.ArrivalTime != TimeSpan.Zero
                 ? canonical.ArrivalTime.ToString(@"hh\:mm")
@@ -3477,7 +3525,7 @@ namespace SAM.Controllers;
                 : null;
         }
 
-        return (orc, storage, arrivalTime, timeOnSiteHours);
+        return (orc, waterDepth, storage, arrivalTime, timeOnSiteHours);
     }
 
     private async Task UpsertCanonicalOperatorLogDailyValuesAsync(
@@ -3486,7 +3534,7 @@ namespace SAM.Controllers;
         int year,
         int month,
         List<ORCOnSiteEnum?>? orcOnSite,
-        List<decimal?>? storageLagoonFreeboardFt,
+        List<decimal?>? lagoonWaterDepthFt,
         List<string?>? orcArrivalTime,
         List<decimal?>? orcTimeOnSiteHours,
         string actor)
@@ -3496,6 +3544,7 @@ namespace SAM.Controllers;
             return;
         }
 
+        var (lagoonBermHeightFeet, _) = await GetLagoonContextForFacilityAsync(facilityId);
         var start = new DateTime(year, month, 1);
         var end = start.AddMonths(1);
         var daysInMonth = DateTime.DaysInMonth(year, month);
@@ -3507,12 +3556,12 @@ namespace SAM.Controllers;
         {
             var dayIndex = day - 1;
             var dayOrc = orcOnSite != null && orcOnSite.Count > dayIndex ? orcOnSite[dayIndex] : null;
-            var dayStorage = storageLagoonFreeboardFt != null && storageLagoonFreeboardFt.Count > dayIndex ? storageLagoonFreeboardFt[dayIndex] : null;
+            var dayWaterDepth = lagoonWaterDepthFt != null && lagoonWaterDepthFt.Count > dayIndex ? lagoonWaterDepthFt[dayIndex] : null;
             var dayArrival = orcArrivalTime != null && orcArrivalTime.Count > dayIndex
                 ? ParseOrcArrivalTimeString(orcArrivalTime[dayIndex])
                 : null;
             var dayTimeOnSite = orcTimeOnSiteHours != null && orcTimeOnSiteHours.Count > dayIndex ? orcTimeOnSiteHours[dayIndex] : null;
-            if (!dayOrc.HasValue && !dayStorage.HasValue && !dayArrival.HasValue && !dayTimeOnSite.HasValue)
+            if (!dayOrc.HasValue && !dayWaterDepth.HasValue && !dayArrival.HasValue && !dayTimeOnSite.HasValue)
             {
                 continue;
             }
@@ -3529,7 +3578,6 @@ namespace SAM.Controllers;
                     LogDate = date,
                     OperatorName = "System",
                     ORCOnSite = dayOrc,
-                    StorageFt = dayStorage,
                     WeatherConditions = string.Empty,
                     ArrivalTime = dayArrival ?? TimeSpan.Zero,
                     TimeOnSiteHours = dayTimeOnSite ?? 0m,
@@ -3540,6 +3588,12 @@ namespace SAM.Controllers;
                     NextShiftNotes = string.Empty,
                     CreatedBy = actor
                 };
+                LagoonFreeboardCalculationHelper.ApplyWaterDepth(
+                    dayWaterDepth,
+                    lagoonBermHeightFeet,
+                    value => newLog.WaterDepthFt = value,
+                    value => newLog.StorageFt = value,
+                    null);
                 _context.OperatorLogs.Add(newLog);
                 existingLogs.Add(newLog);
                 continue;
@@ -3548,7 +3602,12 @@ namespace SAM.Controllers;
             foreach (var log in logsForDay)
             {
                 log.ORCOnSite = dayOrc;
-                log.StorageFt = dayStorage;
+                LagoonFreeboardCalculationHelper.ApplyWaterDepth(
+                    dayWaterDepth,
+                    lagoonBermHeightFeet,
+                    value => log.WaterDepthFt = value,
+                    value => log.StorageFt = value,
+                    log.StorageFt);
                 if (dayArrival.HasValue)
                 {
                     log.ArrivalTime = dayArrival.Value;
@@ -3661,7 +3720,8 @@ namespace SAM.Controllers;
         EnsureArraySize(viewModel.TNDaily, 31);
         EnsureStringArraySize(viewModel.CompositeTime, 31);
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
-        EnsureArraySize(viewModel.LagoonFreeboard, 31);
+        EnsureArraySize(viewModel.LagoonWaterDepthFt, 31);
+        EnsureArraySize(viewModel.StorageLagoonFreeboardFt, 31);
         EnsureStringArraySize(viewModel.ORCArrivalTime, 31);
         EnsureArraySize(viewModel.ORCTimeOnSiteHours, 31);
     }
@@ -3682,7 +3742,8 @@ namespace SAM.Controllers;
         EnsureArraySize(viewModel.TNDaily, 31);
         EnsureStringArraySize(viewModel.CompositeTime, 31);
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
-        EnsureArraySize(viewModel.LagoonFreeboard, 31);
+        EnsureArraySize(viewModel.LagoonWaterDepthFt, 31);
+        EnsureArraySize(viewModel.StorageLagoonFreeboardFt, 31);
         EnsureStringArraySize(viewModel.ORCArrivalTime, 31);
         EnsureArraySize(viewModel.ORCTimeOnSiteHours, 31);
     }
@@ -3690,7 +3751,8 @@ namespace SAM.Controllers;
     private void EnsureDayArraysInitialized(WWCharTemplateSectionViewModel viewModel)
     {
         EnsureEnumArraySize(viewModel.ORCOnSite, 31);
-        EnsureArraySize(viewModel.LagoonFreeboard, 31);
+        EnsureArraySize(viewModel.LagoonWaterDepthFt, 31);
+        EnsureArraySize(viewModel.StorageLagoonFreeboardFt, 31);
         EnsureStringArraySize(viewModel.ORCArrivalTime, 31);
         EnsureArraySize(viewModel.ORCTimeOnSiteHours, 31);
     }
@@ -4612,6 +4674,137 @@ namespace SAM.Controllers;
         {
             TempData["WarningMessage"] = string.Join(" ", warningParts);
         }
+    }
+
+    private async Task<(decimal? LagoonBermHeightFeet, decimal? PermittedMinimumFreeboardFeet)> GetLagoonContextForFacilityAsync(Guid facilityId)
+    {
+        if (facilityId == Guid.Empty)
+        {
+            return (null, null);
+        }
+
+        var facility = await _context.Facilities
+            .AsNoTracking()
+            .Include(f => f.DefaultFacilityPermit)
+            .FirstOrDefaultAsync(f => f.Id == facilityId);
+        if (facility == null)
+        {
+            return (null, null);
+        }
+
+        var permit = facility.DefaultFacilityPermit;
+        if (permit == null)
+        {
+            permit = await _context.FacilityPermits
+                .AsNoTracking()
+                .Where(p => p.FacilityId == facilityId && p.IsActive)
+                .OrderByDescending(p => p.EffectiveStartDate)
+                .FirstOrDefaultAsync();
+        }
+
+        return (facility.LagoonBermHeightFeet, permit?.PermittedMinimumFreeboardFeet);
+    }
+
+    private async Task PopulateOperatorLogLagoonFieldsAsync(IOperatorLogLagoonFields viewModel, Guid facilityId, decimal? existingStorageFt = null)
+    {
+        var (bermHeight, minFreeboard) = await GetLagoonContextForFacilityAsync(facilityId);
+        viewModel.LagoonBermHeightFeet = bermHeight;
+        viewModel.PermittedMinimumFreeboardFeet = minFreeboard;
+        viewModel.IsLegacyFreeboardEntry = !viewModel.WaterDepthFt.HasValue && (existingStorageFt ?? viewModel.StorageFt).HasValue;
+
+        if (viewModel.WaterDepthFt.HasValue)
+        {
+            viewModel.StorageFt = LagoonFreeboardCalculationHelper.CalculateFreeboardFeet(bermHeight, viewModel.WaterDepthFt);
+        }
+        else if (!viewModel.StorageFt.HasValue && existingStorageFt.HasValue)
+        {
+            viewModel.StorageFt = existingStorageFt;
+        }
+    }
+
+    private bool ValidateOperatorLogWaterDepth(IOperatorLogLagoonFields viewModel)
+    {
+        if (!viewModel.WaterDepthFt.HasValue)
+        {
+            return true;
+        }
+
+        if (viewModel.LagoonBermHeightFeet.HasValue)
+        {
+            return true;
+        }
+
+        ModelState.AddModelError(nameof(viewModel.WaterDepthFt), LagoonFreeboardCalculationHelper.MissingBermHeightMessage);
+        return false;
+    }
+
+    private void ApplyWaterDepthToOperatorLog(OperatorLog log, decimal? waterDepthFt, decimal? lagoonBermHeightFeet, decimal? existingStorageFt)
+    {
+        LagoonFreeboardCalculationHelper.ApplyWaterDepth(
+            waterDepthFt,
+            lagoonBermHeightFeet,
+            value => log.WaterDepthFt = value,
+            value => log.StorageFt = value,
+            existingStorageFt);
+    }
+
+    private async Task SetFacilityLagoonContextViewBagAsync(Guid? companyId)
+    {
+        var facilities = await _lookupQueryService.GetFacilitiesAsync(companyId);
+        var facilityIds = facilities.Select(f => f.Id).ToList();
+        if (facilityIds.Count == 0)
+        {
+            ViewBag.FacilityLagoonContextJson = "{}";
+            return;
+        }
+
+        var facilityRows = await _context.Facilities
+            .AsNoTracking()
+            .Where(f => facilityIds.Contains(f.Id))
+            .Select(f => new { f.Id, f.LagoonBermHeightFeet, f.DefaultFacilityPermitId })
+            .ToListAsync();
+
+        var defaultPermitIds = facilityRows
+            .Where(f => f.DefaultFacilityPermitId.HasValue)
+            .Select(f => f.DefaultFacilityPermitId!.Value)
+            .Distinct()
+            .ToList();
+
+        var permitMinFreeboard = defaultPermitIds.Count == 0
+            ? new Dictionary<Guid, decimal?>()
+            : await _context.FacilityPermits
+                .AsNoTracking()
+                .Where(p => defaultPermitIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id, p => p.PermittedMinimumFreeboardFeet);
+
+        var activePermits = await _context.FacilityPermits
+            .AsNoTracking()
+            .Where(p => facilityIds.Contains(p.FacilityId) && p.IsActive)
+            .OrderByDescending(p => p.EffectiveStartDate)
+            .ToListAsync();
+
+        var context = new Dictionary<string, object>();
+        foreach (var facility in facilityRows)
+        {
+            decimal? minFreeboard = null;
+            if (facility.DefaultFacilityPermitId.HasValue
+                && permitMinFreeboard.TryGetValue(facility.DefaultFacilityPermitId.Value, out var configuredMin))
+            {
+                minFreeboard = configuredMin;
+            }
+            else
+            {
+                minFreeboard = activePermits.FirstOrDefault(p => p.FacilityId == facility.Id)?.PermittedMinimumFreeboardFeet;
+            }
+
+            context[facility.Id.ToString()] = new
+            {
+                bermHeight = facility.LagoonBermHeightFeet,
+                minFreeboard
+            };
+        }
+
+        ViewBag.FacilityLagoonContextJson = System.Text.Json.JsonSerializer.Serialize(context);
     }
 
     #endregion

@@ -182,6 +182,7 @@
                         <tr>
                             <th>Day</th>
                             <th>ORC On Site</th>
+                            <th>Water Depth (ft)</th>
                             <th>Storage Lagoon Freeboard (ft)</th>
                             <th>ORC Arrival Time (24H)</th>
                             <th>ORC Time on Site (hours)</th>
@@ -206,7 +207,8 @@
                             <tr>
                                 <th scope="row"><strong>@(d + 1)</strong></th>
                                 <td>@(Model.ORCOnSite != null && d < Model.ORCOnSite.Count && Model.ORCOnSite[d].HasValue ? Model.ORCOnSite[d].Value.ToString() : "-")</td>
-                                <td>@(Model.LagoonFreeboard != null && d < Model.LagoonFreeboard.Count && Model.LagoonFreeboard[d].HasValue ? Model.LagoonFreeboard[d].Value.ToString("F2") : "-")</td>
+                                <td>@(Model.LagoonWaterDepthFt != null && d < Model.LagoonWaterDepthFt.Count && Model.LagoonWaterDepthFt[d].HasValue ? Model.LagoonWaterDepthFt[d].Value.ToString("F2") : "-")</td>
+                                <td>@(Model.StorageLagoonFreeboardFt != null && d < Model.StorageLagoonFreeboardFt.Count && Model.StorageLagoonFreeboardFt[d].HasValue ? Model.StorageLagoonFreeboardFt[d].Value.ToString("F2") : "-")</td>
                                 <td>@(Model.ORCArrivalTime != null && d < Model.ORCArrivalTime.Count && !string.IsNullOrWhiteSpace(Model.ORCArrivalTime[d]) ? Model.ORCArrivalTime[d] : "-")</td>
                                 <td>@(Model.ORCTimeOnSiteHours != null && d < Model.ORCTimeOnSiteHours.Count && Model.ORCTimeOnSiteHours[d].HasValue ? Model.ORCTimeOnSiteHours[d].Value.ToString("F2") : "-")</td>
                                 @for (int p = 0; p < Model.TemplateParameters.Count; p++)

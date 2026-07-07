@@ -189,7 +189,7 @@ flowchart TD
                         new List<string> { "NDAR1", "Non-discharge report data model", "Facility, Sprayfields, dynamic field rows", "NDAR1 report screens/exports; auto-created/refreshed from application/operator logs and grid edit" },
                         new List<string> { "IrrRprt", "Monthly NDMR report identity and compliance summary", "Facility, Month, Year", "NDMR list/details/exports anchor on this record; PDF/Excel export aggregate live WWChar, GWMonit, OperatorLog, and permit template data (NDAR-1 not required)." },
                         new List<string> { "NDMLR", "Annual non-discharge mass loading report identity", "Facility, Company, Year, Month (window end)", "NDMLR annual list/details/exports; auto-created from application logs" },
-                        new List<string> { "OperatorLog", "Canonical per-day operations record", "Facility, date-level ORC On Site + Storage Lagoon Freeboard (ft)", "WWChar + NDAR proxy read/write source; auto-provisions NDAR-1 + NDMR for log month" }
+                        new List<string> { "OperatorLog", "Canonical per-day operations record", "Facility, date-level ORC On Site + Water Depth (ft) + calculated Storage Lagoon Freeboard (ft)", "WWChar + NDAR proxy read/write source; freeboard = Facility.LagoonBermHeightFeet - OperatorLog.WaterDepthFt; auto-provisions NDAR-1 + NDMR for log month" }
                     }
                 }
             },
@@ -344,7 +344,7 @@ flowchart TD
                         "Chemistry/template entry values are saved on WWChar + WWCharTemplateValue rows.",
                         "Optional RDL checkbox per daily template cell (all PCS columns except Flow 50050): when checked with a numeric value, NDMR PDF/Excel daily cells export as <value and monthly averages count the day but use 0 for the average calculation.",
                         "Flow Measuring Point and Parameter Monitoring Point selections are stored on WWChar and drive NDMR PDF header checkboxes.",
-                        "ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours) are proxy fields: WWChar reads/writes these values through Operator Logs for each exact date.",
+                        "ORC On Site, Water Depth (ft), ORC Arrival Time, and ORC Time on Site (hours) are proxy fields: WWChar reads/writes these values through Operator Logs for each exact date. Storage Lagoon Freeboard (ft) is calculated from Facility.LagoonBermHeightFeet minus daily water depth and persisted on OperatorLog.StorageFt.",
                         "If a day value is edited in WWChar and no Operator Log exists for that date, SAM creates a log record and saves canonical values there.",
                         "After WWChar + template values are saved, MonthlyReportProvisionerService ensures NDMR (IrrRprt) exists for that facility/month/year (create only if missing)."
                     }
@@ -423,7 +423,7 @@ flowchart TD
                     Steps =
                     {
                         "Daily/period operational observations are captured.",
-                        "Operator Logs are the single source of truth for ORC On Site, Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours).",
+                        "Operator Logs are the single source of truth for ORC On Site, Water Depth (ft), calculated Storage Lagoon Freeboard (ft), ORC Arrival Time, and ORC Time on Site (hours). Lagoon berm height is configured on the Facility; required minimum freeboard comes from the active FacilityPermit.",
                         "WWChar and NDAR edit experiences act as proxies that read/write those date-level values through Operator Logs.",
                         "On successful create/update, MonthlyReportProvisionerService ensures NDAR-1 (create or refresh) for the log month/year.",
                         "NDMR (IrrRprt) auto-create is best-effort: skipped until at least one application log exists for that month (same rule as manual Generate NDMR).",
@@ -687,12 +687,12 @@ flowchart TD
                 new TraceabilityItemViewModel
                 {
                     Id = "trace-orc-storage-canonical",
-                    KeywordOrProperty = "ORC On Site / Storage Lagoon Freeboard / ORC Arrival Time / ORC Time on Site",
-                    Aliases = { "ORC", "Lagoon Freeboard", "Storage Lagoon Freeboard (ft)", "Arrival Time", "Time On Site" },
+                    KeywordOrProperty = "ORC On Site / Water Depth / Storage Lagoon Freeboard / ORC Arrival Time / ORC Time on Site",
+                    Aliases = { "ORC", "Lagoon Freeboard", "Water Depth", "Storage Lagoon Freeboard (ft)", "Lagoon Berm Height", "Arrival Time", "Time On Site" },
                     Entity = "OperatorLog",
-                    StorageField = "ORCOnSite + StorageFt + ArrivalTime + TimeOnSiteHours",
+                    StorageField = "ORCOnSite + WaterDepthFt + StorageFt + ArrivalTime + TimeOnSiteHours (StorageFt calculated from Facility.LagoonBermHeightFeet - WaterDepthFt)",
                     UsedInModule = "Operational Data > Operator Logs / WWChar / NDAR",
-                    FormulaOrTransformation = "Date-level canonical lookup by facility + date; WWChar/NDAR writes are proxied into OperatorLog records.",
+                    FormulaOrTransformation = "Freeboard (ft) = Facility.LagoonBermHeightFeet - OperatorLog.WaterDepthFt when water depth is entered; legacy rows may retain StorageFt without WaterDepthFt until re-entered.",
                     ReportOutput = "WWChar daily display and NDAR day-level storage surfaces",
                     FallbackOrValidation = "If no OperatorLog exists for a date during proxy write, SAM creates one and stores the values.",
                     Reference = new TraceReferenceViewModel
@@ -704,7 +704,7 @@ flowchart TD
                     Steps =
                     {
                         new TraceStepViewModel { Order = 1, Label = "Input Source", Detail = "User can update values directly in Operator Logs or via WWChar/NDAR proxy edit surfaces." },
-                        new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "Canonical values persist only on OperatorLog.ORCOnSite, OperatorLog.StorageFt, OperatorLog.ArrivalTime, and OperatorLog.TimeOnSiteHours." },
+                        new TraceStepViewModel { Order = 2, Label = "Storage", Detail = "User enters OperatorLog.WaterDepthFt. SAM computes OperatorLog.StorageFt from Facility.LagoonBermHeightFeet minus water depth. Canonical ORC/arrival/time fields persist on OperatorLog." },
                         new TraceStepViewModel { Order = 3, Label = "Resolution", Detail = "Readers resolve values per exact facility/date from canonical OperatorLog data." },
                         new TraceStepViewModel { Order = 4, Label = "Surface", Detail = "Changes appear across WWChar, NDAR, NDMR exports, and operator log screens for the same date." }
                     },

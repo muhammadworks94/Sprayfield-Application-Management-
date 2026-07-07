@@ -5,7 +5,16 @@ using SAM.Services.Models;
 
 namespace SAM.ViewModels.OperationalData;
 
-public class OperatorLogViewModel
+public interface IOperatorLogLagoonFields
+{
+    decimal? WaterDepthFt { get; set; }
+    decimal? StorageFt { get; set; }
+    decimal? LagoonBermHeightFeet { get; set; }
+    decimal? PermittedMinimumFreeboardFeet { get; set; }
+    bool IsLegacyFreeboardEntry { get; set; }
+}
+
+public class OperatorLogViewModel : IOperatorLogLagoonFields
 {
     public Guid Id { get; set; }
     public Guid CompanyId { get; set; }
@@ -36,8 +45,19 @@ public class OperatorLogViewModel
     [Display(Name = "ORC On Site")]
     public ORCOnSiteEnum? ORCOnSite { get; set; }
 
+    [Display(Name = "Water Depth (ft)")]
+    public decimal? WaterDepthFt { get; set; }
+
     [Display(Name = "Storage Lagoon Freeboard (ft)")]
     public decimal? StorageFt { get; set; }
+
+    [Display(Name = "Lagoon Berm Height (ft)")]
+    public decimal? LagoonBermHeightFeet { get; set; }
+
+    [Display(Name = "Required Minimum Freeboard (ft)")]
+    public decimal? PermittedMinimumFreeboardFeet { get; set; }
+
+    public bool IsLegacyFreeboardEntry { get; set; }
 
     [Display(Name = "5-Day Upset (ft)")]
     public decimal? FiveDayUpsetFt { get; set; }
@@ -71,7 +91,7 @@ public class OperatorLogViewModel
     public string? NextShiftNotes { get; set; }
 }
 
-public class OperatorLogCreateViewModel
+public class OperatorLogCreateViewModel : IOperatorLogLagoonFields
 {
     [Required]
     [Display(Name = "Company")]
@@ -103,8 +123,19 @@ public class OperatorLogCreateViewModel
     [Display(Name = "ORC On Site")]
     public ORCOnSiteEnum? ORCOnSite { get; set; }
 
+    [Display(Name = "Water Depth (ft)")]
+    public decimal? WaterDepthFt { get; set; }
+
     [Display(Name = "Storage Lagoon Freeboard (ft)")]
     public decimal? StorageFt { get; set; }
+
+    [Display(Name = "Lagoon Berm Height (ft)")]
+    public decimal? LagoonBermHeightFeet { get; set; }
+
+    [Display(Name = "Required Minimum Freeboard (ft)")]
+    public decimal? PermittedMinimumFreeboardFeet { get; set; }
+
+    public bool IsLegacyFreeboardEntry { get; set; }
 
     [Display(Name = "5-Day Upset (ft)")]
     public decimal? FiveDayUpsetFt { get; set; }
@@ -139,7 +170,7 @@ public class OperatorLogCreateViewModel
     public string? NextShiftNotes { get; set; }
 }
 
-public class OperatorLogEditViewModel
+public class OperatorLogEditViewModel : IOperatorLogLagoonFields
 {
     public Guid Id { get; set; }
     
@@ -173,8 +204,19 @@ public class OperatorLogEditViewModel
     [Display(Name = "ORC On Site")]
     public ORCOnSiteEnum? ORCOnSite { get; set; }
 
+    [Display(Name = "Water Depth (ft)")]
+    public decimal? WaterDepthFt { get; set; }
+
     [Display(Name = "Storage Lagoon Freeboard (ft)")]
     public decimal? StorageFt { get; set; }
+
+    [Display(Name = "Lagoon Berm Height (ft)")]
+    public decimal? LagoonBermHeightFeet { get; set; }
+
+    [Display(Name = "Required Minimum Freeboard (ft)")]
+    public decimal? PermittedMinimumFreeboardFeet { get; set; }
+
+    public bool IsLegacyFreeboardEntry { get; set; }
 
     [Display(Name = "5-Day Upset (ft)")]
     public decimal? FiveDayUpsetFt { get; set; }

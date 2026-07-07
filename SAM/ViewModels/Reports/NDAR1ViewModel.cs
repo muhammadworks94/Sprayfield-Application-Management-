@@ -351,6 +351,8 @@ public class NDAR1EditGridViewModel
     public string FacilityName { get; set; } = string.Empty;
     public MonthEnum Month { get; set; }
     public int Year { get; set; }
+    public decimal? LagoonBermHeightFeet { get; set; }
+    public decimal? PermittedMinimumFreeboardFeet { get; set; }
     public List<NDAR1GridFieldColumnViewModel> FieldColumns { get; set; } = new();
     public List<NDAR1GridDayRowViewModel> Rows { get; set; } = new();
 }
@@ -372,6 +374,7 @@ public class NDAR1GridDayRowViewModel
     public string? WeatherCode { get; set; }
     public decimal? TemperatureF { get; set; }
     public decimal? PrecipitationIn { get; set; }
+    public decimal? WaterDepthFt { get; set; }
     public decimal? StorageFt { get; set; }
     public decimal? FiveDayUpsetFt { get; set; }
     public Guid? LockToken { get; set; }
@@ -396,7 +399,7 @@ public class NDAR1DayRowUpdateRequest
     public string? WeatherCode { get; set; }
     public decimal? TemperatureF { get; set; }
     public decimal? PrecipitationIn { get; set; }
-    public decimal? StorageFt { get; set; }
+    public decimal? WaterDepthFt { get; set; }
     public decimal? FiveDayUpsetFt { get; set; }
     public List<NDAR1GridApplicationCellViewModel> Applications { get; set; } = new();
     public bool KeepLockAfterSave { get; set; }

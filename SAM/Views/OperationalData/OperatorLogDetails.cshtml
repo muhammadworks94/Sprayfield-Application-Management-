@@ -65,8 +65,23 @@
                         <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-person-check me-1"></i>ORC On Site:</dt>
                         <dd class="col-sm-7 mb-2">@(Model.ORCOnSite.HasValue ? (Model.ORCOnSite.Value == SAM.Domain.Enums.ORCOnSiteEnum.Y ? "Yes" : "No") : "N/A")</dd>
 
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-water me-1"></i>Water Depth (ft):</dt>
+                        <dd class="col-sm-7 mb-2">@(Model.WaterDepthFt?.ToString("F2") ?? "N/A")</dd>
+
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-layers me-1"></i>Lagoon Berm Height (ft):</dt>
+                        <dd class="col-sm-7 mb-2">@(Model.LagoonBermHeightFeet?.ToString("F2") ?? "N/A")</dd>
+
                         <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-rulers me-1"></i>Storage Lagoon Freeboard (ft):</dt>
-                        <dd class="col-sm-7 mb-2">@(Model.StorageFt?.ToString("F2") ?? "N/A")</dd>
+                        <dd class="col-sm-7 mb-2">
+                            @(Model.StorageFt?.ToString("F2") ?? "N/A")
+                            @if (Model.IsLegacyFreeboardEntry)
+                            {
+                                <small class="text-muted">(legacy entry)</small>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-shield-check me-1"></i>Required Minimum Freeboard (ft):</dt>
+                        <dd class="col-sm-7 mb-2">@(Model.PermittedMinimumFreeboardFeet?.ToString("F2") ?? "N/A")</dd>
 
                         <dt class="col-sm-5 mb-2 text-muted"><i class="bi bi-arrow-up-right-square me-1"></i>5-Day Upset (ft):</dt>
                         <dd class="col-sm-7 mb-2">@(Model.FiveDayUpsetFt?.ToString("F2") ?? "N/A")</dd>

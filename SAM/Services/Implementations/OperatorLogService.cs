@@ -135,6 +135,7 @@ public class OperatorLogService : IOperatorLogService
         existing.TemperatureF = operatorLog.TemperatureF;
         existing.PrecipitationIn = operatorLog.PrecipitationIn;
         existing.ORCOnSite = operatorLog.ORCOnSite;
+        existing.WaterDepthFt = operatorLog.WaterDepthFt;
         existing.StorageFt = operatorLog.StorageFt;
         existing.FiveDayUpsetFt = operatorLog.FiveDayUpsetFt;
         existing.ArrivalTime = operatorLog.ArrivalTime;

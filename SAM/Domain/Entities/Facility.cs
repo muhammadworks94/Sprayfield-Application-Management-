@@ -85,6 +85,11 @@ public class Facility : CompanyScopedEntity
     public decimal? VolatilizationRatePercent { get; set; }
 
     /// <summary>
+    /// Lagoon berm height in feet, used to calculate storage lagoon freeboard from water depth.
+    /// </summary>
+    public decimal? LagoonBermHeightFeet { get; set; }
+
+    /// <summary>
     /// Default permit version assigned to this facility.
     /// </summary>
     public Guid? DefaultFacilityPermitId { get; set; }

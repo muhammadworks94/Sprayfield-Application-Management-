@@ -1,0 +1,105 @@
+<script>
+    (function () {
+        function parseNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+
+            var parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function formatNumber(value) {
+            return value === null || value === undefined ? '' : value.toFixed(2);
+        }
+
+        window.initLagoonFreeboardSection = function (section, facilityContext) {
+            if (!section) {
+                return;
+            }
+
+            var waterDepthInput = section.querySelector('.lagoon-water-depth-input');
+            var bermDisplay = section.querySelector('.lagoon-berm-height-display');
+            var freeboardDisplay = section.querySelector('.lagoon-freeboard-display');
+            var minFreeboardDisplay = section.querySelector('.lagoon-min-freeboard-display');
+            var facilitySelect = document.querySelector('select[name="FacilityId"]');
+
+            function getBermHeight() {
+                var fromSection = parseNumber(section.dataset.bermHeight);
+                if (fromSection !== null) {
+                    return fromSection;
+                }
+
+                if (!facilitySelect || !facilityContext) {
+                    return null;
+                }
+
+                var context = facilityContext[facilitySelect.value];
+                return context ? parseNumber(context.bermHeight) : null;
+            }
+
+            function getMinFreeboard() {
+                var fromSection = parseNumber(section.dataset.minFreeboard);
+                if (fromSection !== null) {
+                    return fromSection;
+                }
+
+                if (!facilitySelect || !facilityContext) {
+                    return null;
+                }
+
+                var context = facilityContext[facilitySelect.value];
+                return context ? parseNumber(context.minFreeboard) : null;
+            }
+
+            function refreshDisplays() {
+                var bermHeight = getBermHeight();
+                var minFreeboard = getMinFreeboard();
+                var waterDepth = waterDepthInput ? parseNumber(waterDepthInput.value) : null;
+                var freeboard = bermHeight !== null && waterDepth !== null ? bermHeight - waterDepth : null;
+
+                if (bermDisplay) {
+                    bermDisplay.value = bermHeight !== null ? formatNumber(bermHeight) : 'Not configured';
+                }
+
+                if (minFreeboardDisplay) {
+                    minFreeboardDisplay.value = minFreeboard !== null ? formatNumber(minFreeboard) : 'N/A';
+                }
+
+                if (freeboardDisplay) {
+                    freeboardDisplay.value = freeboard !== null ? formatNumber(freeboard) : '';
+                    freeboardDisplay.classList.toggle('text-danger', minFreeboard !== null && freeboard !== null && freeboard < minFreeboard);
+                    freeboardDisplay.classList.toggle('fw-semibold', minFreeboard !== null && freeboard !== null && freeboard < minFreeboard);
+                }
+            }
+
+            if (waterDepthInput) {
+                waterDepthInput.addEventListener('input', refreshDisplays);
+            }
+
+            if (facilitySelect && facilityContext) {
+                facilitySelect.addEventListener('change', function () {
+                    var context = facilityContext[facilitySelect.value] || {};
+                    section.dataset.bermHeight = context.bermHeight ?? '';
+                    section.dataset.minFreeboard = context.minFreeboard ?? '';
+                    refreshDisplays();
+                });
+            }
+
+            refreshDisplays();
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var facilityContext = {};
+            try {
+                facilityContext = JSON.parse(document.getElementById('facilityLagoonContextJson')?.textContent || '{}');
+            } catch (e) {
+                facilityContext = {};
+            }
+
+            document.querySelectorAll('[data-lagoon-section="true"]').forEach(function (section) {
+                initLagoonFreeboardSection(section, facilityContext);
+            });
+        });
+    })();
+</script>

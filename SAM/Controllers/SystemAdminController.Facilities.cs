@@ -62,7 +62,8 @@ public partial class SystemAdminController
                     .Where(s => !string.IsNullOrWhiteSpace(s))),
             SelectedPermitCounty = defaultPermit?.County,
             PermitSprayfieldCount = defaultPermit?.TotalNumberOfSprayfields,
-            PermitMinimumFreeboardFeet = defaultPermit?.PermittedMinimumFreeboardFeet
+            PermitMinimumFreeboardFeet = defaultPermit?.PermittedMinimumFreeboardFeet,
+            LagoonBermHeightFeet = facility.LagoonBermHeightFeet
         };
 
         return View(viewModel);
@@ -128,7 +129,8 @@ public partial class SystemAdminController
                 ChangeInOrc = viewModel.ChangeInOrc,
                 PersonsCollectingSamples = viewModel.PersonsCollectingSamples,
                 MineralizationRatePercent = viewModel.MineralizationRatePercent ?? 40m,
-                VolatilizationRatePercent = viewModel.VolatilizationRatePercent ?? 50m
+                VolatilizationRatePercent = viewModel.VolatilizationRatePercent ?? 50m,
+                LagoonBermHeightFeet = viewModel.LagoonBermHeightFeet
             };
 
             await _facilityService.CreateAsync(facility);
@@ -187,7 +189,8 @@ public partial class SystemAdminController
             PersonsCollectingSamples = facility.PersonsCollectingSamples,
             MineralizationRatePercent = facility.MineralizationRatePercent,
             VolatilizationRatePercent = facility.VolatilizationRatePercent,
-            DefaultFacilityPermitId = facility.DefaultFacilityPermitId
+            DefaultFacilityPermitId = facility.DefaultFacilityPermitId,
+            LagoonBermHeightFeet = facility.LagoonBermHeightFeet
         };
 
         if (!viewModel.DefaultFacilityPermitId.HasValue)
@@ -239,6 +242,7 @@ public partial class SystemAdminController
             facility.MineralizationRatePercent = viewModel.MineralizationRatePercent;
             facility.VolatilizationRatePercent = viewModel.VolatilizationRatePercent;
             facility.DefaultFacilityPermitId = viewModel.DefaultFacilityPermitId;
+            facility.LagoonBermHeightFeet = viewModel.LagoonBermHeightFeet;
 
             await _facilityService.UpdateAsync(facility);
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";

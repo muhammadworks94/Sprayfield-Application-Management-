@@ -114,6 +114,12 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
 
 
 
+        builder.Property(f => f.LagoonBermHeightFeet)
+
+            .HasPrecision(8, 2);
+
+
+
         builder.HasOne(f => f.DefaultFacilityPermit)
 
             .WithMany()

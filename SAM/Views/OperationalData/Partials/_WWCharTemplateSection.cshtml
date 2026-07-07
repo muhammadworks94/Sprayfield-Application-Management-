@@ -20,7 +20,9 @@
      data-facility-permit-id="@(Model.FacilityPermitId?.ToString() ?? string.Empty)"
      data-facility-permit-display="@(Model.FacilityPermitDisplay ?? string.Empty)"
      data-month="@((int)Model.Month)"
-     data-year="@Model.Year">
+     data-year="@Model.Year"
+     data-berm-height="@(Model.LagoonBermHeightFeet?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+     data-min-freeboard="@(Model.PermittedMinimumFreeboardFeet?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")">
     <div class="form-section-title">Attachment A Template Daily Data (Days 1-31)</div>
     <p class="text-muted small mb-2">Template rows are month-filtered and shown as daily entry columns.</p>
 
@@ -29,9 +31,17 @@
         if (Model.IsEdit)
         {
             <div class="alert alert-info py-2 small">
-                Updates to <strong>ORC On Site</strong>, <strong>Storage Lagoon Freeboard (ft)</strong>, <strong>ORC Arrival Time</strong>, and <strong>ORC Time on Site</strong> are synced through Operator Logs for the exact day and automatically reflected anywhere this date is used.
+                Updates to <strong>ORC On Site</strong>, <strong>Water Depth (ft)</strong>, <strong>ORC Arrival Time</strong>, and <strong>ORC Time on Site</strong> are synced through Operator Logs for the exact day and automatically reflected anywhere this date is used. Storage lagoon freeboard is calculated from lagoon berm height minus water depth.
             </div>
         }
+
+        <div class="alert alert-light border py-2 small mb-2">
+            Lagoon Berm Height =
+            @(Model.LagoonBermHeightFeet.HasValue ? $"{Model.LagoonBermHeightFeet.Value:F2} ft" : "not configured")
+            |
+            Required Minimum Freeboard =
+            @(Model.PermittedMinimumFreeboardFeet.HasValue ? $"{Model.PermittedMinimumFreeboardFeet.Value:F2} ft" : "N/A")
+        </div>
 
         @for (int p = 0; p < Model.TemplateParameters.Count; p++)
         {
@@ -43,11 +53,12 @@
         }
 
         <div class="table-responsive responsive-table wide-data-table wwchar-daily-table-wrapper fixed-height-table-wrapper mb-3">
-            <table class="table table-bordered table-sm wwchar-daily-table">
+            <table class="table table-bordered table-sm wwchar-daily-table" id="wwcharLagoonDailyTable">
                 <thead>
                     <tr>
                         <th>Day</th>
                         <th>ORC On Site</th>
+                        <th>Water Depth (ft)</th>
                         <th>Storage Lagoon Freeboard (ft)</th>
                         <th>ORC Arrival Time (24H)</th>
                         <th>ORC Time on Site (hours)</th>
@@ -77,6 +88,14 @@
                 <tbody>
                     @for (int d = 0; d < 31; d++)
                     {
+                        var freeboardValue = Model.StorageLagoonFreeboardFt != null && Model.StorageLagoonFreeboardFt.Count > d && Model.StorageLagoonFreeboardFt[d].HasValue
+                            ? Model.StorageLagoonFreeboardFt[d]!.Value.ToString("F2")
+                            : string.Empty;
+                        var belowMinimum = Model.StorageLagoonFreeboardFt != null
+                            && Model.StorageLagoonFreeboardFt.Count > d
+                            && Model.StorageLagoonFreeboardFt[d].HasValue
+                            && Model.PermittedMinimumFreeboardFeet.HasValue
+                            && Model.StorageLagoonFreeboardFt[d]!.Value < Model.PermittedMinimumFreeboardFeet.Value;
                         <tr>
                             <th scope="row"><strong>@(d + 1)</strong></th>
                             <td>
@@ -95,7 +114,8 @@
                                     }
                                 </select>
                             </td>
-                            <td><input name="LagoonFreeboard[@d]" type="number" step="0.01" class="form-control form-control-sm" value="@((Model.LagoonFreeboard != null && Model.LagoonFreeboard.Count > d && Model.LagoonFreeboard[d].HasValue) ? Model.LagoonFreeboard[d]!.Value.ToString() : string.Empty)" /></td>
+                            <td><input name="LagoonWaterDepthFt[@d]" type="number" step="0.01" class="form-control form-control-sm wwchar-water-depth-input" value="@((Model.LagoonWaterDepthFt != null && Model.LagoonWaterDepthFt.Count > d && Model.LagoonWaterDepthFt[d].HasValue) ? Model.LagoonWaterDepthFt[d]!.Value.ToString() : string.Empty)" /></td>
+                            <td><input type="text" class="form-control form-control-sm wwchar-freeboard-display @(belowMinimum ? "text-danger fw-semibold" : string.Empty)" readonly value="@freeboardValue" /></td>
                             <td><input name="ORCArrivalTime[@d]" type="time" step="900" class="form-control form-control-sm" value="@((Model.ORCArrivalTime != null && Model.ORCArrivalTime.Count > d && !string.IsNullOrWhiteSpace(Model.ORCArrivalTime[d])) ? Model.ORCArrivalTime[d] : string.Empty)" /></td>
                             <td><input name="ORCTimeOnSiteHours[@d]" type="number" step="0.25" class="form-control form-control-sm" value="@((Model.ORCTimeOnSiteHours != null && Model.ORCTimeOnSiteHours.Count > d && Model.ORCTimeOnSiteHours[d].HasValue) ? Model.ORCTimeOnSiteHours[d]!.Value.ToString() : string.Empty)" /></td>
                             @for (int p = 0; p < Model.TemplateParameters.Count; p++)
@@ -133,6 +153,45 @@
                 </tbody>
             </table>
         </div>
+        <script>
+            (function () {
+                const section = document.querySelector('[data-wwchar-template-section="true"]');
+                if (!section) return;
+
+                const bermHeightRaw = section.dataset.bermHeight;
+                const minFreeboardRaw = section.dataset.minFreeboard;
+                const bermHeight = bermHeightRaw === '' ? null : Number(bermHeightRaw);
+                const minFreeboard = minFreeboardRaw === '' ? null : Number(minFreeboardRaw);
+
+                const refreshRowFreeboard = (row) => {
+                    const waterDepthInput = row.querySelector('.wwchar-water-depth-input');
+                    const freeboardDisplay = row.querySelector('.wwchar-freeboard-display');
+                    if (!waterDepthInput || !freeboardDisplay) return;
+
+                    const waterDepthRaw = waterDepthInput.value.trim();
+                    const waterDepth = waterDepthRaw === '' ? null : Number(waterDepthRaw);
+                    if (bermHeight == null || waterDepth == null || Number.isNaN(waterDepth)) {
+                        freeboardDisplay.value = '';
+                        freeboardDisplay.classList.remove('text-danger', 'fw-semibold');
+                        return;
+                    }
+
+                    const freeboard = bermHeight - waterDepth;
+                    freeboardDisplay.value = Number.isFinite(freeboard) ? freeboard.toFixed(2) : '';
+                    const belowMinimum = minFreeboard != null && Number.isFinite(freeboard) && freeboard < minFreeboard;
+                    freeboardDisplay.classList.toggle('text-danger', belowMinimum);
+                    freeboardDisplay.classList.toggle('fw-semibold', belowMinimum);
+                };
+
+                section.querySelectorAll('tbody tr').forEach(row => {
+                    const waterDepthInput = row.querySelector('.wwchar-water-depth-input');
+                    if (waterDepthInput) {
+                        waterDepthInput.addEventListener('input', () => refreshRowFreeboard(row));
+                    }
+                    refreshRowFreeboard(row);
+                });
+            })();
+        </script>
     }
     else
     {
