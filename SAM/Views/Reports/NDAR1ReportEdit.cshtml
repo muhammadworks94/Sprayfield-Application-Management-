@@ -36,8 +36,13 @@
             Enter <strong>Water Depth (ft)</strong>; freeboard is calculated as berm height minus water depth.
         </div>
 
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="ndarHideCalculatedFields" checked />
+            <label class="form-check-label" for="ndarHideCalculatedFields">Hide calculated fields</label>
+        </div>
+
         <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
-            <table class="table table-bordered table-sm ndar-daily-table" id="ndarLiveGrid"
+            <table class="table table-bordered table-sm ndar-daily-table hide-calculated-fields" id="ndarLiveGrid"
                    data-berm-height="@(Model.LagoonBermHeightFeet?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
                    data-min-freeboard="@(Model.PermittedMinimumFreeboardFeet?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")">
                 <thead>
@@ -51,10 +56,10 @@
                         <th>5-Day Upset (ft)</th>
                         @foreach (var field in Model.FieldColumns)
                         {
-                            <th>Field @field.FieldCode<br /><small>Vol (gal)</small></th>
+                            <th class="ndar-col-calculated">Field @field.FieldCode<br /><small>Vol (gal)</small></th>
                             <th>Field @field.FieldCode<br /><small>Time (min)</small></th>
-                            <th>Field @field.FieldCode<br /><small>Max Hr (in/ac)</small></th>
-                            <th>Field @field.FieldCode<br /><small>Daily Load (in)</small></th>
+                            <th class="ndar-col-calculated">Field @field.FieldCode<br /><small>Max Hr (in/ac)</small></th>
+                            <th class="ndar-col-calculated">Field @field.FieldCode<br /><small>Daily Load (in)</small></th>
                         }
                         <th>Status</th>
                     </tr>
@@ -91,10 +96,10 @@
                             <td><input class="form-control form-control-sm ndar-editable" data-field="fiveDayUpsetFt" type="number" step="0.01" value="@row.FiveDayUpsetFt" @(editable ? null : "disabled") /></td>
                             @foreach (var app in row.Applications)
                             {
-                                <td><input class="form-control form-control-sm ndar-readonly" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.VolumeGallons" disabled title="Calculated field from time irrigated. This value is read-only." /></td>
+                                <td class="ndar-col-calculated"><input class="form-control form-control-sm ndar-readonly" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.VolumeGallons" disabled title="Calculated field from time irrigated. This value is read-only." /></td>
                                 <td><input class="form-control form-control-sm ndar-editable" data-app="timeIrrigatedMinutes" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.TimeIrrigatedMinutes" @(editable ? null : "disabled") /></td>
-                                <td><input class="form-control form-control-sm ndar-readonly" data-app="maximumHourlyLoadingInchesPerAcre" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.MaximumHourlyLoadingInchesPerAcre" disabled title="Static value from Sprayfield Actual Hourly Rate. This value is read-only." /></td>
-                                <td><input class="form-control form-control-sm ndar-readonly" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.DailyLoadingInches" disabled title="Calculated from time irrigated and actual hourly rate. This value is read-only." /></td>
+                                <td class="ndar-col-calculated"><input class="form-control form-control-sm ndar-readonly" data-app="maximumHourlyLoadingInchesPerAcre" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.MaximumHourlyLoadingInchesPerAcre" disabled title="Static value from Sprayfield Actual Hourly Rate. This value is read-only." /></td>
+                                <td class="ndar-col-calculated"><input class="form-control form-control-sm ndar-readonly" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.DailyLoadingInches" disabled title="Calculated from time irrigated and actual hourly rate. This value is read-only." /></td>
                             }
                             <td class="text-nowrap row-status-cell">
                                 <span class="row-status-icon" data-status="idle" title="Ready">
@@ -107,36 +112,36 @@
                     }
                 </tbody>
                 <tfoot>
-                    <tr class="table-light">
+                    <tr class="table-light ndar-footer-calculated">
                         <th colspan="7">Monthly Total - Volume Applied (gal)</th>
                         @foreach (var field in Model.FieldColumns)
                         {
-                            <th data-total-volume="@field.SprayfieldId">@field.MonthlyVolumeTotalGallons.ToString("F0")</th>
+                            <th class="ndar-col-calculated" data-total-volume="@field.SprayfieldId">@field.MonthlyVolumeTotalGallons.ToString("F0")</th>
                             <th></th>
-                            <th></th>
-                            <th></th>
+                            <th class="ndar-col-calculated"></th>
+                            <th class="ndar-col-calculated"></th>
                         }
                         <th></th>
                     </tr>
-                    <tr class="table-light">
+                    <tr class="table-light ndar-footer-calculated">
                         <th colspan="7">Monthly Total - Daily Loading (in)</th>
                         @foreach (var field in Model.FieldColumns)
                         {
+                            <th class="ndar-col-calculated"></th>
                             <th></th>
-                            <th></th>
-                            <th></th>
-                            <th data-total-loading="@field.SprayfieldId">@field.MonthlyDailyLoadingTotalInches.ToString("F2")</th>
+                            <th class="ndar-col-calculated"></th>
+                            <th class="ndar-col-calculated" data-total-loading="@field.SprayfieldId">@field.MonthlyDailyLoadingTotalInches.ToString("F2")</th>
                         }
                         <th></th>
                     </tr>
-                    <tr class="table-light">
+                    <tr class="table-light ndar-footer-calculated">
                         <th colspan="7">12-Month Floating Total (in)</th>
                         @foreach (var field in Model.FieldColumns)
                         {
+                            <th class="ndar-col-calculated"></th>
                             <th></th>
-                            <th></th>
-                            <th></th>
-                            <th data-total-floating="@field.SprayfieldId">@field.TwelveMonthFloatingTotalInches.ToString("F2")</th>
+                            <th class="ndar-col-calculated"></th>
+                            <th class="ndar-col-calculated" data-total-floating="@field.SprayfieldId">@field.TwelveMonthFloatingTotalInches.ToString("F2")</th>
                         }
                         <th></th>
                     </tr>
@@ -147,6 +152,14 @@
 </div>
 
 <style>
+    #ndarLiveGrid.hide-calculated-fields .ndar-col-calculated {
+        display: none;
+    }
+
+    #ndarLiveGrid.hide-calculated-fields .ndar-footer-calculated {
+        display: none;
+    }
+
     #ndarLiveGrid select.weather-select-selected {
         background-image: none !important;
         padding-right: 0.5rem;
@@ -252,6 +265,28 @@
 
             const grid = document.getElementById('ndarLiveGrid');
             if (!grid) return;
+
+            const hideCalculatedFieldsCheckbox = document.getElementById('ndarHideCalculatedFields');
+            const hideCalculatedFieldsStorageKey = 'sam.ndar1.hideCalculatedFields';
+
+            const setHideCalculatedFields = (hide) => {
+                grid.classList.toggle('hide-calculated-fields', hide);
+                if (hideCalculatedFieldsCheckbox) {
+                    hideCalculatedFieldsCheckbox.checked = hide;
+                }
+                if (window.localStorage) {
+                    localStorage.setItem(hideCalculatedFieldsStorageKey, hide ? '1' : '0');
+                }
+            };
+
+            const savedHideCalculatedFields = window.localStorage
+                ? localStorage.getItem(hideCalculatedFieldsStorageKey)
+                : null;
+            setHideCalculatedFields(savedHideCalculatedFields !== '0');
+
+            hideCalculatedFieldsCheckbox?.addEventListener('change', () => {
+                setHideCalculatedFields(hideCalculatedFieldsCheckbox.checked);
+            });
 
             const fieldAcresById = {
                 @for (var i = 0; i < Model.FieldColumns.Count; i++)
