@@ -49,6 +49,10 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
             .IsRequired()
             .HasDefaultValue(true);
 
+        builder.Property(c => c.FirstReportingMonth);
+
+        builder.Property(c => c.FirstReportingYear);
+
         builder.HasIndex(c => c.TaxId);
         builder.HasIndex(c => c.LicenseNumber);
     }

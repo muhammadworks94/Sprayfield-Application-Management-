@@ -1,29 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
 namespace SAM.ViewModels.CompanyManagement;
-
-public class ClientSetupViewModel
-{
-    public Guid CompanyId { get; set; }
-
-    public Guid FacilityId { get; set; }
-
-    [Range(2000, 2100)]
-    public int ThroughYear { get; set; }
-
-    [Range(1, 12)]
-    public int ThroughMonth { get; set; }
-
-    public bool RefreshNdarAfterSave { get; set; }
-
-    public string? FacilityName { get; set; }
-
-    public string? CompanyName { get; set; }
-
-    public List<ClientSetupSprayfieldColumnViewModel> SprayfieldColumns { get; set; } = new();
-
-    public List<ClientSetupMonthRowViewModel> MonthRows { get; set; } = new();
-}
 
 public class ClientSetupSprayfieldColumnViewModel
 {
@@ -50,8 +25,17 @@ public class ClientSetupCellViewModel
 
 public class ClientSetupCellSaveRequest
 {
+    public Guid FacilityId { get; set; }
+
     public Guid SprayfieldId { get; set; }
+
+    public int ThroughYear { get; set; }
+
+    public int ThroughMonth { get; set; }
+
     public int Year { get; set; }
+
     public int Month { get; set; }
+
     public decimal? LoadingInches { get; set; }
 }

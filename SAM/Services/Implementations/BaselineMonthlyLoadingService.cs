@@ -28,27 +28,127 @@ public class BaselineMonthlyLoadingService : IBaselineMonthlyLoadingService
         _sprayfieldService = sprayfieldService;
     }
 
-    public async Task<ClientSetupViewModel> GetSetupGridAsync(
-        Guid facilityId,
+    public async Task<NewClientSetupBaselineViewModel> GetWizardGridAsync(
+        Guid companyId,
         int throughYear,
         int throughMonth,
         CancellationToken cancellationToken = default)
     {
-        var facility = await _context.Facilities
+        var company = await _context.Companies
             .AsNoTracking()
-            .Include(f => f.Company)
-            .FirstOrDefaultAsync(f => f.Id == facilityId, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == companyId, cancellationToken);
 
-        if (facility == null)
+        if (company == null)
         {
-            throw new EntityNotFoundException(nameof(Facility), facilityId);
+            throw new EntityNotFoundException(nameof(Company), companyId);
         }
 
-        var sprayfields = (await _sprayfieldService.GetByFacilityIdAsync(facilityId))
-            .OrderBy(s => int.TryParse(s.FieldId, out var order) ? order : int.MaxValue)
-            .ThenBy(s => s.FieldId)
-            .ToList();
+        var facilities = await _context.Facilities
+            .AsNoTracking()
+            .Where(f => f.CompanyId == companyId)
+            .OrderBy(f => f.Name)
+            .ToListAsync(cancellationToken);
 
+        var facilityGroups = new List<ClientSetupFacilityGroupViewModel>();
+
+        foreach (var facility in facilities)
+        {
+            var sprayfields = (await _sprayfieldService.GetByFacilityIdAsync(facility.Id))
+                .OrderBy(s => int.TryParse(s.FieldId, out var order) ? order : int.MaxValue)
+                .ThenBy(s => s.FieldId)
+                .ToList();
+
+            var monthRows = await BuildMonthRowsAsync(facility.Id, sprayfields, throughYear, throughMonth, cancellationToken);
+
+            facilityGroups.Add(new ClientSetupFacilityGroupViewModel
+            {
+                FacilityId = facility.Id,
+                FacilityName = facility.Name,
+                SprayfieldColumns = sprayfields.Select(s => new ClientSetupSprayfieldColumnViewModel
+                {
+                    SprayfieldId = s.Id,
+                    FieldCode = s.FieldId,
+                    Acres = SprayfieldReportHelper.GetReportAcres(s)
+                }).ToList(),
+                MonthRows = monthRows
+            });
+        }
+
+        var savedCellCount = await CountSavedBaselineCellsAsync(companyId, cancellationToken);
+
+        return new NewClientSetupBaselineViewModel
+        {
+            CompanyId = companyId,
+            CompanyName = company.Name,
+            ThroughYear = throughYear,
+            ThroughMonth = throughMonth,
+            FacilityGroups = facilityGroups,
+            SavedCellCount = savedCellCount
+        };
+    }
+
+    public async Task SaveSetupCellAsync(
+        Guid facilityId,
+        Guid sprayfieldId,
+        int throughYear,
+        int throughMonth,
+        int year,
+        int month,
+        decimal? loadingInches,
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        await SaveCellsAsync(
+            facilityId,
+            throughYear,
+            throughMonth,
+            new[]
+            {
+                new ClientSetupCellSaveRequest
+                {
+                    SprayfieldId = sprayfieldId,
+                    Year = year,
+                    Month = month,
+                    LoadingInches = loadingInches
+                }
+            },
+            userId,
+            cancellationToken);
+    }
+
+    public async Task<int> CountSavedBaselineCellsAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        return await _context.SprayfieldBaselineMonthlyLoadings
+            .AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.LoadingInches > 0m)
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task RefreshNdarReportsForCompanyWindowAsync(
+        Guid companyId,
+        int throughYear,
+        int throughMonth,
+        CancellationToken cancellationToken = default)
+    {
+        var facilityIds = await _context.Facilities
+            .AsNoTracking()
+            .Where(f => f.CompanyId == companyId)
+            .Select(f => f.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var facilityId in facilityIds)
+        {
+            await RefreshNdarReportsForWindowAsync(facilityId, throughYear, throughMonth, cancellationToken);
+        }
+    }
+
+    private async Task<List<ClientSetupMonthRowViewModel>> BuildMonthRowsAsync(
+        Guid facilityId,
+        IReadOnlyList<Sprayfield> sprayfields,
+        int throughYear,
+        int throughMonth,
+        CancellationToken cancellationToken)
+    {
         var endMonth = new DateTime(throughYear, throughMonth, 1);
         var monthRows = new List<ClientSetupMonthRowViewModel>();
 
@@ -111,25 +211,10 @@ public class BaselineMonthlyLoadingService : IBaselineMonthlyLoadingService
             });
         }
 
-        return new ClientSetupViewModel
-        {
-            CompanyId = facility.CompanyId,
-            FacilityId = facilityId,
-            ThroughYear = throughYear,
-            ThroughMonth = throughMonth,
-            CompanyName = facility.Company?.Name,
-            FacilityName = facility.Name,
-            SprayfieldColumns = sprayfields.Select(s => new ClientSetupSprayfieldColumnViewModel
-            {
-                SprayfieldId = s.Id,
-                FieldCode = s.FieldId,
-                Acres = SprayfieldReportHelper.GetReportAcres(s)
-            }).ToList(),
-            MonthRows = monthRows
-        };
+        return monthRows;
     }
 
-    public async Task SaveSetupGridAsync(
+    private async Task SaveCellsAsync(
         Guid facilityId,
         int throughYear,
         int throughMonth,

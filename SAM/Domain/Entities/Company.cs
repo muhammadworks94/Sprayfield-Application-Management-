@@ -57,6 +57,16 @@ public class Company : AuditableEntity
     /// </summary>
     public bool IsVerified { get; set; } = true;
 
+    /// <summary>
+    /// First reporting month (1-12) used as the end of the 12-month baseline window.
+    /// </summary>
+    public int? FirstReportingMonth { get; set; }
+
+    /// <summary>
+    /// First reporting year used as the end of the 12-month baseline window.
+    /// </summary>
+    public int? FirstReportingYear { get; set; }
+
     // Navigation properties
     public ICollection<Facility> Facilities { get; set; } = new List<Facility>();
     public ICollection<Soil> Soils { get; set; } = new List<Soil>();

@@ -119,8 +119,8 @@
                 </a>
                 @if (isGlobalAdmin)
                 {
-                    <a asp-action="ClientSetup" class="btn btn-outline-primary">
-                        <i class="bi bi-calendar-range me-1"></i>Client Setup
+                    <a asp-action="NewClientSetupBaseline" asp-route-companyId="@Model.Id" class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-range me-1"></i>Edit Baseline Loading
                     </a>
                     <span class="company-profile-actions-divider d-none d-md-inline-block" aria-hidden="true"></span>
                     <a asp-action="CompanyDelete" asp-route-id="@Model.Id" class="btn btn-outline-danger">

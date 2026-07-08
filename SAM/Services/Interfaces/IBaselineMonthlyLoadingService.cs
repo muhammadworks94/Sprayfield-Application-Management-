@@ -4,9 +4,13 @@ namespace SAM.Services.Interfaces;
 
 public interface IBaselineMonthlyLoadingService
 {
-    Task<ClientSetupViewModel> GetSetupGridAsync(Guid facilityId, int throughYear, int throughMonth, CancellationToken cancellationToken = default);
+    Task<NewClientSetupBaselineViewModel> GetWizardGridAsync(Guid companyId, int throughYear, int throughMonth, CancellationToken cancellationToken = default);
 
-    Task SaveSetupGridAsync(Guid facilityId, int throughYear, int throughMonth, IReadOnlyList<ClientSetupCellSaveRequest> cells, string userId, CancellationToken cancellationToken = default);
+    Task SaveSetupCellAsync(Guid facilityId, Guid sprayfieldId, int throughYear, int throughMonth, int year, int month, decimal? loadingInches, string userId, CancellationToken cancellationToken = default);
+
+    Task<int> CountSavedBaselineCellsAsync(Guid companyId, CancellationToken cancellationToken = default);
 
     Task RefreshNdarReportsForWindowAsync(Guid facilityId, int throughYear, int throughMonth, CancellationToken cancellationToken = default);
+
+    Task RefreshNdarReportsForCompanyWindowAsync(Guid companyId, int throughYear, int throughMonth, CancellationToken cancellationToken = default);
 }

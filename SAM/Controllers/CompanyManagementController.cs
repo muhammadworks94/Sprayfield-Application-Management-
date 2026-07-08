@@ -36,6 +36,7 @@ public partial class CompanyManagementController : BaseController
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly IUserService _userService;
     private readonly IBaselineMonthlyLoadingService _baselineMonthlyLoadingService;
+    private readonly IClientSetupWizardService _clientSetupWizardService;
     private readonly ApplicationDbContext _context;
 
     public CompanyManagementController(
@@ -50,6 +51,7 @@ public partial class CompanyManagementController : BaseController
         IMonitoringWellService monitoringWellService,
         IUserService userService,
         IBaselineMonthlyLoadingService baselineMonthlyLoadingService,
+        IClientSetupWizardService clientSetupWizardService,
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         ILogger<CompanyManagementController> logger)
@@ -66,6 +68,7 @@ public partial class CompanyManagementController : BaseController
         _monitoringWellService = monitoringWellService;
         _userService = userService;
         _baselineMonthlyLoadingService = baselineMonthlyLoadingService;
+        _clientSetupWizardService = clientSetupWizardService;
         _context = context;
     }
 

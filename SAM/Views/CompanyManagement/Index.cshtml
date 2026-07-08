@@ -18,6 +18,7 @@
 
 <div class="card">
     <div class="card-body">
+        @Html.AntiForgeryToken()
         <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
             <h4 class="mb-0">Companies</h4>
             <div class="d-flex page-section-actions">
@@ -108,15 +109,26 @@
                                 <td>
                                     @if (company.IsVerified)
                                     {
-                                        <span class="badge bg-success">
+                                        <span class="badge bg-success company-verified-badge" data-company-id="@company.Id">
                                             <i class="bi bi-shield-check me-1"></i>Verified
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-warning">
-                                            <i class="bi bi-shield-x me-1"></i>Unverified
+                                        <span class="badge bg-warning text-dark company-verified-badge" data-company-id="@company.Id">
+                                            <i class="bi bi-shield-exclamation me-1"></i>Pending Verification
                                         </span>
+                                    }
+                                    @if (isGlobalAdmin)
+                                    {
+                                        <div class="form-check form-switch d-inline-block ms-2 align-middle">
+                                            <input class="form-check-input company-verified-toggle"
+                                                   type="checkbox"
+                                                   role="switch"
+                                                   data-company-id="@company.Id"
+                                                   @(company.IsVerified ? "checked" : null)
+                                                   aria-label="Toggle verified for @company.Name" />
+                                        </div>
                                     }
                                 </td>
                                 @if (isGlobalAdmin)
@@ -271,6 +283,55 @@
 
             companiesCardBtn?.addEventListener('click', function () {
                 setCompaniesViewMode('card');
+            });
+
+            const verifiedToggleUrl = '@Url.Action("ToggleCompanyVerified", "CompanyManagement")';
+            const antiForgery = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+            async function toggleCompanyVerified(companyId, isVerified, badgeEl) {
+                try {
+                    const resp = await fetch(verifiedToggleUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': antiForgery
+                        },
+                        body: JSON.stringify({ companyId, isVerified })
+                    });
+
+                    const result = await resp.json().catch(() => null);
+                    if (!resp.ok || !result?.success) {
+                        window.alert(result?.message || 'Unable to update verification status.');
+                        return false;
+                    }
+
+                    if (badgeEl) {
+                        if (result.isVerified) {
+                            badgeEl.className = 'badge bg-success company-verified-badge';
+                            badgeEl.innerHTML = '<i class="bi bi-shield-check me-1"></i>Verified';
+                        } else {
+                            badgeEl.className = 'badge bg-warning text-dark company-verified-badge';
+                            badgeEl.innerHTML = '<i class="bi bi-shield-exclamation me-1"></i>Pending Verification';
+                        }
+                    }
+
+                    return true;
+                } catch {
+                    window.alert('Unable to update verification status.');
+                    return false;
+                }
+            }
+
+            document.querySelectorAll('.company-verified-toggle').forEach(toggle => {
+                toggle.addEventListener('change', async function () {
+                    const companyId = this.dataset.companyId;
+                    const desired = this.checked;
+                    const badgeEl = document.querySelector(`.company-verified-badge[data-company-id="${companyId}"]`);
+                    const ok = await toggleCompanyVerified(companyId, desired, badgeEl);
+                    if (!ok) {
+                        this.checked = !desired;
+                    }
+                });
             });
         })();
     </script>

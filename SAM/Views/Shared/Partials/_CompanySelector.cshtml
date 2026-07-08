@@ -12,7 +12,10 @@
     
     if (isAdmin)
     {
-        var companies = await DbContext.Companies.OrderBy(c => c.Name).ToListAsync();
+        var companies = await DbContext.Companies
+            .Where(c => c.IsVerified && c.IsActive)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
         
         // Get selected company from session
         var selectedCompanyIdString = Context.Session.GetString("SelectedCompanyId");
@@ -20,6 +23,13 @@
         if (!string.IsNullOrEmpty(selectedCompanyIdString) && Guid.TryParse(selectedCompanyIdString, out var parsedId))
         {
             selectedCompanyId = parsedId;
+        }
+
+        // Clear selection if company is no longer verified/active
+        if (selectedCompanyId.HasValue && !companies.Any(c => c.Id == selectedCompanyId.Value))
+        {
+            selectedCompanyId = null;
+            Context.Session.Remove("SelectedCompanyId");
         }
 
         // Keep a concrete company selected in header context for global admins.
