@@ -154,11 +154,11 @@ public class IrrRprtEditViewModel
     
     [StringLength(1000)]
     [Display(Name = "Weather Summary")]
-    public string WeatherSummary { get; set; } = string.Empty;
+    public string? WeatherSummary { get; set; }
     
     [StringLength(2000)]
     [Display(Name = "Operational Notes")]
-    public string OperationalNotes { get; set; } = string.Empty;
+    public string? OperationalNotes { get; set; }
     
     [Required]
     [Display(Name = "Compliance Status")]

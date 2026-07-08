@@ -375,8 +375,8 @@ public class ReportsController : BaseController
             report.NitrogenLoadingRate = viewModel.NitrogenLoadingRate;
             report.PanUptakeRate = viewModel.PanUptakeRate;
             report.ApplicationEfficiency = viewModel.ApplicationEfficiency;
-            report.WeatherSummary = viewModel.WeatherSummary;
-            report.OperationalNotes = viewModel.OperationalNotes;
+            report.WeatherSummary = viewModel.WeatherSummary ?? string.Empty;
+            report.OperationalNotes = viewModel.OperationalNotes ?? string.Empty;
             report.ComplianceStatus = viewModel.ComplianceStatus;
 
             await _irrRprtService.UpdateAsync(report);
