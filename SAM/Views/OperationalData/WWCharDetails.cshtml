@@ -188,11 +188,20 @@
                             <th>ORC Time on Site (hours)</th>
                             @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                             {
+                                var isFlowPcs = NdmrFlowFormatting.IsFlowPcs(Model.TemplateParameters[p].PcsCode);
                                 <th>
                                     @Model.TemplateParameters[p].PcsCode
                                     <div class="small fw-normal">
                                         @Model.TemplateParameters[p].ParameterName (@Model.TemplateParameters[p].Units)
                                         <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[p].Notes) ? "No notes." : Model.TemplateParameters[p].Notes)"></i>
+                                        @if (!isFlowPcs)
+                                        {
+                                            <span class="text-primary ms-1"
+                                                  data-bs-toggle="tooltip"
+                                                  title="@ReportingDetectionLimitHelper.TooltipText"
+                                                  style="cursor: help;"
+                                                  tabindex="0">&lt;</span>
+                                        }
                                     </div>
                                     <div class="small text-muted">
                                         @Model.TemplateParameters[p].MeasurementFrequency | @Model.TemplateParameters[p].SampleType | Max: @(Model.TemplateParameters[p].DailyMaximumLimit?.ToString() ?? "-")
