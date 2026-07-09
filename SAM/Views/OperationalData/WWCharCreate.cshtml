@@ -1,7 +1,7 @@
 @model SAM.ViewModels.OperationalData.WWCharCreateViewModel
 @using SAM.Domain.Enums
 @{
-    ViewData["Title"] = "Create Wastewater Characteristics Record";
+    ViewData["Title"] = "Create Wastewater Testing Record";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var orcOnSiteOptions = ViewBag.ORCOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
@@ -10,7 +10,7 @@
 }
 
 <div class="mb-4">
-    <p class="text-muted mb-0">Add a new wastewater characteristics record</p>
+    <p class="text-muted mb-0">Add a new wastewater testing record</p>
 </div>
 
 <div class="card">
@@ -25,7 +25,7 @@
 
         <div class="collapse" id="wwcharInstructions">
             <div class="alert alert-info">
-                <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Wastewater Characteristics Guide</h6>
+                <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Wastewater Testing Guide</h6>
                 <ul class="small mb-0 ps-3">
                     <li class="mb-1"><strong>Purpose</strong>: This record captures a full month of daily effluent data for one facility, supporting permit and compliance reporting.</li>
                     <li class="mb-1"><strong>Facility / Month / Year</strong>: Ensure these match the lab reports and regulatory submittal period. One record per facility per month.</li>
@@ -196,7 +196,7 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-                <a asp-action="WWChars" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">Cancel</a>
+                <a asp-action="WastewaterTesting" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> Create Record
                 </button>

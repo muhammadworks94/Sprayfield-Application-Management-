@@ -39,30 +39,30 @@
         @if (isOperator)
         {
             <li class="nav-item" role="none">
-                <a class="nav-link" asp-controller="OperationalData" asp-action="MonthlyApplications" role="menuitem" data-tooltip="Application Logs">
+                <a class="nav-link" asp-controller="OperationalData" asp-action="IrrigationEntry" role="menuitem" data-tooltip="Irrigation Entry">
                     <i class="bi bi-cloud-rain"></i>
-                    <span class="nav-link-text">Application Logs</span>
+                    <span class="nav-link-text">Irrigation Entry</span>
                 </a>
             </li>
             <li class="nav-item" role="none">
-                <a class="nav-link" asp-controller="OperationalData" asp-action="OperatorLogs" role="menuitem" data-tooltip="Operator Logs">
+                <a class="nav-link" asp-controller="OperationalData" asp-action="OperatorEntry" role="menuitem" data-tooltip="Operator Entry">
                     <i class="bi bi-journal-text"></i>
-                    <span class="nav-link-text">Operator Logs</span>
+                    <span class="nav-link-text">Operator Entry</span>
                 </a>
             </li>
         }
         @if (isTechnician)
         {
             <li class="nav-item" role="none">
-                <a class="nav-link" asp-controller="OperationalData" asp-action="WWChars" role="menuitem" data-tooltip="Wastewater Monitoring">
+                <a class="nav-link" asp-controller="OperationalData" asp-action="WastewaterTesting" role="menuitem" data-tooltip="Wastewater Testing">
                     <i class="bi bi-droplet-half"></i>
-                    <span class="nav-link-text">Wastewater Monitoring</span>
+                    <span class="nav-link-text">Wastewater Testing</span>
                 </a>
             </li>
             <li class="nav-item" role="none">
-                <a class="nav-link" asp-controller="OperationalData" asp-action="GWMonits" role="menuitem" data-tooltip="Groundwater Monitoring">
+                <a class="nav-link" asp-controller="OperationalData" asp-action="GroundwaterTesting" role="menuitem" data-tooltip="Groundwater Testing">
                     <i class="bi bi-water"></i>
-                    <span class="nav-link-text">Groundwater Monitoring</span>
+                    <span class="nav-link-text">Groundwater Testing</span>
                 </a>
             </li>
         }

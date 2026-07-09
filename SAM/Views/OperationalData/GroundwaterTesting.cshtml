@@ -3,7 +3,7 @@
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Groundwater Monitoring";
+    ViewData["Title"] = "Groundwater Testing";
     var facilities = Model.Facilities;
     var monitoringWells = Model.MonitoringWells;
     var selectedFacilityId = Model.Filter.FacilityId;
@@ -45,14 +45,14 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">Manage groundwater monitoring data and records</p>
+        <p class="text-muted mb-0">Manage groundwater testing data and records</p>
     </div>
 </div>
 
 <div class="collapse mb-3" id="gwMonitFiltersCollapse">
     <div class="card">
         <div class="card-body">
-            <form method="get" asp-action="GWMonits" class="row g-3">
+            <form method="get" asp-action="GroundwaterTesting" class="row g-3">
                 <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
                 <input type="hidden" name="sortDir" value="@Model.Sort.SortDir" />
                 <input type="hidden" name="pageSize" value="@Model.Filter.PageSize" />
@@ -93,7 +93,7 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a asp-action="GWMonits" class="btn btn-outline-secondary w-100">
+                    <a asp-action="GroundwaterTesting" class="btn btn-outline-secondary w-100">
                         <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
@@ -105,7 +105,7 @@
 <div class="card gwmonits-list-card">
     <div class="card-body">
         <div class="d-flex align-items-center justify-content-between mb-3 page-section-header">
-            <h4 class="mb-0">Groundwater Monitoring List</h4>
+            <h4 class="mb-0">Groundwater Testing</h4>
             <div class="d-flex align-items-center gap-3">
                 <div class="gw-list-toolbar-summary text-muted">
                     @if (Model.GWMonits.TotalCount == 0)
@@ -140,7 +140,7 @@
             </div>
         </div>
 
-        <form method="get" asp-action="GWMonits" id="gwmonitsListToolbarForm" class="gw-list-toolbar mb-3">
+        <form method="get" asp-action="GroundwaterTesting" id="gwmonitsListToolbarForm" class="gw-list-toolbar mb-3">
             <input type="hidden" name="facilityId" value="@Model.Filter.FacilityId" />
             <input type="hidden" name="monitoringWellId" value="@Model.Filter.MonitoringWellId" />
             <input type="hidden" name="sortBy" value="@Model.Sort.SortBy" />
@@ -177,7 +177,7 @@
                     <thead>
                         <tr>
                             <th>
-                                <a class="text-decoration-none" asp-action="GWMonits"
+                                <a class="text-decoration-none" asp-action="GroundwaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-groupByDate="@Model.Filter.GroupByDate"
@@ -192,7 +192,7 @@
                                 </a>
                             </th>
                             <th>
-                                <a class="text-decoration-none" asp-action="GWMonits"
+                                <a class="text-decoration-none" asp-action="GroundwaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-groupByDate="@Model.Filter.GroupByDate"
@@ -207,7 +207,7 @@
                                 </a>
                             </th>
                             <th>
-                                <a class="text-decoration-none" asp-action="GWMonits"
+                                <a class="text-decoration-none" asp-action="GroundwaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-groupByDate="@Model.Filter.GroupByDate"
@@ -222,7 +222,7 @@
                                 </a>
                             </th>
                             <th>
-                                <a class="text-decoration-none" asp-action="GWMonits"
+                                <a class="text-decoration-none" asp-action="GroundwaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-groupByDate="@Model.Filter.GroupByDate"
@@ -411,7 +411,7 @@
                         {
                             <li class="page-item @(pageNumber == currentPage ? "active" : "")">
                                 <a class="page-link"
-                                   asp-action="GWMonits"
+                                   asp-action="GroundwaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-monitoringWellId="@Model.Filter.MonitoringWellId"
                                    asp-route-groupByDate="@Model.Filter.GroupByDate"

@@ -1,6 +1,6 @@
 @model SAM.ViewModels.OperationalData.GWMonitEditViewModel
 @{
-    ViewData["Title"] = "Edit Groundwater Monitoring Record";
+    ViewData["Title"] = "Edit Groundwater Testing Record";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var monitoringWells = ViewBag.MonitoringWells as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var hasVocFile = !string.IsNullOrWhiteSpace(Model.VOCReportFileName);
@@ -8,7 +8,7 @@
 }
 
 <div class="mb-4">
-    <p class="text-muted mb-0">Modify groundwater monitoring record</p>
+    <p class="text-muted mb-0">Modify groundwater testing record</p>
 </div>
 
 <div class="card">

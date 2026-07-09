@@ -1,7 +1,7 @@
 @model SAM.ViewModels.OperationalData.WWCharEditViewModel
 @using SAM.Domain.Enums
 @{
-    ViewData["Title"] = "Edit Wastewater Characteristics Record";
+    ViewData["Title"] = "Edit Wastewater Testing Record";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var months = ViewBag.Months as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var orcOnSiteOptions = ViewBag.ORCOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
@@ -10,7 +10,7 @@
 }
 
 <div class="mb-4">
-    <p class="text-muted mb-0">Modify wastewater characteristics record</p>
+    <p class="text-muted mb-0">Modify wastewater testing record</p>
 </div>
 
 <div class="card">

@@ -3,7 +3,7 @@
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Edit Operator Log";
+    ViewData["Title"] = "Edit Operator Entry";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var orcOnSiteOptions = ViewBag.OperatorLogOrcOnSiteOptions as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
@@ -11,7 +11,7 @@
 }
 
 <div class="mb-4">
-    <p class="text-muted mb-0">Modify operator log information</p>
+    <p class="text-muted mb-0">Modify operator entry information</p>
 </div>
 
 <div class="card">
@@ -176,7 +176,7 @@
 
             <div class="col-lg-4">
                 <div class="alert alert-info ">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Editing Operator Logs</h6>
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i>Editing Operator Entry</h6>
                     <ul class="small mb-0 ps-3">
                         <li class="mb-1"><strong>Facility</strong>: Confirm the facility is correct before saving; changing facilities will move this log to a different site’s history.</li>
                         <li class="mb-1"><strong>Log Date</strong>: Adjust only if the log was entered on the wrong calendar date for the visit.</li>

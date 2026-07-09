@@ -1,6 +1,6 @@
 @model SAM.ViewModels.OperationalData.MonthlyApplicationCreateViewModel
 @{
-    ViewData["Title"] = "Create Monthly Application";
+    ViewData["Title"] = "Create Irrigation Entry";
     var facilities = ViewBag.Facilities as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var sprayfields = ViewBag.Sprayfields as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var wwCharShortcutUrl = ViewBag.WWCharShortcutUrl as string;
@@ -20,12 +20,12 @@
 }
 
 <div class="mb-4">
-    <p class="text-muted mb-0">Log a sprayfield-level wastewater application entry.</p>
+    <p class="text-muted mb-0">Log an irrigation entry for a sprayfield.</p>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <h5 class="mb-3">Create Monthly Application</h5>
+        <h5 class="mb-3">Create Irrigation Entry</h5>
         @if (!string.IsNullOrWhiteSpace(wwCharShortcutUrl))
         {
             <div id="wwcharDependencyAlertInitial" class="alert alert-warning" role="alert"></div>
@@ -92,7 +92,7 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a asp-action="MonthlyApplications" class="btn btn-secondary">Cancel</a>
+                <a asp-action="IrrigationEntry" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">Create Application</button>
             </div>
         </form>

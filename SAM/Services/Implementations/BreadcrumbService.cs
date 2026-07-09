@@ -134,24 +134,48 @@ public class BreadcrumbService : IBreadcrumbService
 
         if (string.Equals(controller, "OperationalData", StringComparison.OrdinalIgnoreCase))
         {
+            if (string.Equals(action, "IrrigationEntry", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(action, "MonthlyApplications", StringComparison.OrdinalIgnoreCase))
+            {
+                return Link("Irrigation Entry", "OperationalData", "IrrigationEntry");
+            }
+
+            if (string.Equals(action, "OperatorEntry", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(action, "OperatorLogs", StringComparison.OrdinalIgnoreCase))
+            {
+                return Link("Operator Entry", "OperationalData", "OperatorEntry");
+            }
+
+            if (string.Equals(action, "WastewaterTesting", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(action, "WWChars", StringComparison.OrdinalIgnoreCase))
+            {
+                return Link("Wastewater Testing", "OperationalData", "WastewaterTesting");
+            }
+
+            if (string.Equals(action, "GroundwaterTesting", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(action, "GWMonits", StringComparison.OrdinalIgnoreCase))
+            {
+                return Link("Groundwater Testing", "OperationalData", "GroundwaterTesting");
+            }
+
             if (action.StartsWith("WWChar", StringComparison.OrdinalIgnoreCase))
             {
-                return Link("Wastewater Monitoring", "OperationalData", "WWChars");
+                return Link("Wastewater Testing", "OperationalData", "WastewaterTesting");
             }
 
             if (action.StartsWith("GWMonit", StringComparison.OrdinalIgnoreCase))
             {
-                return Link("Groundwater Monitoring", "OperationalData", "GWMonits");
+                return Link("Groundwater Testing", "OperationalData", "GroundwaterTesting");
             }
 
             if (action.StartsWith("OperatorLog", StringComparison.OrdinalIgnoreCase))
             {
-                return Link("Operations", "OperationalData", "OperatorLogs");
+                return Link("Operator Entry", "OperationalData", "OperatorEntry");
             }
 
             if (action.StartsWith("MonthlyApplication", StringComparison.OrdinalIgnoreCase))
             {
-                return Link("Operations", "OperationalData", "MonthlyApplications");
+                return Link("Irrigation Entry", "OperationalData", "IrrigationEntry");
             }
         }
 
@@ -275,8 +299,12 @@ public class BreadcrumbService : IBreadcrumbService
         return normalized switch
         {
             "NDAR 1" => "NDAR-1",
-            "GW Monit" => "Groundwater Monitoring",
-            "WW Chars" => "Wastewater Characteristics",
+            "GW Monit" => "Groundwater Testing",
+            "WW Chars" => "Wastewater Testing",
+            "Wastewater Testing" => "Wastewater Testing",
+            "Groundwater Testing" => "Groundwater Testing",
+            "Irrigation Entry" => "Irrigation Entry",
+            "Operator Entry" => "Operator Entry",
             _ => normalized
         };
     }

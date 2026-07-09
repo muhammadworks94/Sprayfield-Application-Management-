@@ -81,10 +81,10 @@ namespace SAM.Controllers;
             _configuration = configuration;
         }
 
-    #region Operator Logs
+    #region Operator Entry
 
     [HttpGet]
-    public async Task<IActionResult> OperatorLogs(
+    public async Task<IActionResult> OperatorEntry(
         Guid? companyId = null,
         Guid? facilityId = null,
         string? operatorName = null,
@@ -412,7 +412,7 @@ namespace SAM.Controllers;
 
             var saveResult = await _operatorLogService.CreateWithNdarRefreshAsync(operatorLog);
             SetSaveMessagesWithNdarOutcome("Operator log created successfully.", saveResult.NdarRefreshOutcomes);
-            return RedirectToAction(nameof(OperatorLogs));
+            return RedirectToAction(nameof(OperatorEntry));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -516,7 +516,7 @@ namespace SAM.Controllers;
 
             var saveResult = await _operatorLogService.UpdateWithNdarRefreshAsync(operatorLog);
             SetSaveMessagesWithNdarOutcome("Operator log updated successfully.", saveResult.NdarRefreshOutcomes);
-            return RedirectToAction(nameof(OperatorLogs));
+            return RedirectToAction(nameof(OperatorEntry));
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -546,15 +546,18 @@ namespace SAM.Controllers;
             TempData["ErrorMessage"] = "Operator log not found.";
         }
 
-        return RedirectToAction(nameof(OperatorLogs));
+        return RedirectToAction(nameof(OperatorEntry));
     }
+
+    [HttpGet]
+    public IActionResult OperatorLogs() => RedirectLegacyListAction(nameof(OperatorEntry));
 
     #endregion
 
-    #region Monthly Applications
+    #region Irrigation Entry (Monthly Applications)
 
     [HttpGet]
-    public async Task<IActionResult> MonthlyApplications(
+    public async Task<IActionResult> IrrigationEntry(
         Guid? facilityId = null,
         Guid? sprayfieldId = null,
         int? month = null,
@@ -843,7 +846,7 @@ namespace SAM.Controllers;
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(companyIdForLists, viewModel.FacilityId);
             return View(viewModel);
         }
-        return RedirectToAction(nameof(MonthlyApplications), new { facilityId = viewModel.FacilityId });
+        return RedirectToAction(nameof(IrrigationEntry), new { facilityId = viewModel.FacilityId });
     }
 
     [HttpGet]
@@ -1004,7 +1007,7 @@ namespace SAM.Controllers;
             ViewBag.Sprayfields = await GetSprayfieldSelectListAsync(viewModel.CompanyId, viewModel.FacilityId);
             return View(viewModel);
         }
-        return RedirectToAction(nameof(MonthlyApplications), new { facilityId = viewModel.FacilityId });
+        return RedirectToAction(nameof(IrrigationEntry), new { facilityId = viewModel.FacilityId });
     }
 
     [HttpGet]
@@ -1051,12 +1054,12 @@ namespace SAM.Controllers;
             {
                 SetSaveMessagesWithNdarOutcome("Monthly application deleted successfully.", deleteResult.NdarRefreshOutcomes);
             }
-            return RedirectToAction(nameof(MonthlyApplications), new { facilityId = deleteResult.FacilityId });
+            return RedirectToAction(nameof(IrrigationEntry), new { facilityId = deleteResult.FacilityId });
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {
             TempData["ErrorMessage"] = "Monthly application not found.";
-            return RedirectToAction(nameof(MonthlyApplications));
+            return RedirectToAction(nameof(IrrigationEntry));
         }
     }
 
@@ -1164,12 +1167,15 @@ namespace SAM.Controllers;
         });
     }
 
+    [HttpGet]
+    public IActionResult MonthlyApplications() => RedirectLegacyListAction(nameof(IrrigationEntry));
+
     #endregion
 
-    #region Wastewater Characteristics (WWChar)
+    #region Wastewater Testing (WWChar)
 
     [HttpGet]
-    public async Task<IActionResult> WWChars(
+    public async Task<IActionResult> WastewaterTesting(
         Guid? facilityId = null,
         int? month = null,
         int? year = null,
@@ -1636,7 +1642,7 @@ namespace SAM.Controllers;
                 (int)savedWwChar.Month,
                 savedWwChar.Year);
             TempData["SuccessMessage"] = $"Wastewater characteristics record saved for {savedWwChar.Month} {savedWwChar.Year}.";
-            return RedirectToAction(nameof(WWChars), new { facilityId = savedWwChar.FacilityId });
+            return RedirectToAction(nameof(WastewaterTesting), new { facilityId = savedWwChar.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -1969,7 +1975,7 @@ namespace SAM.Controllers;
             }
 
             TempData["SuccessMessage"] = $"Wastewater characteristics record updated for {wwChar.Month} {wwChar.Year}.";
-            return RedirectToAction(nameof(WWChars), new { facilityId = wwChar.FacilityId });
+            return RedirectToAction(nameof(WastewaterTesting), new { facilityId = wwChar.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -2026,7 +2032,7 @@ namespace SAM.Controllers;
             TempData["ErrorMessage"] = "Wastewater characteristics record not found.";
         }
 
-        return RedirectToAction(nameof(WWChars));
+        return RedirectToAction(nameof(WastewaterTesting));
     }
 
     [HttpGet]
@@ -2072,7 +2078,7 @@ namespace SAM.Controllers;
         if (attachment == null || attachment.WWChar == null)
         {
             TempData["ErrorMessage"] = "Attachment not found.";
-            return RedirectToAction(nameof(WWChars));
+            return RedirectToAction(nameof(WastewaterTesting));
         }
 
         await EnsureCompanyAccessAsync(attachment.CompanyId);
@@ -2097,12 +2103,15 @@ namespace SAM.Controllers;
         return RedirectToAction(nameof(WWCharEdit), new { id = wwCharId });
     }
 
+    [HttpGet]
+    public IActionResult WWChars() => RedirectLegacyListAction(nameof(WastewaterTesting));
+
     #endregion
 
-    #region Groundwater Monitoring (GWMonit)
+    #region Groundwater Testing (GWMonit)
 
     [HttpGet]
-    public async Task<IActionResult> GWMonits(
+    public async Task<IActionResult> GroundwaterTesting(
         Guid? companyId = null,
         Guid? facilityId = null,
         Guid? monitoringWellId = null,
@@ -2892,7 +2901,7 @@ namespace SAM.Controllers;
             }
             await SaveGwMonitTemplateValuesAsync(gwMonit, viewModel.TemplateParameters);
             TempData["SuccessMessage"] = "Groundwater monitoring record created successfully.";
-            return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
+            return RedirectToAction(nameof(GroundwaterTesting), new { facilityId = gwMonit.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -3213,7 +3222,7 @@ namespace SAM.Controllers;
             await _gwMonitService.UpdateAsync(gwMonit);
             await SaveGwMonitTemplateValuesAsync(gwMonit, viewModel.TemplateParameters);
             TempData["SuccessMessage"] = "Groundwater monitoring record updated successfully.";
-            return RedirectToAction(nameof(GWMonits), new { facilityId = gwMonit.FacilityId });
+            return RedirectToAction(nameof(GroundwaterTesting), new { facilityId = gwMonit.FacilityId });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
@@ -3275,12 +3284,26 @@ namespace SAM.Controllers;
             TempData["ErrorMessage"] = "Groundwater monitoring record not found.";
         }
 
-        return RedirectToAction(nameof(GWMonits));
+        return RedirectToAction(nameof(GroundwaterTesting));
     }
+
+    [HttpGet]
+    public IActionResult GWMonits() => RedirectLegacyListAction(nameof(GroundwaterTesting));
 
     #endregion
 
     #region Helper Methods
+
+    private IActionResult RedirectLegacyListAction(string actionName)
+    {
+        var routeValues = new RouteValueDictionary();
+        foreach (var key in Request.Query.Keys)
+        {
+            routeValues[key] = Request.Query[key].ToString();
+        }
+
+        return RedirectToAction(actionName, routeValues);
+    }
 
     private async Task<SelectList> GetFacilitySelectListAsync(Guid? companyId = null)
     {

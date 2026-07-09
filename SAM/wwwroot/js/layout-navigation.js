@@ -1,4 +1,4 @@
-﻿(function() {
+(function() {
             const sidebar = document.getElementById('sidebar');
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebarCollapseToggle = document.getElementById('sidebarCollapseToggle');
@@ -130,6 +130,31 @@
                 });
             });
             
+            const operationalNavActionAliases = {
+                monthlyapplications: 'irrigationentry',
+                monthlyapplicationcreate: 'irrigationentry',
+                monthlyapplicationedit: 'irrigationentry',
+                monthlyapplicationdetails: 'irrigationentry',
+                operatorlogs: 'operatorentry',
+                operatorlogcreate: 'operatorentry',
+                operatorlogedit: 'operatorentry',
+                operatorlogdetails: 'operatorentry',
+                wwchars: 'wastewatertesting',
+                wwcharcreate: 'wastewatertesting',
+                wwcharedit: 'wastewatertesting',
+                wwchardetails: 'wastewatertesting',
+                gwmonits: 'groundwatertesting',
+                gwmonitcreate: 'groundwatertesting',
+                gwmonitedit: 'groundwatertesting',
+                gwmonitdetails: 'groundwatertesting',
+                gwmonitreport: 'groundwatertesting'
+            };
+
+            const normalizeNavAction = (action) => {
+                const key = (action || '').toLowerCase();
+                return operationalNavActionAliases[key] || key;
+            };
+
             // Enhanced active link detection with dropdown support
             function setActiveNavLink() {
                 const currentPath = window.location.pathname.toLowerCase();
@@ -169,7 +194,7 @@
                             // If controllers match, actions must match exactly
                             if (currentController === linkController) {
                                 // Both paths have the same controller, so actions must match exactly
-                                if (currentAction === linkAction) {
+                                if (normalizeNavAction(currentAction) === normalizeNavAction(linkAction)) {
                                     isActive = true;
                                 }
                             }
@@ -224,7 +249,7 @@
                             
                             if (currentController === linkController) {
                                 // Both paths have the same controller, so actions must match exactly
-                                if (currentAction === linkAction) {
+                                if (normalizeNavAction(currentAction) === normalizeNavAction(linkAction)) {
                                     isActive = true;
                                 }
                             }

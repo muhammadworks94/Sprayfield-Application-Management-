@@ -3,7 +3,7 @@
 @using SAM.Domain.Entities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Wastewater Characteristics";
+    ViewData["Title"] = "Wastewater Testing";
     var facilities = Model.Facilities;
     var selectedFacilityId = Model.Filter.FacilityId;
     var selectedMonth = Model.Filter.Month;
@@ -42,7 +42,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">Record and monitor wastewater characteristics</p>
+        <p class="text-muted mb-0">Record and manage wastewater testing data</p>
     </div>
 </div>
 
@@ -103,7 +103,7 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-funnel"></i> Apply
                     </button>
-                    <a asp-action="WWChars" class="btn btn-outline-secondary w-100">
+                    <a asp-action="WastewaterTesting" class="btn btn-outline-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
                 </div>
@@ -115,7 +115,7 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
-            <h4 class="mb-0"> Wastewater Characteristics List</h4>
+            <h4 class="mb-0">Wastewater Testing</h4>
             <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                     <button type="button"
@@ -144,7 +144,7 @@
                     <thead>
                         <tr>
                             <th>
-                                <a asp-action="WWChars"
+                                <a asp-action="WastewaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-month="@Model.Filter.Month"
                                    asp-route-year="@Model.Filter.Year"
@@ -159,7 +159,7 @@
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="WWChars"
+                                <a asp-action="WastewaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-month="@Model.Filter.Month"
                                    asp-route-year="@Model.Filter.Year"
@@ -174,7 +174,7 @@
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="WWChars"
+                                <a asp-action="WastewaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-month="@Model.Filter.Month"
                                    asp-route-year="@Model.Filter.Year"
@@ -327,7 +327,7 @@
                         {
                             <li class="page-item @(pageNumber == currentPage ? "active" : "")">
                                 <a class="page-link"
-                                   asp-action="WWChars"
+                                   asp-action="WastewaterTesting"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-month="@Model.Filter.Month"
                                    asp-route-year="@Model.Filter.Year"

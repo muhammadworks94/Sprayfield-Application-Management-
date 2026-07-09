@@ -4,7 +4,7 @@
 @using SAM.Utilities
 @inject UserManager<ApplicationUser> UserManager
 @{
-    ViewData["Title"] = "Wastewater Characteristics Details";
+    ViewData["Title"] = "Wastewater Testing Details";
     var user = await UserManager.GetUserAsync(User);
     var canEdit = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
     var flowMeasuringPointDisplay = Model.FlowMeasuringPoint switch
@@ -26,7 +26,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">View detailed information for wastewater characteristics record</p>
+        <p class="text-muted mb-0">View detailed information for wastewater testing record</p>
     </div>
     <div>
         @if (canEdit)
@@ -35,7 +35,7 @@
                 <i class="bi bi-pencil"></i> Edit
             </a>
         }
-        <a asp-action="WWChars" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">
+        <a asp-action="WastewaterTesting" asp-route-facilityId="@Model.FacilityId" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to List
         </a>
     </div>

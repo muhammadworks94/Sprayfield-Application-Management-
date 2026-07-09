@@ -1,6 +1,6 @@
 @model SAM.ViewModels.OperationalData.OperatorLogsIndexViewModel
 @{
-    ViewData["Title"] = "Operator Logs";
+    ViewData["Title"] = "Operator Entry";
     var isGlobalAdmin = Model.IsGlobalAdmin;
     var facilities = Model.Facilities;
     var selectedCompanyId = Model.SelectedCompanyId;
@@ -40,7 +40,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 page-intro">
     <div>
-        <p class="text-muted mb-0">View and manage operator log entries for facilities</p>
+        <p class="text-muted mb-0">View and manage operator entry records for facilities</p>
     </div>
     
 </div>
@@ -102,7 +102,7 @@
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-funnel"></i> Apply
                 </button>
-                <a asp-action="OperatorLogs" asp-route-companyId="@selectedCompanyId" class="btn btn-outline-secondary btn-sm">
+                <a asp-action="OperatorEntry" asp-route-companyId="@selectedCompanyId" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-x-circle"></i> Reset
                 </a>
             </div>
@@ -114,7 +114,7 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex align-items-center justify-content-between mb-5 page-section-header">
-            <h4 class="mb-0"> Operator Logs</h4>
+            <h4 class="mb-0">Operator Entry</h4>
             <div class="d-flex page-section-actions">
                 <div class="btn-group me-2" role="group" aria-label="View mode toggle">
                         <button type="button"
@@ -140,7 +140,7 @@
                     <thead>
                         <tr>
                             <th>
-                                <a asp-action="OperatorLogs"
+                                <a asp-action="OperatorEntry"
                                    asp-route-companyId="@selectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-operatorName="@Model.Filter.OperatorName"
@@ -158,7 +158,7 @@
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="OperatorLogs"
+                                <a asp-action="OperatorEntry"
                                    asp-route-companyId="@selectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-operatorName="@Model.Filter.OperatorName"
@@ -176,7 +176,7 @@
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="OperatorLogs"
+                                <a asp-action="OperatorEntry"
                                    asp-route-companyId="@selectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-operatorName="@Model.Filter.OperatorName"
@@ -194,7 +194,7 @@
                                 </a>
                             </th>
                             <th>
-                                <a asp-action="OperatorLogs"
+                                <a asp-action="OperatorEntry"
                                    asp-route-companyId="@selectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-operatorName="@Model.Filter.OperatorName"
@@ -315,7 +315,7 @@
                         {
                             <li class="page-item @(pageNumber == currentPage ? "active" : "")">
                                 <a class="page-link"
-                                   asp-action="OperatorLogs"
+                                   asp-action="OperatorEntry"
                                    asp-route-companyId="@selectedCompanyId"
                                    asp-route-facilityId="@Model.Filter.FacilityId"
                                    asp-route-operatorName="@Model.Filter.OperatorName"
