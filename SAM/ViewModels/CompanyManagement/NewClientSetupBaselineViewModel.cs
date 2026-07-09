@@ -14,8 +14,6 @@ public class NewClientSetupBaselineViewModel
     [Range(1, 12)]
     public int ThroughMonth { get; set; }
 
-    public bool RefreshNdarAfterFinish { get; set; }
-
     public List<ClientSetupFacilityGroupViewModel> FacilityGroups { get; set; } = new();
 
     public int SavedCellCount { get; set; }

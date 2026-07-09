@@ -13,18 +13,15 @@ public class BaselineMonthlyLoadingService : IBaselineMonthlyLoadingService
 {
     private readonly ApplicationDbContext _context;
     private readonly IMonthlyLoadingResolutionService _monthlyLoadingResolution;
-    private readonly INDAR1Service _ndar1Service;
     private readonly ISprayfieldService _sprayfieldService;
 
     public BaselineMonthlyLoadingService(
         ApplicationDbContext context,
         IMonthlyLoadingResolutionService monthlyLoadingResolution,
-        INDAR1Service ndar1Service,
         ISprayfieldService sprayfieldService)
     {
         _context = context;
         _monthlyLoadingResolution = monthlyLoadingResolution;
-        _ndar1Service = ndar1Service;
         _sprayfieldService = sprayfieldService;
     }
 
@@ -58,7 +55,7 @@ public class BaselineMonthlyLoadingService : IBaselineMonthlyLoadingService
                 .ThenBy(s => s.FieldId)
                 .ToList();
 
-            var monthRows = await BuildMonthRowsAsync(facility.Id, sprayfields, throughYear, throughMonth, cancellationToken);
+            var monthRows = await BuildWizardMonthRowsAsync(facility.Id, sprayfields, throughYear, throughMonth, cancellationToken);
 
             facilityGroups.Add(new ClientSetupFacilityGroupViewModel
             {
@@ -124,88 +121,42 @@ public class BaselineMonthlyLoadingService : IBaselineMonthlyLoadingService
             .CountAsync(cancellationToken);
     }
 
-    public async Task RefreshNdarReportsForCompanyWindowAsync(
-        Guid companyId,
-        int throughYear,
-        int throughMonth,
-        CancellationToken cancellationToken = default)
-    {
-        var facilityIds = await _context.Facilities
-            .AsNoTracking()
-            .Where(f => f.CompanyId == companyId)
-            .Select(f => f.Id)
-            .ToListAsync(cancellationToken);
-
-        foreach (var facilityId in facilityIds)
-        {
-            await RefreshNdarReportsForWindowAsync(facilityId, throughYear, throughMonth, cancellationToken);
-        }
-    }
-
-    private async Task<List<ClientSetupMonthRowViewModel>> BuildMonthRowsAsync(
+    private async Task<List<ClientSetupMonthRowViewModel>> BuildWizardMonthRowsAsync(
         Guid facilityId,
         IReadOnlyList<Sprayfield> sprayfields,
-        int throughYear,
-        int throughMonth,
+        int firstReportingYear,
+        int firstReportingMonth,
         CancellationToken cancellationToken)
     {
-        var endMonth = new DateTime(throughYear, throughMonth, 1);
         var monthRows = new List<ClientSetupMonthRowViewModel>();
 
-        for (var i = 0; i < 12; i++)
+        foreach (var (year, month) in BaselineWindowHelper.GetHistoricalMonths(firstReportingYear, firstReportingMonth))
         {
-            var monthDate = endMonth.AddMonths(-i);
+            var monthDate = new DateTime(year, month, 1);
             var cells = new List<ClientSetupCellViewModel>();
 
             foreach (var sprayfield in sprayfields)
             {
-                var hasReal = await _monthlyLoadingResolution.HasRealOperationalMonthAsync(
+                var baseline = await _monthlyLoadingResolution.GetBaselineMonthlyLoadingInchesAsync(
                     facilityId,
                     sprayfield.Id,
-                    monthDate.Year,
-                    monthDate.Month,
+                    year,
+                    month,
                     cancellationToken);
 
-                if (hasReal)
+                cells.Add(new ClientSetupCellViewModel
                 {
-                    var inches = await _monthlyLoadingResolution.GetRealMonthlyLoadingInchesAsync(
-                        facilityId,
-                        sprayfield.Id,
-                        monthDate.Year,
-                        monthDate.Month,
-                        cancellationToken);
-
-                    cells.Add(new ClientSetupCellViewModel
-                    {
-                        SprayfieldId = sprayfield.Id,
-                        LoadingInches = inches,
-                        IsReadOnly = true,
-                        Source = "Real"
-                    });
-                }
-                else
-                {
-                    var baseline = await _monthlyLoadingResolution.GetBaselineMonthlyLoadingInchesAsync(
-                        facilityId,
-                        sprayfield.Id,
-                        monthDate.Year,
-                        monthDate.Month,
-                        cancellationToken);
-
-                    cells.Add(new ClientSetupCellViewModel
-                    {
-                        SprayfieldId = sprayfield.Id,
-                        LoadingInches = baseline,
-                        IsReadOnly = false,
-                        Source = baseline.HasValue ? "Baseline" : "Empty"
-                    });
-                }
+                    SprayfieldId = sprayfield.Id,
+                    LoadingInches = baseline,
+                    IsReadOnly = false,
+                    Source = baseline.HasValue ? "Baseline" : "Empty"
+                });
             }
 
             monthRows.Add(new ClientSetupMonthRowViewModel
             {
-                Year = monthDate.Year,
-                Month = monthDate.Month,
+                Year = year,
+                Month = month,
                 Label = monthDate.ToString("MMMM yyyy"),
                 Cells = cells
             });
@@ -230,10 +181,8 @@ public class BaselineMonthlyLoadingService : IBaselineMonthlyLoadingService
             throw new EntityNotFoundException(nameof(Facility), facilityId);
         }
 
-        var endMonth = new DateTime(throughYear, throughMonth, 1);
-        var allowedMonths = Enumerable.Range(0, 12)
-            .Select(offset => endMonth.AddMonths(-offset))
-            .Select(d => (d.Year, d.Month))
+        var allowedMonths = BaselineWindowHelper
+            .GetHistoricalMonths(throughYear, throughMonth)
             .ToHashSet();
 
         foreach (var cell in cells)
@@ -294,21 +243,5 @@ public class BaselineMonthlyLoadingService : IBaselineMonthlyLoadingService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task RefreshNdarReportsForWindowAsync(
-        Guid facilityId,
-        int throughYear,
-        int throughMonth,
-        CancellationToken cancellationToken = default)
-    {
-        var endMonth = new DateTime(throughYear, throughMonth, 1);
-
-        for (var i = 0; i < 12; i++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var monthDate = endMonth.AddMonths(-i);
-            await _ndar1Service.EnsureAndRefreshForMonthAsync(facilityId, monthDate.Month, monthDate.Year);
-        }
     }
 }

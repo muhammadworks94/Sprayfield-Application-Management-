@@ -85,14 +85,6 @@ public partial class CompanyManagementController
             TempData["WarningMessage"] = "No baseline loading values were saved. You can return later to enter data.";
         }
 
-        if (viewModel.RefreshNdarAfterFinish)
-        {
-            await _baselineMonthlyLoadingService.RefreshNdarReportsForCompanyWindowAsync(
-                viewModel.CompanyId,
-                viewModel.ThroughYear,
-                viewModel.ThroughMonth);
-        }
-
         TempData["SuccessMessage"] = savedCellCount > 0
             ? "Company created. Set Verified to ON on Manage Companies to activate."
             : "Company created without baseline data. Set Verified to ON on Manage Companies to activate.";
@@ -180,8 +172,7 @@ public partial class CompanyManagementController
             facilities.Add(new NewClientSetupFacilityViewModel
             {
                 Name = $"Facility {i + 1}",
-                SprayfieldCount = 1,
-                SprayfieldFieldCodes = new List<string> { "1" }
+                SprayfieldCount = 1
             });
         }
 
@@ -193,35 +184,35 @@ public partial class CompanyManagementController
         viewModel.FacilityCount = Math.Clamp(viewModel.FacilityCount, 1, 10);
         viewModel.Facilities ??= new List<NewClientSetupFacilityViewModel>();
 
-        while (viewModel.Facilities.Count < viewModel.FacilityCount)
+        if (viewModel.Facilities.Count != viewModel.FacilityCount)
         {
-            var index = viewModel.Facilities.Count;
-            viewModel.Facilities.Add(new NewClientSetupFacilityViewModel
-            {
-                Name = $"Facility {index + 1}",
-                SprayfieldCount = 1,
-                SprayfieldFieldCodes = new List<string> { "1" }
-            });
-        }
+            var preserved = viewModel.Facilities.Take(viewModel.FacilityCount).ToList();
+            viewModel.Facilities = new List<NewClientSetupFacilityViewModel>();
 
-        if (viewModel.Facilities.Count > viewModel.FacilityCount)
-        {
-            viewModel.Facilities = viewModel.Facilities.Take(viewModel.FacilityCount).ToList();
+            for (var index = 0; index < viewModel.FacilityCount; index++)
+            {
+                if (index < preserved.Count)
+                {
+                    viewModel.Facilities.Add(preserved[index]);
+                }
+                else
+                {
+                    viewModel.Facilities.Add(new NewClientSetupFacilityViewModel
+                    {
+                        Name = $"Facility {index + 1}",
+                        SprayfieldCount = 1
+                    });
+                }
+            }
         }
 
         foreach (var facility in viewModel.Facilities)
         {
             facility.SprayfieldCount = Math.Clamp(facility.SprayfieldCount, 1, 150);
-            facility.SprayfieldFieldCodes ??= new List<string>();
-
-            while (facility.SprayfieldFieldCodes.Count < facility.SprayfieldCount)
+            if (string.IsNullOrWhiteSpace(facility.Name))
             {
-                facility.SprayfieldFieldCodes.Add((facility.SprayfieldFieldCodes.Count + 1).ToString());
-            }
-
-            if (facility.SprayfieldFieldCodes.Count > facility.SprayfieldCount)
-            {
-                facility.SprayfieldFieldCodes = facility.SprayfieldFieldCodes.Take(facility.SprayfieldCount).ToList();
+                var index = viewModel.Facilities.IndexOf(facility);
+                facility.Name = $"Facility {index + 1}";
             }
         }
     }

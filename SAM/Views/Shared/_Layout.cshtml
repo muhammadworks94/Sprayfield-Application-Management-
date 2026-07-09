@@ -23,13 +23,23 @@
         <div class="main-content" id="mainContent">
             @if (User.Identity?.IsAuthenticated == true)
             {
+                var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+                var action = ViewContext.RouteData.Values["action"]?.ToString();
+                var hideCompanySelector = controller == "CompanyManagement"
+                    && (action == "NewClientSetup"
+                        || action == "NewClientSetupBaseline"
+                        || action == "CompanyCreate");
+
                 <header class="app-header">
                     <div class="header-content">
                         <div class="header-left">
                             <button class="btn btn-link d-md-none me-3" type="button" id="sidebarToggle" aria-label="Toggle sidebar">
                                 <i class="bi bi-list"></i>
                             </button>
-                            @await Html.PartialAsync("Partials/_CompanySelector")
+                            @if (!hideCompanySelector)
+                            {
+                                @await Html.PartialAsync("Partials/_CompanySelector")
+                            }
                         </div>
                         <div class="user-menu">
                             @await Html.PartialAsync("Partials/_UserMenu")

@@ -36,8 +36,8 @@
 
 <div class="alert alert-info">
     <i class="bi bi-info-circle me-1"></i>
-    Baseline values are used until real operational data (<strong>VolumeGallons &gt; 0</strong>) exists for a month.
-    Changes autosave as you type. 12-month window ends at <strong>@endMonthLabel</strong>.
+    Enter monthly loading (inches/acre) for each field. Values autosave as you type.
+    The window covers 12 months ending at your first SAM reporting month (<strong>@endMonthLabel</strong>).
 </div>
 
 <div id="baselineSaveStatus" class="small text-muted mb-2" aria-live="polite"></div>
@@ -61,10 +61,6 @@
                             {
                                 <th>
                                     <div class="fw-semibold">@column.FieldCode</div>
-                                    @if (column.Acres.HasValue)
-                                    {
-                                        <div class="small text-muted fw-normal">@column.Acres.Value.ToString("0.##") ac</div>
-                                    }
                                 </th>
                             }
                         </tr>
@@ -78,24 +74,17 @@
                                 @for (var col = 0; col < monthRow.Cells.Count; col++)
                                 {
                                     var cell = monthRow.Cells[col];
-                                    <td class="baseline-data-cell@(cell.IsReadOnly ? " baseline-sam-cell" : "")"
+                                    <td class="baseline-data-cell"
                                         data-facility-id="@group.FacilityId"
                                         data-sprayfield-id="@cell.SprayfieldId"
                                         data-year="@monthRow.Year"
                                         data-month="@monthRow.Month">
-                                        @if (cell.IsReadOnly)
-                                        {
-                                            <span class="text-muted" title="SAM operational data">@FormatLoadingInches(cell.LoadingInches)</span>
-                                        }
-                                        else
-                                        {
-                                            <input type="text"
-                                                   inputmode="decimal"
-                                                   class="form-control form-control-sm baseline-cell-input"
-                                                   value="@FormatLoadingInches(cell.LoadingInches)"
-                                                   aria-label="@monthRow.Label field @group.SprayfieldColumns[col].FieldCode loading inches" />
-                                            <div class="baseline-cell-status small text-muted"></div>
-                                        }
+                                        <input type="text"
+                                               inputmode="decimal"
+                                               class="form-control form-control-sm baseline-cell-input"
+                                               value="@FormatLoadingInches(cell.LoadingInches)"
+                                               aria-label="@monthRow.Label field @group.SprayfieldColumns[col].FieldCode loading inches" />
+                                        <div class="baseline-cell-status small text-muted"></div>
                                     </td>
                                 }
                             </tr>
@@ -113,13 +102,7 @@
     <input type="hidden" asp-for="ThroughYear" />
     <input type="hidden" asp-for="ThroughMonth" />
     <div class="card">
-        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div class="form-check mb-0">
-                <input class="form-check-input" type="checkbox" asp-for="RefreshNdarAfterFinish" id="refreshNdarAfterFinish" />
-                <label class="form-check-label" for="refreshNdarAfterFinish">
-                    Refresh NDAR reports for the 12-month window on finish
-                </label>
-            </div>
+        <div class="card-body d-flex justify-content-end">
             <button type="submit" class="btn btn-primary" id="finishBaselineButton">
                 <i class="bi bi-check-circle me-1"></i>Finish Setup
             </button>
@@ -318,9 +301,3 @@
         })();
     </script>
 }
-
-<style>
-    .baseline-sam-cell {
-        background-color: rgba(13, 110, 253, 0.06);
-    }
-</style>

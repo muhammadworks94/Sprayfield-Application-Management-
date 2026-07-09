@@ -10,11 +10,11 @@ public class NewClientSetupPage1ViewModel
     public string CompanyName { get; set; } = string.Empty;
 
     [Range(1, 12)]
-    [Display(Name = "First Reporting Month")]
+    [Display(Name = "First reporting month using SAM")]
     public int FirstReportingMonth { get; set; } = DateTime.UtcNow.Month;
 
     [Range(2000, 2100)]
-    [Display(Name = "First Reporting Year")]
+    [Display(Name = "Year")]
     public int FirstReportingYear { get; set; } = DateTime.UtcNow.Year;
 
     [Range(1, 10)]
@@ -32,8 +32,6 @@ public class NewClientSetupFacilityViewModel
     public string Name { get; set; } = string.Empty;
 
     [Range(1, 150)]
-    [Display(Name = "Number of Sprayfields")]
+    [Display(Name = "Number of Fields")]
     public int SprayfieldCount { get; set; } = 1;
-
-    public List<string> SprayfieldFieldCodes { get; set; } = new();
 }

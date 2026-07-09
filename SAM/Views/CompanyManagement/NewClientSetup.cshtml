@@ -1,7 +1,7 @@
 @model SAM.ViewModels.CompanyManagement.NewClientSetupPage1ViewModel
 @{
     ViewData["Title"] = "New Client Setup";
-    ViewData["PageSubtitle"] = "Step 1 of 2 — Create company, facilities, and sprayfields.";
+    ViewData["PageSubtitle"] = "Step 1 of 2 — Create a new client company.";
 }
 
 @section PageTitleExtra {
@@ -30,12 +30,16 @@
                     <label asp-for="FirstReportingMonth" class="form-label"></label>
                     <select asp-for="FirstReportingMonth" class="form-select" asp-items="ViewBag.Months"></select>
                     <span asp-validation-for="FirstReportingMonth" class="text-danger"></span>
-                    <div class="form-text">End month of the 12-month baseline window.</div>
                 </div>
                 <div class="col-md-3">
                     <label asp-for="FirstReportingYear" class="form-label"></label>
                     <input asp-for="FirstReportingYear" class="form-control" type="number" min="2000" max="2100" />
                     <span asp-validation-for="FirstReportingYear" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <div class="form-text">
+                        The first month SAM will be used for reports. Historical loading is entered for the 11 months before and including this month (12 months total).
+                    </div>
                 </div>
             </div>
         </div>
@@ -43,13 +47,18 @@
 
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-diagram-3 me-1"></i>Facilities &amp; Sprayfields</h5>
+            <h5 class="mb-0"><i class="bi bi-diagram-3 me-1"></i>Facilities &amp; Fields</h5>
         </div>
         <div class="card-body">
             <div class="row g-3 mb-3">
                 <div class="col-md-4">
                     <label asp-for="FacilityCount" class="form-label"></label>
-                    <input asp-for="FacilityCount" class="form-control" type="number" min="1" max="10" id="facilityCountInput" />
+                    <select asp-for="FacilityCount" class="form-select" id="facilityCountSelect">
+                        @for (var n = 1; n <= 10; n++)
+                        {
+                            <option value="@n" selected="@(Model.FacilityCount == n)">@n</option>
+                        }
+                    </select>
                     <span asp-validation-for="FacilityCount" class="text-danger"></span>
                 </div>
             </div>
@@ -70,62 +79,56 @@
     <script>
         (function () {
             const facilitySections = document.getElementById('facilitySections');
-            const facilityCountInput = document.getElementById('facilityCountInput');
+            const facilityCountSelect = document.getElementById('facilityCountSelect');
             const form = document.getElementById('newClientSetupForm');
             const initialFacilities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Facilities));
 
-            const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+            const buildFieldCountOptions = (selected) => {
+                let html = '';
+                for (let n = 1; n <= 150; n++) {
+                    html += `<option value="${n}"${n === selected ? ' selected' : ''}>${n}</option>`;
+                }
+                return html;
+            };
 
             const renderFacilities = () => {
-                const count = clamp(parseInt(facilityCountInput.value, 10) || 1, 1, 10);
-                facilityCountInput.value = count;
+                const count = parseInt(facilityCountSelect.value, 10) || 1;
 
                 while (initialFacilities.length < count) {
                     const index = initialFacilities.length;
                     initialFacilities.push({
                         name: `Facility ${index + 1}`,
-                        sprayfieldCount: 1,
-                        sprayfieldFieldCodes: ['1']
+                        sprayfieldCount: 1
                     });
+                }
+
+                if (initialFacilities.length > count) {
+                    initialFacilities.splice(count);
                 }
 
                 facilitySections.innerHTML = '';
 
                 for (let i = 0; i < count; i++) {
                     const facility = initialFacilities[i];
-                    facility.sprayfieldCount = clamp(parseInt(facility.sprayfieldCount, 10) || 1, 1, 150);
-
-                    while (facility.sprayfieldFieldCodes.length < facility.sprayfieldCount) {
-                        facility.sprayfieldFieldCodes.push(String(facility.sprayfieldFieldCodes.length + 1));
-                    }
-                    facility.sprayfieldFieldCodes = facility.sprayfieldFieldCodes.slice(0, facility.sprayfieldCount);
+                    const fieldCount = Math.min(150, Math.max(1, parseInt(facility.sprayfieldCount, 10) || 1));
+                    facility.sprayfieldCount = fieldCount;
 
                     const section = document.createElement('div');
                     section.className = 'border rounded p-3 mb-3';
                     section.innerHTML = `
                         <h6 class="mb-3">Facility ${i + 1}</h6>
-                        <div class="row g-3 mb-3">
+                        <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label" for="Facilities_${i}__Name">Facility Name</label>
                                 <input class="form-control facility-name-input" id="Facilities_${i}__Name" name="Facilities[${i}].Name" value="${facility.name ?? ''}" data-index="${i}" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label" for="Facilities_${i}__SprayfieldCount">Number of Sprayfields</label>
-                                <input class="form-control sprayfield-count-input" id="Facilities_${i}__SprayfieldCount" name="Facilities[${i}].SprayfieldCount" type="number" min="1" max="150" value="${facility.sprayfieldCount}" data-index="${i}" />
+                                <label class="form-label" for="Facilities_${i}__SprayfieldCount">Number of Fields</label>
+                                <select class="form-select field-count-select" id="Facilities_${i}__SprayfieldCount" name="Facilities[${i}].SprayfieldCount" data-index="${i}">
+                                    ${buildFieldCountOptions(fieldCount)}
+                                </select>
                             </div>
-                        </div>
-                        <div class="row g-2 sprayfield-code-grid" data-index="${i}"></div>`;
-
-                    const codeGrid = section.querySelector('.sprayfield-code-grid');
-                    for (let j = 0; j < facility.sprayfieldCount; j++) {
-                        const code = facility.sprayfieldFieldCodes[j] ?? String(j + 1);
-                        const col = document.createElement('div');
-                        col.className = 'col-md-2 col-sm-3 col-4';
-                        col.innerHTML = `
-                            <label class="form-label small">Field ${j + 1}</label>
-                            <input class="form-control form-control-sm sprayfield-code-input" name="Facilities[${i}].SprayfieldFieldCodes[${j}]" value="${code}" data-facility="${i}" data-field="${j}" />`;
-                        codeGrid.appendChild(col);
-                    }
+                        </div>`;
 
                     facilitySections.appendChild(section);
                 }
@@ -140,38 +143,29 @@
                     });
                 });
 
-                facilitySections.querySelectorAll('.sprayfield-count-input').forEach(input => {
-                    input.addEventListener('change', () => {
-                        const index = parseInt(input.dataset.index, 10);
-                        initialFacilities[index].sprayfieldCount = clamp(parseInt(input.value, 10) || 1, 1, 150);
-                        renderFacilities();
-                    });
-                });
-
-                facilitySections.querySelectorAll('.sprayfield-code-input').forEach(input => {
-                    input.addEventListener('input', () => {
-                        const fi = parseInt(input.dataset.facility, 10);
-                        const fj = parseInt(input.dataset.field, 10);
-                        initialFacilities[fi].sprayfieldFieldCodes[fj] = input.value;
+                facilitySections.querySelectorAll('.field-count-select').forEach(select => {
+                    select.addEventListener('change', () => {
+                        const index = parseInt(select.dataset.index, 10);
+                        initialFacilities[index].sprayfieldCount = parseInt(select.value, 10) || 1;
                     });
                 });
             };
 
-            facilityCountInput.addEventListener('change', () => {
-                const newCount = clamp(parseInt(facilityCountInput.value, 10) || 1, 1, 10);
+            facilityCountSelect.addEventListener('change', () => {
+                const newCount = parseInt(facilityCountSelect.value, 10) || 1;
                 const oldCount = initialFacilities.length;
                 if (newCount < oldCount) {
-                    const confirmed = window.confirm('Reducing facility count will discard names and sprayfield settings for removed facilities. Continue?');
+                    const confirmed = window.confirm('Reducing facility count will discard names and field settings for removed facilities. Continue?');
                     if (!confirmed) {
-                        facilityCountInput.value = oldCount;
+                        facilityCountSelect.value = String(oldCount);
                         return;
                     }
-                    initialFacilities.splice(newCount);
                 }
                 renderFacilities();
             });
 
             form.addEventListener('submit', () => {
+                renderFacilities();
                 if (window.SAMLoading) {
                     window.SAMLoading.show('Creating company and facilities...');
                 }

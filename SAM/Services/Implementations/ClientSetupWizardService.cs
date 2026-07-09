@@ -138,16 +138,8 @@ public class ClientSetupWizardService : IClientSetupWizardService
             var sprayfieldCount = Math.Clamp(facilityModel.SprayfieldCount, 1, 150);
             for (var sprayfieldIndex = 0; sprayfieldIndex < sprayfieldCount; sprayfieldIndex++)
             {
-                var fieldCode = sprayfieldIndex < facilityModel.SprayfieldFieldCodes.Count
-                    ? facilityModel.SprayfieldFieldCodes[sprayfieldIndex]?.Trim()
-                    : null;
-
-                if (string.IsNullOrWhiteSpace(fieldCode))
-                {
-                    fieldCode = (sprayfieldIndex + 1).ToString();
-                }
-
-                var fieldId = ResolveUniqueFieldId(fieldCode, facilityIndex, sprayfieldIndex, model.Facilities.Count, usedFieldIds);
+                var fieldCode = (sprayfieldIndex + 1).ToString();
+                var fieldId = ResolveUniqueFieldId(fieldCode, facilityIndex, model.Facilities.Count, usedFieldIds);
 
                 _context.Sprayfields.Add(new Sprayfield
                 {
@@ -170,7 +162,6 @@ public class ClientSetupWizardService : IClientSetupWizardService
     private static string ResolveUniqueFieldId(
         string fieldCode,
         int facilityIndex,
-        int sprayfieldIndex,
         int facilityCount,
         HashSet<string> usedFieldIds)
     {

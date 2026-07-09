@@ -9,8 +9,4 @@ public interface IBaselineMonthlyLoadingService
     Task SaveSetupCellAsync(Guid facilityId, Guid sprayfieldId, int throughYear, int throughMonth, int year, int month, decimal? loadingInches, string userId, CancellationToken cancellationToken = default);
 
     Task<int> CountSavedBaselineCellsAsync(Guid companyId, CancellationToken cancellationToken = default);
-
-    Task RefreshNdarReportsForWindowAsync(Guid facilityId, int throughYear, int throughMonth, CancellationToken cancellationToken = default);
-
-    Task RefreshNdarReportsForCompanyWindowAsync(Guid companyId, int throughYear, int throughMonth, CancellationToken cancellationToken = default);
 }
