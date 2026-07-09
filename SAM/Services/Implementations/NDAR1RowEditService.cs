@@ -29,21 +29,7 @@ public class NDAR1RowEditService : INDAR1RowEditService
 
     public async Task<NDAR1EditGridViewModel> BuildGridAsync(Guid ndar1Id, string? currentUserId = null)
     {
-        var report = await _context.NDAR1s
-            .Include(x => x.Facility)
-            .Include(x => x.Fields)
-                .ThenInclude(f => f.Sprayfield)
-            .Include(x => x.Field1)
-            .Include(x => x.Field2)
-            .Include(x => x.Field3)
-            .Include(x => x.Field4)
-            .FirstOrDefaultAsync(x => x.Id == ndar1Id);
-
-        if (report == null)
-        {
-            throw new EntityNotFoundException(nameof(NDAR1), ndar1Id);
-        }
-
+        var report = await LoadReportHeaderAsync(ndar1Id);
         var fieldColumns = GetFieldColumns(report);
         var sprayfieldById = GetSprayfieldsById(report);
         var start = new DateTime(report.Year, (int)report.Month, 1);
@@ -51,15 +37,18 @@ public class NDAR1RowEditService : INDAR1RowEditService
         var daysInMonth = DateTime.DaysInMonth(report.Year, (int)report.Month);
 
         var operatorLogs = await _context.OperatorLogs
-            .Where(x => x.FacilityId == report.FacilityId && x.LogDate >= start && x.LogDate < end)
+            .AsNoTracking()
+            .Where(x => x.FacilityId == report.FacilityId && x.LogDate >= start && x.LogDate < end && !x.IsDeleted)
             .OrderByDescending(x => x.UpdatedDate ?? x.CreatedDate)
             .ToListAsync();
 
         var monthlyApps = await _context.MonthlyApplications
+            .AsNoTracking()
             .Where(x => x.FacilityId == report.FacilityId && x.ApplicationDate >= start && x.ApplicationDate < end)
             .ToListAsync();
 
         var activeLocks = await _context.NdarEditLocks
+            .AsNoTracking()
             .Where(x => x.FacilityId == report.FacilityId && x.EditDate >= start && x.EditDate < end && x.ExpiresAtUtc > DateTime.UtcNow)
             .ToListAsync();
 
@@ -79,69 +68,34 @@ public class NDAR1RowEditService : INDAR1RowEditService
         };
 
         var rollingAsOfDate = start.AddDays(daysInMonth - 1);
+        ApplyMonthlyFieldTotals(fieldColumns, monthlyApps);
+        await ApplyRollingFieldTotalsAsync(fieldColumns, sprayfieldById.Values.ToList(), rollingAsOfDate);
 
-        foreach (var field in vm.FieldColumns)
-        {
-            var monthlyForField = monthlyApps.Where(x => x.SprayfieldId == field.SprayfieldId).ToList();
-            field.MonthlyVolumeTotalGallons = Math.Round(monthlyForField.Sum(x => x.VolumeGallons), 0, MidpointRounding.AwayFromZero);
+        var logByDate = operatorLogs
+            .GroupBy(x => x.LogDate.Date)
+            .ToDictionary(g => g.Key, g => g.First());
 
-            if (field.Acres.HasValue && field.Acres.Value > 0m)
-            {
-                field.MonthlyDailyLoadingTotalInches = monthlyForField.Sum(x => x.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch));
-            }
+        var appByDateAndSprayfield = monthlyApps
+            .ToDictionary(x => (x.ApplicationDate.Date, x.SprayfieldId));
 
-            field.TwelveMonthFloatingTotalInches = await _monthlyLoadingResolution.GetCalendar12MonthRollingInchesAsync(
-                report.FacilityId,
-                field.SprayfieldId,
-                rollingAsOfDate);
-        }
+        var lockByDate = activeLocks
+            .GroupBy(x => x.EditDate.Date)
+            .ToDictionary(g => g.Key, g => g.First());
 
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(report.Year, (int)report.Month, day);
-            var log = operatorLogs.FirstOrDefault(x => x.LogDate.Date == date.Date);
-            var row = new NDAR1GridDayRowViewModel
-            {
-                DayNo = day,
-                Date = date,
-                WeatherCode = WeatherCodeCatalog.TryNormalizeAbbreviation(log?.WeatherConditions, out var code) ? code : null,
-                TemperatureF = log?.TemperatureF,
-                PrecipitationIn = log?.PrecipitationIn,
-                WaterDepthFt = log?.WaterDepthFt,
-                StorageFt = log?.StorageFt,
-                FiveDayUpsetFt = log?.FiveDayUpsetFt
-            };
-
-            var dayLock = activeLocks.FirstOrDefault(x => x.EditDate.Date == date.Date);
-            if (dayLock != null)
-            {
-                row.LockToken = dayLock.LockToken;
-                row.LockedBy = dayLock.LockedByDisplayName;
-                row.IsLockedByCurrentUser = !string.IsNullOrEmpty(currentUserId) &&
-                    string.Equals(dayLock.LockedByUserId, currentUserId, StringComparison.OrdinalIgnoreCase);
-            }
-
-            foreach (var field in fieldColumns)
-            {
-                var app = monthlyApps.FirstOrDefault(x => x.ApplicationDate.Date == date.Date && x.SprayfieldId == field.SprayfieldId);
-                sprayfieldById.TryGetValue(field.SprayfieldId, out var sprayfield);
-                decimal? dailyLoading = app != null && field.Acres.HasValue && field.Acres.Value > 0m
-                    ? app.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch)
-                    : null;
-                decimal? maxHourlyLoading = app?.TimeIrrigatedMinutes is > 0
-                    ? (sprayfield?.ActualHourlyRateInches ?? app.MaximumHourlyLoadingInchesPerAcre)
-                    : app?.MaximumHourlyLoadingInchesPerAcre;
-                row.Applications.Add(new NDAR1GridApplicationCellViewModel
-                {
-                    SprayfieldId = field.SprayfieldId,
-                    VolumeGallons = app != null ? Math.Round(app.VolumeGallons, 0, MidpointRounding.AwayFromZero) : null,
-                    TimeIrrigatedMinutes = app?.TimeIrrigatedMinutes.HasValue == true ? Math.Round(app.TimeIrrigatedMinutes.Value, 0, MidpointRounding.AwayFromZero) : null,
-                    MaximumHourlyLoadingInchesPerAcre = maxHourlyLoading,
-                    DailyLoadingInches = dailyLoading
-                });
-            }
-
-            vm.Rows.Add(row);
+            logByDate.TryGetValue(date.Date, out var log);
+            lockByDate.TryGetValue(date.Date, out var dayLock);
+            vm.Rows.Add(BuildDayRowViewModel(
+                day,
+                date,
+                log,
+                dayLock,
+                fieldColumns,
+                sprayfieldById,
+                appByDateAndSprayfield,
+                currentUserId));
         }
 
         return vm;
@@ -227,12 +181,14 @@ public class NDAR1RowEditService : INDAR1RowEditService
             .Where(x => x.FacilityId == report.FacilityId && x.EditDate >= start && x.EditDate < end)
             .ToListAsync();
 
+        var lockByDate = existingLocks.ToDictionary(x => x.EditDate.Date);
+        var newLocks = new List<NdarEditLock>();
         var result = new NDAR1GridEditBeginResult();
 
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(report.Year, (int)report.Month, day);
-            var lockRow = existingLocks.FirstOrDefault(x => x.EditDate == date);
+            lockByDate.TryGetValue(date.Date, out var lockRow);
 
             if (lockRow != null && lockRow.ExpiresAtUtc > now &&
                 !string.Equals(lockRow.LockedByUserId, userId, StringComparison.OrdinalIgnoreCase))
@@ -263,8 +219,8 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     ExpiresAtUtc = now.Add(LockTimeout),
                     CreatedBy = userDisplayName
                 };
-                _context.NdarEditLocks.Add(lockRow);
-                existingLocks.Add(lockRow);
+                newLocks.Add(lockRow);
+                lockByDate[date.Date] = lockRow;
             }
             else
             {
@@ -283,6 +239,11 @@ public class NDAR1RowEditService : INDAR1RowEditService
                 Success = true,
                 LockToken = token
             });
+        }
+
+        if (newLocks.Count > 0)
+        {
+            _context.NdarEditLocks.AddRange(newLocks);
         }
 
         await _context.SaveChangesAsync();
@@ -331,10 +292,9 @@ public class NDAR1RowEditService : INDAR1RowEditService
 
     public async Task<NDAR1GridFooterTotalsResult> GetGridFooterTotalsAsync(Guid ndar1Id)
     {
-        var grid = await BuildGridAsync(ndar1Id);
         return new NDAR1GridFooterTotalsResult
         {
-            FieldColumns = grid.FieldColumns
+            FieldColumns = await GetFieldFooterMetricsAsync(ndar1Id)
         };
     }
 
@@ -531,6 +491,12 @@ public class NDAR1RowEditService : INDAR1RowEditService
                     value => operatorLog.StorageFt = value,
                     operatorLog.StorageFt);
                 operatorLog.FiveDayUpsetFt = request.FiveDayUpsetFt;
+
+                if (!hasWeatherData && IsNdarOriginOperatorLogShell(operatorLog))
+                {
+                    operatorLog.IsDeleted = true;
+                    saveSummary.OperatorLogAction = "Deleted";
+                }
             }
 
             foreach (var cell in request.Applications)
@@ -558,14 +524,20 @@ public class NDAR1RowEditService : INDAR1RowEditService
                         continue;
                     }
 
-                    var isNdarOrigin = !string.IsNullOrWhiteSpace(app.Comments) &&
-                        app.Comments.Contains("NDAR1 row edit", StringComparison.OrdinalIgnoreCase);
+                    var isNdarOrigin = IsNdarOriginMonthlyApplication(app.Comments);
+                    if (isNdarOrigin)
+                    {
+                        _context.MonthlyApplications.Remove(app);
+                        saveSummary.MonthlyApplicationsUpdated.Add(ToEntityChange(sprayfield));
+                        continue;
+                    }
+
                     var originalTimeIrrigated = app.TimeIrrigatedMinutes;
                     var hasStaleComputedValues = app.TimeIrrigatedMinutes.HasValue &&
                         app.TimeIrrigatedMinutes.Value > 0m &&
                         (app.VolumeGallons <= 0m || app.MaximumHourlyLoadingInchesPerAcre <= 0m);
 
-                    if (isNdarOrigin && hasStaleComputedValues && originalTimeIrrigated is > 0 &&
+                    if (hasStaleComputedValues && originalTimeIrrigated is > 0 &&
                         sprayfield.ActualHourlyRateInches.HasValue)
                     {
                         var backfillAcres = MonthlyApplicationCalculationHelper.ResolveAcres(sprayfield);
@@ -717,11 +689,11 @@ public class NDAR1RowEditService : INDAR1RowEditService
         }
 
         _context.ChangeTracker.Clear();
-        var refreshed = await BuildGridAsync(ndar1Id, userId);
+        var refreshedRow = await RefreshDayRowAsync(ndar1Id, request.DayNo, userId);
         return new NDAR1RowEditResult
         {
             Success = true,
-            Row = refreshed.Rows.First(x => x.DayNo == request.DayNo),
+            Row = refreshedRow,
             SaveSummary = saveSummary
         };
     }
@@ -818,6 +790,169 @@ public class NDAR1RowEditService : INDAR1RowEditService
         await _context.SaveChangesAsync();
     }
 
+    private async Task<NDAR1> LoadReportHeaderAsync(Guid ndar1Id)
+    {
+        var report = await _context.NDAR1s
+            .AsNoTracking()
+            .Include(x => x.Facility)
+            .Include(x => x.Fields)
+                .ThenInclude(f => f.Sprayfield)
+            .Include(x => x.Field1)
+            .Include(x => x.Field2)
+            .Include(x => x.Field3)
+            .Include(x => x.Field4)
+            .FirstOrDefaultAsync(x => x.Id == ndar1Id);
+
+        if (report == null)
+        {
+            throw new EntityNotFoundException(nameof(NDAR1), ndar1Id);
+        }
+
+        return report;
+    }
+
+    private async Task<List<NDAR1GridFieldColumnViewModel>> GetFieldFooterMetricsAsync(Guid ndar1Id)
+    {
+        var report = await LoadReportHeaderAsync(ndar1Id);
+        var fieldColumns = GetFieldColumns(report);
+        var sprayfields = GetSprayfieldsById(report).Values.ToList();
+        var start = new DateTime(report.Year, (int)report.Month, 1);
+        var end = start.AddMonths(1);
+        var daysInMonth = DateTime.DaysInMonth(report.Year, (int)report.Month);
+        var rollingAsOfDate = start.AddDays(daysInMonth - 1);
+
+        var monthlyApps = await _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(x => x.FacilityId == report.FacilityId && x.ApplicationDate >= start && x.ApplicationDate < end)
+            .ToListAsync();
+
+        ApplyMonthlyFieldTotals(fieldColumns, monthlyApps);
+        await ApplyRollingFieldTotalsAsync(fieldColumns, sprayfields, rollingAsOfDate);
+        return fieldColumns;
+    }
+
+    private async Task<NDAR1GridDayRowViewModel> RefreshDayRowAsync(Guid ndar1Id, int dayNo, string? currentUserId)
+    {
+        var report = await LoadReportHeaderAsync(ndar1Id);
+        var fieldColumns = GetFieldColumns(report);
+        var sprayfieldById = GetSprayfieldsById(report);
+        var date = new DateTime(report.Year, (int)report.Month, dayNo);
+
+        var log = await _context.OperatorLogs
+            .AsNoTracking()
+            .Where(x => x.FacilityId == report.FacilityId && x.LogDate == date && !x.IsDeleted)
+            .OrderByDescending(x => x.UpdatedDate ?? x.CreatedDate)
+            .FirstOrDefaultAsync();
+
+        var dayApps = await _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(x => x.FacilityId == report.FacilityId && x.ApplicationDate == date)
+            .ToListAsync();
+
+        var appByDateAndSprayfield = dayApps.ToDictionary(x => (x.ApplicationDate.Date, x.SprayfieldId));
+
+        var dayLock = await _context.NdarEditLocks
+            .AsNoTracking()
+            .Where(x => x.FacilityId == report.FacilityId && x.EditDate == date && x.ExpiresAtUtc > DateTime.UtcNow)
+            .FirstOrDefaultAsync();
+
+        return BuildDayRowViewModel(
+            dayNo,
+            date,
+            log,
+            dayLock,
+            fieldColumns,
+            sprayfieldById,
+            appByDateAndSprayfield,
+            currentUserId);
+    }
+
+    private static void ApplyMonthlyFieldTotals(
+        List<NDAR1GridFieldColumnViewModel> fieldColumns,
+        IReadOnlyList<MonthlyApplication> monthlyApps)
+    {
+        foreach (var field in fieldColumns)
+        {
+            var monthlyForField = monthlyApps.Where(x => x.SprayfieldId == field.SprayfieldId).ToList();
+            field.MonthlyVolumeTotalGallons = Math.Round(monthlyForField.Sum(x => x.VolumeGallons), 0, MidpointRounding.AwayFromZero);
+
+            if (field.Acres.HasValue && field.Acres.Value > 0m)
+            {
+                field.MonthlyDailyLoadingTotalInches = monthlyForField.Sum(x =>
+                    x.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch));
+            }
+        }
+    }
+
+    private async Task ApplyRollingFieldTotalsAsync(
+        List<NDAR1GridFieldColumnViewModel> fieldColumns,
+        IReadOnlyList<Sprayfield> sprayfields,
+        DateTime rollingAsOfDate)
+    {
+        var metrics = await _monthlyLoadingResolution.GetBatchFieldLoadingMetricsAsync(sprayfields, rollingAsOfDate);
+        foreach (var field in fieldColumns)
+        {
+            field.TwelveMonthFloatingTotalInches = metrics.TryGetValue(field.SprayfieldId, out var metric)
+                ? metric.Rolling12MonthInches
+                : 0m;
+        }
+    }
+
+    private static NDAR1GridDayRowViewModel BuildDayRowViewModel(
+        int dayNo,
+        DateTime date,
+        OperatorLog? log,
+        NdarEditLock? dayLock,
+        IReadOnlyList<NDAR1GridFieldColumnViewModel> fieldColumns,
+        IReadOnlyDictionary<Guid, Sprayfield> sprayfieldById,
+        IReadOnlyDictionary<(DateTime Date, Guid SprayfieldId), MonthlyApplication> appByDateAndSprayfield,
+        string? currentUserId)
+    {
+        var row = new NDAR1GridDayRowViewModel
+        {
+            DayNo = dayNo,
+            Date = date,
+            WeatherCode = WeatherCodeCatalog.TryNormalizeAbbreviation(log?.WeatherConditions, out var code) ? code : null,
+            TemperatureF = log?.TemperatureF,
+            PrecipitationIn = log?.PrecipitationIn,
+            WaterDepthFt = log?.WaterDepthFt,
+            StorageFt = log?.StorageFt,
+            FiveDayUpsetFt = log?.FiveDayUpsetFt
+        };
+
+        if (dayLock != null)
+        {
+            row.LockToken = dayLock.LockToken;
+            row.LockedBy = dayLock.LockedByDisplayName;
+            row.IsLockedByCurrentUser = !string.IsNullOrEmpty(currentUserId) &&
+                string.Equals(dayLock.LockedByUserId, currentUserId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        foreach (var field in fieldColumns)
+        {
+            appByDateAndSprayfield.TryGetValue((date.Date, field.SprayfieldId), out var app);
+            sprayfieldById.TryGetValue(field.SprayfieldId, out var sprayfield);
+            decimal? dailyLoading = app != null && field.Acres.HasValue && field.Acres.Value > 0m
+                ? app.VolumeGallons / (field.Acres.Value * MonthlyApplicationCalculationHelper.GallonsPerAcreInch)
+                : null;
+            decimal? maxHourlyLoading = app?.TimeIrrigatedMinutes is > 0
+                ? (sprayfield?.ActualHourlyRateInches ?? app.MaximumHourlyLoadingInchesPerAcre)
+                : app?.MaximumHourlyLoadingInchesPerAcre;
+            row.Applications.Add(new NDAR1GridApplicationCellViewModel
+            {
+                SprayfieldId = field.SprayfieldId,
+                VolumeGallons = app != null ? Math.Round(app.VolumeGallons, 0, MidpointRounding.AwayFromZero) : null,
+                TimeIrrigatedMinutes = app?.TimeIrrigatedMinutes.HasValue == true
+                    ? Math.Round(app.TimeIrrigatedMinutes.Value, 0, MidpointRounding.AwayFromZero)
+                    : null,
+                MaximumHourlyLoadingInchesPerAcre = maxHourlyLoading,
+                DailyLoadingInches = dailyLoading
+            });
+        }
+
+        return row;
+    }
+
     private static Dictionary<Guid, Sprayfield> GetSprayfieldsById(NDAR1 report)
     {
         var sprayfields = new List<Sprayfield>();
@@ -849,6 +984,20 @@ public class NDAR1RowEditService : INDAR1RowEditService
 
     private static bool HasIrrigationChange(NDAR1GridApplicationCellViewModel cell, MonthlyApplication? existing)
         => !IrrigationTimesEqual(cell.TimeIrrigatedMinutes, existing?.TimeIrrigatedMinutes);
+
+    private static bool IsNdarOriginMonthlyApplication(string? comments) =>
+        !string.IsNullOrWhiteSpace(comments) &&
+        comments.Contains("NDAR1 row edit", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsNdarOriginOperatorLogShell(OperatorLog operatorLog) =>
+        string.Equals(operatorLog.OperatorName, "System", StringComparison.OrdinalIgnoreCase)
+        && operatorLog.ArrivalTime == TimeSpan.Zero
+        && operatorLog.TimeOnSiteHours == 0m
+        && string.IsNullOrWhiteSpace(operatorLog.MaintenancePerformed)
+        && string.IsNullOrWhiteSpace(operatorLog.EquipmentInspected)
+        && string.IsNullOrWhiteSpace(operatorLog.IssuesNoted)
+        && string.IsNullOrWhiteSpace(operatorLog.CorrectiveActions)
+        && string.IsNullOrWhiteSpace(operatorLog.NextShiftNotes);
 
     private List<NDAR1GridFieldColumnViewModel> GetFieldColumns(NDAR1 report)
     {

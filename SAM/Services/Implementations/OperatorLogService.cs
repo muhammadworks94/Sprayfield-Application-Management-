@@ -63,6 +63,22 @@ public class OperatorLogService : IOperatorLogService
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
+    public async Task<Guid> GetCompanyIdAsync(Guid id)
+    {
+        var companyId = await _context.OperatorLogs
+            .AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => (Guid?)o.CompanyId)
+            .FirstOrDefaultAsync();
+
+        if (!companyId.HasValue)
+        {
+            throw new EntityNotFoundException(nameof(OperatorLog), id);
+        }
+
+        return companyId.Value;
+    }
+
     public async Task<OperatorLog> CreateAsync(OperatorLog operatorLog)
     {
         var result = await CreateWithNdarRefreshAsync(operatorLog);
@@ -88,7 +104,7 @@ public class OperatorLogService : IOperatorLogService
 
         _context.OperatorLogs.Add(operatorLog);
         await _context.SaveChangesAsync();
-        var outcome = await ProvisionReportsForOperatorLogMonthAsync(operatorLog.FacilityId, operatorLog.LogDate);
+        var outcome = await SyncOperatorLogMonthReportsAsync(operatorLog.FacilityId, operatorLog.LogDate);
 
         _logger.LogInformation("Operator log created for facility '{FacilityName}' on {LogDate} (ID: {LogId})",
             facility.Name, operatorLog.LogDate, operatorLog.Id);
@@ -149,14 +165,14 @@ public class OperatorLogService : IOperatorLogService
         await _context.SaveChangesAsync();
         var outcomes = new List<NdarRefreshOutcome>
         {
-            await ProvisionReportsForOperatorLogMonthAsync(oldFacilityId, oldLogDate)
+            await SyncOperatorLogMonthReportsAsync(oldFacilityId, oldLogDate)
         };
 
         if (oldFacilityId != existing.FacilityId ||
             oldLogDate.Month != existing.LogDate.Month ||
             oldLogDate.Year != existing.LogDate.Year)
         {
-            outcomes.Add(await ProvisionReportsForOperatorLogMonthAsync(existing.FacilityId, existing.LogDate));
+            outcomes.Add(await SyncOperatorLogMonthReportsAsync(existing.FacilityId, existing.LogDate));
         }
 
         _logger.LogInformation("Operator log updated (ID: {LogId})", operatorLog.Id);
@@ -173,20 +189,22 @@ public class OperatorLogService : IOperatorLogService
         return result.Deleted;
     }
 
-    public async Task<(bool Deleted, List<NdarRefreshOutcome> NdarRefreshOutcomes)> DeleteWithNdarRefreshAsync(Guid id)
+    public async Task<(bool Deleted, Guid CompanyId, List<NdarRefreshOutcome> NdarRefreshOutcomes)> DeleteWithNdarRefreshAsync(Guid id)
     {
         var operatorLog = await _context.OperatorLogs
             .FirstOrDefaultAsync(o => o.Id == id);
         if (operatorLog == null)
             throw new EntityNotFoundException(nameof(OperatorLog), id);
 
+        var companyId = operatorLog.CompanyId;
+
         // Soft delete
         operatorLog.IsDeleted = true;
         await _context.SaveChangesAsync();
-        var outcome = await RefreshNdar1ForMonthAsync(operatorLog.FacilityId, operatorLog.LogDate);
+        var outcome = await RefreshWeatherNdar1ForMonthAsync(operatorLog.FacilityId, operatorLog.LogDate);
 
         _logger.LogInformation("Operator log soft-deleted (ID: {LogId})", id);
-        return (true, new List<NdarRefreshOutcome> { outcome });
+        return (true, companyId, new List<NdarRefreshOutcome> { outcome });
     }
 
     public async Task<bool> ExistsAsync(Guid id)
@@ -220,17 +238,20 @@ public class OperatorLogService : IOperatorLogService
             .ToListAsync();
     }
 
-    private async Task<NdarRefreshOutcome> ProvisionReportsForOperatorLogMonthAsync(Guid facilityId, DateTime date)
+    private async Task<NdarRefreshOutcome> SyncOperatorLogMonthReportsAsync(Guid facilityId, DateTime date)
     {
+        var existingReport = await _ndar1Service.GetByFacilityMonthYearAsync(facilityId, date.Month, date.Year);
         NdarRefreshOutcome outcome;
         try
         {
-            outcome = await _reportProvisioner.EnsureNdar1ForMonthAsync(facilityId, date.Month, date.Year);
+            outcome = existingReport != null
+                ? await _ndar1Service.RefreshWeatherSnapshotForMonthAsync(facilityId, date.Month, date.Year)
+                : await _reportProvisioner.EnsureNdar1ForMonthAsync(facilityId, date.Month, date.Year);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "NDAR-1 provisioning failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
+                "NDAR-1 sync failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
                 facilityId, date.Month, date.Year);
             return new NdarRefreshOutcome
             {
@@ -258,16 +279,16 @@ public class OperatorLogService : IOperatorLogService
         return outcome;
     }
 
-    private async Task<NdarRefreshOutcome> RefreshNdar1ForMonthAsync(Guid facilityId, DateTime date)
+    private async Task<NdarRefreshOutcome> RefreshWeatherNdar1ForMonthAsync(Guid facilityId, DateTime date)
     {
         try
         {
-            return await _ndar1Service.RefreshExistingReportForMonthAsync(facilityId, date.Month, date.Year);
+            return await _ndar1Service.RefreshWeatherSnapshotForMonthAsync(facilityId, date.Month, date.Year);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "NDAR-1 refresh failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
+                "NDAR-1 weather refresh failed after operator log change for facility {FacilityId} month {Month} year {Year}.",
                 facilityId, date.Month, date.Year);
             return new NdarRefreshOutcome
             {
@@ -280,5 +301,4 @@ public class OperatorLogService : IOperatorLogService
         }
     }
 }
-
 

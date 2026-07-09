@@ -73,6 +73,22 @@ public class MonthlyApplicationService : IMonthlyApplicationService
             .FirstOrDefaultAsync(a => a.Id == id);
     }
 
+    public async Task<Guid> GetCompanyIdAsync(Guid id)
+    {
+        var companyId = await _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(a => a.Id == id)
+            .Select(a => (Guid?)a.CompanyId)
+            .FirstOrDefaultAsync();
+
+        if (!companyId.HasValue)
+        {
+            throw new EntityNotFoundException(nameof(MonthlyApplication), id);
+        }
+
+        return companyId.Value;
+    }
+
     public async Task<MonthlyApplication> CreateAsync(MonthlyApplication application)
     {
         var result = await CreateWithNdarRefreshAsync(application);
@@ -144,15 +160,18 @@ public class MonthlyApplicationService : IMonthlyApplicationService
         };
     }
 
-    public async Task<(bool Deleted, List<NdarRefreshOutcome> NdarRefreshOutcomes)> DeleteWithNdarRefreshAsync(Guid id)
+    public async Task<(bool Deleted, Guid CompanyId, Guid FacilityId, List<NdarRefreshOutcome> NdarRefreshOutcomes)> DeleteWithNdarRefreshAsync(Guid id)
     {
         var existing = await _context.MonthlyApplications.FirstOrDefaultAsync(a => a.Id == id)
             ?? throw new EntityNotFoundException(nameof(MonthlyApplication), id);
 
+        var companyId = existing.CompanyId;
+        var facilityId = existing.FacilityId;
+
         _context.MonthlyApplications.Remove(existing);
         await _context.SaveChangesAsync();
-        var outcome = await RefreshNdar1ForMonthAsync(existing.FacilityId, existing.ApplicationDate);
-        return (true, new List<NdarRefreshOutcome> { outcome });
+        var outcome = await RefreshNdar1ForMonthAsync(facilityId, existing.ApplicationDate);
+        return (true, companyId, facilityId, new List<NdarRefreshOutcome> { outcome });
     }
 
     private async Task<NdarRefreshOutcome> ProvisionReportsForApplicationMonthAsync(Guid facilityId, DateTime date)

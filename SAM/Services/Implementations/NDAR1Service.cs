@@ -118,6 +118,22 @@ public class NDAR1Service : INDAR1Service
         return report;
     }
 
+    public async Task<Guid> GetCompanyIdAsync(Guid id)
+    {
+        var companyId = await _context.NDAR1s
+            .AsNoTracking()
+            .Where(n => n.Id == id)
+            .Select(n => (Guid?)n.CompanyId)
+            .FirstOrDefaultAsync();
+
+        if (!companyId.HasValue)
+        {
+            throw new EntityNotFoundException(nameof(NDAR1), id);
+        }
+
+        return companyId.Value;
+    }
+
     public async Task<NDAR1> CreateAsync(NDAR1 ndar1)
     {
         if (ndar1 == null)
@@ -485,6 +501,70 @@ public class NDAR1Service : INDAR1Service
         return refreshTask;
     }
 
+    public async Task<NdarRefreshOutcome> RefreshWeatherSnapshotForMonthAsync(Guid facilityId, int month, int year)
+    {
+        var outcome = new NdarRefreshOutcome
+        {
+            FacilityId = facilityId,
+            Month = month,
+            Year = year
+        };
+        var periodText = new DateTime(year, month, 1).ToString("MMM yyyy");
+
+        try
+        {
+            var existing = await _context.NDAR1s
+                .FirstOrDefaultAsync(n => n.FacilityId == facilityId && (int)n.Month == month && n.Year == year);
+            if (existing == null)
+            {
+                outcome.Status = NdarRefreshStatus.NoReport;
+                outcome.Message = $"No NDAR-1 report exists for {periodText}.";
+                return outcome;
+            }
+
+            var startDate = new DateTime(year, month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+            var daysInMonth = DateTime.DaysInMonth(year, month);
+
+            var operatorLogs = await _context.OperatorLogs
+                .AsNoTracking()
+                .Where(o => o.FacilityId == facilityId
+                            && !o.IsDeleted
+                            && o.LogDate >= startDate
+                            && o.LogDate <= endDate)
+                .ToListAsync();
+
+            InitializeDailyArrays(existing);
+            for (var day = 1; day <= daysInMonth; day++)
+            {
+                var currentDate = new DateTime(year, month, day);
+                var dayIndex = day - 1;
+                var logForDay = operatorLogs.FirstOrDefault(o => o.LogDate.Date == currentDate.Date);
+
+                existing.WeatherCodeDaily[dayIndex] = logForDay != null && !string.IsNullOrEmpty(logForDay.WeatherConditions)
+                    ? logForDay.WeatherConditions
+                    : null;
+                existing.TemperatureDaily[dayIndex] = logForDay?.TemperatureF;
+                existing.PrecipitationDaily[dayIndex] = logForDay?.PrecipitationIn;
+                existing.FiveDayUpsetDaily[dayIndex] = logForDay?.FiveDayUpsetFt;
+            }
+
+            await _context.SaveChangesAsync();
+            outcome.Status = NdarRefreshStatus.Updated;
+            outcome.Message = $"NDAR-1 weather snapshot for {periodText} refreshed successfully.";
+            return outcome;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "NDAR-1 weather snapshot refresh failed for facility {FacilityId} month {Month} year {Year}.",
+                facilityId, month, year);
+            outcome.Status = NdarRefreshStatus.Failed;
+            outcome.Message = $"NDAR-1 weather refresh failed for {periodText}. Please retry.";
+            return outcome;
+        }
+    }
+
     private Task<NdarRefreshOutcome> StartCoalescedRefreshAsync(string key, Guid facilityId, int month, int year)
     {
         return RefreshExistingReportForMonthCoreAsync(facilityId, month, year)
@@ -805,14 +885,44 @@ public class NDAR1Service : INDAR1Service
             report.Field4TimeIrrigatedDaily, report.Field4DailyLoadingDaily,
             report.Field4MaxHourlyLoadingDaily, startDate, daysInMonth);
 
-        await ApplyBaselineOnLastDayAsync(facilityId, report.Field1Id, sprayfieldById, report.Field1VolumeAppliedDaily,
-            report.Field1DailyLoadingDaily, startDate, daysInMonth);
-        await ApplyBaselineOnLastDayAsync(facilityId, report.Field2Id, sprayfieldById, report.Field2VolumeAppliedDaily,
-            report.Field2DailyLoadingDaily, startDate, daysInMonth);
-        await ApplyBaselineOnLastDayAsync(facilityId, report.Field3Id, sprayfieldById, report.Field3VolumeAppliedDaily,
-            report.Field3DailyLoadingDaily, startDate, daysInMonth);
-        await ApplyBaselineOnLastDayAsync(facilityId, report.Field4Id, sprayfieldById, report.Field4VolumeAppliedDaily,
-            report.Field4DailyLoadingDaily, startDate, daysInMonth);
+        var monthBaselineContext = await _monthlyLoadingResolution.GetBatchMonthBaselineContextAsync(
+            facilityId,
+            sprayfieldList.Select(s => s.Id).ToList(),
+            year,
+            month);
+
+        ApplyBaselineOnLastDay(
+            report.Field1Id,
+            sprayfieldById,
+            report.Field1VolumeAppliedDaily,
+            report.Field1DailyLoadingDaily,
+            startDate,
+            daysInMonth,
+            monthBaselineContext);
+        ApplyBaselineOnLastDay(
+            report.Field2Id,
+            sprayfieldById,
+            report.Field2VolumeAppliedDaily,
+            report.Field2DailyLoadingDaily,
+            startDate,
+            daysInMonth,
+            monthBaselineContext);
+        ApplyBaselineOnLastDay(
+            report.Field3Id,
+            sprayfieldById,
+            report.Field3VolumeAppliedDaily,
+            report.Field3DailyLoadingDaily,
+            startDate,
+            daysInMonth,
+            monthBaselineContext);
+        ApplyBaselineOnLastDay(
+            report.Field4Id,
+            sprayfieldById,
+            report.Field4VolumeAppliedDaily,
+            report.Field4DailyLoadingDaily,
+            startDate,
+            daysInMonth,
+            monthBaselineContext);
 
         // Calculate monthly totals
         report.Field1MonthlyLoading = report.Field1DailyLoadingDaily.Where(v => v.HasValue).Sum(v => v.Value);
@@ -837,8 +947,19 @@ public class NDAR1Service : INDAR1Service
             .Max();
 
         // Calculate rolling 365-day hydraulic totals from zone-model applications.
-        await CalculateRollingFloatingTotals(report, endDate);
-        await BuildDynamicFieldsAsync(report, sprayfieldList, sprayfieldById, fieldApplications, startDate, daysInMonth, endDate);
+        var rollingTotalsBySprayfield = await _monthlyLoadingResolution.GetBatch365DayRollingInchesAsync(
+            sprayfieldList,
+            endDate);
+        CalculateRollingFloatingTotals(report, rollingTotalsBySprayfield);
+        BuildDynamicFieldsAsync(
+            report,
+            sprayfieldList,
+            sprayfieldById,
+            fieldApplications,
+            startDate,
+            daysInMonth,
+            rollingTotalsBySprayfield,
+            monthBaselineContext);
 
         report.DidIrrigationOccur = await _monthlyLoadingResolution.HasEffectiveIrrigationForMonthAsync(facilityId, year, month);
 
@@ -999,14 +1120,15 @@ public class NDAR1Service : INDAR1Service
         return await _monthlyLoadingResolution.HasEffectiveIrrigationForMonthAsync(facilityId, year, month);
     }
 
-    private async Task BuildDynamicFieldsAsync(
+    private void BuildDynamicFieldsAsync(
         NDAR1 report,
         List<Sprayfield> sprayfieldList,
         Dictionary<Guid, Sprayfield> sprayfieldById,
         Dictionary<Guid, List<MonthlyApplication>> fieldApplications,
         DateTime startDate,
         int daysInMonth,
-        DateTime asOfDate)
+        IReadOnlyDictionary<Guid, decimal> rollingTotalsBySprayfield,
+        (IReadOnlySet<Guid> RealOperationalSprayfieldIds, IReadOnlyDictionary<Guid, decimal> BaselineInchesBySprayfieldId) monthBaselineContext)
     {
         report.Fields.Clear();
         var order = 1;
@@ -1019,7 +1141,14 @@ public class NDAR1Service : INDAR1Service
 
             ProcessFieldData(sprayfield.Id, sprayfieldById, fieldApplications, volumeDaily, timeDaily, loadingDaily, maxHourlyDaily, startDate, daysInMonth);
 
-            await ApplyBaselineOnLastDayAsync(report.FacilityId, sprayfield.Id, sprayfieldById, volumeDaily, loadingDaily, startDate, daysInMonth);
+            ApplyBaselineOnLastDay(
+                sprayfield.Id,
+                sprayfieldById,
+                volumeDaily,
+                loadingDaily,
+                startDate,
+                daysInMonth,
+                monthBaselineContext);
 
             var field = new NDAR1Field
             {
@@ -1028,10 +1157,10 @@ public class NDAR1Service : INDAR1Service
                 FieldOrder = order++,
                 MonthlyLoading = loadingDaily.Where(v => v.HasValue).Sum(v => v ?? 0m),
                 MaxHourlyLoading = maxHourlyDaily.Where(v => v.HasValue).Select(v => v ?? 0m).DefaultIfEmpty(0m).Max(),
-                TwelveMonthFloatingTotal = 0m
+                TwelveMonthFloatingTotal = rollingTotalsBySprayfield.TryGetValue(sprayfield.Id, out var rollingTotal)
+                    ? rollingTotal
+                    : 0m
             };
-
-            field.TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, sprayfield.Id, asOfDate);
 
             for (var day = 1; day <= 31; day++)
             {
@@ -1051,16 +1180,40 @@ public class NDAR1Service : INDAR1Service
         }
     }
 
-    private async Task ApplyBaselineOnLastDayAsync(
-        Guid facilityId,
+    private static void ApplyBaselineOnLastDay(
         Guid? fieldId,
         Dictionary<Guid, Sprayfield> sprayfieldById,
         List<decimal?> volumeDaily,
         List<decimal?> loadingDaily,
         DateTime startDate,
-        int daysInMonth)
+        int daysInMonth,
+        (IReadOnlySet<Guid> RealOperationalSprayfieldIds, IReadOnlyDictionary<Guid, decimal> BaselineInchesBySprayfieldId) monthBaselineContext)
     {
-        if (!fieldId.HasValue || !sprayfieldById.TryGetValue(fieldId.Value, out var sprayfield))
+        if (!fieldId.HasValue)
+        {
+            return;
+        }
+
+        ApplyBaselineOnLastDay(
+            fieldId.Value,
+            sprayfieldById,
+            volumeDaily,
+            loadingDaily,
+            startDate,
+            daysInMonth,
+            monthBaselineContext);
+    }
+
+    private static void ApplyBaselineOnLastDay(
+        Guid fieldId,
+        Dictionary<Guid, Sprayfield> sprayfieldById,
+        List<decimal?> volumeDaily,
+        List<decimal?> loadingDaily,
+        DateTime startDate,
+        int daysInMonth,
+        (IReadOnlySet<Guid> RealOperationalSprayfieldIds, IReadOnlyDictionary<Guid, decimal> BaselineInchesBySprayfieldId) monthBaselineContext)
+    {
+        if (!sprayfieldById.TryGetValue(fieldId, out var sprayfield))
         {
             return;
         }
@@ -1070,22 +1223,12 @@ public class NDAR1Service : INDAR1Service
             return;
         }
 
-        if (await _monthlyLoadingResolution.HasRealOperationalMonthAsync(
-                facilityId,
-                fieldId.Value,
-                startDate.Year,
-                startDate.Month))
+        if (monthBaselineContext.RealOperationalSprayfieldIds.Contains(fieldId))
         {
             return;
         }
 
-        var baseline = await _monthlyLoadingResolution.GetBaselineMonthlyLoadingInchesAsync(
-            facilityId,
-            fieldId.Value,
-            startDate.Year,
-            startDate.Month);
-
-        if (!baseline.HasValue || baseline.Value <= 0m)
+        if (!monthBaselineContext.BaselineInchesBySprayfieldId.TryGetValue(fieldId, out var baseline) || baseline <= 0m)
         {
             return;
         }
@@ -1097,8 +1240,8 @@ public class NDAR1Service : INDAR1Service
         }
 
         var lastDayIndex = daysInMonth - 1;
-        loadingDaily[lastDayIndex] = baseline.Value;
-        volumeDaily[lastDayIndex] = baseline.Value * acres * MonthlyApplicationCalculationHelper.GallonsPerAcreInch;
+        loadingDaily[lastDayIndex] = baseline;
+        volumeDaily[lastDayIndex] = baseline * acres * MonthlyApplicationCalculationHelper.GallonsPerAcreInch;
     }
 
     private void ProcessFieldData(
@@ -1230,25 +1373,24 @@ public class NDAR1Service : INDAR1Service
         ndar1.Fields.Add(field);
     }
 
-    private async Task CalculateRollingFloatingTotals(NDAR1 report, DateTime asOfDate)
+    private static void CalculateRollingFloatingTotals(
+        NDAR1 report,
+        IReadOnlyDictionary<Guid, decimal> rollingTotalsBySprayfield)
     {
-        report.Field1TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, report.Field1Id, asOfDate);
-        report.Field2TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, report.Field2Id, asOfDate);
-        report.Field3TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, report.Field3Id, asOfDate);
-        report.Field4TwelveMonthFloatingTotal = await GetRollingHydraulicInchesAsync(report.FacilityId, report.Field4Id, asOfDate);
+        report.Field1TwelveMonthFloatingTotal = GetRollingTotal(report.Field1Id, rollingTotalsBySprayfield);
+        report.Field2TwelveMonthFloatingTotal = GetRollingTotal(report.Field2Id, rollingTotalsBySprayfield);
+        report.Field3TwelveMonthFloatingTotal = GetRollingTotal(report.Field3Id, rollingTotalsBySprayfield);
+        report.Field4TwelveMonthFloatingTotal = GetRollingTotal(report.Field4Id, rollingTotalsBySprayfield);
     }
 
-    private async Task<decimal> GetRollingHydraulicInchesAsync(Guid facilityId, Guid? sprayfieldId, DateTime asOfDate)
+    private static decimal GetRollingTotal(Guid? sprayfieldId, IReadOnlyDictionary<Guid, decimal> rollingTotalsBySprayfield)
     {
         if (!sprayfieldId.HasValue)
         {
             return 0m;
         }
 
-        return await _applicationComplianceService.GetFieldRollingHydraulicInchesAsync(
-            facilityId,
-            sprayfieldId.Value,
-            asOfDate);
+        return rollingTotalsBySprayfield.TryGetValue(sprayfieldId.Value, out var total) ? total : 0m;
     }
 
     private void InitializeDailyArrays(NDAR1 ndar1)

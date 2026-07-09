@@ -534,12 +534,7 @@ namespace SAM.Controllers;
     {
         try
         {
-            var log = await _operatorLogService.GetByIdAsync(id);
-            if (log != null)
-            {
-                await EnsureCompanyAccessAsync(log.CompanyId);
-            }
-
+            await EnsureCompanyAccessAsync(await _operatorLogService.GetCompanyIdAsync(id));
             var deleteResult = await _operatorLogService.DeleteWithNdarRefreshAsync(id);
             if (deleteResult.Deleted)
             {
@@ -1050,22 +1045,13 @@ namespace SAM.Controllers;
     {
         try
         {
-            var application = await _monthlyApplicationService.GetByIdAsync(id);
-            if (application == null)
-            {
-                TempData["ErrorMessage"] = "Monthly application not found.";
-                return RedirectToAction(nameof(MonthlyApplications));
-            }
-
-            await EnsureCompanyAccessAsync(application.CompanyId);
-            var facilityId = application.FacilityId;
-
+            await EnsureCompanyAccessAsync(await _monthlyApplicationService.GetCompanyIdAsync(id));
             var deleteResult = await _monthlyApplicationService.DeleteWithNdarRefreshAsync(id);
             if (deleteResult.Deleted)
             {
                 SetSaveMessagesWithNdarOutcome("Monthly application deleted successfully.", deleteResult.NdarRefreshOutcomes);
             }
-            return RedirectToAction(nameof(MonthlyApplications), new { facilityId });
+            return RedirectToAction(nameof(MonthlyApplications), new { facilityId = deleteResult.FacilityId });
         }
         catch (Infrastructure.Exceptions.EntityNotFoundException)
         {

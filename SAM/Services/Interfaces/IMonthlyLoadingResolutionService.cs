@@ -23,4 +23,17 @@ public interface IMonthlyLoadingResolutionService
         IReadOnlyList<Sprayfield> sprayfields,
         DateTime asOfDate,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, decimal>> GetBatch365DayRollingInchesAsync(
+        IReadOnlyList<Sprayfield> sprayfields,
+        DateTime asOfDate,
+        Guid? excludeApplicationId = null,
+        CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlySet<Guid> RealOperationalSprayfieldIds, IReadOnlyDictionary<Guid, decimal> BaselineInchesBySprayfieldId)> GetBatchMonthBaselineContextAsync(
+        Guid facilityId,
+        IReadOnlyList<Guid> sprayfieldIds,
+        int year,
+        int month,
+        CancellationToken cancellationToken = default);
 }

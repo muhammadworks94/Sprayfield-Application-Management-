@@ -16,6 +16,7 @@ using SAM.Domain.Entities;
 using SAM.Domain.Extensions;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
+using SAM.Infrastructure.Exceptions;
 using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
@@ -411,7 +412,7 @@ public class ReportsController : BaseController
             TempData["SuccessMessage"] = "NDMR report deleted successfully.";
             return RedirectToAction(nameof(NDMRReports), new {  facilityId = report.FacilityId });
         }
-        catch (Infrastructure.Exceptions.EntityNotFoundException)
+        catch (EntityNotFoundException)
         {
             TempData["ErrorMessage"] = "NDMR report not found.";
         }
@@ -1232,14 +1233,17 @@ public class ReportsController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1ReportEdit(Guid id)
     {
-        var report = await _ndar1Service.GetByIdAsync(id);
-        if (report == null)
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var grid = await _ndar1RowEditService.BuildGridAsync(id, userId);
+            await EnsureCompanyAccessAsync(grid.CompanyId);
+            return View(grid);
+        }
+        catch (EntityNotFoundException)
+        {
             return NotFound();
-
-        await EnsureCompanyAccessAsync(report.CompanyId);
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        var grid = await _ndar1RowEditService.BuildGridAsync(id, userId);
-        return View(grid);
+        }
     }
 
     [HttpPost]
@@ -1247,13 +1251,15 @@ public class ReportsController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1BeginRowEdit(Guid ndar1Id, int dayNo)
     {
-        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
-        if (report == null)
+        try
+        {
+            await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+        }
+        catch (EntityNotFoundException)
         {
             return NotFound();
         }
 
-        await EnsureCompanyAccessAsync(report.CompanyId);
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var userDisplay = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "User";
         var result = await _ndar1RowEditService.BeginRowEditAsync(ndar1Id, dayNo, userId, userDisplay);
@@ -1265,13 +1271,15 @@ public class ReportsController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1BeginGridEdit(Guid ndar1Id)
     {
-        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
-        if (report == null)
+        try
+        {
+            await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+        }
+        catch (EntityNotFoundException)
         {
             return NotFound();
         }
 
-        await EnsureCompanyAccessAsync(report.CompanyId);
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var userDisplay = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "User";
         var result = await _ndar1RowEditService.BeginGridEditAsync(ndar1Id, userId, userDisplay);
@@ -1283,13 +1291,15 @@ public class ReportsController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1ReleaseGridEdit(Guid ndar1Id, [FromBody] NDAR1GridReleaseRequest request)
     {
-        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
-        if (report == null)
+        try
+        {
+            await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+        }
+        catch (EntityNotFoundException)
         {
             return NotFound();
         }
 
-        await EnsureCompanyAccessAsync(report.CompanyId);
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         await _ndar1RowEditService.ReleaseGridEditAsync(ndar1Id, request?.LockTokens ?? new List<Guid>(), userId);
         return Ok(new { success = true });
@@ -1300,13 +1310,15 @@ public class ReportsController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1RefreshGridTotals(Guid ndar1Id)
     {
-        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
-        if (report == null)
+        try
+        {
+            await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+        }
+        catch (EntityNotFoundException)
         {
             return NotFound();
         }
 
-        await EnsureCompanyAccessAsync(report.CompanyId);
         var result = await _ndar1RowEditService.GetGridFooterTotalsAsync(ndar1Id);
         return Json(result);
     }
@@ -1318,13 +1330,7 @@ public class ReportsController : BaseController
     {
         try
         {
-            var report = await _ndar1Service.GetByIdAsync(ndar1Id);
-            if (report == null)
-            {
-                return NotFound();
-            }
-
-            await EnsureCompanyAccessAsync(report.CompanyId);
+            await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
             var outcome = await _ndar1RowEditService.RefreshStoredReportAsync(ndar1Id);
             return Json(new
             {
@@ -1332,6 +1338,10 @@ public class ReportsController : BaseController
                 status = outcome.Status.ToString(),
                 message = outcome.Message
             });
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFound();
         }
         catch (Exception ex)
         {
@@ -1351,13 +1361,7 @@ public class ReportsController : BaseController
     {
         try
         {
-            var report = await _ndar1Service.GetByIdAsync(ndar1Id);
-            if (report == null)
-            {
-                return NotFound();
-            }
-
-            await EnsureCompanyAccessAsync(report.CompanyId);
+            await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             var result = await _ndar1RowEditService.UpdateRowAsync(ndar1Id, request, userId);
             if (!result.Success)
@@ -1365,6 +1369,10 @@ public class ReportsController : BaseController
                 Response.StatusCode = result.IsValidationError ? 400 : 409;
             }
             return Json(result);
+        }
+        catch (EntityNotFoundException)
+        {
+            return NotFound();
         }
         catch (Exception ex)
         {
@@ -1382,13 +1390,15 @@ public class ReportsController : BaseController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> NDAR1CancelRowEdit(Guid ndar1Id, int dayNo, Guid lockToken)
     {
-        var report = await _ndar1Service.GetByIdAsync(ndar1Id);
-        if (report == null)
+        try
+        {
+            await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+        }
+        catch (EntityNotFoundException)
         {
             return NotFound();
         }
 
-        await EnsureCompanyAccessAsync(report.CompanyId);
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         await _ndar1RowEditService.CancelRowEditAsync(ndar1Id, dayNo, lockToken, userId);
         return Ok(new { success = true });
@@ -1512,7 +1522,7 @@ public class ReportsController : BaseController
             TempData["SuccessMessage"] = "NDAR-1 report deleted successfully.";
             return RedirectToAction(nameof(NDAR1Reports), new { facilityId = report.FacilityId });
         }
-        catch (Infrastructure.Exceptions.EntityNotFoundException)
+        catch (EntityNotFoundException)
         {
             TempData["ErrorMessage"] = "NDAR-1 report not found.";
         }

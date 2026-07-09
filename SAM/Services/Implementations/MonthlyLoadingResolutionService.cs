@@ -291,6 +291,158 @@ public class MonthlyLoadingResolutionService : IMonthlyLoadingResolutionService
         return baselineLookup.TryGetValue(key, out var baseline) ? baseline : 0m;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, decimal>> GetBatch365DayRollingInchesAsync(
+        IReadOnlyList<Sprayfield> sprayfields,
+        DateTime asOfDate,
+        Guid? excludeApplicationId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (sprayfields.Count == 0)
+        {
+            return new Dictionary<Guid, decimal>();
+        }
+
+        var endDate = asOfDate.Date;
+        var startDate = endDate.AddDays(-364);
+        var firstMonthStart = new DateTime(startDate.Year, startDate.Month, 1);
+        var sprayfieldIds = sprayfields.Select(s => s.Id).ToList();
+
+        var applicationsQuery = _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(a => sprayfieldIds.Contains(a.SprayfieldId)
+                        && a.ApplicationDate >= startDate
+                        && a.ApplicationDate <= endDate);
+
+        if (excludeApplicationId.HasValue)
+        {
+            applicationsQuery = applicationsQuery.Where(a => a.Id != excludeApplicationId.Value);
+        }
+
+        var applications = await applicationsQuery
+            .Select(a => new { a.SprayfieldId, a.ApplicationDate, a.VolumeGallons })
+            .ToListAsync(cancellationToken);
+
+        var monthlyAggs = await _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(a => sprayfieldIds.Contains(a.SprayfieldId)
+                        && a.ApplicationDate >= firstMonthStart
+                        && a.ApplicationDate <= endDate)
+            .GroupBy(a => new { a.SprayfieldId, a.ApplicationDate.Year, a.ApplicationDate.Month })
+            .Select(g => new
+            {
+                g.Key.SprayfieldId,
+                g.Key.Year,
+                g.Key.Month,
+                HasRealVolume = g.Any(a => a.VolumeGallons > 0m)
+            })
+            .ToListAsync(cancellationToken);
+
+        var hasRealVolumeLookup = monthlyAggs
+            .Where(x => x.HasRealVolume)
+            .Select(x => (x.SprayfieldId, x.Year, x.Month))
+            .ToHashSet();
+
+        var windowStartKey = firstMonthStart.Year * 12 + firstMonthStart.Month;
+        var windowEndKey = endDate.Year * 12 + endDate.Month;
+        var baselines = await _context.SprayfieldBaselineMonthlyLoadings
+            .AsNoTracking()
+            .Where(x => sprayfieldIds.Contains(x.SprayfieldId)
+                        && x.Year * 12 + x.Month >= windowStartKey
+                        && x.Year * 12 + x.Month <= windowEndKey)
+            .Select(x => new { x.SprayfieldId, x.Year, x.Month, x.LoadingInches })
+            .ToListAsync(cancellationToken);
+
+        var baselineLookup = baselines.ToDictionary(
+            x => (x.SprayfieldId, x.Year, x.Month),
+            x => x.LoadingInches);
+
+        var results = new Dictionary<Guid, decimal>(sprayfields.Count);
+        foreach (var sprayfield in sprayfields)
+        {
+            var acres = SprayfieldReportHelper.GetReportAcres(sprayfield);
+            if (acres <= 0m)
+            {
+                results[sprayfield.Id] = 0m;
+                continue;
+            }
+
+            decimal total = 0m;
+            var cursor = firstMonthStart;
+            var lastMonthStart = new DateTime(endDate.Year, endDate.Month, 1);
+            while (cursor <= lastMonthStart)
+            {
+                var year = cursor.Year;
+                var month = cursor.Month;
+                var monthStart = cursor;
+                var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+                var overlapStart = monthStart > startDate ? monthStart : startDate;
+                var overlapEnd = monthEnd < endDate ? monthEnd : endDate;
+                if (overlapStart <= overlapEnd)
+                {
+                    if (hasRealVolumeLookup.Contains((sprayfield.Id, year, month)))
+                    {
+                        var gallons = applications
+                            .Where(a => a.SprayfieldId == sprayfield.Id
+                                        && a.ApplicationDate >= overlapStart
+                                        && a.ApplicationDate <= overlapEnd)
+                            .Sum(a => a.VolumeGallons);
+                        total += gallons / (acres * MonthlyApplicationCalculationHelper.GallonsPerAcreInch);
+                    }
+                    else if (baselineLookup.TryGetValue((sprayfield.Id, year, month), out var baseline) && baseline > 0m)
+                    {
+                        var daysInMonth = DateTime.DaysInMonth(year, month);
+                        var daysInOverlap = (overlapEnd - overlapStart).Days + 1;
+                        total += baseline * daysInOverlap / daysInMonth;
+                    }
+                }
+
+                cursor = cursor.AddMonths(1);
+            }
+
+            results[sprayfield.Id] = total;
+        }
+
+        return results;
+    }
+
+    public async Task<(IReadOnlySet<Guid> RealOperationalSprayfieldIds, IReadOnlyDictionary<Guid, decimal> BaselineInchesBySprayfieldId)> GetBatchMonthBaselineContextAsync(
+        Guid facilityId,
+        IReadOnlyList<Guid> sprayfieldIds,
+        int year,
+        int month,
+        CancellationToken cancellationToken = default)
+    {
+        if (sprayfieldIds.Count == 0)
+        {
+            return (new HashSet<Guid>(), new Dictionary<Guid, decimal>());
+        }
+
+        var (monthStart, monthEndExclusive) = GetMonthBounds(year, month);
+        var realOperationalSprayfieldIds = await _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(a => a.FacilityId == facilityId
+                        && sprayfieldIds.Contains(a.SprayfieldId)
+                        && a.ApplicationDate >= monthStart
+                        && a.ApplicationDate < monthEndExclusive
+                        && a.VolumeGallons > 0m)
+            .Select(a => a.SprayfieldId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var baselines = await _context.SprayfieldBaselineMonthlyLoadings
+            .AsNoTracking()
+            .Where(x => x.FacilityId == facilityId
+                        && sprayfieldIds.Contains(x.SprayfieldId)
+                        && x.Year == year
+                        && x.Month == month)
+            .Select(x => new { x.SprayfieldId, x.LoadingInches })
+            .ToListAsync(cancellationToken);
+
+        return (
+            realOperationalSprayfieldIds.ToHashSet(),
+            baselines.ToDictionary(x => x.SprayfieldId, x => x.LoadingInches));
+    }
+
     private static (DateTime MonthStart, DateTime MonthEndExclusive) GetMonthBounds(int year, int month)
     {
         var monthStart = new DateTime(year, month, 1);
