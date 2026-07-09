@@ -41,7 +41,7 @@
             <label class="form-check-label" for="ndarHideCalculatedFields">Hide calculated fields</label>
         </div>
 
-        <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper">
+        <div class="table-responsive responsive-table wide-data-table ndar-daily-table-wrapper fixed-height-table-wrapper" id="ndarGridScroll">
             <table class="table table-bordered table-sm ndar-daily-table hide-calculated-fields" id="ndarLiveGrid"
                    data-berm-height="@(Model.LagoonBermHeightFeet?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
                    data-min-freeboard="@(Model.PermittedMinimumFreeboardFeet?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")">
@@ -117,33 +117,33 @@
                         @foreach (var field in Model.FieldColumns)
                         {
                             <th class="ndar-col-calculated" data-total-volume="@field.SprayfieldId">@field.MonthlyVolumeTotalGallons.ToString("F0")</th>
-                            <th></th>
-                            <th class="ndar-col-calculated"></th>
-                            <th class="ndar-col-calculated"></th>
+                            <th class="ndar-footer-spacer"></th>
+                            <th class="ndar-col-calculated ndar-footer-spacer"></th>
+                            <th class="ndar-col-calculated ndar-footer-spacer"></th>
                         }
-                        <th></th>
+                        <th class="ndar-footer-spacer"></th>
                     </tr>
                     <tr class="table-light ndar-footer-calculated">
                         <th colspan="7">Monthly Total - Daily Loading (in)</th>
                         @foreach (var field in Model.FieldColumns)
                         {
-                            <th class="ndar-col-calculated"></th>
-                            <th></th>
-                            <th class="ndar-col-calculated"></th>
+                            <th class="ndar-col-calculated ndar-footer-spacer"></th>
+                            <th class="ndar-footer-spacer"></th>
+                            <th class="ndar-col-calculated ndar-footer-spacer"></th>
                             <th class="ndar-col-calculated" data-total-loading="@field.SprayfieldId">@field.MonthlyDailyLoadingTotalInches.ToString("F2")</th>
                         }
-                        <th></th>
+                        <th class="ndar-footer-spacer"></th>
                     </tr>
                     <tr class="table-light ndar-footer-calculated">
                         <th colspan="7">12-Month Floating Total (in)</th>
                         @foreach (var field in Model.FieldColumns)
                         {
-                            <th class="ndar-col-calculated"></th>
-                            <th></th>
-                            <th class="ndar-col-calculated"></th>
+                            <th class="ndar-col-calculated ndar-footer-spacer"></th>
+                            <th class="ndar-footer-spacer"></th>
+                            <th class="ndar-col-calculated ndar-footer-spacer"></th>
                             <th class="ndar-col-calculated" data-total-floating="@field.SprayfieldId">@field.TwelveMonthFloatingTotalInches.ToString("F2")</th>
                         }
-                        <th></th>
+                        <th class="ndar-footer-spacer"></th>
                     </tr>
                 </tfoot>
             </table>
@@ -156,8 +156,29 @@
         display: none;
     }
 
-    #ndarLiveGrid.hide-calculated-fields .ndar-footer-calculated {
+    #ndarLiveGrid.hide-calculated-fields tfoot {
         display: none;
+    }
+
+    #ndarLiveGrid tfoot th {
+        position: static !important;
+        left: auto !important;
+        right: auto !important;
+        z-index: auto !important;
+        box-shadow: none !important;
+        background-color: #f8f9fa;
+        vertical-align: middle;
+    }
+
+    #ndarLiveGrid tfoot th[data-total-volume],
+    #ndarLiveGrid tfoot th[data-total-loading],
+    #ndarLiveGrid tfoot th[data-total-floating] {
+        text-align: right;
+        font-weight: 600;
+    }
+
+    #ndarLiveGrid tfoot th.ndar-footer-spacer {
+        padding: 0.5rem;
     }
 
     #ndarLiveGrid select.weather-select-selected {
@@ -165,8 +186,8 @@
         padding-right: 0.5rem;
     }
 
-    #ndarLiveGrid th:first-child,
-    #ndarLiveGrid td:first-child {
+    #ndarLiveGrid thead th:first-child,
+    #ndarLiveGrid tbody td:first-child {
         position: sticky;
         left: 0;
         z-index: 3;
@@ -180,13 +201,8 @@
         background-color: #f8f9fa;
     }
 
-    #ndarLiveGrid tfoot th:first-child,
-    #ndarLiveGrid tfoot td:first-child {
-        background-color: #f8f9fa;
-    }
-
-    #ndarLiveGrid th:last-child,
-    #ndarLiveGrid td:last-child {
+    #ndarLiveGrid thead th:last-child,
+    #ndarLiveGrid tbody td:last-child {
         position: sticky;
         right: 0;
         z-index: 3;
@@ -199,11 +215,6 @@
 
     #ndarLiveGrid thead th:last-child {
         z-index: 4;
-        background-color: #f8f9fa;
-    }
-
-    #ndarLiveGrid tfoot th:last-child,
-    #ndarLiveGrid tfoot td:last-child {
         background-color: #f8f9fa;
     }
 
@@ -269,6 +280,7 @@
             const hideCalculatedFieldsCheckbox = document.getElementById('ndarHideCalculatedFields');
             const hideCalculatedFieldsStorageKey = 'sam.ndar1.hideCalculatedFields';
 
+            // Display preference only; does not affect save payload or validation.
             const setHideCalculatedFields = (hide) => {
                 grid.classList.toggle('hide-calculated-fields', hide);
                 if (hideCalculatedFieldsCheckbox) {
@@ -284,10 +296,6 @@
                 : null;
             setHideCalculatedFields(savedHideCalculatedFields !== '0');
 
-            hideCalculatedFieldsCheckbox?.addEventListener('change', () => {
-                setHideCalculatedFields(hideCalculatedFieldsCheckbox.checked);
-            });
-
             const fieldAcresById = {
                 @for (var i = 0; i < Model.FieldColumns.Count; i++)
                 {
@@ -295,6 +303,7 @@
                     @:"@field.SprayfieldId": @(field.Acres.HasValue ? field.Acres.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null")@(i < Model.FieldColumns.Count - 1 ? "," : "")
                 }
             };
+            const GALLONS_PER_ACRE_INCH = 27154;
 
             const rowStates = new Map();
             let ndarRefreshTimer = null;
@@ -459,16 +468,14 @@
             };
 
             const collectRowPayload = (tr, options = {}) => {
-                const apps = {};
-                tr.querySelectorAll('input[data-app]').forEach(i => {
-                    const sprayfieldId = i.dataset.sprayfieldId;
-                    const key = i.dataset.app;
-                    if (!apps[sprayfieldId]) {
-                        apps[sprayfieldId] = { sprayfieldId, volumeGallons: null, timeIrrigatedMinutes: null, maximumHourlyLoadingInchesPerAcre: null };
-                    }
-                    if (key === 'dailyLoadingInches') return;
-                    const value = i.value.trim();
-                    apps[sprayfieldId][key] = value === '' ? null : Number(value);
+                const applications = [];
+                tr.querySelectorAll('input.ndar-editable[data-app="timeIrrigatedMinutes"]').forEach(input => {
+                    const sprayfieldId = input.dataset.sprayfieldId;
+                    const raw = input.value.trim();
+                    applications.push({
+                        sprayfieldId,
+                        timeIrrigatedMinutes: raw === '' ? null : Number(raw)
+                    });
                 });
 
                 const numOrNull = selector => {
@@ -484,7 +491,7 @@
                     precipitationIn: numOrNull('input[data-field="precipitationIn"]'),
                     waterDepthFt: numOrNull('input[data-field="waterDepthFt"]'),
                     fiveDayUpsetFt: numOrNull('input[data-field="fiveDayUpsetFt"]'),
-                    applications: Object.values(apps),
+                    applications,
                     keepLockAfterSave: true,
                     skipNdarRefresh: options.skipNdarRefresh ?? true
                 };
@@ -496,7 +503,10 @@
                 precipitationIn: payload.precipitationIn,
                 waterDepthFt: payload.waterDepthFt,
                 fiveDayUpsetFt: payload.fiveDayUpsetFt,
-                applications: payload.applications
+                applications: (payload.applications || []).map(app => ({
+                    sprayfieldId: app.sprayfieldId,
+                    timeIrrigatedMinutes: app.timeIrrigatedMinutes
+                }))
             });
 
             const getLagoonBermHeight = () => {
@@ -530,6 +540,37 @@
                 const belowMinimum = minFreeboard != null && Number.isFinite(freeboard) && freeboard < minFreeboard;
                 freeboardInput.classList.toggle('text-danger', belowMinimum);
                 freeboardInput.classList.toggle('fw-semibold', belowMinimum);
+            };
+
+            const refreshRowCalculatedPreview = (tr) => {
+                Object.keys(fieldAcresById).forEach(sf => {
+                    const timeInput = tr.querySelector(`input[data-app="timeIrrigatedMinutes"][data-sprayfield-id="${sf}"]`);
+                    const maxHourlyInput = tr.querySelector(`input[data-app="maximumHourlyLoadingInchesPerAcre"][data-sprayfield-id="${sf}"]`);
+                    const volumeInput = tr.querySelector(`input[data-app="volumeGallons"][data-sprayfield-id="${sf}"]`);
+                    const dailyInput = tr.querySelector(`input[data-app="dailyLoadingInches"][data-sprayfield-id="${sf}"]`);
+
+                    const timeRaw = timeInput?.value?.trim() ?? '';
+                    const timeMinutes = timeRaw === '' ? null : Number(timeRaw);
+                    const maxHourlyRaw = maxHourlyInput?.value?.trim() ?? '';
+                    const maxHourly = maxHourlyRaw === '' ? null : Number(maxHourlyRaw);
+                    const acres = fieldAcresById[sf];
+                    const timeEmpty = timeRaw === '' || timeMinutes == null || Number.isNaN(timeMinutes) || timeMinutes <= 0;
+
+                    if (!timeEmpty && maxHourly != null && !Number.isNaN(maxHourly)) {
+                        const dailyLoading = maxHourly * (timeMinutes / 60);
+                        let volume = null;
+                        if (acres != null && acres > 0) {
+                            volume = dailyLoading * acres * GALLONS_PER_ACRE_INCH;
+                        }
+                        if (dailyInput) dailyInput.value = dailyLoading;
+                        if (volumeInput) volumeInput.value = volume == null ? '' : Math.round(volume);
+                    } else if (timeEmpty) {
+                        if (volumeInput) volumeInput.value = '';
+                        if (dailyInput) dailyInput.value = '';
+                    }
+                });
+
+                recalcFooterTotals();
             };
 
             const refreshCalculatedFields = (tr, row) => {
@@ -636,7 +677,6 @@
                 setRowStatus(tr, 'saving', 'Saving...');
 
                 const payload = collectRowPayload(tr, options);
-                const sentSignature = payloadSignature(payload);
                 let saveSucceeded = false;
                 try {
                     const resp = await fetch(`@Url.Action("NDAR1UpdateRow", "Reports")?ndar1Id=${ndar1Id}`, {
@@ -658,7 +698,7 @@
 
                     saveSucceeded = true;
                     refreshCalculatedFields(tr, result.row);
-                    state.lastSavedSignature = sentSignature;
+                    state.lastSavedSignature = payloadSignature(collectRowPayload(tr));
                     recalcFooterTotals();
                     setRowStatus(tr, 'saved', 'Saved');
                     scheduleNdarRefresh();
@@ -806,6 +846,9 @@
                         if (inputEl.dataset.field === 'waterDepthFt') {
                             refreshLagoonFreeboard(tr);
                         }
+                        if (inputEl.dataset.app === 'timeIrrigatedMinutes') {
+                            refreshRowCalculatedPreview(tr);
+                        }
                         if (isRowDirty(tr)) {
                             setRowStatus(tr, 'dirty', 'Unsaved changes');
                         }
@@ -819,6 +862,7 @@
                 });
 
                 refreshLagoonFreeboard(tr);
+                refreshRowCalculatedPreview(tr);
             });
 
             document.getElementById('ndarBackToDetails')?.addEventListener('click', async (e) => {
@@ -846,6 +890,15 @@
 
             initializeGridLocks();
             recalcFooterTotals();
+            refreshFloatingTotals();
+
+            hideCalculatedFieldsCheckbox?.addEventListener('change', () => {
+                setHideCalculatedFields(hideCalculatedFieldsCheckbox.checked);
+                if (!hideCalculatedFieldsCheckbox.checked) {
+                    recalcFooterTotals();
+                    refreshFloatingTotals();
+                }
+            });
 
             SAM.gridKeyboardNavigation.init({
                 root: grid,
