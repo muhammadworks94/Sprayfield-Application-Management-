@@ -446,7 +446,7 @@ public class GWMonitEditViewModel
     [Range(0, double.MaxValue)]
     public decimal? Temperature { get; set; }
     
-    [Display(Name = "pH")]
+    [Display(Name = "pH (field)")]
     [Range(0, 14)]
     public decimal? PH { get; set; }
     
