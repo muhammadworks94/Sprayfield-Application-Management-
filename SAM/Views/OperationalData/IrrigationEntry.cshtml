@@ -1,4 +1,5 @@
 @model SAM.ViewModels.OperationalData.MonthlyApplicationsIndexViewModel
+@using SAM.Services.Helpers
 @{
     ViewData["Title"] = "Irrigation Entry";
     var facilities = Model.Facilities;
@@ -252,7 +253,7 @@
                                 </a>
                             </td>
                             <td>@item.SprayfieldName</td>
-                            <td>@(item.DailyLoadingInches?.ToString("F6") ?? "-")</td>
+                            <td>@(MonthlyApplicationCalculationHelper.FormatDailyLoadingInchesDisplay(item.DailyLoadingInches) ?? "-")</td>
                             <td>@item.VolumeGallons.ToString("F2")</td>
                             <td>@item.MaximumHourlyLoadingInchesPerAcre.ToString("F2")</td>
                             <td class="table-actions">
@@ -315,7 +316,7 @@
                                     <dd class="col-7 mb-1">@item.VolumeGallons.ToString("F2") gal</dd>
 
                                     <dt class="col-5">Daily Loading</dt>
-                                    <dd class="col-7 mb-1">@(item.DailyLoadingInches?.ToString("F6") ?? "-") in</dd>
+                                    <dd class="col-7 mb-1">@(MonthlyApplicationCalculationHelper.FormatDailyLoadingInchesDisplay(item.DailyLoadingInches) is string dl ? $"{dl} in" : "-")</dd>
 
                                     <dt class="col-5">Time</dt>
                                     <dd class="col-7 mb-1">@(item.TimeIrrigatedMinutes?.ToString("F2") ?? "-") min</dd>

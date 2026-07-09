@@ -123,6 +123,12 @@
                 return num.toFixed(6).replace(/\.?0+$/, '');
             }
 
+            function formatDailyLoadingDisplay(value) {
+                const num = Number(value);
+                if (Number.isNaN(num)) return '';
+                return num.toFixed(3);
+            }
+
             function recalcCalculatedFields() {
                 const selected = sprayfieldSelect?.value || '';
                 const meta = sprayfieldMeta[selected];
@@ -134,7 +140,7 @@
                 const computedDaily = (!Number.isNaN(hourlyRate) && hasTime) ? (hourlyRate * (timeIrrigated / 60.0)) : NaN;
 
                 if (dailyLoadingInput) {
-                    dailyLoadingInput.value = !Number.isNaN(computedDaily) ? formatDecimal(computedDaily) : '';
+                    dailyLoadingInput.value = !Number.isNaN(computedDaily) ? formatDailyLoadingDisplay(computedDaily) : '';
                 }
 
                 if (maxHourlyInput) {

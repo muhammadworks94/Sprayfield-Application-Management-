@@ -36,4 +36,7 @@ public static class MonthlyApplicationCalculationHelper
 
         return volumeGallons / (acres * GallonsPerAcreInch);
     }
+
+    public static string? FormatDailyLoadingInchesDisplay(decimal? value)
+        => value.HasValue ? Math.Round(value.Value, 3, MidpointRounding.AwayFromZero).ToString("F3") : null;
 }

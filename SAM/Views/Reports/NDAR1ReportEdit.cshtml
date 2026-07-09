@@ -1,4 +1,5 @@
 @model SAM.ViewModels.Reports.NDAR1EditGridViewModel
+@using SAM.Services.Helpers
 @{
     ViewData["Title"] = "Edit NDAR-1 Report";
     var weatherOptions = new[]
@@ -99,7 +100,7 @@
                                 <td class="ndar-col-calculated"><input class="form-control form-control-sm ndar-readonly" data-app="volumeGallons" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.VolumeGallons" disabled title="Calculated field from time irrigated. This value is read-only." /></td>
                                 <td><input class="form-control form-control-sm ndar-editable" data-app="timeIrrigatedMinutes" data-sprayfield-id="@app.SprayfieldId" type="number" step="1" value="@app.TimeIrrigatedMinutes" @(editable ? null : "disabled") /></td>
                                 <td class="ndar-col-calculated"><input class="form-control form-control-sm ndar-readonly" data-app="maximumHourlyLoadingInchesPerAcre" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.MaximumHourlyLoadingInchesPerAcre" disabled title="Static value from Sprayfield Actual Hourly Rate. This value is read-only." /></td>
-                                <td class="ndar-col-calculated"><input class="form-control form-control-sm ndar-readonly" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="number" step="0.01" value="@app.DailyLoadingInches" disabled title="Calculated from time irrigated and actual hourly rate. This value is read-only." /></td>
+                                <td class="ndar-col-calculated"><input class="form-control form-control-sm ndar-readonly" data-app="dailyLoadingInches" data-sprayfield-id="@app.SprayfieldId" type="text" value="@MonthlyApplicationCalculationHelper.FormatDailyLoadingInchesDisplay(app.DailyLoadingInches)" disabled title="Calculated from time irrigated and actual hourly rate. This value is read-only." /></td>
                             }
                             <td class="text-nowrap row-status-cell">
                                 <span class="row-status-icon" data-status="idle" title="Ready">
@@ -304,6 +305,13 @@
                 }
             };
             const GALLONS_PER_ACRE_INCH = 27154;
+
+            const formatDailyLoadingDisplay = (value) => {
+                if (value == null || value === '') return '';
+                const num = Number(value);
+                if (!Number.isFinite(num)) return '';
+                return num.toFixed(3);
+            };
 
             const rowStates = new Map();
             let ndarRefreshTimer = null;
@@ -562,7 +570,7 @@
                         if (acres != null && acres > 0) {
                             volume = dailyLoading * acres * GALLONS_PER_ACRE_INCH;
                         }
-                        if (dailyInput) dailyInput.value = dailyLoading;
+                        if (dailyInput) dailyInput.value = formatDailyLoadingDisplay(dailyLoading);
                         if (volumeInput) volumeInput.value = volume == null ? '' : Math.round(volume);
                     } else if (timeEmpty) {
                         if (volumeInput) volumeInput.value = '';
@@ -581,7 +589,7 @@
                     const d = tr.querySelector(`input[data-app="dailyLoadingInches"][data-sprayfield-id="${sf}"]`);
                     if (v) v.value = app.volumeGallons == null ? '' : Math.round(app.volumeGallons);
                     if (h) h.value = app.maximumHourlyLoadingInchesPerAcre ?? '';
-                    if (d) d.value = app.dailyLoadingInches ?? '';
+                    if (d) d.value = formatDailyLoadingDisplay(app.dailyLoadingInches);
                 });
             };
 
@@ -604,7 +612,7 @@
                     if (v) v.value = app.volumeGallons == null ? '' : Math.round(app.volumeGallons);
                     if (t) t.value = app.timeIrrigatedMinutes == null ? '' : Math.round(app.timeIrrigatedMinutes);
                     if (h) h.value = app.maximumHourlyLoadingInchesPerAcre ?? '';
-                    if (d) d.value = app.dailyLoadingInches ?? '';
+                    if (d) d.value = formatDailyLoadingDisplay(app.dailyLoadingInches);
                 });
             };
 
