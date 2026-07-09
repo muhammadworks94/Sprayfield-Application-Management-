@@ -3,6 +3,7 @@ using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 using SAM.Utilities;
 
 namespace SAM.Services.Implementations;
@@ -192,6 +193,102 @@ public class MonthlyLoadingResolutionService : IMonthlyLoadingResolutionService
                      && x.Month == month
                      && x.LoadingInches > 0m,
                 cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, SprayfieldLoadingMetrics>> GetBatchFieldLoadingMetricsAsync(
+        IReadOnlyList<Sprayfield> sprayfields,
+        DateTime asOfDate,
+        CancellationToken cancellationToken = default)
+    {
+        if (sprayfields.Count == 0)
+        {
+            return new Dictionary<Guid, SprayfieldLoadingMetrics>();
+        }
+
+        var endMonthStart = new DateTime(asOfDate.Year, asOfDate.Month, 1);
+        var windowStart = endMonthStart.AddMonths(-11);
+        var windowEndExclusive = endMonthStart.AddMonths(1);
+        var windowStartKey = windowStart.Year * 12 + windowStart.Month;
+        var windowEndKey = endMonthStart.Year * 12 + endMonthStart.Month;
+
+        var sprayfieldIds = sprayfields.Select(s => s.Id).ToList();
+
+        var applicationAggs = await _context.MonthlyApplications
+            .AsNoTracking()
+            .Where(a => sprayfieldIds.Contains(a.SprayfieldId)
+                        && a.ApplicationDate >= windowStart
+                        && a.ApplicationDate < windowEndExclusive)
+            .GroupBy(a => new { a.SprayfieldId, a.ApplicationDate.Year, a.ApplicationDate.Month })
+            .Select(g => new
+            {
+                g.Key.SprayfieldId,
+                g.Key.Year,
+                g.Key.Month,
+                TotalGallons = g.Sum(a => a.VolumeGallons),
+                HasRealVolume = g.Any(a => a.VolumeGallons > 0m)
+            })
+            .ToListAsync(cancellationToken);
+
+        var applicationLookup = applicationAggs.ToDictionary(
+            x => (x.SprayfieldId, x.Year, x.Month),
+            x => (x.TotalGallons, x.HasRealVolume));
+
+        var baselines = await _context.SprayfieldBaselineMonthlyLoadings
+            .AsNoTracking()
+            .Where(x => sprayfieldIds.Contains(x.SprayfieldId)
+                        && x.Year * 12 + x.Month >= windowStartKey
+                        && x.Year * 12 + x.Month <= windowEndKey)
+            .Select(x => new { x.SprayfieldId, x.Year, x.Month, x.LoadingInches })
+            .ToListAsync(cancellationToken);
+
+        var baselineLookup = baselines.ToDictionary(
+            x => (x.SprayfieldId, x.Year, x.Month),
+            x => x.LoadingInches);
+
+        var results = new Dictionary<Guid, SprayfieldLoadingMetrics>(sprayfields.Count);
+        foreach (var sprayfield in sprayfields)
+        {
+            var acres = SprayfieldReportHelper.GetReportAcres(sprayfield);
+            decimal rollingTotal = 0m;
+            decimal currentMonthInches = 0m;
+
+            for (var i = 0; i < 12; i++)
+            {
+                var monthDate = endMonthStart.AddMonths(-i);
+                var key = (sprayfield.Id, monthDate.Year, monthDate.Month);
+                var monthInches = ResolveEffectiveMonthInches(key, acres, applicationLookup, baselineLookup);
+                rollingTotal += monthInches;
+
+                if (monthDate.Year == asOfDate.Year && monthDate.Month == asOfDate.Month)
+                {
+                    currentMonthInches = monthInches;
+                }
+            }
+
+            results[sprayfield.Id] = new SprayfieldLoadingMetrics
+            {
+                CurrentMonthInches = currentMonthInches,
+                Rolling12MonthInches = rollingTotal
+            };
+        }
+
+        return results;
+    }
+
+    private static decimal ResolveEffectiveMonthInches(
+        (Guid SprayfieldId, int Year, int Month) key,
+        decimal acres,
+        IReadOnlyDictionary<(Guid SprayfieldId, int Year, int Month), (decimal TotalGallons, bool HasRealVolume)> applicationLookup,
+        IReadOnlyDictionary<(Guid SprayfieldId, int Year, int Month), decimal> baselineLookup)
+    {
+        if (applicationLookup.TryGetValue(key, out var application) && application.HasRealVolume)
+        {
+            return acres > 0m
+                ? application.TotalGallons / (acres * MonthlyApplicationCalculationHelper.GallonsPerAcreInch)
+                : 0m;
+        }
+
+        return baselineLookup.TryGetValue(key, out var baseline) ? baseline : 0m;
     }
 
     private static (DateTime MonthStart, DateTime MonthEndExclusive) GetMonthBounds(int year, int month)

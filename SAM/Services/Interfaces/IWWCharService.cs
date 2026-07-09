@@ -1,4 +1,5 @@
 using SAM.Domain.Entities;
+using SAM.Services.Models;
 
 namespace SAM.Services.Interfaces;
 
@@ -15,6 +16,7 @@ public interface IWWCharService
     Task<bool> ExistsAsync(Guid id);
     Task<WWChar?> GetByFacilityMonthYearAsync(Guid facilityId, int month, int year);
     Task<IEnumerable<WWChar>> GetByFacilityIdAsync(Guid facilityId);
+    Task<IReadOnlyList<WWCharDashboardRecord>> GetDashboardRecordsAsync(Guid? companyId = null);
 }
 
 

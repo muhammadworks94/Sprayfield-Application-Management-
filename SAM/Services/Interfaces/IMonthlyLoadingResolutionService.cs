@@ -1,4 +1,7 @@
-﻿namespace SAM.Services.Interfaces;
+﻿using SAM.Domain.Entities;
+using SAM.Services.Models;
+
+namespace SAM.Services.Interfaces;
 
 public interface IMonthlyLoadingResolutionService
 {
@@ -15,4 +18,9 @@ public interface IMonthlyLoadingResolutionService
     Task<decimal> Get365DayRollingInchesAsync(Guid facilityId, Guid sprayfieldId, DateTime asOfDate, Guid? excludeApplicationId = null, CancellationToken cancellationToken = default);
 
     Task<bool> HasEffectiveIrrigationForMonthAsync(Guid facilityId, int year, int month, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, SprayfieldLoadingMetrics>> GetBatchFieldLoadingMetricsAsync(
+        IReadOnlyList<Sprayfield> sprayfields,
+        DateTime asOfDate,
+        CancellationToken cancellationToken = default);
 }

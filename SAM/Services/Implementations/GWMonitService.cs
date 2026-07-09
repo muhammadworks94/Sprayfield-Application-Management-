@@ -4,6 +4,7 @@ using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 
 namespace SAM.Services.Implementations;
 
@@ -218,5 +219,43 @@ public class GWMonitService : IGWMonitService
             .Where(g => g.SampleDate >= startDate && g.SampleDate <= endDate)
             .OrderByDescending(g => g.SampleDate)
             .ToListAsync();
+    }
+
+    public async Task<GroundwaterOverviewData> GetGroundwaterOverviewAsync(Guid? companyId = null)
+    {
+        var query = _context.GWMonits
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(g => g.CompanyId == companyId.Value);
+        }
+
+        var records = await query
+            .Select(g => new
+            {
+                g.MonitoringWellId,
+                g.SampleDate,
+                g.PH,
+                g.Conductivity
+            })
+            .ToListAsync();
+
+        var phValues = records.Where(g => g.PH.HasValue).Select(g => g.PH!.Value).ToList();
+        var conductivityValues = records.Where(g => g.Conductivity.HasValue).Select(g => g.Conductivity!.Value).ToList();
+        var latestPhByWell = records
+            .Where(g => g.PH.HasValue)
+            .GroupBy(g => g.MonitoringWellId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(x => x.SampleDate).First().PH);
+
+        return new GroundwaterOverviewData
+        {
+            AvgPH = phValues.Count > 0 ? (decimal)phValues.Average() : null,
+            AvgConductivity = conductivityValues.Count > 0 ? (decimal)conductivityValues.Average() : null,
+            LatestPhByWellId = latestPhByWell
+        };
     }
 }

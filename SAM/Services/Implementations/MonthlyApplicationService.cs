@@ -47,6 +47,23 @@ public class MonthlyApplicationService : IMonthlyApplicationService
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<MonthlyApplication>> GetByDateRangeAsync(Guid? companyId, DateTime startDate, DateTime endDate)
+    {
+        var query = _context.MonthlyApplications
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(a => a.CompanyId == companyId.Value);
+        }
+
+        return await query
+            .Where(a => a.ApplicationDate >= startDate && a.ApplicationDate <= endDate)
+            .OrderByDescending(a => a.ApplicationDate)
+            .ToListAsync();
+    }
+
     public async Task<MonthlyApplication?> GetByIdAsync(Guid id)
     {
         return await _context.MonthlyApplications

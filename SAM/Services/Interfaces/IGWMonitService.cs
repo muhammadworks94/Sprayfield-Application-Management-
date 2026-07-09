@@ -1,4 +1,5 @@
 using SAM.Domain.Entities;
+using SAM.Services.Models;
 
 namespace SAM.Services.Interfaces;
 
@@ -15,6 +16,7 @@ public interface IGWMonitService
     Task<bool> ExistsAsync(Guid id);
     Task<IEnumerable<GWMonit>> GetByMonitoringWellIdAsync(Guid monitoringWellId);
     Task<IEnumerable<GWMonit>> GetByDateRangeAsync(Guid? companyId, DateTime startDate, DateTime endDate);
+    Task<GroundwaterOverviewData> GetGroundwaterOverviewAsync(Guid? companyId = null);
 }
 
 

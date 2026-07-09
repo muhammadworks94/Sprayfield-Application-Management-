@@ -5,6 +5,7 @@ using SAM.Data;
 using SAM.Domain.Entities;
 using SAM.Infrastructure.Exceptions;
 using SAM.Services.Interfaces;
+using SAM.Services.Models;
 
 namespace SAM.Services.Implementations;
 
@@ -259,6 +260,29 @@ public class WWCharService : IWWCharService
             .Where(w => w.FacilityId == facilityId)
             .OrderByDescending(w => w.Year)
             .ThenByDescending(w => w.Month)
+            .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<WWCharDashboardRecord>> GetDashboardRecordsAsync(Guid? companyId = null)
+    {
+        var query = _context.WWChars
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (companyId.HasValue)
+        {
+            query = query.Where(w => w.CompanyId == companyId.Value);
+        }
+
+        return await query
+            .Select(w => new WWCharDashboardRecord
+            {
+                Month = (int)w.Month,
+                Year = w.Year,
+                BOD5Daily = w.BOD5Daily,
+                TSSDaily = w.TSSDaily,
+                CreatedDate = w.CreatedDate
+            })
             .ToListAsync();
     }
 
