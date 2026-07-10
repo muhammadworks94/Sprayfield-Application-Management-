@@ -1,5 +1,6 @@
 @model SAM.ViewModels.CompanyManagement.NewClientSetupBaselineViewModel
 @using System.Globalization
+@using SAM.Services.Helpers
 
 @{
     ViewData["Title"] = "New Client Setup — Baseline Loading";
@@ -10,7 +11,10 @@
             ? Math.Round(value.Value, 2, MidpointRounding.AwayFromZero).ToString("0.##", CultureInfo.InvariantCulture)
             : string.Empty;
 
-    var endMonthLabel = new DateTime(Model.ThroughYear, Model.ThroughMonth, 1).ToString("MMMM yyyy");
+    var baselineMonths = BaselineWindowHelper.GetHistoricalMonths(Model.ThroughYear, Model.ThroughMonth);
+    var newestBaselineLabel = new DateTime(baselineMonths[0].Year, baselineMonths[0].Month, 1).ToString("MMMM yyyy");
+    var oldestBaselineLabel = new DateTime(baselineMonths[^1].Year, baselineMonths[^1].Month, 1).ToString("MMMM yyyy");
+    var firstReportingLabel = new DateTime(Model.ThroughYear, Model.ThroughMonth, 1).ToString("MMMM yyyy");
 }
 
 @section PageTitleExtra {
@@ -37,7 +41,7 @@
 <div class="alert alert-info">
     <i class="bi bi-info-circle me-1"></i>
     Enter monthly loading (inches/acre) for each field. Values autosave as you type.
-    The window covers 12 months ending at your first SAM reporting month (<strong>@endMonthLabel</strong>).
+    Enter monthly loading for the <strong>11 months before</strong> your first SAM reporting month (<strong>@firstReportingLabel</strong>): <strong>@newestBaselineLabel</strong> through <strong>@oldestBaselineLabel</strong>.
 </div>
 
 <div id="baselineSaveStatus" class="small text-muted mb-2" aria-live="polite"></div>
