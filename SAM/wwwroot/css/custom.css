@@ -897,6 +897,16 @@ i.bi-question-circle {
   isolation: isolate;
 }
 
+.wwchar-daily-table-wrapper.table-responsive {
+  overflow-x: auto;
+  overflow-y: auto !important;
+}
+
+.wwchar-daily-table-wrapper.table-responsive .wwchar-daily-table thead th {
+  z-index: 40;
+  background-color: var(--gray-50, #f8f9fa);
+}
+
 .wwchar-daily-table thead th {
   white-space: nowrap;
   text-align: center;
@@ -908,23 +918,28 @@ i.bi-question-circle {
   box-shadow: inset 0 -1px 0 var(--border-color);
 }
 
-.wwchar-daily-table thead th:first-child {
+.wwchar-daily-table thead th:first-child,
+.wwchar-daily-table thead th.wwchar-day-header {
+  position: sticky;
+  top: 0;
   left: 0;
-  z-index: 45;
+  z-index: 52;
   min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background-color: var(--gray-50, #f8f9fa);
   background-clip: padding-box;
   overflow: hidden;
   box-shadow: inset -1px 0 0 var(--border-color), inset 0 -1px 0 var(--border-color);
 }
 
-.wwchar-daily-table tbody td {
-  vertical-align: middle;
-  padding: 0 !important;
+.wwchar-daily-table-wrapper.table-responsive .wwchar-daily-table thead th.wwchar-day-header {
+  z-index: 52;
 }
 
 .wwchar-daily-table tbody td:first-child,
-.wwchar-daily-table tbody th:first-child {
+.wwchar-daily-table tbody th:first-child,
+.wwchar-daily-table tbody th.wwchar-day-cell {
   position: sticky;
   top: unset !important;
   bottom: unset !important;
@@ -937,6 +952,29 @@ i.bi-question-circle {
   min-width: 72px;
   padding: 0.6rem 0.5rem !important;
   box-shadow: inset -1px 0 0 var(--border-color);
+}
+
+.wwchar-daily-table tbody td {
+  vertical-align: middle;
+  padding: 0 !important;
+}
+
+.wwchar-daily-table tbody tr:hover th.wwchar-day-cell,
+.wwchar-daily-table tbody tr:focus-within th.wwchar-day-cell {
+  background-color: var(--white, #ffffff);
+}
+
+.wwchar-daily-table.table-striped > tbody > tr:nth-of-type(odd) > th.wwchar-day-cell {
+  background-color: var(--bs-table-striped-bg, rgba(0, 0, 0, 0.05));
+}
+
+.wwchar-daily-table.table-striped > tbody > tr:hover > th.wwchar-day-cell,
+.wwchar-daily-table.table-striped > tbody > tr:focus-within > th.wwchar-day-cell {
+  background-color: var(--white, #ffffff);
+}
+
+.wwchar-daily-table-wrapper.table-responsive .wwchar-daily-table thead th.wwchar-row-status-header {
+  z-index: 51;
 }
 
 .wwchar-daily-table .form-control-sm,
@@ -964,10 +1002,144 @@ i.bi-question-circle {
   background-color: var(--white);
 }
 
+.wwchar-daily-table input.wwchar-readonly:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.wwchar-daily-table tbody tr:focus-within input.wwchar-readonly:disabled {
+  background-color: #e9ecef;
+}
+
+.wwchar-daily-table td.wwchar-readonly-display {
+  background-color: #e9ecef;
+  color: #6c757d;
+  text-align: right;
+}
+
+.wwchar-daily-table thead th.wwchar-row-status-header {
+  position: sticky;
+  top: 0;
+  right: 0;
+  z-index: 51;
+  text-align: center;
+  vertical-align: middle;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
+  background-color: var(--gray-50, #f8f9fa);
+  background-clip: padding-box;
+  overflow: hidden;
+  padding: 0.6rem 0.5rem !important;
+  box-shadow: inset 1px 0 0 var(--border-color), inset 0 -1px 0 var(--border-color);
+}
+
+.wwchar-daily-table tbody td.wwchar-row-status-cell {
+  position: sticky;
+  top: unset !important;
+  bottom: unset !important;
+  right: 0;
+  z-index: 1;
+  text-align: center;
+  vertical-align: middle;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
+  background-color: var(--white, #ffffff);
+  background-clip: padding-box;
+  box-shadow: inset 1px 0 0 var(--border-color);
+  padding: 0.35rem 0.25rem !important;
+}
+
+.wwchar-daily-table tbody tr:hover td.wwchar-row-status-cell,
+.wwchar-daily-table tbody tr:focus-within td.wwchar-row-status-cell {
+  background-color: var(--white, #ffffff);
+}
+
+.wwchar-daily-table .row-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
 .wwchar-daily-table .client-setup-cell-hint {
   font-size: 0.65rem;
   padding: 0.1rem 0.35rem 0.25rem;
   text-align: center;
+}
+
+/* RDL (<) marker column — WWChar PCS sub-column layout */
+.wwchar-daily-table .sam-rdl-column-layout {
+  display: flex;
+  align-items: stretch;
+  min-height: 100%;
+}
+
+.wwchar-daily-table .sam-rdl-column-layout > .sam-rdl-header,
+.wwchar-daily-table .sam-rdl-column-layout > .sam-rdl-column {
+  flex: 0 0 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  padding-left: 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.wwchar-daily-table .sam-rdl-column-layout > .sam-rdl-header {
+  align-items: flex-start;
+  padding-top: 0.2rem;
+}
+
+.wwchar-daily-table .sam-rdl-marker {
+  color: var(--bs-primary, #0d6efd);
+  cursor: help;
+  line-height: 1;
+}
+
+.wwchar-daily-table .sam-rdl-column-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wwchar-daily-table .sam-rdl-column-main .form-control-sm {
+  width: 100%;
+}
+
+.wwchar-daily-table .sam-rdl-column-main.text-end {
+  padding: 0.5rem 0.55rem;
+  text-align: right;
+}
+
+/* GW Monit standalone RDL column */
+.table th.sam-rdl-column-header,
+.table td.sam-rdl-column {
+  width: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
+  text-align: center;
+  vertical-align: middle;
+  padding: 0.5rem 0.35rem !important;
+  white-space: nowrap;
+}
+
+.table th.sam-rdl-column-header {
+  line-height: 1.2;
+}
+
+.table td.sam-rdl-column .form-check-input {
+  float: none;
+  margin: 0;
+}
+
+.table .sam-rdl-marker {
+  color: var(--bs-primary, #0d6efd);
+  cursor: help;
+  line-height: 1;
 }
 
 /* Client Setup baseline grid overrides */

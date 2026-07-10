@@ -37,6 +37,12 @@ public static class LagoonFreeboardCalculationHelper
             return;
         }
 
+        if (!lagoonBermHeightFeet.HasValue)
+        {
+            setStorageFt(existingStorageFt);
+            return;
+        }
+
         setStorageFt(CalculateFreeboardFeet(lagoonBermHeightFeet, waterDepthFt));
     }
 

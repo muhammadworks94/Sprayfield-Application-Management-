@@ -31,11 +31,12 @@
                     <th>Sample Type</th>
                     <th>Months</th>
                     <th>Daily Max</th>
-                    <th class="text-center align-middle text-nowrap" style="min-width: 2.5rem;">
-                        <span class="d-inline-flex align-items-center justify-content-center gap-1">
-                            &lt;
-                            <i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip" title="@ReportingDetectionLimitHelper.TooltipText"></i>
-                        </span>
+                    <th class="sam-rdl-column-header text-nowrap">
+                        <span class="sam-rdl-marker"
+                              data-bs-toggle="tooltip"
+                              title="@ReportingDetectionLimitHelper.TooltipText"
+                              tabindex="0">&lt;</span>
+                        <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" title="@ReportingDetectionLimitHelper.TooltipText"></i>
                     </th>
                     <th>Entry Value</th>
                 </tr>
@@ -58,7 +59,7 @@
                     <td>@Model.TemplateParameters[i].SampleType</td>
                     <td>@(string.IsNullOrWhiteSpace(Model.TemplateParameters[i].ScheduledMonthsCsv) ? "-" : Model.TemplateParameters[i].ScheduledMonthsCsv)</td>
                     <td>@(Model.TemplateParameters[i].DailyMaximumLimit?.ToString("0.######") ?? "-")</td>
-                    <td class="text-center align-middle">
+                    <td class="sam-rdl-column">
                         <input type="hidden" name="TemplateParameters[@i].IsReportingDetectionLimit" value="false" />
                         <input name="TemplateParameters[@i].IsReportingDetectionLimit" type="checkbox" value="true" class="form-check-input" @(Model.TemplateParameters[i].IsReportingDetectionLimit ? "checked" : null) />
                     </td>

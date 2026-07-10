@@ -138,6 +138,8 @@ public class WWCharViewModel
 
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
     public List<WWCharTestResultAttachmentViewModel> TestResultAttachments { get; set; } = new();
+    public decimal? LagoonBermHeightFeet { get; set; }
+    public decimal? PermittedMinimumFreeboardFeet { get; set; }
 }
 
 public class WWCharCreateViewModel
@@ -402,6 +404,8 @@ public class WWCharEditViewModel
 
     public List<WWCharTemplateParameterInputViewModel> TemplateParameters { get; set; } = new();
     public List<WWCharTestResultAttachmentViewModel> TestResultAttachments { get; set; } = new();
+    public decimal? LagoonBermHeightFeet { get; set; }
+    public decimal? PermittedMinimumFreeboardFeet { get; set; }
 }
 
 public class WWCharTemplateParameterInputViewModel
@@ -475,6 +479,33 @@ public class WWCharsIndexViewModel
     public WWCharFilterViewModel Filter { get; set; } = new();
     public WWCharSortViewModel Sort { get; set; } = new();
     public PagedResult<WWCharViewModel> WWChars { get; set; } = new();
+}
+
+public class WWCharDailyTemplateCellSaveRequest
+{
+    public Guid FacilityPermitTemplateParameterId { get; set; }
+    public decimal? Value { get; set; }
+    public bool IsReportingDetectionLimit { get; set; }
+}
+
+public class WWCharDailyRowSaveRequest
+{
+    public Guid WwCharId { get; set; }
+    public int DayNo { get; set; }
+    public string? OrcOnSite { get; set; }
+    public decimal? WaterDepthFt { get; set; }
+    public string? OrcArrivalTime { get; set; }
+    public decimal? OrcTimeOnSiteHours { get; set; }
+    public List<WWCharDailyTemplateCellSaveRequest> TemplateCells { get; set; } = new();
+}
+
+public class WWCharDailyRowSaveResponse
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public int DayNo { get; set; }
+    public decimal? StorageLagoonFreeboardFt { get; set; }
+    public List<string>? ValidationErrors { get; set; }
 }
 
 

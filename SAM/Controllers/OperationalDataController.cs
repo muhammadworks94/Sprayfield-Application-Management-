@@ -1386,6 +1386,10 @@ namespace SAM.Controllers;
         viewModel.ORCArrivalTime = canonicalDetailsValues.ORCArrivalTime;
         viewModel.ORCTimeOnSiteHours = canonicalDetailsValues.ORCTimeOnSiteHours;
 
+        var lagoonDetailsContext = await GetLagoonContextForFacilityAsync(wwChar.FacilityId);
+        viewModel.LagoonBermHeightFeet = lagoonDetailsContext.LagoonBermHeightFeet;
+        viewModel.PermittedMinimumFreeboardFeet = lagoonDetailsContext.PermittedMinimumFreeboardFeet;
+
         viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(
             wwChar.CompanyId,
             wwChar.FacilityId,
@@ -1565,6 +1569,7 @@ namespace SAM.Controllers;
         }
 
         await ValidateWwCharLabOptionsAsync(viewModel.LabOptionId, viewModel.SecondaryLabOptionId, viewModel.CompanyId);
+        await ValidateWwCharLagoonWaterDepthAsync(viewModel.FacilityId, viewModel.LagoonWaterDepthFt);
 
         if (!ModelState.IsValid)
         {
@@ -1738,6 +1743,10 @@ namespace SAM.Controllers;
         viewModel.ORCArrivalTime = canonicalEditValues.ORCArrivalTime;
         viewModel.ORCTimeOnSiteHours = canonicalEditValues.ORCTimeOnSiteHours;
 
+        var lagoonEditContext = await GetLagoonContextForFacilityAsync(wwChar.FacilityId);
+        viewModel.LagoonBermHeightFeet = lagoonEditContext.LagoonBermHeightFeet;
+        viewModel.PermittedMinimumFreeboardFeet = lagoonEditContext.PermittedMinimumFreeboardFeet;
+
         // Ensure arrays are initialized with 31 entries
         EnsureDailyArraysInitialized(viewModel);
         viewModel.TemplateParameters = await BuildWwCharTemplateInputsAsync(
@@ -1848,6 +1857,93 @@ namespace SAM.Controllers;
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RequireTechnician)]
+    public async Task<IActionResult> SaveWWCharDailyRow([FromBody] WWCharDailyRowSaveRequest request)
+    {
+        if (request == null || request.WwCharId == Guid.Empty || request.DayNo < 1 || request.DayNo > 31)
+        {
+            return BadRequest(new WWCharDailyRowSaveResponse
+            {
+                Success = false,
+                Message = "Invalid request.",
+                DayNo = request?.DayNo ?? 0
+            });
+        }
+
+        var wwChar = await _wwCharService.GetByIdAsync(request.WwCharId);
+        if (wwChar == null)
+        {
+            return NotFound(new WWCharDailyRowSaveResponse
+            {
+                Success = false,
+                Message = "Wastewater testing record not found.",
+                DayNo = request.DayNo
+            });
+        }
+
+        await EnsureCompanyAccessAsync(wwChar.CompanyId);
+
+        if (request.WaterDepthFt.HasValue)
+        {
+            var (bermHeight, _) = await GetLagoonContextForFacilityAsync(wwChar.FacilityId);
+            if (!bermHeight.HasValue)
+            {
+                return BadRequest(new WWCharDailyRowSaveResponse
+                {
+                    Success = false,
+                    Message = LagoonFreeboardCalculationHelper.MissingBermHeightMessage,
+                    DayNo = request.DayNo,
+                    ValidationErrors = new List<string> { LagoonFreeboardCalculationHelper.MissingBermHeightMessage }
+                });
+            }
+        }
+
+        ORCOnSiteEnum? orcOnSite = null;
+        if (!string.IsNullOrWhiteSpace(request.OrcOnSite)
+            && Enum.TryParse<ORCOnSiteEnum>(request.OrcOnSite, out var parsedOrc))
+        {
+            orcOnSite = parsedOrc;
+        }
+
+        var dayIndex = request.DayNo - 1;
+        var orcOnSiteList = Enumerable.Repeat<ORCOnSiteEnum?>(null, 31).ToList();
+        var lagoonWaterDepthList = Enumerable.Repeat<decimal?>(null, 31).ToList();
+        var orcArrivalTimeList = Enumerable.Repeat<string?>(null, 31).ToList();
+        var orcTimeOnSiteList = Enumerable.Repeat<decimal?>(null, 31).ToList();
+        orcOnSiteList[dayIndex] = orcOnSite;
+        lagoonWaterDepthList[dayIndex] = request.WaterDepthFt;
+        orcArrivalTimeList[dayIndex] = request.OrcArrivalTime;
+        orcTimeOnSiteList[dayIndex] = request.OrcTimeOnSiteHours;
+
+        var actor = User?.Identity?.Name ?? "System";
+        await UpsertCanonicalOperatorLogDailyValuesAsync(
+            wwChar.CompanyId,
+            wwChar.FacilityId,
+            wwChar.Year,
+            (int)wwChar.Month,
+            orcOnSiteList,
+            lagoonWaterDepthList,
+            orcArrivalTimeList,
+            orcTimeOnSiteList,
+            actor);
+
+        await UpsertWwCharTemplateDayAsync(wwChar, request.DayNo, request.TemplateCells, actor);
+
+        var canonicalValues = await LoadCanonicalOperatorLogDailyValuesAsync(wwChar.FacilityId, wwChar.Year, (int)wwChar.Month);
+        var freeboard = canonicalValues.StorageLagoonFreeboardFt.Count > dayIndex
+            ? canonicalValues.StorageLagoonFreeboardFt[dayIndex]
+            : null;
+
+        return Json(new WWCharDailyRowSaveResponse
+        {
+            Success = true,
+            DayNo = request.DayNo,
+            StorageLagoonFreeboardFt = freeboard
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RequireTechnician)]
     public async Task<IActionResult> WWCharEdit(WWCharEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
@@ -1873,6 +1969,7 @@ namespace SAM.Controllers;
         EnsureTemplateArraysInitialized(viewModel.TemplateParameters);
 
         await ValidateWwCharLabOptionsAsync(viewModel.LabOptionId, viewModel.SecondaryLabOptionId, viewModel.CompanyId);
+        await ValidateWwCharLagoonWaterDepthAsync(viewModel.FacilityId, viewModel.LagoonWaterDepthFt);
 
         if (viewModel.TestResultFile != null && !viewModel.TestResultDate.HasValue)
         {
@@ -2513,6 +2610,23 @@ namespace SAM.Controllers;
         {
             ModelState.AddModelError("SecondaryLabOptionId", "Selected secondary lab option is invalid or inactive.");
         }
+    }
+
+    private async Task<bool> ValidateWwCharLagoonWaterDepthAsync(Guid facilityId, List<decimal?>? lagoonWaterDepthFt)
+    {
+        if (lagoonWaterDepthFt == null || !lagoonWaterDepthFt.Any(d => d.HasValue))
+        {
+            return true;
+        }
+
+        var (bermHeight, _) = await GetLagoonContextForFacilityAsync(facilityId);
+        if (bermHeight.HasValue)
+        {
+            return true;
+        }
+
+        ModelState.AddModelError(nameof(WWCharEditViewModel.LagoonWaterDepthFt), LagoonFreeboardCalculationHelper.MissingBermHeightMessage);
+        return false;
     }
 
     private async Task<GW59ReportViewModel> BuildGW59ReportAsync(Guid gwMonitId)
@@ -3534,6 +3648,27 @@ namespace SAM.Controllers;
                 : null;
         }
 
+        var (lagoonBermHeightFeet, _) = await GetLagoonContextForFacilityAsync(facilityId);
+        if (lagoonBermHeightFeet.HasValue)
+        {
+            for (var i = 0; i < 31; i++)
+            {
+                if (!waterDepth[i].HasValue && storage[i].HasValue)
+                {
+                    var derivedDepth = lagoonBermHeightFeet.Value - storage[i]!.Value;
+                    if (derivedDepth >= 0m)
+                    {
+                        waterDepth[i] = Math.Round(derivedDepth, 2);
+                    }
+                }
+
+                if (waterDepth[i].HasValue)
+                {
+                    storage[i] = LagoonFreeboardCalculationHelper.CalculateFreeboardFeet(lagoonBermHeightFeet, waterDepth[i]);
+                }
+            }
+        }
+
         return (orc, waterDepth, storage, arrivalTime, timeOnSiteHours);
     }
 
@@ -4122,6 +4257,64 @@ namespace SAM.Controllers;
                     IsReportingDetectionLimit = isRdl,
                     CreatedBy = User?.Identity?.Name ?? "System"
                 });
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task UpsertWwCharTemplateDayAsync(
+        WWChar wwChar,
+        int dayNo,
+        List<WWCharDailyTemplateCellSaveRequest>? templateCells,
+        string actor)
+    {
+        if (templateCells == null || templateCells.Count == 0)
+        {
+            return;
+        }
+
+        var parameterIds = templateCells
+            .Select(c => c.FacilityPermitTemplateParameterId)
+            .Distinct()
+            .ToList();
+        var existing = await _context.WWCharTemplateValues
+            .Where(x => x.WWCharId == wwChar.Id
+                && x.DayNo == dayNo
+                && parameterIds.Contains(x.FacilityPermitTemplateParameterId))
+            .ToListAsync();
+
+        foreach (var cell in templateCells)
+        {
+            var row = existing.FirstOrDefault(x => x.FacilityPermitTemplateParameterId == cell.FacilityPermitTemplateParameterId);
+            if (!cell.Value.HasValue)
+            {
+                if (row != null)
+                {
+                    _context.WWCharTemplateValues.Remove(row);
+                }
+
+                continue;
+            }
+
+            if (row == null)
+            {
+                _context.WWCharTemplateValues.Add(new WWCharTemplateValue
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyId = wwChar.CompanyId,
+                    WWCharId = wwChar.Id,
+                    FacilityPermitTemplateParameterId = cell.FacilityPermitTemplateParameterId,
+                    DayNo = dayNo,
+                    NumericValue = cell.Value,
+                    IsReportingDetectionLimit = cell.IsReportingDetectionLimit,
+                    CreatedBy = actor
+                });
+            }
+            else
+            {
+                row.NumericValue = cell.Value;
+                row.IsReportingDetectionLimit = cell.IsReportingDetectionLimit;
             }
         }
 

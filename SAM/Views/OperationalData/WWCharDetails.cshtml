@@ -180,7 +180,7 @@
                 <table class="table table-sm table-bordered table-striped wwchar-daily-table">
                     <thead>
                         <tr>
-                            <th>Day</th>
+                            <th class="wwchar-day-header">Day</th>
                             <th>ORC On Site</th>
                             <th>Water Depth (ft)</th>
                             <th>Storage Lagoon Freeboard (ft)</th>
@@ -190,21 +190,26 @@
                             {
                                 var isFlowPcs = NdmrFlowFormatting.IsFlowPcs(Model.TemplateParameters[p].PcsCode);
                                 <th>
-                                    @Model.TemplateParameters[p].PcsCode
-                                    <div class="small fw-normal">
-                                        @Model.TemplateParameters[p].ParameterName (@Model.TemplateParameters[p].Units)
-                                        <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[p].Notes) ? "No notes." : Model.TemplateParameters[p].Notes)"></i>
+                                    <div class="sam-rdl-column-layout">
                                         @if (!isFlowPcs)
                                         {
-                                            <span class="text-primary ms-1"
-                                                  data-bs-toggle="tooltip"
-                                                  title="@ReportingDetectionLimitHelper.TooltipText"
-                                                  style="cursor: help;"
-                                                  tabindex="0">&lt;</span>
+                                            <div class="sam-rdl-header">
+                                                <span class="sam-rdl-marker"
+                                                      data-bs-toggle="tooltip"
+                                                      title="@ReportingDetectionLimitHelper.TooltipText"
+                                                      tabindex="0">&lt;</span>
+                                            </div>
                                         }
-                                    </div>
-                                    <div class="small text-muted">
-                                        @Model.TemplateParameters[p].MeasurementFrequency | @Model.TemplateParameters[p].SampleType | Max: @(Model.TemplateParameters[p].DailyMaximumLimit?.ToString() ?? "-")
+                                        <div class="sam-rdl-column-main">
+                                            @Model.TemplateParameters[p].PcsCode
+                                            <div class="small fw-normal">
+                                                @Model.TemplateParameters[p].ParameterName (@Model.TemplateParameters[p].Units)
+                                                <i class="bi bi-info-circle ms-1 text-muted" data-bs-toggle="tooltip" title="@(string.IsNullOrWhiteSpace(Model.TemplateParameters[p].Notes) ? "No notes." : Model.TemplateParameters[p].Notes)"></i>
+                                            </div>
+                                            <div class="small text-muted">
+                                                @Model.TemplateParameters[p].MeasurementFrequency | @Model.TemplateParameters[p].SampleType | Max: @(Model.TemplateParameters[p].DailyMaximumLimit?.ToString() ?? "-")
+                                            </div>
+                                        </div>
                                     </div>
                                 </th>
                             }
@@ -213,28 +218,40 @@
                     <tbody>
                         @for (int d = 0; d < 31; d++)
                         {
+                            var belowMinimum = Model.StorageLagoonFreeboardFt != null
+                                && d < Model.StorageLagoonFreeboardFt.Count
+                                && Model.StorageLagoonFreeboardFt[d].HasValue
+                                && Model.PermittedMinimumFreeboardFeet.HasValue
+                                && Model.StorageLagoonFreeboardFt[d]!.Value < Model.PermittedMinimumFreeboardFeet.Value;
                             <tr>
-                                <th scope="row"><strong>@(d + 1)</strong></th>
+                                <th scope="row" class="wwchar-day-cell"><strong>@(d + 1)</strong></th>
                                 <td>@(Model.ORCOnSite != null && d < Model.ORCOnSite.Count && Model.ORCOnSite[d].HasValue ? Model.ORCOnSite[d].Value.ToString() : "-")</td>
                                 <td>@(Model.LagoonWaterDepthFt != null && d < Model.LagoonWaterDepthFt.Count && Model.LagoonWaterDepthFt[d].HasValue ? Model.LagoonWaterDepthFt[d].Value.ToString("F2") : "-")</td>
-                                <td>@(Model.StorageLagoonFreeboardFt != null && d < Model.StorageLagoonFreeboardFt.Count && Model.StorageLagoonFreeboardFt[d].HasValue ? Model.StorageLagoonFreeboardFt[d].Value.ToString("F2") : "-")</td>
+                                <td class="wwchar-readonly-display @(belowMinimum ? "text-danger fw-semibold" : string.Empty)">@(Model.StorageLagoonFreeboardFt != null && d < Model.StorageLagoonFreeboardFt.Count && Model.StorageLagoonFreeboardFt[d].HasValue ? Model.StorageLagoonFreeboardFt[d].Value.ToString("F2") : "-")</td>
                                 <td>@(Model.ORCArrivalTime != null && d < Model.ORCArrivalTime.Count && !string.IsNullOrWhiteSpace(Model.ORCArrivalTime[d]) ? Model.ORCArrivalTime[d] : "-")</td>
                                 <td>@(Model.ORCTimeOnSiteHours != null && d < Model.ORCTimeOnSiteHours.Count && Model.ORCTimeOnSiteHours[d].HasValue ? Model.ORCTimeOnSiteHours[d].Value.ToString("F2") : "-")</td>
                                 @for (int p = 0; p < Model.TemplateParameters.Count; p++)
                                 {
+                                    var isFlowPcs = NdmrFlowFormatting.IsFlowPcs(Model.TemplateParameters[p].PcsCode);
+                                    var dailyValue = Model.TemplateParameters[p].DailyValues != null
+                                        && d < Model.TemplateParameters[p].DailyValues.Count
+                                        ? Model.TemplateParameters[p].DailyValues[d]
+                                        : null;
+                                    var isRdl = Model.TemplateParameters[p].DailyIsReportingDetectionLimit != null
+                                        && d < Model.TemplateParameters[p].DailyIsReportingDetectionLimit.Count
+                                        && Model.TemplateParameters[p].DailyIsReportingDetectionLimit[d];
                                     <td>
-                                        @{
-                                            var dailyValue = Model.TemplateParameters[p].DailyValues != null
-                                                && d < Model.TemplateParameters[p].DailyValues.Count
-                                                ? Model.TemplateParameters[p].DailyValues[d]
-                                                : null;
-                                            var isRdl = Model.TemplateParameters[p].DailyIsReportingDetectionLimit != null
-                                                && d < Model.TemplateParameters[p].DailyIsReportingDetectionLimit.Count
-                                                && Model.TemplateParameters[p].DailyIsReportingDetectionLimit[d];
-                                        }
-                                        @(dailyValue.HasValue
-                                            ? ReportingDetectionLimitHelper.FormatDisplayValue(dailyValue.Value, isRdl, "F6")
-                                            : "-")
+                                        <div class="sam-rdl-column-layout">
+                                            @if (!isFlowPcs)
+                                            {
+                                                <div class="sam-rdl-column" aria-hidden="true"></div>
+                                            }
+                                            <div class="sam-rdl-column-main text-end">
+                                                @(dailyValue.HasValue
+                                                    ? ReportingDetectionLimitHelper.FormatDisplayValue(dailyValue.Value, isRdl, "F6")
+                                                    : "-")
+                                            </div>
+                                        </div>
                                     </td>
                                 }
                             </tr>

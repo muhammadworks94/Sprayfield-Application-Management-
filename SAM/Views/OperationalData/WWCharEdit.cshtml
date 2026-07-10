@@ -121,6 +121,8 @@
                     ORCOnSite = Model.ORCOnSite,
                     LagoonWaterDepthFt = Model.LagoonWaterDepthFt,
                     StorageLagoonFreeboardFt = Model.StorageLagoonFreeboardFt,
+                    LagoonBermHeightFeet = Model.LagoonBermHeightFeet,
+                    PermittedMinimumFreeboardFeet = Model.PermittedMinimumFreeboardFeet,
                     ORCArrivalTime = Model.ORCArrivalTime,
                     ORCTimeOnSiteHours = Model.ORCTimeOnSiteHours
                 })
@@ -489,6 +491,10 @@
                             if (facilityPermitIdInput) {
                                 facilityPermitIdInput.value = permitId;
                             }
+
+                            if (window.SAM && typeof window.SAM.initWwCharRowAutosave === 'function') {
+                                window.SAM.initWwCharRowAutosave(sectionRoot);
+                            }
                         }
                     })
                     .catch(function () {
@@ -514,6 +520,306 @@
                 cellSelector: '.wwchar-daily-table tbody input:not(:disabled), .wwchar-daily-table tbody select:not(:disabled)',
                 rowSelector: '.wwchar-daily-table tbody tr'
             });
+
+            var antiForgeryInput = document.querySelector('#wwCharEditForm input[name="__RequestVerificationToken"]');
+            var antiForgery = antiForgeryInput ? antiForgeryInput.value : '';
+            var saveRowUrl = '@Url.Action("SaveWWCharDailyRow", "OperationalData")';
+            var wwCharAutosaveController = null;
+
+            window.SAM = window.SAM || {};
+            window.SAM.initWwCharRowAutosave = function (section) {
+                if (!section || section.dataset.autosaveEnabled !== 'true') return;
+
+                if (wwCharAutosaveController && typeof wwCharAutosaveController.dispose === 'function') {
+                    wwCharAutosaveController.dispose();
+                }
+
+                const wwCharId = section.dataset.wwcharId;
+                if (!wwCharId) return;
+
+                const ROW_SAVE_DEBOUNCE_MS = 400;
+                const rowStates = new Map();
+                const globalStatus = section.querySelector('#wwcharAutosaveStatus');
+                let isLeavingPage = false;
+
+                const setGlobalStatus = (text, iconClass) => {
+                    if (!globalStatus) return;
+                    globalStatus.innerHTML = '<i class="bi ' + iconClass + ' me-1"></i> ' + text;
+                };
+
+                const setRowStatus = (tr, status, title) => {
+                    const icon = tr.querySelector('.row-status-icon');
+                    if (!icon) return;
+                    icon.dataset.status = status;
+                    icon.title = title || '';
+                    const icons = {
+                        idle: '<i class="bi bi-check-circle text-muted"></i>',
+                        dirty: '<i class="bi bi-circle-fill text-warning" style="font-size:0.5rem;"></i>',
+                        saving: '<span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>',
+                        saved: '<i class="bi bi-check-circle text-success"></i>',
+                        error: '<i class="bi bi-exclamation-circle text-danger"></i>'
+                    };
+                    icon.innerHTML = icons[status] || icons.idle;
+                };
+
+                const collectRowPayload = (tr) => {
+                    const dayNo = Number(tr.dataset.day);
+                    const orcSelect = tr.querySelector('select[name^="ORCOnSite"]');
+                    const waterDepthInput = tr.querySelector('.wwchar-water-depth-input');
+                    const arrivalInput = tr.querySelector('input[name^="ORCArrivalTime"]');
+                    const timeOnSiteInput = tr.querySelector('input[name^="ORCTimeOnSiteHours"]');
+                    const templateCells = [];
+
+                    tr.querySelectorAll('input[data-template-key]').forEach(function (input) {
+                        const parts = (input.dataset.templateKey || '').split(':');
+                        if (parts.length !== 2) return;
+                        const parameterId = parts[0];
+                        const rdlCheckbox = input.closest('td')?.querySelector('input[type="checkbox"][name*="DailyIsReportingDetectionLimit"]');
+                        const raw = input.value.trim();
+                        templateCells.push({
+                            facilityPermitTemplateParameterId: parameterId,
+                            value: raw === '' ? null : Number(raw),
+                            isReportingDetectionLimit: !!(rdlCheckbox && rdlCheckbox.checked)
+                        });
+                    });
+
+                    const numOrNull = function (input) {
+                        if (!input) return null;
+                        const raw = input.value.trim();
+                        return raw === '' ? null : Number(raw);
+                    };
+
+                    return {
+                        wwCharId: wwCharId,
+                        dayNo: dayNo,
+                        orcOnSite: orcSelect && orcSelect.value ? orcSelect.value : null,
+                        waterDepthFt: numOrNull(waterDepthInput),
+                        orcArrivalTime: arrivalInput && arrivalInput.value ? arrivalInput.value : null,
+                        orcTimeOnSiteHours: numOrNull(timeOnSiteInput),
+                        templateCells: templateCells
+                    };
+                };
+
+                const payloadSignature = function (payload) {
+                    return JSON.stringify(payload);
+                };
+
+                const initializeRowStates = function () {
+                    rowStates.clear();
+                    section.querySelectorAll('tbody tr[data-day]').forEach(function (tr) {
+                        const dayNo = Number(tr.dataset.day);
+                        rowStates.set(dayNo, {
+                            lastSavedSignature: payloadSignature(collectRowPayload(tr)),
+                            saveInFlight: false,
+                            rescheduleAfterFlight: false,
+                            debounceTimer: null
+                        });
+                    });
+                };
+
+                const getRowState = function (tr) {
+                    const dayNo = Number(tr.dataset.day);
+                    return rowStates.get(dayNo);
+                };
+
+                const isRowDirty = function (tr) {
+                    const state = getRowState(tr);
+                    if (!state) return false;
+                    return payloadSignature(collectRowPayload(tr)) !== state.lastSavedSignature;
+                };
+
+                const hasDirtyRows = function () {
+                    return Array.from(section.querySelectorAll('tbody tr[data-day]')).some(function (tr) {
+                        const state = getRowState(tr);
+                        return (state && isRowDirty(tr)) || (state && (state.debounceTimer || state.saveInFlight));
+                    });
+                };
+
+                const updateGlobalStatus = function () {
+                    if (!globalStatus) return;
+                    if (Array.from(section.querySelectorAll('tbody tr[data-day]')).some(function (tr) {
+                        const state = getRowState(tr);
+                        return state && state.saveInFlight;
+                    })) {
+                        setGlobalStatus('Saving...', 'bi-arrow-repeat');
+                        return;
+                    }
+                    if (hasDirtyRows()) {
+                        setGlobalStatus('Unsaved changes', 'bi-pencil text-warning');
+                        return;
+                    }
+                    setGlobalStatus('All changes saved', 'bi-check-circle text-success');
+                };
+
+                const refreshRowFreeboardFromServer = function (tr, freeboardValue) {
+                    const freeboardDisplay = tr.querySelector('.wwchar-freeboard-display');
+                    if (!freeboardDisplay) return;
+                    const formatted = freeboardValue == null ? '' : Number(freeboardValue).toFixed(2);
+                    freeboardDisplay.value = formatted;
+                    freeboardDisplay.dataset.initialFreeboard = formatted;
+                    const minFreeboardRaw = section.dataset.minFreeboard;
+                    const minFreeboard = minFreeboardRaw === '' ? null : Number(minFreeboardRaw);
+                    if (formatted !== '' && minFreeboard != null) {
+                        const belowMinimum = Number(formatted) < minFreeboard;
+                        freeboardDisplay.classList.toggle('text-danger', belowMinimum);
+                        freeboardDisplay.classList.toggle('fw-semibold', belowMinimum);
+                    }
+                };
+
+                const saveRow = async function (tr, options) {
+                    options = options || {};
+                    const state = getRowState(tr);
+                    if (!state) return;
+                    if (!isRowDirty(tr) && !options.force) {
+                        if (state.debounceTimer) {
+                            clearTimeout(state.debounceTimer);
+                            state.debounceTimer = null;
+                        }
+                        if (!state.saveInFlight && !isRowDirty(tr)) {
+                            setRowStatus(tr, 'idle', 'Ready');
+                        }
+                        updateGlobalStatus();
+                        return;
+                    }
+
+                    if (state.saveInFlight) {
+                        state.rescheduleAfterFlight = true;
+                        return;
+                    }
+
+                    if (state.debounceTimer) {
+                        clearTimeout(state.debounceTimer);
+                        state.debounceTimer = null;
+                    }
+
+                    state.saveInFlight = true;
+                    setRowStatus(tr, 'saving', 'Saving...');
+                    updateGlobalStatus();
+
+                    const payload = collectRowPayload(tr);
+                    let saveSucceeded = false;
+                    try {
+                        const resp = await fetch(saveRowUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': antiForgery
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await resp.json().catch(function () { return null; });
+                        if (!resp.ok || !result || !result.success) {
+                            setRowStatus(tr, 'error', result?.message || 'Save failed');
+                            updateGlobalStatus();
+                            if (result?.message && window.toastr) {
+                                window.toastr.error(result.message);
+                            }
+                            return;
+                        }
+
+                        state.lastSavedSignature = payloadSignature(payload);
+                        refreshRowFreeboardFromServer(tr, result.storageLagoonFreeboardFt);
+                        setRowStatus(tr, 'saved', 'Saved');
+                        saveSucceeded = true;
+                    } catch {
+                        setRowStatus(tr, 'error', 'Save failed');
+                        updateGlobalStatus();
+                    } finally {
+                        state.saveInFlight = false;
+                        if (state.rescheduleAfterFlight) {
+                            state.rescheduleAfterFlight = false;
+                            saveRow(tr);
+                        } else if (saveSucceeded) {
+                            updateGlobalStatus();
+                            setTimeout(function () {
+                                if (!isRowDirty(tr)) {
+                                    setRowStatus(tr, 'idle', 'Ready');
+                                }
+                            }, 1200);
+                        } else if (isRowDirty(tr)) {
+                            setRowStatus(tr, 'dirty', 'Unsaved changes');
+                            updateGlobalStatus();
+                        }
+                    }
+                };
+
+                const scheduleRowSave = function (tr) {
+                    const state = getRowState(tr);
+                    if (!state) return;
+                    if (state.debounceTimer) {
+                        clearTimeout(state.debounceTimer);
+                    }
+                    if (!isRowDirty(tr)) {
+                        setRowStatus(tr, 'idle', 'Ready');
+                        updateGlobalStatus();
+                        return;
+                    }
+                    setRowStatus(tr, 'dirty', 'Unsaved changes');
+                    updateGlobalStatus();
+                    state.debounceTimer = setTimeout(function () {
+                        state.debounceTimer = null;
+                        saveRow(tr);
+                    }, ROW_SAVE_DEBOUNCE_MS);
+                };
+
+                const flushRowSave = function (tr) {
+                    const state = getRowState(tr);
+                    if (!state || !isRowDirty(tr)) return;
+                    if (state.debounceTimer) {
+                        clearTimeout(state.debounceTimer);
+                        state.debounceTimer = null;
+                    }
+                    saveRow(tr);
+                };
+
+                const onRowInput = function (event) {
+                    const tr = event.target.closest('tbody tr[data-day]');
+                    if (!tr) return;
+                    scheduleRowSave(tr);
+                };
+
+                const onRowBlur = function (event) {
+                    const tr = event.target.closest('tbody tr[data-day]');
+                    if (!tr) return;
+                    window.setTimeout(function () {
+                        if (!tr.contains(document.activeElement)) {
+                            flushRowSave(tr);
+                        }
+                    }, 0);
+                };
+
+                initializeRowStates();
+                section.addEventListener('input', onRowInput);
+                section.addEventListener('change', onRowInput);
+                section.addEventListener('focusout', onRowBlur);
+
+                const beforeUnloadHandler = function (event) {
+                    if (isLeavingPage || !hasDirtyRows()) return;
+                    event.preventDefault();
+                    event.returnValue = '';
+                };
+                window.addEventListener('beforeunload', beforeUnloadHandler);
+
+                wwCharAutosaveController = {
+                    dispose: function () {
+                        section.removeEventListener('input', onRowInput);
+                        section.removeEventListener('change', onRowInput);
+                        section.removeEventListener('focusout', onRowBlur);
+                        window.removeEventListener('beforeunload', beforeUnloadHandler);
+                        rowStates.forEach(function (state) {
+                            if (state.debounceTimer) {
+                                clearTimeout(state.debounceTimer);
+                            }
+                        });
+                        rowStates.clear();
+                    }
+                };
+            };
+
+            var initialSection = sectionContainer.querySelector('[data-wwchar-template-section="true"]');
+            if (initialSection) {
+                window.SAM.initWwCharRowAutosave(initialSection);
+            }
         })();
     </script>
 }
