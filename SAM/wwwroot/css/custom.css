@@ -1079,20 +1079,33 @@ i.bi-question-circle {
   min-height: 100%;
 }
 
+/* Match body cells (padding: 0) so < lines up with checkboxes */
+.wwchar-daily-table thead th:has(> .sam-rdl-column-layout) {
+  padding-left: 0;
+  padding-right: 0.5rem;
+}
+
 .wwchar-daily-table .sam-rdl-column-layout > .sam-rdl-header,
 .wwchar-daily-table .sam-rdl-column-layout > .sam-rdl-column {
   flex: 0 0 2rem;
   min-width: 2rem;
   max-width: 2rem;
-  padding-left: 0.45rem;
+  padding-left: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .wwchar-daily-table .sam-rdl-column-layout > .sam-rdl-header {
-  align-items: flex-start;
-  padding-top: 0.2rem;
+  align-items: flex-end;
+  padding-top: 0;
+  /* Lift < to align with the last metadata line (freq | sample | max) */
+  padding-bottom: 0.4rem;
+}
+
+.wwchar-daily-table .sam-rdl-column-layout > .sam-rdl-column .form-check-input {
+  float: none;
+  margin: 0;
 }
 
 .wwchar-daily-table .sam-rdl-marker {
@@ -1104,6 +1117,11 @@ i.bi-question-circle {
 .wwchar-daily-table .sam-rdl-column-main {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.wwchar-daily-table thead th .sam-rdl-column-main {
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
 }
 
 .wwchar-daily-table .sam-rdl-column-main .form-control-sm {
