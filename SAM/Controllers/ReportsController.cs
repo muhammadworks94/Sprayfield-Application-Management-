@@ -41,6 +41,7 @@ public class ReportsController : BaseController
     private readonly INDMLRService _ndmlrService;
     private readonly IGWMonitService _gwMonitService;
     private readonly IApplicationComplianceService _applicationComplianceService;
+    private readonly IReportAccessService _reportAccessService;
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
@@ -55,6 +56,7 @@ public class ReportsController : BaseController
         INDMLRService ndmlrService,
         IGWMonitService gwMonitService,
         IApplicationComplianceService applicationComplianceService,
+        IReportAccessService reportAccessService,
         ApplicationDbContext context,
         IWebHostEnvironment environment,
         IConfiguration configuration,
@@ -71,9 +73,75 @@ public class ReportsController : BaseController
         _ndmlrService = ndmlrService;
         _gwMonitService = gwMonitService;
         _applicationComplianceService = applicationComplianceService;
+        _reportAccessService = reportAccessService;
         _context = context;
         _environment = environment;
         _configuration = configuration;
+    }
+
+    /// <summary>
+    /// Returns a redirect to the report list with a friendly warning when the facility
+    /// is blocked for the report type (expired permit or report disabled); null when allowed.
+    /// </summary>
+    private async Task<IActionResult?> DenyIfFacilityBlockedAsync(Guid facilityId, ReportKind kind, string listAction)
+    {
+        var access = await _reportAccessService.GetFacilityAccessAsync(facilityId, kind);
+        if (access.IsAllowed)
+        {
+            return null;
+        }
+
+        TempData["ErrorMessage"] = access.HasValidPermit
+            ? "This report is disabled by the administrator for this facility."
+            : "This facility's permit has expired. Please renew the permit to access this report.";
+        return RedirectToAction(listAction);
+    }
+
+    /// <summary>
+    /// JSON variant of the facility block check for AJAX endpoints; null when allowed.
+    /// </summary>
+    private async Task<IActionResult?> DenyJsonIfFacilityBlockedAsync(Guid facilityId, ReportKind kind)
+    {
+        var access = await _reportAccessService.GetFacilityAccessAsync(facilityId, kind);
+        if (access.IsAllowed)
+        {
+            return null;
+        }
+
+        return Json(new { success = false, message = access.Reason ?? "Report access is not allowed for this facility." });
+    }
+
+    private Task<Guid> GetNdar1FacilityIdAsync(Guid ndar1Id) =>
+        _context.NDAR1s.AsNoTracking().Where(x => x.Id == ndar1Id).Select(x => x.FacilityId).FirstOrDefaultAsync();
+
+    /// <summary>
+    /// True when no facility in the company is allowed for the report type as of today
+    /// (all permits expired/inactive or the report disabled on every valid permit).
+    /// </summary>
+    private async Task<bool> IsReportTypeDisabledForCompanyAsync(Guid companyId, ReportKind kind)
+    {
+        var visibility = await _reportAccessService.GetCompanyReportVisibilityAsync(companyId);
+        return !visibility.IsShown(kind);
+    }
+
+    private IActionResult RedirectToDashboardReportDisabled()
+    {
+        TempData["ErrorMessage"] = "This report is not available for your company. Contact your administrator if you believe this is an error.";
+        return RedirectToAction("Index", "Dashboard");
+    }
+
+    /// <summary>
+    /// Builds page-top notices ("Facility: reason") for facilities that appear in the list but are blocked.
+    /// </summary>
+    private static List<string> BuildBlockedFacilityNotices(IEnumerable<(string? FacilityName, bool IsBlocked, string? Reason)> rows)
+    {
+        return rows
+            .Where(r => r.IsBlocked)
+            .GroupBy(r => r.FacilityName ?? "Facility")
+            .Select(g => $"{g.Key}: {g.First().Reason ?? "Report access is not allowed."}")
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
     }
 
     #region NDMR Reports
@@ -101,6 +169,11 @@ public class ReportsController : BaseController
         if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
+
+            if (await IsReportTypeDisabledForCompanyAsync(companyId.Value, ReportKind.Ndmr))
+            {
+                return RedirectToDashboardReportDisabled();
+            }
         }
 
         var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
@@ -181,8 +254,19 @@ public class ReportsController : BaseController
             UpdatedDate = r.UpdatedDate
         }).ToList();
 
+        var accessMap = await _reportAccessService.GetFacilityAccessMapAsync(viewModels.Select(v => v.FacilityId).Distinct().ToList(), ReportKind.Ndmr);
+        foreach (var vm in viewModels)
+        {
+            if (accessMap.TryGetValue(vm.FacilityId, out var access) && !access.IsAllowed)
+            {
+                vm.IsFacilityBlocked = true;
+                vm.FacilityBlockedReason = access.Reason;
+            }
+        }
+
         var model = new IrrRprtReportsIndexViewModel
         {
+            BlockedFacilityNotices = BuildBlockedFacilityNotices(viewModels.Select(v => (v.FacilityName, v.IsFacilityBlocked, v.FacilityBlockedReason))),
             IsGlobalAdmin = isGlobalAdmin,
             SelectedCompanyId = companyId,
             Facilities = await GetFacilitySelectListAsync(companyId),
@@ -219,6 +303,9 @@ public class ReportsController : BaseController
             return NotFound();
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndmr, nameof(NDMRReports));
+        if (denied != null) return denied;
 
         var viewModel = new IrrRprtViewModel
         {
@@ -282,6 +369,9 @@ public class ReportsController : BaseController
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
+        var denied = await DenyIfFacilityBlockedAsync(viewModel.FacilityId, ReportKind.Ndmr, nameof(NDMRReports));
+        if (denied != null) return denied;
+
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
@@ -322,6 +412,9 @@ public class ReportsController : BaseController
 
         await EnsureCompanyAccessAsync(report.CompanyId);
 
+        var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndmr, nameof(NDMRReports));
+        if (denied != null) return denied;
+
         var viewModel = new IrrRprtEditViewModel
         {
             Id = report.Id,
@@ -353,6 +446,9 @@ public class ReportsController : BaseController
     public async Task<IActionResult> NDMRReportEdit(IrrRprtEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
+
+        var editDenied = await DenyIfFacilityBlockedAsync(viewModel.FacilityId, ReportKind.Ndmr, nameof(NDMRReports));
+        if (editDenied != null) return editDenied;
 
         if (!ModelState.IsValid)
         {
@@ -408,6 +504,9 @@ public class ReportsController : BaseController
 
             await EnsureCompanyAccessAsync(report.CompanyId);
 
+            var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndmr, nameof(NDMRReports));
+            if (denied != null) return denied;
+
             await _irrRprtService.DeleteAsync(id);
             TempData["SuccessMessage"] = "NDMR report deleted successfully.";
             return RedirectToAction(nameof(NDMRReports), new {  facilityId = report.FacilityId });
@@ -446,6 +545,11 @@ public class ReportsController : BaseController
         if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
+
+            if (await IsReportTypeDisabledForCompanyAsync(companyId.Value, ReportKind.Ndmlr))
+            {
+                return RedirectToDashboardReportDisabled();
+            }
         }
 
         var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
@@ -505,8 +609,19 @@ public class ReportsController : BaseController
             CreatedBy = r.CreatedBy
         }).ToList();
 
+        var accessMap = await _reportAccessService.GetFacilityAccessMapAsync(items.Select(v => v.FacilityId).Distinct().ToList(), ReportKind.Ndmlr);
+        foreach (var vm in items)
+        {
+            if (accessMap.TryGetValue(vm.FacilityId, out var access) && !access.IsAllowed)
+            {
+                vm.IsFacilityBlocked = true;
+                vm.FacilityBlockedReason = access.Reason;
+            }
+        }
+
         var model = new NDMLRReportsIndexViewModel
         {
+            BlockedFacilityNotices = BuildBlockedFacilityNotices(items.Select(v => (v.FacilityName, v.IsFacilityBlocked, v.FacilityBlockedReason))),
             IsGlobalAdmin = isGlobalAdmin,
             SelectedCompanyId = companyId,
             Facilities = await GetFacilitySelectListAsync(companyId),
@@ -555,6 +670,9 @@ public class ReportsController : BaseController
         }
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndmlr, nameof(NDMLRReports));
+        if (denied != null) return denied;
 
         var model = new NDMLRDetailsViewModel
         {
@@ -860,6 +978,9 @@ public class ReportsController : BaseController
     {
         await EnsureCompanyAccessAsync(model.CompanyId);
 
+        var denied = await DenyIfFacilityBlockedAsync(model.FacilityId, ReportKind.Ndmlr, nameof(NDMLRReports));
+        if (denied != null) return denied;
+
         if (!ModelState.IsValid)
         {
             var listResult = await NDMLRReports(
@@ -922,6 +1043,9 @@ public class ReportsController : BaseController
             }
 
             await EnsureCompanyAccessAsync(report.CompanyId);
+
+            var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndmlr, nameof(NDMLRReports));
+            if (denied != null) return denied;
 
             _context.NDMLRs.Remove(report);
             await _context.SaveChangesAsync();
@@ -1003,6 +1127,11 @@ public class ReportsController : BaseController
         if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
+
+            if (await IsReportTypeDisabledForCompanyAsync(companyId.Value, ReportKind.Ndar1))
+            {
+                return RedirectToDashboardReportDisabled();
+            }
         }
 
         var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
@@ -1079,6 +1208,16 @@ public class ReportsController : BaseController
             CreatedBy = r.CreatedBy
         }).ToList();
 
+        var accessMap = await _reportAccessService.GetFacilityAccessMapAsync(items.Select(v => v.FacilityId).Distinct().ToList(), ReportKind.Ndar1);
+        foreach (var vm in items)
+        {
+            if (accessMap.TryGetValue(vm.FacilityId, out var access) && !access.IsAllowed)
+            {
+                vm.IsFacilityBlocked = true;
+                vm.FacilityBlockedReason = access.Reason;
+            }
+        }
+
         var operators = await _context.NDAR1s
             .AsNoTracking()
             .Where(r =>
@@ -1094,6 +1233,7 @@ public class ReportsController : BaseController
 
         var model = new NDAR1ReportsIndexViewModel
         {
+            BlockedFacilityNotices = BuildBlockedFacilityNotices(items.Select(v => (v.FacilityName, v.IsFacilityBlocked, v.FacilityBlockedReason))),
             IsGlobalAdmin = isGlobalAdmin,
             SelectedCompanyId = companyId,
             Facilities = await GetFacilitySelectListAsync(companyId),
@@ -1131,6 +1271,9 @@ public class ReportsController : BaseController
             return NotFound();
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndar1, nameof(NDAR1Reports));
+        if (denied != null) return denied;
 
         var viewModel = new NDAR1ViewModel
         {
@@ -1187,6 +1330,9 @@ public class ReportsController : BaseController
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
+        var denied = await DenyIfFacilityBlockedAsync(viewModel.FacilityId, ReportKind.Ndar1, nameof(NDAR1Reports));
+        if (denied != null) return denied;
+
         if (!ModelState.IsValid)
         {
             ViewBag.Facilities = await GetFacilitySelectListAsync(viewModel.CompanyId);
@@ -1238,6 +1384,10 @@ public class ReportsController : BaseController
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             var grid = await _ndar1RowEditService.BuildGridAsync(id, userId);
             await EnsureCompanyAccessAsync(grid.CompanyId);
+
+            var denied = await DenyIfFacilityBlockedAsync(await GetNdar1FacilityIdAsync(id), ReportKind.Ndar1, nameof(NDAR1Reports));
+            if (denied != null) return denied;
+
             return View(grid);
         }
         catch (EntityNotFoundException)
@@ -1254,6 +1404,8 @@ public class ReportsController : BaseController
         try
         {
             await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+            var blocked = await DenyJsonIfFacilityBlockedAsync(await GetNdar1FacilityIdAsync(ndar1Id), ReportKind.Ndar1);
+            if (blocked != null) return blocked;
         }
         catch (EntityNotFoundException)
         {
@@ -1274,6 +1426,8 @@ public class ReportsController : BaseController
         try
         {
             await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+            var blocked = await DenyJsonIfFacilityBlockedAsync(await GetNdar1FacilityIdAsync(ndar1Id), ReportKind.Ndar1);
+            if (blocked != null) return blocked;
         }
         catch (EntityNotFoundException)
         {
@@ -1294,6 +1448,8 @@ public class ReportsController : BaseController
         try
         {
             await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+            var blocked = await DenyJsonIfFacilityBlockedAsync(await GetNdar1FacilityIdAsync(ndar1Id), ReportKind.Ndar1);
+            if (blocked != null) return blocked;
         }
         catch (EntityNotFoundException)
         {
@@ -1313,6 +1469,8 @@ public class ReportsController : BaseController
         try
         {
             await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+            var blocked = await DenyJsonIfFacilityBlockedAsync(await GetNdar1FacilityIdAsync(ndar1Id), ReportKind.Ndar1);
+            if (blocked != null) return blocked;
         }
         catch (EntityNotFoundException)
         {
@@ -1331,6 +1489,8 @@ public class ReportsController : BaseController
         try
         {
             await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+            var blocked = await DenyJsonIfFacilityBlockedAsync(await GetNdar1FacilityIdAsync(ndar1Id), ReportKind.Ndar1);
+            if (blocked != null) return blocked;
             var outcome = await _ndar1RowEditService.RefreshStoredReportAsync(ndar1Id);
             return Json(new
             {
@@ -1362,6 +1522,8 @@ public class ReportsController : BaseController
         try
         {
             await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+            var blocked = await DenyJsonIfFacilityBlockedAsync(await GetNdar1FacilityIdAsync(ndar1Id), ReportKind.Ndar1);
+            if (blocked != null) return blocked;
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             var result = await _ndar1RowEditService.UpdateRowAsync(ndar1Id, request, userId);
             if (!result.Success)
@@ -1393,6 +1555,8 @@ public class ReportsController : BaseController
         try
         {
             await EnsureCompanyAccessAsync(await _ndar1Service.GetCompanyIdAsync(ndar1Id));
+            var blocked = await DenyJsonIfFacilityBlockedAsync(await GetNdar1FacilityIdAsync(ndar1Id), ReportKind.Ndar1);
+            if (blocked != null) return blocked;
         }
         catch (EntityNotFoundException)
         {
@@ -1518,6 +1682,9 @@ public class ReportsController : BaseController
 
             await EnsureCompanyAccessAsync(report.CompanyId);
 
+            var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndar1, nameof(NDAR1Reports));
+            if (denied != null) return denied;
+
             await _ndar1Service.DeleteAsync(id);
             TempData["SuccessMessage"] = "NDAR-1 report deleted successfully.";
             return RedirectToAction(nameof(NDAR1Reports), new { facilityId = report.FacilityId });
@@ -1542,6 +1709,9 @@ public class ReportsController : BaseController
             return NotFound();
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndar1, nameof(NDAR1Reports));
+        if (denied != null) return denied;
 
         try
         {
@@ -1574,6 +1744,9 @@ public class ReportsController : BaseController
             return NotFound();
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndar1, nameof(NDAR1Reports));
+        if (denied != null) return denied;
 
         try
         {
@@ -1621,6 +1794,9 @@ public class ReportsController : BaseController
 
         await EnsureCompanyAccessAsync(ndmrReport.CompanyId);
 
+        var denied = await DenyIfFacilityBlockedAsync(ndmrReport.FacilityId, ReportKind.Ndmr, nameof(NDMRReports));
+        if (denied != null) return denied;
+
         try
         {
             var excelBytes = await _ndmrService.ExportToExcelAsync(ndmrReport.Id);
@@ -1666,6 +1842,9 @@ public class ReportsController : BaseController
 
         await EnsureCompanyAccessAsync(ndmrReport.CompanyId);
 
+        var denied = await DenyIfFacilityBlockedAsync(ndmrReport.FacilityId, ReportKind.Ndmr, nameof(NDMRReports));
+        if (denied != null) return denied;
+
         try
         {
             var pdfBytes = await RenderNdmrPdfAsync(ndmrReport, showGrid);
@@ -1700,6 +1879,9 @@ public class ReportsController : BaseController
             return NotFound();
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndmlr, nameof(NDMLRReports));
+        if (denied != null) return denied;
 
         try
         {
@@ -1736,6 +1918,9 @@ public class ReportsController : BaseController
         }
 
         await EnsureCompanyAccessAsync(report.CompanyId);
+
+        var denied = await DenyIfFacilityBlockedAsync(report.FacilityId, ReportKind.Ndmlr, nameof(NDMLRReports));
+        if (denied != null) return denied;
 
         try
         {
@@ -1794,6 +1979,11 @@ public class ReportsController : BaseController
         if (companyId.HasValue)
         {
             await EnsureCompanyAccessAsync(companyId.Value);
+
+            if (await IsReportTypeDisabledForCompanyAsync(companyId.Value, ReportKind.Gw59))
+            {
+                return RedirectToDashboardReportDisabled();
+            }
         }
 
         var normalizedPageSize = pageSize <= 0 ? 25 : Math.Min(pageSize, 200);
@@ -1861,6 +2051,16 @@ public class ReportsController : BaseController
             });
         }
 
+        var accessMap = await _reportAccessService.GetFacilityAccessMapAsync(rows.Select(r => r.FacilityId).Distinct().ToList(), ReportKind.Gw59);
+        foreach (var row in rows)
+        {
+            if (accessMap.TryGetValue(row.FacilityId, out var access) && !access.IsAllowed)
+            {
+                row.IsFacilityBlocked = true;
+                row.FacilityBlockedReason = access.Reason;
+            }
+        }
+
         var recordCountsBySampleDate = new Dictionary<DateTime, int>();
         if (groupByDate)
         {
@@ -1879,6 +2079,7 @@ public class ReportsController : BaseController
 
         var model = new GroundwaterQualityReportsPageViewModel
         {
+            BlockedFacilityNotices = BuildBlockedFacilityNotices(rows.Select(r => ((string?)r.FacilityName, r.IsFacilityBlocked, r.FacilityBlockedReason))),
             SelectedCompanyId = companyId,
             Filter = new GroundwaterQualityFilterViewModel
             {
@@ -1941,7 +2142,12 @@ public class ReportsController : BaseController
     public async Task<IActionResult> PreviewGW59Report(Guid id)
     {
         var model = await BuildGw59ExportModelAsync(id);
-        await EnsureCompanyAccessAsync((await _gwMonitService.GetByIdAsync(id))!.CompanyId);
+        var gwMonit = (await _gwMonitService.GetByIdAsync(id))!;
+        await EnsureCompanyAccessAsync(gwMonit.CompanyId);
+
+        var denied = await DenyIfFacilityBlockedAsync(gwMonit.FacilityId, ReportKind.Gw59, nameof(GroundwaterQualityReports));
+        if (denied != null) return denied;
+
         var preview = new GW59ReportViewModel
         {
             GwMonitId = model.GwMonitId,
@@ -2008,6 +2214,11 @@ public class ReportsController : BaseController
     public async Task<IActionResult> ExportGW59Report(Guid id, bool showGrid = false)
     {
         var model = await BuildGw59ExportModelAsync(id);
+
+        var exportFacilityId = await _context.GWMonits.AsNoTracking().Where(x => x.Id == id).Select(x => x.FacilityId).FirstOrDefaultAsync();
+        var denied = await DenyIfFacilityBlockedAsync(exportFacilityId, ReportKind.Gw59, nameof(GroundwaterQualityReports));
+        if (denied != null) return denied;
+
         var bytes = await RenderCombinedGw59PdfAsync(model, showGrid);
         var safeFacility = string.IsNullOrWhiteSpace(model.FacilityName) ? "Facility" : model.FacilityName.Replace(' ', '_');
         return File(bytes, "application/pdf", $"GW59_{safeFacility}_{model.SampleDate:yyyyMMdd}.pdf");
@@ -2048,13 +2259,20 @@ public class ReportsController : BaseController
             Year = normalizedYear
         };
 
-        var ids = await BuildGroundwaterQualityReportsQuery(filter)
+        var records = await BuildGroundwaterQualityReportsQuery(filter)
             .Where(x => x.SampleDate.Date == targetDate)
             .OrderBy(x => x.SampleDate)
             .ThenBy(x => x.Facility!.Name)
             .ThenBy(x => x.MonitoringWell!.WellId)
-            .Select(x => x.Id)
+            .Select(x => new { x.Id, x.FacilityId })
             .ToListAsync();
+
+        // Skip records for facilities that are blocked (expired permit or GW-59 disabled).
+        var accessMap = await _reportAccessService.GetFacilityAccessMapAsync(records.Select(x => x.FacilityId).Distinct().ToList(), ReportKind.Gw59);
+        var ids = records
+            .Where(x => accessMap.TryGetValue(x.FacilityId, out var access) && access.IsAllowed)
+            .Select(x => x.Id)
+            .ToList();
 
         if (ids.Count == 0)
         {

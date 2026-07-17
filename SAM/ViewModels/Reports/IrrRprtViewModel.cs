@@ -60,6 +60,9 @@ public class IrrRprtViewModel
     
     [Display(Name = "Updated Date")]
     public DateTime? UpdatedDate { get; set; }
+
+    public bool IsFacilityBlocked { get; set; }
+    public string? FacilityBlockedReason { get; set; }
 }
 
 public class IrrRprtCreateViewModel
@@ -105,6 +108,7 @@ public class IrrRprtReportsIndexViewModel
     public IrrRprtFilterViewModel Filter { get; set; } = new();
     public IrrRprtSortViewModel Sort { get; set; } = new();
     public PagedResult<IrrRprtViewModel> Reports { get; set; } = new();
+    public List<string> BlockedFacilityNotices { get; set; } = new();
 }
 
 public class IrrRprtEditViewModel

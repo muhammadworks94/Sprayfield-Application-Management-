@@ -68,7 +68,11 @@ public partial class SystemAdminController
         int? totalNumberOfSprayfields,
         decimal? permittedMinimumFreeboardFeet,
         string? notes,
-        IFormFile? permitPdf)
+        IFormFile? permitPdf,
+        bool showNdar1Report = true,
+        bool showNdmrReport = true,
+        bool showNdmlrReport = true,
+        bool showGw59Report = true)
     {
         var facility = await _context.Facilities.FirstOrDefaultAsync(f => f.Id == facilityId);
         if (facility == null) return NotFound();
@@ -121,6 +125,10 @@ public partial class SystemAdminController
             existingSameVersion.EffectiveEndDate = endDate;
             existingSameVersion.GwOperationLagoon = gwOperationLagoon;
             existingSameVersion.GwOperationSprayField = gwOperationSprayField;
+            existingSameVersion.ShowNdar1Report = showNdar1Report;
+            existingSameVersion.ShowNdmrReport = showNdmrReport;
+            existingSameVersion.ShowNdmlrReport = showNdmlrReport;
+            existingSameVersion.ShowGw59Report = showGw59Report;
             existingSameVersion.Notes = notes;
             existingSameVersion.PermitNumber = normalizedPermitNumber;
             existingSameVersion.PermitVersion = normalizedPermitVersion;
@@ -150,6 +158,10 @@ public partial class SystemAdminController
             IsActive = true,
             GwOperationLagoon = gwOperationLagoon,
             GwOperationSprayField = gwOperationSprayField,
+            ShowNdar1Report = showNdar1Report,
+            ShowNdmrReport = showNdmrReport,
+            ShowNdmlrReport = showNdmlrReport,
+            ShowGw59Report = showGw59Report,
             Notes = notes,
             PermitPdfFileName = originalName,
             PermitPdfStoragePath = storedPath,
@@ -193,7 +205,11 @@ public partial class SystemAdminController
         int? totalNumberOfSprayfields,
         decimal? permittedMinimumFreeboardFeet,
         string? notes,
-        IFormFile? permitPdf)
+        IFormFile? permitPdf,
+        bool showNdar1Report = true,
+        bool showNdmrReport = true,
+        bool showNdmlrReport = true,
+        bool showGw59Report = true)
     {
         var permit = await _context.FacilityPermits.FirstOrDefaultAsync(x => x.Id == permitId);
         if (permit == null)
@@ -243,6 +259,10 @@ public partial class SystemAdminController
         permit.EffectiveEndDate = endDate;
         permit.GwOperationLagoon = gwOperationLagoon;
         permit.GwOperationSprayField = gwOperationSprayField;
+        permit.ShowNdar1Report = showNdar1Report;
+        permit.ShowNdmrReport = showNdmrReport;
+        permit.ShowNdmlrReport = showNdmlrReport;
+        permit.ShowGw59Report = showGw59Report;
         permit.Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
         permit.City = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
         permit.State = string.IsNullOrWhiteSpace(state) ? null : state.Trim();

@@ -135,6 +135,7 @@ builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyLabOptionService, Com
 builder.Services.AddScoped<SAM.Services.Interfaces.IPermitAlertService, PermitAlertService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IPcsCatalogService, PcsCatalogService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IProjectKnowledgeService, ProjectKnowledgeService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IReportAccessService, ReportAccessService>();
 var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
 Directory.CreateDirectory(dataProtectionKeysPath);
 

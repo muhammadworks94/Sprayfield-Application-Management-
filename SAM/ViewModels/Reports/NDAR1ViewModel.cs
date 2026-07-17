@@ -32,6 +32,9 @@ public class NDAR1ViewModel
 
     [Display(Name = "Operator")]
     public string? CreatedBy { get; set; }
+
+    public bool IsFacilityBlocked { get; set; }
+    public string? FacilityBlockedReason { get; set; }
 }
 
 public class NDAR1FilterViewModel
@@ -58,6 +61,7 @@ public class NDAR1ReportsIndexViewModel
     public NDAR1FilterViewModel Filter { get; set; } = new();
     public NDAR1SortViewModel Sort { get; set; } = new();
     public PagedResult<NDAR1ViewModel> Reports { get; set; } = new();
+    public List<string> BlockedFacilityNotices { get; set; } = new();
 }
 
 public class NDMLRFilterViewModel
@@ -84,6 +88,7 @@ public class NDMLRReportsIndexViewModel
     public PagedResult<NDMLRViewModel> Reports { get; set; } = new();
     public NDMLRCreateViewModel GenerateForm { get; set; } = new();
     public bool OpenGenerateModalOnLoad { get; set; }
+    public List<string> BlockedFacilityNotices { get; set; } = new();
 }
 
 public class NDMLRViewModel
@@ -98,6 +103,9 @@ public class NDMLRViewModel
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }
     public string? CreatedBy { get; set; }
+
+    public bool IsFacilityBlocked { get; set; }
+    public string? FacilityBlockedReason { get; set; }
 }
 
 public class NDMLRCreateViewModel

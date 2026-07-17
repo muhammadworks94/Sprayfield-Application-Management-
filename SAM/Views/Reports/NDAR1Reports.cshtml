@@ -45,6 +45,21 @@
     </div>
 </div>
 
+@if (Model.BlockedFacilityNotices.Any())
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <strong>Some facilities have restricted report access:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var notice in Model.BlockedFacilityNotices)
+            {
+                <li>@notice</li>
+            }
+        </ul>
+        <small class="text-muted">Rows for these facilities are disabled until the permit is renewed or the report is re-enabled by the administrator.</small>
+    </div>
+}
+
 <div class="collapse mb-3" id="ndar1FiltersCollapse">
     <div class="card">
         <div class="card-body">
@@ -201,6 +216,27 @@
                     <tbody>
                         @foreach (var report in reports)
                         {
+                            if (report.IsFacilityBlocked)
+                            {
+                                <tr class="report-row-disabled" data-bs-toggle="tooltip" title="@report.FacilityBlockedReason">
+                                    <td>@report.Month @report.Year</td>
+                                    <td>@report.FacilityName</td>
+                                    <td>
+                                        @if (report.DidIrrigationOccur)
+                                        {
+                                            <span class="badge bg-success">Yes</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">No</span>
+                                        }
+                                    </td>
+                                    <td>@(string.IsNullOrWhiteSpace(report.CreatedBy) ? "-" : report.CreatedBy)</td>
+                                    <td>@report.CreatedDate.ToString("MM/dd/yyyy")</td>
+                                    <td class="table-actions"></td>
+                                </tr>
+                                continue;
+                            }
                             <tr>
                                 <td>
                                     <a asp-action="NDAR1ReportDetails" asp-route-id="@report.Id">
@@ -247,13 +283,21 @@
                 @foreach (var report in reports)
                 {
                     <div class="col">
-                        <div class="card h-100 shadow-sm">
+                        <div class="card h-100 shadow-sm @(report.IsFacilityBlocked ? "report-row-disabled" : "")"
+                             @(report.IsFacilityBlocked ? Html.Raw($"data-bs-toggle=\"tooltip\" title=\"{report.FacilityBlockedReason}\"") : Html.Raw(""))>
                             <div class="card-header-light d-flex justify-content-between">
                                 <div>
                                     <h6 class="mb-0">
-                                        <a asp-action="NDAR1ReportDetails" asp-route-id="@report.Id">
-                                            @report.Month @report.Year
-                                        </a>
+                                        @if (report.IsFacilityBlocked)
+                                        {
+                                            <span>@report.Month @report.Year</span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-action="NDAR1ReportDetails" asp-route-id="@report.Id">
+                                                @report.Month @report.Year
+                                            </a>
+                                        }
                                     </h6>
                                 </div>
                                 @if (report.DidIrrigationOccur)
@@ -280,32 +324,35 @@
                                     <dd class="col-6 mb-1">@report.CreatedDate.ToString("MM/dd/yyyy")</dd>
                                 </dl>
 
-                                <div class="mt-auto d-flex justify-content-between">
-                                    <div class="btn-group" role="group">
-                                        <a asp-action="ExportNDAR1Report" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success js-report-export-link">
-                                            <i class="bi bi-file-earmark-spreadsheet"></i> Excel
-                                        </a>
-                                        <a asp-action="ExportNDAR1ReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-danger js-report-export-link">
-                                            <i class="bi bi-file-earmark-pdf"></i> PDF
-                                        </a>
-                                    </div>
-                                    @if (canEdit)
-                                    {
+                                @if (!report.IsFacilityBlocked)
+                                {
+                                    <div class="mt-auto d-flex justify-content-between">
                                         <div class="btn-group" role="group">
-                                            <a asp-action="NDAR1ReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-pencil"></i> Edit
+                                            <a asp-action="ExportNDAR1Report" asp-route-id="@report.Id" class="btn btn-sm btn-outline-success js-report-export-link">
+                                                <i class="bi bi-file-earmark-spreadsheet"></i> Excel
                                             </a>
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-danger"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#deleteNDAR1Modal"
-                                                    data-report-id="@report.Id"
-                                                    data-report-period="@($"{report.Month} {report.Year}")">
-                                                <i class="bi bi-trash"></i> Delete
-                                            </button>
+                                            <a asp-action="ExportNDAR1ReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-danger js-report-export-link">
+                                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                                            </a>
                                         </div>
-                                    }
-                                </div>
+                                        @if (canEdit)
+                                        {
+                                            <div class="btn-group" role="group">
+                                                <a asp-action="NDAR1ReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-pencil"></i> Edit
+                                                </a>
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#deleteNDAR1Modal"
+                                                        data-report-id="@report.Id"
+                                                        data-report-period="@($"{report.Month} {report.Year}")">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
                             </div>
                         </div>
                     </div>
@@ -374,6 +421,12 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            if (typeof bootstrap !== 'undefined') {
+                document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                    bootstrap.Tooltip.getOrCreateInstance(el);
+                });
+            }
+
             if (window.SAMLoading && window.SAMLoading.bindLinkClicks) {
                 window.SAMLoading.bindLinkClicks('.js-report-export-link', {
                     loadingMessage: 'Generating export, please wait...',

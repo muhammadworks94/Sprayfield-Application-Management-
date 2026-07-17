@@ -1,30 +1,54 @@
 @model SAM.ViewModels.Reports.GroundwaterQualityReportRowViewModel
 
-<tr>
-    <td>@Model.FacilityName</td>
-    <td>@Model.MonitoringWellName</td>
-    <td>@Model.SampleDate.ToString("MM/dd/yyyy")</td>
-    <td>
-        @if (Model.PermitDisplay == "No active permit")
-        {
-            <span class="badge bg-warning">No active permit</span>
-        }
-        else
-        {
-            <span class="badge bg-light text-success border">@Model.PermitDisplay</span>
-        }
-    </td>
-    <td>@Model.CollectedBy</td>
-    <td>@Model.AnalyzedBy</td>
-    <td class="text-end table-actions">
-        <div class="dropdown gw-action-dropdown">
-            <button class="btn btn-sm btn-light border dropdown-toggle gw-action-btn" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
-                <i class="bi bi-gear me-1"></i> Actions
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" asp-action="PreviewGW59Report" asp-route-id="@Model.Id"><i class="bi bi-eye me-2"></i>Preview GW-59</a></li>
-                <li><a class="dropdown-item report-download-link" asp-action="ExportGW59Report" asp-route-id="@Model.Id"><i class="bi bi-file-earmark-pdf me-2"></i>Download PDF</a></li>
-            </ul>
-        </div>
-    </td>
-</tr>
+@if (Model.IsFacilityBlocked)
+{
+    <tr class="report-row-disabled" data-bs-toggle="tooltip" title="@Model.FacilityBlockedReason">
+        <td>@Model.FacilityName</td>
+        <td>@Model.MonitoringWellName</td>
+        <td>@Model.SampleDate.ToString("MM/dd/yyyy")</td>
+        <td>
+            @if (Model.PermitDisplay == "No active permit")
+            {
+                <span class="badge bg-warning">No active permit</span>
+            }
+            else
+            {
+                <span class="badge bg-light text-success border">@Model.PermitDisplay</span>
+            }
+        </td>
+        <td>@Model.CollectedBy</td>
+        <td>@Model.AnalyzedBy</td>
+        <td class="text-end table-actions"></td>
+    </tr>
+}
+else
+{
+    <tr>
+        <td>@Model.FacilityName</td>
+        <td>@Model.MonitoringWellName</td>
+        <td>@Model.SampleDate.ToString("MM/dd/yyyy")</td>
+        <td>
+            @if (Model.PermitDisplay == "No active permit")
+            {
+                <span class="badge bg-warning">No active permit</span>
+            }
+            else
+            {
+                <span class="badge bg-light text-success border">@Model.PermitDisplay</span>
+            }
+        </td>
+        <td>@Model.CollectedBy</td>
+        <td>@Model.AnalyzedBy</td>
+        <td class="text-end table-actions">
+            <div class="dropdown gw-action-dropdown">
+                <button class="btn btn-sm btn-light border dropdown-toggle gw-action-btn" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
+                    <i class="bi bi-gear me-1"></i> Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" asp-action="PreviewGW59Report" asp-route-id="@Model.Id"><i class="bi bi-eye me-2"></i>Preview GW-59</a></li>
+                    <li><a class="dropdown-item report-download-link" asp-action="ExportGW59Report" asp-route-id="@Model.Id"><i class="bi bi-file-earmark-pdf me-2"></i>Download PDF</a></li>
+                </ul>
+            </div>
+        </td>
+    </tr>
+}

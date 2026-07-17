@@ -62,5 +62,13 @@ public class CompanyContextController : BaseController
 
         return null;
     }
+
+    /// <summary>
+    /// Stores the selected company ID in session.
+    /// </summary>
+    public static void SetSelectedCompanyIdInSession(ISession session, Guid companyId)
+    {
+        session.SetString(SelectedCompanyIdSessionKey, companyId.ToString());
+    }
 }
 

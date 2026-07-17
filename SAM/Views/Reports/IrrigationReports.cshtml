@@ -31,6 +31,21 @@
     </div>
 </div>
 
+@if (Model.BlockedFacilityNotices.Any())
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <strong>Some facilities have restricted report access:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var notice in Model.BlockedFacilityNotices)
+            {
+                <li>@notice</li>
+            }
+        </ul>
+        <small class="text-muted">Rows for these facilities are disabled until the permit is renewed or the report is re-enabled by the administrator.</small>
+    </div>
+}
+
 <div class="collapse mb-3" id="irrFiltersCollapse">
     <div class="card">
         <div class="card-body">
@@ -138,6 +153,21 @@
                     <tbody>
                         @foreach (var report in Model.Reports.Items)
                         {
+                            if (report.IsFacilityBlocked)
+                            {
+                                <tr class="report-row-disabled" data-bs-toggle="tooltip" title="@report.FacilityBlockedReason">
+                                    <td>@report.Month @report.Year</td>
+                                    <td>@report.FacilityName</td>
+                                    <td>@report.TotalVolumeApplied.ToString("N0")</td>
+                                    <td>
+                                        <span class="badge badge-@(report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant ? "compliant" : report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant ? "non-compliant" : "under-review")">
+                                            @report.ComplianceStatus
+                                        </span>
+                                    </td>
+                                    <td class="table-actions"></td>
+                                </tr>
+                                continue;
+                            }
                             <tr>
                                 <td><a asp-action="NDMRReportDetails" asp-route-id="@report.Id">@report.Month @report.Year</a></td>
                                 <td>@report.FacilityName</td>
@@ -169,9 +199,19 @@
                 @foreach (var report in Model.Reports.Items)
                 {
                     <div class="col">
-                        <div class="card h-100 shadow-sm">
+                        <div class="card h-100 shadow-sm @(report.IsFacilityBlocked ? "report-row-disabled" : "")"
+                             @(report.IsFacilityBlocked ? Html.Raw($"data-bs-toggle=\"tooltip\" title=\"{report.FacilityBlockedReason}\"") : Html.Raw(""))>
                             <div class="card-header-light d-flex justify-content-between">
-                                <h6 class="mb-0"><a asp-action="NDMRReportDetails" asp-route-id="@report.Id">@report.Month @report.Year</a></h6>
+                                <h6 class="mb-0">
+                                    @if (report.IsFacilityBlocked)
+                                    {
+                                        <span>@report.Month @report.Year</span>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="NDMRReportDetails" asp-route-id="@report.Id">@report.Month @report.Year</a>
+                                    }
+                                </h6>
                                 <span class="badge badge-@(report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.Compliant ? "compliant" : report.ComplianceStatus == SAM.Domain.Enums.ComplianceStatusEnum.NonCompliant ? "non-compliant" : "under-review")">@report.ComplianceStatus</span>
                             </div>
                             <div class="card-body d-flex flex-column">
@@ -190,18 +230,21 @@
                                     <dt class="col-6"><i class="bi bi-graph-up me-1"></i>Hydraulic Load</dt>
                                     <dd class="col-6 mb-1">@report.HydraulicLoadingRate.ToString("F2") in/yr</dd>
                                 </dl>
-                                <div class="mt-auto d-flex justify-content-between">
-                                    <div class="d-flex gap-1 flex-wrap">
-                                        <a asp-action="ExportNDMRReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary js-report-export-link">
-                                            <i class="bi bi-file-earmark-pdf"></i> Export PDF
-                                        </a>
-                                        @if (canEdit)
-                                        {
-                                            <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteIrrigationReportModal" data-report-id="@report.Id" data-report-period="@($"{report.Month} {report.Year}")"><i class="bi bi-trash"></i> Delete</button>
-                                        }
+                                @if (!report.IsFacilityBlocked)
+                                {
+                                    <div class="mt-auto d-flex justify-content-between">
+                                        <div class="d-flex gap-1 flex-wrap">
+                                            <a asp-action="ExportNDMRReportPdf" asp-route-id="@report.Id" class="btn btn-sm btn-outline-primary js-report-export-link">
+                                                <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                                            </a>
+                                            @if (canEdit)
+                                            {
+                                                <a asp-action="NDMRReportEdit" asp-route-id="@report.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteIrrigationReportModal" data-report-id="@report.Id" data-report-period="@($"{report.Month} {report.Year}")"><i class="bi bi-trash"></i> Delete</button>
+                                            }
+                                        </div>
                                     </div>
-                                </div>
+                                }
                             </div>
                         </div>
                     </div>
@@ -266,6 +309,12 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            if (typeof bootstrap !== 'undefined') {
+                document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                    bootstrap.Tooltip.getOrCreateInstance(el);
+                });
+            }
+
             if (window.SAMLoading && window.SAMLoading.bindLinkClicks) {
                 window.SAMLoading.bindLinkClicks('.js-report-export-link', {
                     loadingMessage: 'Generating export, please wait...',

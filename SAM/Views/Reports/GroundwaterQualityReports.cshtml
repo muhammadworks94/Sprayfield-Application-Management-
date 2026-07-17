@@ -27,6 +27,21 @@
     </div>
 </div>
 
+@if (Model.BlockedFacilityNotices.Any())
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <strong>Some facilities have restricted report access:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var notice in Model.BlockedFacilityNotices)
+            {
+                <li>@notice</li>
+            }
+        </ul>
+        <small class="text-muted">Rows for these facilities are disabled until the permit is renewed or the report is re-enabled by the administrator.</small>
+    </div>
+}
+
 <div class="collapse mb-3" id="gw59FiltersCollapse">
     <div class="card">
         <div class="card-body">
@@ -444,6 +459,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            if (typeof bootstrap !== 'undefined') {
+                document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                    bootstrap.Tooltip.getOrCreateInstance(el);
+                });
+            }
+
             if (window.SAMLoading) {
                 window.SAMLoading.bindLinkClicks('.report-download-link', {
                     loadingMessage: 'Generating groundwater quality report...',

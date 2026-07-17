@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SAM.Data;
 using SAM.Domain.Entities;
 
 namespace SAM.Controllers.Base;
@@ -113,7 +115,25 @@ public abstract class BaseController : Controller
             var sessionCompanyId = GetSelectedCompanyIdFromSession();
             if (sessionCompanyId.HasValue)
                 return sessionCompanyId.Value;
-            return null; // "All Companies" - no filter
+
+            // The header company selector always keeps a concrete company selected for
+            // global admins (first verified active company by name). It seeds the session
+            // during view rendering, which is too late for the action that renders the page,
+            // so without this fallback the first request after login/app restart would show
+            // data from all companies while the header displays a specific one.
+            var dbContext = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            var defaultCompanyId = await dbContext.Companies
+                .Where(c => c.IsVerified && c.IsActive)
+                .OrderBy(c => c.Name)
+                .Select(c => (Guid?)c.Id)
+                .FirstOrDefaultAsync();
+
+            if (defaultCompanyId.HasValue)
+            {
+                CompanyContextController.SetSelectedCompanyIdInSession(HttpContext.Session, defaultCompanyId.Value);
+            }
+
+            return defaultCompanyId;
         }
 
         // Non-admins use their own company

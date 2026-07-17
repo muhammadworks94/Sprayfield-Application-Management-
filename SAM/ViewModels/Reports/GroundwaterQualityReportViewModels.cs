@@ -16,6 +16,7 @@ public class GroundwaterQualityReportsPageViewModel
     public bool GroupByDate => Filter.GroupByDate;
     public Dictionary<DateTime, int> RecordCountsBySampleDate { get; set; } = new();
     public PagedResult<GroundwaterQualityReportRowViewModel> Reports { get; set; } = new();
+    public List<string> BlockedFacilityNotices { get; set; } = new();
 }
 
 public class GroundwaterQualityFilterViewModel
@@ -46,6 +47,9 @@ public class GroundwaterQualityReportRowViewModel
     public string CollectedBy { get; set; } = string.Empty;
     public string AnalyzedBy { get; set; } = string.Empty;
     public DateTime? UpdatedDate { get; set; }
+
+    public bool IsFacilityBlocked { get; set; }
+    public string? FacilityBlockedReason { get; set; }
 }
 
 public sealed class Gw59ParameterSnapshot

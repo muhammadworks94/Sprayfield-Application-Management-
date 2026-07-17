@@ -12,6 +12,10 @@ public class FacilityPermit : CompanyScopedEntity
     public bool IsActive { get; set; } = true;
     public bool GwOperationLagoon { get; set; } = true;
     public bool GwOperationSprayField { get; set; } = true;
+    public bool ShowNdar1Report { get; set; } = true;
+    public bool ShowNdmrReport { get; set; } = true;
+    public bool ShowNdmlrReport { get; set; } = true;
+    public bool ShowGw59Report { get; set; } = true;
     public string? Notes { get; set; }
     public string? PermitPdfFileName { get; set; }
     public string? PermitPdfStoragePath { get; set; }

@@ -1,6 +1,9 @@
+@using Microsoft.AspNetCore.Http
 @using Microsoft.AspNetCore.Identity
 @using SAM.Domain.Entities
+@using SAM.Services.Interfaces
 @inject UserManager<ApplicationUser> UserManager
+@inject IReportAccessService ReportAccessService
 
 @{
     var user = await UserManager.GetUserAsync(User);
@@ -8,6 +11,33 @@
     var isCompanyAdmin = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin"));
     var isOperator = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "operator"));
     var isTechnician = user != null && (await UserManager.IsInRoleAsync(user, "admin") || await UserManager.IsInRoleAsync(user, "company_admin") || await UserManager.IsInRoleAsync(user, "technician"));
+
+    // Report links are shown only when at least one facility in the effective company has a
+    // permit valid today with the report enabled (same rule the controller enforces).
+    // Global admins follow the company selected in the header; companies without permits see all reports.
+    Guid? effectiveCompanyId = user?.CompanyId;
+    if (isAdmin)
+    {
+        var selectedCompanyIdString = Context.Session.GetString("SelectedCompanyId");
+        if (!string.IsNullOrWhiteSpace(selectedCompanyIdString) && Guid.TryParse(selectedCompanyIdString, out var parsedCompanyId))
+        {
+            effectiveCompanyId = parsedCompanyId;
+        }
+    }
+
+    var showNdar1 = true;
+    var showNdmr = true;
+    var showNdmlr = true;
+    var showGw59 = true;
+    if (isCompanyAdmin && effectiveCompanyId.HasValue)
+    {
+        var visibility = await ReportAccessService.GetCompanyReportVisibilityAsync(effectiveCompanyId.Value);
+        showNdar1 = visibility.ShowNdar1;
+        showNdmr = visibility.ShowNdmr;
+        showNdmlr = visibility.ShowNdmlr;
+        showGw59 = visibility.ShowGw59;
+    }
+    var showReportsDropdown = showNdar1 || showNdmr || showNdmlr || showGw59;
 }
 
 <nav class="app-sidebar enterprise-sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
@@ -67,7 +97,7 @@
             </li>
         }
 
-        @if (isCompanyAdmin)
+        @if (isCompanyAdmin && showReportsDropdown)
         {
             <li class="nav-item nav-dropdown-item pb-1" role="none">
                 <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="dropdown-reports" data-dropdown="reports" data-tooltip="Reports">
@@ -76,30 +106,42 @@
                     <i class="bi bi-chevron-down nav-dropdown-chevron"></i>
                 </button>
                 <ul class="nav-dropdown" id="dropdown-reports" role="menu">
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="Reports" asp-action="NDAR1Reports" role="menuitem" data-tooltip="NDAR-1">
-                            <i class="bi bi-file-earmark-text"></i>
-                            <span class="nav-link-text">NDAR-1</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="Reports" asp-action="NDMRReports" role="menuitem" data-tooltip="NDMR">
-                            <i class="bi bi-file-earmark-text"></i>
-                            <span class="nav-link-text">NDMR</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="Reports" asp-action="NDMLRReports" role="menuitem" data-tooltip="NDMLR">
-                            <i class="bi bi-file-earmark-text"></i>
-                            <span class="nav-link-text">NDMLR</span>
-                        </a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a class="nav-link" asp-controller="Reports" asp-action="GroundwaterQualityReports" role="menuitem" data-tooltip="GW-59">
-                            <i class="bi bi-water"></i>
-                            <span class="nav-link-text">GW-59</span>
-                        </a>
-                    </li>
+                    @if (showNdar1)
+                    {
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="Reports" asp-action="NDAR1Reports" role="menuitem" data-tooltip="NDAR-1">
+                                <i class="bi bi-file-earmark-text"></i>
+                                <span class="nav-link-text">NDAR-1</span>
+                            </a>
+                        </li>
+                    }
+                    @if (showNdmr)
+                    {
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="Reports" asp-action="NDMRReports" role="menuitem" data-tooltip="NDMR">
+                                <i class="bi bi-file-earmark-text"></i>
+                                <span class="nav-link-text">NDMR</span>
+                            </a>
+                        </li>
+                    }
+                    @if (showNdmlr)
+                    {
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="Reports" asp-action="NDMLRReports" role="menuitem" data-tooltip="NDMLR">
+                                <i class="bi bi-file-earmark-text"></i>
+                                <span class="nav-link-text">NDMLR</span>
+                            </a>
+                        </li>
+                    }
+                    @if (showGw59)
+                    {
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" asp-controller="Reports" asp-action="GroundwaterQualityReports" role="menuitem" data-tooltip="GW-59">
+                                <i class="bi bi-water"></i>
+                                <span class="nav-link-text">GW-59</span>
+                            </a>
+                        </li>
+                    }
                 </ul>
             </li>
         }

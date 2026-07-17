@@ -15,6 +15,10 @@ public class FacilityPermitConfiguration : IEntityTypeConfiguration<FacilityPerm
         builder.Property(x => x.PermitVersion).HasMaxLength(50).IsRequired();
         builder.Property(x => x.GwOperationLagoon).HasDefaultValue(true);
         builder.Property(x => x.GwOperationSprayField).HasDefaultValue(true);
+        builder.Property(x => x.ShowNdar1Report).HasDefaultValue(true);
+        builder.Property(x => x.ShowNdmrReport).HasDefaultValue(true);
+        builder.Property(x => x.ShowNdmlrReport).HasDefaultValue(true);
+        builder.Property(x => x.ShowGw59Report).HasDefaultValue(true);
         builder.Property(x => x.Notes).HasMaxLength(2000);
         builder.Property(x => x.PermitPdfFileName).HasMaxLength(260);
         builder.Property(x => x.PermitPdfStoragePath).HasMaxLength(500);

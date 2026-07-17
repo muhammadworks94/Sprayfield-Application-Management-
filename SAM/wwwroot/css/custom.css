@@ -5968,3 +5968,24 @@ body {
     max-width: min(40rem, 100%);
   }
 }
+
+/* ============================================
+   Blocked report rows (expired permit / report disabled)
+   ============================================ */
+.report-row-disabled {
+  background-color: var(--gray-100, #f3f4f6) !important;
+  opacity: 0.6;
+  cursor: help;
+}
+
+.report-row-disabled td {
+  color: var(--gray-500, #6b7280);
+}
+
+.card.report-row-disabled {
+  pointer-events: auto;
+}
+
+table .report-row-disabled:hover {
+  background-color: var(--gray-100, #f3f4f6) !important;
+}
