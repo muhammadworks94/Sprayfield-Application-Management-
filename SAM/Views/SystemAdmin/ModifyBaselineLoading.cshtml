@@ -1,0 +1,46 @@
+@model SAM.ViewModels.CompanyManagement.NewClientSetupBaselineViewModel
+
+@{
+    ViewData["Title"] = "Modify Baseline Loading";
+    ViewData["PageSubtitle"] = Model.FacilityName != null
+        ? $"Edit baseline monthly loading (inches/acre) for {Model.FacilityName}."
+        : $"Edit baseline monthly loading (inches/acre) for {Model.CompanyName}.";
+    ViewData["BaselineSaveUrl"] = Url.Action("SaveBaselineLoadingCell", "SystemAdmin");
+    ViewData["BaselineFormAction"] = "FinishModifyBaselineLoading";
+    ViewData["BaselineFormController"] = "SystemAdmin";
+}
+
+@section PageTitleExtra {
+    @if (Model.FacilityId.HasValue)
+    {
+        <a asp-action="FacilityEdit" asp-route-id="@Model.FacilityId" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Facility
+        </a>
+    }
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["WarningMessage"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @TempData["WarningMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!Model.FacilityGroups.Any())
+{
+    <div class="alert alert-warning">
+        No sprayfields found for this facility. Add sprayfields before entering baseline loading.
+    </div>
+}
+else
+{
+    @await Html.PartialAsync("Partials/_BaselineLoadingGrid", Model)
+}

@@ -42,13 +42,15 @@ public class ApplicationComplianceService : IApplicationComplianceService
         }
 
         var asOfDate = request.ApplicationDate.Date;
-        var windowStart = asOfDate.AddDays(-364);
+        // Calendar 12-month window ending in the application month (matches NDAR-1 / baseline fade-in).
+        var windowStart = new DateTime(asOfDate.Year, asOfDate.Month, 1).AddMonths(-11);
         var facilityInputs = await GetFacilityPanInputsAsync(request.FacilityId);
         var chemistryByMonth = await GetChemistryByMonthAsync(request.FacilityId, windowStart, asOfDate);
 
         var historicalData = await GetHistoricalDataAsync(
             request.FacilityId,
             field.Id,
+            field.AcresTotal ?? field.SizeAcres,
             windowStart,
             asOfDate,
             request.ExistingApplicationId,
@@ -136,12 +138,13 @@ public class ApplicationComplianceService : IApplicationComplianceService
         }
 
         var endDate = asOfDate.Date;
-        var startDate = endDate.AddDays(-364);
+        var startDate = new DateTime(endDate.Year, endDate.Month, 1).AddMonths(-11);
         var facilityInputs = await GetFacilityPanInputsAsync(facilityId);
         var chemistryByMonth = await GetChemistryByMonthAsync(facilityId, startDate, endDate);
         var historicalData = await GetHistoricalDataAsync(
             facilityId,
             sprayfieldId,
+            field.AcresTotal ?? field.SizeAcres,
             startDate,
             endDate,
             excludeApplicationId,
@@ -167,16 +170,22 @@ public class ApplicationComplianceService : IApplicationComplianceService
         DateTime asOfDate,
         Guid? excludeApplicationId = null)
     {
-        return await _monthlyLoadingResolution.Get365DayRollingInchesAsync(
+        // Calendar 12-month effective loading (SAM months displace baseline month-by-month).
+        return await _monthlyLoadingResolution.GetCalendar12MonthRollingInchesAsync(
             facilityId,
             sprayfieldId,
-            asOfDate,
-            excludeApplicationId);
+            asOfDate);
     }
 
+    /// <summary>
+    /// Historical hydraulic gallons over the calendar-12 window use effective monthly loading:
+    /// real MonthlyApplications when VolumeGallons &gt; 0 for that month; otherwise baseline inches
+    /// converted to gallons. Baseline-only months contribute 0 PAN lbs (no WWChar chemistry).
+    /// </summary>
     private async Task<(decimal HistoricalPanLbs, decimal HistoricalGallons)> GetHistoricalDataAsync(
         Guid facilityId,
         Guid sprayfieldId,
+        decimal fieldAcres,
         DateTime startDate,
         DateTime endDate,
         Guid? excludeApplicationId,
@@ -198,14 +207,50 @@ public class ApplicationComplianceService : IApplicationComplianceService
         }
 
         var applications = await query.ToListAsync();
-        var historicalGallons = applications.Sum(a => a.VolumeGallons);
-        var historicalPanLbs = applications.Sum(a =>
-            CalculatePanLbs(
-                a.ApplicationDate,
-                a.VolumeGallons,
-                chemistryByMonth,
-                mineralizationRate,
-                volatilizationRate));
+        var appsByMonth = applications
+            .GroupBy(a => (a.ApplicationDate.Year, a.ApplicationDate.Month))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        decimal historicalGallons = 0m;
+        decimal historicalPanLbs = 0m;
+        var endMonthStart = new DateTime(endDate.Year, endDate.Month, 1);
+
+        for (var i = 0; i < 12; i++)
+        {
+            var monthDate = endMonthStart.AddMonths(-i);
+            var key = (monthDate.Year, monthDate.Month);
+            appsByMonth.TryGetValue(key, out var monthApps);
+            var monthGallons = monthApps?.Sum(a => a.VolumeGallons) ?? 0m;
+
+            if (monthGallons > 0m)
+            {
+                historicalGallons += monthGallons;
+                if (monthApps != null)
+                {
+                    historicalPanLbs += monthApps.Sum(a =>
+                        CalculatePanLbs(
+                            a.ApplicationDate,
+                            a.VolumeGallons,
+                            chemistryByMonth,
+                            mineralizationRate,
+                            volatilizationRate));
+                }
+            }
+            else if (fieldAcres > 0m)
+            {
+                var baselineInches = await _monthlyLoadingResolution.GetBaselineMonthlyLoadingInchesAsync(
+                    facilityId,
+                    sprayfieldId,
+                    monthDate.Year,
+                    monthDate.Month);
+                if (baselineInches.HasValue && baselineInches.Value > 0m)
+                {
+                    historicalGallons += baselineInches.Value * fieldAcres * GallonsPerAcreInch;
+                    // PAN: baseline-only months contribute 0 (no chemistry).
+                }
+            }
+        }
+
         return (historicalPanLbs, historicalGallons);
     }
 

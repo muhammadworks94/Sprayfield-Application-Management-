@@ -946,10 +946,13 @@ public class NDAR1Service : INDAR1Service
             .DefaultIfEmpty(0m)
             .Max();
 
-        // Calculate rolling 365-day hydraulic totals from zone-model applications.
-        var rollingTotalsBySprayfield = await _monthlyLoadingResolution.GetBatch365DayRollingInchesAsync(
+        // Calendar 12-month hydraulic totals (SAM months displace baseline month-by-month).
+        var fieldLoadingMetrics = await _monthlyLoadingResolution.GetBatchFieldLoadingMetricsAsync(
             sprayfieldList,
             endDate);
+        var rollingTotalsBySprayfield = fieldLoadingMetrics.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.Rolling12MonthInches);
         CalculateRollingFloatingTotals(report, rollingTotalsBySprayfield);
         BuildDynamicFieldsAsync(
             report,

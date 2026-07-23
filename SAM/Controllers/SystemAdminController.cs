@@ -29,6 +29,7 @@ public partial class SystemAdminController : BaseController
     private readonly IMonthlyApplicationService _monthlyApplicationService;
     private readonly IMonitoringWellService _monitoringWellService;
     private readonly ILookupQueryService _lookupQueryService;
+    private readonly IBaselineMonthlyLoadingService _baselineMonthlyLoadingService;
     private readonly ApplicationDbContext _context;
     private readonly IPcsCatalogService _pcsCatalogService;
     private readonly IWebHostEnvironment _environment;
@@ -43,6 +44,7 @@ public partial class SystemAdminController : BaseController
         IMonthlyApplicationService monthlyApplicationService,
         IMonitoringWellService monitoringWellService,
         ILookupQueryService lookupQueryService,
+        IBaselineMonthlyLoadingService baselineMonthlyLoadingService,
         ApplicationDbContext context,
         IPcsCatalogService pcsCatalogService,
         IWebHostEnvironment environment,
@@ -59,6 +61,7 @@ public partial class SystemAdminController : BaseController
         _monthlyApplicationService = monthlyApplicationService;
         _monitoringWellService = monitoringWellService;
         _lookupQueryService = lookupQueryService;
+        _baselineMonthlyLoadingService = baselineMonthlyLoadingService;
         _context = context;
         _pcsCatalogService = pcsCatalogService;
         _environment = environment;

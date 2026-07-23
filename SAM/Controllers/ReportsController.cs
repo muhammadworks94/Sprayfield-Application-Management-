@@ -2943,7 +2943,7 @@ public class ReportsController : BaseController
                 Draw(gfx, (field.Sprayfield?.AnnualRateInches ?? field.Sprayfield?.HydraulicLoadingLimitInPerYr)?.ToString("F2"), font, new NdarPdfPoint(x.AnnualRateX, map.FieldMetaY.AnnualRateY));
                 var irrigated = field.DailyValues.Any(d => (d.TimeIrrigated ?? 0m) > 0m || (d.VolumeApplied ?? 0m) > 0m);
                 Draw(gfx, irrigated ? "X" : string.Empty, font, new NdarPdfPoint(x.FieldIrrigatedYesX, map.FieldMetaY.FieldIrrigatedY));
-                Draw(gfx, irrigated ? string.Empty : "X", font, new NdarPdfPoint(x.FieldIrrigatedNoX, map.FieldMetaY.FieldIrrigatedY));
+                Draw(gfx, irrigated ? string.Empty : "X", font, new NdarPdfPoint(x.FieldIrrigatedNoX, map.FieldMetaY.FieldIrrigatedNoY));
             }
 
             var daysInMonth = Math.Min(DateTime.DaysInMonth(report.Year, (int)report.Month), map.Table.MaxRows);
@@ -4445,7 +4445,8 @@ public class ReportsController : BaseController
                 CoverCropY: 85,
                 HourlyRateY: 100,
                 AnnualRateY: 113,
-                FieldIrrigatedY: 122.5),
+                FieldIrrigatedY: 122.5,
+                FieldIrrigatedNoY: 125.5),
             Table: new NdarTableMap(
                 MaxRows: 31,
                 FirstRowY: 205,
@@ -4518,7 +4519,8 @@ public class ReportsController : BaseController
         double CoverCropY,
         double HourlyRateY,
         double AnnualRateY,
-        double FieldIrrigatedY);
+        double FieldIrrigatedY,
+        double FieldIrrigatedNoY);
     private sealed record NdarTableMap(
         int MaxRows,
         double FirstRowY,

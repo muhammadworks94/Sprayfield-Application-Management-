@@ -11,6 +11,9 @@
         <a asp-action="FacilityEdit" asp-route-id="@Model.Id" class="btn btn-primary">
             <i class="bi bi-pencil"></i> Edit
         </a>
+        <a asp-action="ModifyBaselineLoading" asp-route-facilityId="@Model.Id" class="btn btn-outline-primary">
+            <i class="bi bi-calendar-range"></i> Modify Baseline Loading
+        </a>
         <a asp-action="FacilityPermits" asp-route-facilityId="@Model.Id" class="btn btn-outline-primary">
             <i class="bi bi-file-earmark-medical"></i> Permit Versions
         </a>
