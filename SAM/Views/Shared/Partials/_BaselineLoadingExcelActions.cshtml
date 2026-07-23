@@ -1,0 +1,60 @@
+@{
+    var downloadUrl = ViewData["BaselineDownloadUrl"] as string;
+    var importUrl = ViewData["BaselineImportUrl"] as string;
+    var importCompanyId = ViewData["BaselineImportCompanyId"] as Guid?;
+    var importFacilityId = ViewData["BaselineImportFacilityId"] as Guid?;
+    var hasExcelActions = !string.IsNullOrWhiteSpace(downloadUrl) && !string.IsNullOrWhiteSpace(importUrl);
+}
+
+@if (hasExcelActions)
+{
+    <div class="btn-group btn-group-sm" role="group" aria-label="Baseline Excel template">
+        <a class="btn btn-outline-secondary" href="@downloadUrl" title="Download Excel template for offline entry">
+            <i class="bi bi-download me-1"></i>Download Template
+        </a>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                id="baselineImportTrigger"
+                title="Import a filled Excel template">
+            <i class="bi bi-upload me-1"></i>Import
+        </button>
+    </div>
+
+    <form id="baselineImportForm"
+          action="@importUrl"
+          method="post"
+          enctype="multipart/form-data"
+          class="d-none">
+        @Html.AntiForgeryToken()
+        @if (importFacilityId.HasValue)
+        {
+            <input type="hidden" name="facilityId" value="@importFacilityId" />
+        }
+        else if (importCompanyId.HasValue)
+        {
+            <input type="hidden" name="companyId" value="@importCompanyId" />
+        }
+        <input id="baselineImportFile"
+               type="file"
+               name="file"
+               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+    </form>
+
+    <script>
+        (function () {
+            const trigger = document.getElementById('baselineImportTrigger');
+            const fileInput = document.getElementById('baselineImportFile');
+            const form = document.getElementById('baselineImportForm');
+            if (!trigger || !fileInput || !form) return;
+
+            trigger.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', () => {
+                if (!fileInput.files?.length) return;
+                if (window.SAMLoading) {
+                    window.SAMLoading.show('Importing baseline loading...');
+                }
+                form.submit();
+            });
+        })();
+    </script>
+}

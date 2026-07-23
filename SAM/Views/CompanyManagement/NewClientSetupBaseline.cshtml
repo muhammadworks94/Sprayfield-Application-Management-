@@ -6,12 +6,19 @@
     ViewData["BaselineSaveUrl"] = Url.Action("SaveBaselineCell", "CompanyManagement");
     ViewData["BaselineFormAction"] = "FinishNewClientSetupBaseline";
     ViewData["BaselineFormController"] = "CompanyManagement";
+    ViewData["BaselineDownloadUrl"] = Url.Action("DownloadBaselineLoadingTemplate", "CompanyManagement", new { companyId = Model.CompanyId });
+    ViewData["BaselineImportUrl"] = Url.Action("ImportBaselineLoading", "CompanyManagement");
+    ViewData["BaselineImportCompanyId"] = Model.CompanyId;
+    ViewData["BaselineImportFacilityId"] = (Guid?)null;
 }
 
 @section PageTitleExtra {
-    <a asp-action="Index" asp-route-tab="companies" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Manage Companies
-    </a>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        @await Html.PartialAsync("Partials/_BaselineLoadingExcelActions")
+        <a asp-action="Index" asp-route-tab="companies" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Manage Companies
+        </a>
+    </div>
 }
 
 @if (TempData["SuccessMessage"] != null)

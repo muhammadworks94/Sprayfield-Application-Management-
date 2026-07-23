@@ -21,6 +21,7 @@ public class ClientSetupCellViewModel
     public decimal? LoadingInches { get; set; }
     public bool IsReadOnly { get; set; }
     public string Source { get; set; } = "Empty";
+    public string? Tooltip { get; set; }
 }
 
 public class ClientSetupCellSaveRequest

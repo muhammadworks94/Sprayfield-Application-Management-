@@ -24,6 +24,7 @@
     <i class="bi bi-info-circle me-1"></i>
     Enter monthly loading (inches/acre) for each field. Values autosave as you type.
     Enter monthly loading for the <strong>11 months before</strong> your first SAM reporting month (<strong>@firstReportingLabel</strong>): <strong>@newestBaselineLabel</strong> through <strong>@oldestBaselineLabel</strong>.
+    Use <strong>Download Template</strong> / <strong>Import</strong> in the page header for Excel entry.
 </div>
 
 <div id="baselineSaveStatus" class="small text-muted mb-2" aria-live="polite"></div>
@@ -60,16 +61,34 @@
                                 @for (var col = 0; col < monthRow.Cells.Count; col++)
                                 {
                                     var cell = monthRow.Cells[col];
-                                    <td class="baseline-data-cell"
+                                    var isReadOnly = cell.IsReadOnly;
+                                    <td class="baseline-data-cell@(isReadOnly ? " baseline-cell-readonly" : "")"
                                         data-facility-id="@group.FacilityId"
                                         data-sprayfield-id="@cell.SprayfieldId"
                                         data-year="@monthRow.Year"
-                                        data-month="@monthRow.Month">
-                                        <input type="text"
-                                               inputmode="decimal"
-                                               class="form-control form-control-sm baseline-cell-input"
-                                               value="@FormatLoadingInches(cell.LoadingInches)"
-                                               aria-label="@monthRow.Label field @group.SprayfieldColumns[col].FieldCode loading inches" />
+                                        data-month="@monthRow.Month"
+                                        @if (isReadOnly && !string.IsNullOrWhiteSpace(cell.Tooltip))
+                                        {
+                                            <text>data-bs-toggle="tooltip" data-bs-placement="top" title="@cell.Tooltip"</text>
+                                        }>
+                                        <div class="input-group input-group-sm">
+                                            @* @if (isReadOnly)
+                                            {
+                                                <span class="input-group-text text-muted" title="@cell.Tooltip" aria-hidden="true">
+                                                    <i class="bi bi-lock-fill"></i>
+                                                </span>
+                                            } *@
+                                            <input type="text"
+                                                   inputmode="decimal"
+                                                   class="form-control form-control-sm baseline-cell-input@(isReadOnly ? " text-muted" : "")"
+                                                   value="@FormatLoadingInches(cell.LoadingInches)"
+                                                   @(isReadOnly ? "disabled" : null)
+                                                   aria-label="@monthRow.Label field @group.SprayfieldColumns[col].FieldCode loading inches@(isReadOnly ? " (read-only SAM data)" : "")"
+                                                   @if (isReadOnly && !string.IsNullOrWhiteSpace(cell.Tooltip))
+                                                   {
+                                                       <text>title="@cell.Tooltip"</text>
+                                                   } />
+                                        </div>
                                         <div class="baseline-cell-status small text-muted"></div>
                                     </td>
                                 }
@@ -247,7 +266,7 @@
         };
 
         const flushAllDirtyCells = async () => {
-            const inputs = document.querySelectorAll('.baseline-cell-input');
+            const inputs = document.querySelectorAll('.baseline-cell-input:not(:disabled)');
             for (const input of inputs) {
                 const { state } = getCellState(input);
                 if (state.debounceTimer) {
@@ -260,7 +279,7 @@
             }
         };
 
-        document.querySelectorAll('.baseline-cell-input').forEach(input => {
+        document.querySelectorAll('.baseline-cell-input:not(:disabled)').forEach(input => {
             getCellState(input);
             input.addEventListener('input', () => scheduleCellSave(input));
             input.addEventListener('blur', () => {
@@ -271,6 +290,12 @@
                 }
                 saveCell(input);
             });
+        });
+
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            if (window.bootstrap?.Tooltip) {
+                bootstrap.Tooltip.getOrCreateInstance(el);
+            }
         });
 
         document.querySelectorAll('table.baseline-grid-table').forEach((grid) => {
@@ -298,7 +323,7 @@
         });
 
         window.addEventListener('beforeunload', (event) => {
-            const hasDirty = [...document.querySelectorAll('.baseline-cell-input')].some(input => {
+            const hasDirty = [...document.querySelectorAll('.baseline-cell-input:not(:disabled)')].some(input => {
                 const { state } = getCellState(input);
                 return input.value.trim() !== state.lastSavedSignature || state.debounceTimer || state.saveInFlight;
             });

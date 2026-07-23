@@ -69,6 +69,68 @@ public partial class CompanyManagementController
         return View(viewModel);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> DownloadBaselineLoadingTemplate(Guid companyId)
+    {
+        var company = await _companyService.GetByIdAsync(companyId);
+        if (company == null)
+        {
+            return NotFound();
+        }
+
+        var throughYear = company.FirstReportingYear ?? DateTime.UtcNow.Year;
+        var throughMonth = company.FirstReportingMonth ?? DateTime.UtcNow.Month;
+
+        var bytes = await _baselineMonthlyLoadingService.BuildTemplateAsync(companyId, throughYear, throughMonth);
+        var safeName = string.Join("_", (company.Name ?? "Company").Split(Path.GetInvalidFileNameChars()));
+        var monthLabel = new DateTime(throughYear, throughMonth, 1).ToString("MMM_yyyy");
+        var fileName = $"BaselineLoading_{safeName}_{monthLabel}.xlsx";
+
+        return File(
+            bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileName);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportBaselineLoading(Guid companyId, IFormFile? file)
+    {
+        var company = await _companyService.GetByIdAsync(companyId);
+        if (company == null)
+        {
+            return NotFound();
+        }
+
+        if (file == null || file.Length == 0)
+        {
+            TempData["WarningMessage"] = "Please choose an Excel (.xlsx) file to import.";
+            return RedirectToAction(nameof(NewClientSetupBaseline), new { companyId });
+        }
+
+        var throughYear = company.FirstReportingYear ?? DateTime.UtcNow.Year;
+        var throughMonth = company.FirstReportingMonth ?? DateTime.UtcNow.Month;
+
+        await using var stream = file.OpenReadStream();
+        var result = await _baselineMonthlyLoadingService.ImportFromExcelAsync(
+            companyId,
+            throughYear,
+            throughMonth,
+            stream,
+            CurrentUserEmail ?? "system");
+
+        if (result.HasErrors)
+        {
+            TempData["WarningMessage"] = result.SummaryMessage + " " + string.Join(" ", result.Errors.Take(5));
+        }
+        else
+        {
+            TempData["SuccessMessage"] = result.SummaryMessage;
+        }
+
+        return RedirectToAction(nameof(NewClientSetupBaseline), new { companyId });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> FinishNewClientSetupBaseline(NewClientSetupBaselineViewModel viewModel)

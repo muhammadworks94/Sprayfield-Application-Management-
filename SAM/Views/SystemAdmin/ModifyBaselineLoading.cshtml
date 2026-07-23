@@ -8,15 +8,22 @@
     ViewData["BaselineSaveUrl"] = Url.Action("SaveBaselineLoadingCell", "SystemAdmin");
     ViewData["BaselineFormAction"] = "FinishModifyBaselineLoading";
     ViewData["BaselineFormController"] = "SystemAdmin";
+    ViewData["BaselineDownloadUrl"] = Url.Action("DownloadBaselineLoadingTemplate", "SystemAdmin", new { facilityId = Model.FacilityId });
+    ViewData["BaselineImportUrl"] = Url.Action("ImportBaselineLoading", "SystemAdmin");
+    ViewData["BaselineImportCompanyId"] = Model.CompanyId;
+    ViewData["BaselineImportFacilityId"] = Model.FacilityId;
 }
 
 @section PageTitleExtra {
-    @if (Model.FacilityId.HasValue)
-    {
-        <a asp-action="FacilityEdit" asp-route-id="@Model.FacilityId" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Back to Facility
-        </a>
-    }
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        @await Html.PartialAsync("Partials/_BaselineLoadingExcelActions")
+        @if (Model.FacilityId.HasValue)
+        {
+            <a asp-action="FacilityEdit" asp-route-id="@Model.FacilityId" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Facility
+            </a>
+        }
+    </div>
 }
 
 @if (TempData["SuccessMessage"] != null)
