@@ -112,9 +112,15 @@ public partial class UserManagementController : BaseController
 
     private async Task<SelectList> GetCompanySelectListAsync()
     {
-        var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
-        var companies = await _lookupQueryService.GetCompaniesAsync(effectiveCompanyId);
+        // Global admins need the full company list for user assignment (create/edit/index).
+        // Company admins remain scoped to their own company.
+        Guid? companyFilter = null;
+        if (!await IsGlobalAdminAsync())
+        {
+            companyFilter = await GetEffectiveCompanyIdAsync();
+        }
 
+        var companies = await _lookupQueryService.GetCompaniesAsync(companyFilter);
         return new SelectList(companies, "Id", "Name");
     }
 

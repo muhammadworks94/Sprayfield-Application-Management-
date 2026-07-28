@@ -25,10 +25,12 @@
             {
                 var controller = ViewContext.RouteData.Values["controller"]?.ToString();
                 var action = ViewContext.RouteData.Values["action"]?.ToString();
-                var hideCompanySelector = controller == "CompanyManagement"
-                    && (action == "NewClientSetup"
-                        || action == "NewClientSetupBaseline"
-                        || action == "CompanyCreate");
+                var hideCompanySelector =
+                    (controller == "CompanyManagement"
+                        && (action == "NewClientSetup"
+                            || action == "NewClientSetupBaseline"
+                            || action == "CompanyCreate"))
+                    || controller == "SystemSettings";
 
                 <header class="app-header">
                     <div class="header-content">
