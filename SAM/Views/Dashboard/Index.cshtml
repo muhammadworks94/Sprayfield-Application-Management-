@@ -1,4 +1,5 @@
 @model SAM.ViewModels.Dashboard.DashboardViewModel
+@using System.Globalization
 @{
     ViewData["Title"] = "Dashboard";
     var isGlobalAdmin = Model.IsGlobalAdmin;
@@ -319,23 +320,89 @@
     <div class="col-12">
         <div class="card dashboard-chart-card h-100 dashboard-animate-in">
             <div class="card-body">
-                <h5 class="fw-semibold mb-3">
-                    <i class="bi bi-speedometer2 me-2"></i>Application Limit Tracking (Real-Time)
-                </h5>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <h5 class="fw-semibold mb-0">
+                        <i class="bi bi-speedometer2 me-2"></i>Application Limit Tracking
+                    </h5>
+                    <form method="get" asp-controller="Dashboard" asp-action="Index" class="d-inline-flex align-items-center" id="field-loading-period-form">
+                        @if (ViewBag.SelectedCompanyId != null)
+                        {
+                            <input type="hidden" name="companyId" value="@ViewBag.SelectedCompanyId" />
+                        }
+                        <select name="loadingOffset"
+                                id="field-loading-period"
+                                class="form-select form-select-sm"
+                                style="width: auto; min-width: 9rem;"
+                                aria-label="Application limit tracking period"
+                                onchange="this.form.submit()">
+                            @foreach (var option in Model.LoadingPeriodOptions)
+                            {
+                                if (option.Offset == Model.LoadingOffset)
+                                {
+                                    <option value="@option.Offset" selected>@option.Label</option>
+                                }
+                                else
+                                {
+                                    <option value="@option.Offset">@option.Label</option>
+                                }
+                            }
+                        </select>
+                    </form>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.IncompleteHistoryWarning))
+                {
+                    <div class="alert alert-warning py-2 mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle me-1"></i>@Model.IncompleteHistoryWarning
+                    </div>
+                }
                 @if (hasFieldLoadingData)
                 {
-                    var orderedFieldRows = Model.FieldLoadingProgress.OrderBy(x => x.FacilityName).ThenBy(x => x.FieldCode).ToList();
+                    var orderedFieldRows = Model.FieldLoadingProgress.ToList();
+                    int StatusSortRank(string status) => status switch
+                    {
+                        "Critical" => 0,
+                        "Warning" => 1,
+                        _ => 2
+                    };
                     <div class="table-responsive">
-                        <table class="table table-sm align-middle">
+                        <table class="table table-sm align-middle" id="field-loading-table">
                             <thead>
                                 <tr>
                                     <th>Facility</th>
-                                    <th>Field</th>
-                                    <th>Current Month Loading (in)</th>
-                                    <th>12-Month Floating Total (in)</th>
+                                    <th>
+                                        <button type="button"
+                                                class="btn btn-link btn-sm text-decoration-none text-body p-0 field-loading-sort"
+                                                data-sort-key="field"
+                                                aria-label="Sort by Field">
+                                            Field <i class="bi bi-arrow-down-up ms-1 text-muted field-loading-sort-icon"></i>
+                                        </button>
+                                    </th>
+                                    <th>@Model.CurrentMonthLoadingColumnHeader</th>
+                                    <th>
+                                        <button type="button"
+                                                class="btn btn-link btn-sm text-decoration-none text-body p-0 field-loading-sort"
+                                                data-sort-key="rolling"
+                                                aria-label="Sort by 12-Month Floating Total">
+                                            12-Month Floating Total (in) <i class="bi bi-arrow-down-up ms-1 text-muted field-loading-sort-icon"></i>
+                                        </button>
+                                    </th>
                                     <th>Annual Limit (in/yr)</th>
-                                    <th>Annual Utilization</th>
-                                    <th>Status</th>
+                                    <th>
+                                        <button type="button"
+                                                class="btn btn-link btn-sm text-decoration-none text-body p-0 field-loading-sort"
+                                                data-sort-key="utilization"
+                                                aria-label="Sort by Annual Utilization">
+                                            Annual Utilization <i class="bi bi-arrow-down-up ms-1 text-muted field-loading-sort-icon"></i>
+                                        </button>
+                                    </th>
+                                    <th>
+                                        <button type="button"
+                                                class="btn btn-link btn-sm text-decoration-none text-body p-0 field-loading-sort"
+                                                data-sort-key="status"
+                                                aria-label="Sort by Status">
+                                            Status <i class="bi bi-sort-up ms-1 field-loading-sort-icon"></i>
+                                        </button>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="field-loading-rows">
@@ -343,7 +410,12 @@
                                 {
                                     var item = orderedFieldRows[i];
                                     var hiddenClass = i >= initialFieldLoadingRows ? "d-none extra-field-loading-row" : "";
-                                    <tr class="@hiddenClass">
+                                    <tr class="@hiddenClass"
+                                        data-facility="@item.FacilityName"
+                                        data-field="@item.FieldCode"
+                                        data-rolling="@item.Rolling12MonthLoadingInches.ToString(CultureInfo.InvariantCulture)"
+                                        data-utilization="@item.Rolling12MonthUtilizationPercent.ToString(CultureInfo.InvariantCulture)"
+                                        data-status-rank="@StatusSortRank(item.AnnualStatus)">
                                         <td>@item.FacilityName</td>
                                         <td>@item.FieldCode</td>
                                         <td>
@@ -441,15 +513,136 @@
             }
 
             document.addEventListener('DOMContentLoaded', function() {
+                const initialVisibleRows = @initialFieldLoadingRows;
                 const toggleButton = document.getElementById('toggle-field-loading-rows');
+                let fieldLoadingExpanded = false;
+
+                function applyFieldLoadingVisibility() {
+                    const rows = Array.from(document.querySelectorAll('#field-loading-rows tr'));
+                    rows.forEach(function(row, index) {
+                        const isExtra = index >= initialVisibleRows;
+                        row.classList.toggle('extra-field-loading-row', isExtra);
+                        if (!isExtra) {
+                            row.classList.remove('d-none');
+                        } else {
+                            row.classList.toggle('d-none', !fieldLoadingExpanded);
+                        }
+                    });
+                    if (toggleButton) {
+                        toggleButton.textContent = fieldLoadingExpanded ? 'Show Less' : 'Show More';
+                    }
+                }
+
                 if (toggleButton) {
                     toggleButton.addEventListener('click', function() {
-                        const hiddenRows = document.querySelectorAll('.extra-field-loading-row');
-                        const anyHidden = Array.from(hiddenRows).some(row => row.classList.contains('d-none'));
-
-                        hiddenRows.forEach(row => row.classList.toggle('d-none', !anyHidden));
-                        toggleButton.textContent = anyHidden ? 'Show Less' : 'Show More';
+                        fieldLoadingExpanded = !fieldLoadingExpanded;
+                        applyFieldLoadingVisibility();
                     });
+                }
+
+                const tbody = document.getElementById('field-loading-rows');
+                const sortButtons = document.querySelectorAll('.field-loading-sort');
+                let activeSortKey = 'status';
+                let activeSortDir = 'asc';
+
+                function compareFieldValues(a, b) {
+                    const aNum = Number(a);
+                    const bNum = Number(b);
+                    if (!Number.isNaN(aNum) && !Number.isNaN(bNum) && a.trim() !== '' && b.trim() !== '') {
+                        return aNum - bNum;
+                    }
+                    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                function getSortValue(row, key) {
+                    switch (key) {
+                        case 'field':
+                            return row.getAttribute('data-field') || '';
+                        case 'rolling':
+                            return parseFloat(row.getAttribute('data-rolling') || '0');
+                        case 'utilization':
+                            return parseFloat(row.getAttribute('data-utilization') || '0');
+                        case 'status':
+                            return parseInt(row.getAttribute('data-status-rank') || '2', 10);
+                        default:
+                            return '';
+                    }
+                }
+
+                function updateSortIcons() {
+                    sortButtons.forEach(function(button) {
+                        const icon = button.querySelector('.field-loading-sort-icon');
+                        if (!icon) {
+                            return;
+                        }
+                        const key = button.getAttribute('data-sort-key');
+                        icon.classList.remove('bi-sort-up', 'bi-sort-down', 'bi-arrow-down-up', 'text-muted');
+                        if (key === activeSortKey) {
+                            icon.classList.add(activeSortDir === 'asc' ? 'bi-sort-up' : 'bi-sort-down');
+                        } else {
+                            icon.classList.add('bi-arrow-down-up', 'text-muted');
+                        }
+                    });
+                }
+
+                function sortFieldLoadingRows(sortKey, sortDir) {
+                    if (!tbody) {
+                        return;
+                    }
+
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    rows.sort(function(a, b) {
+                        const aVal = getSortValue(a, sortKey);
+                        const bVal = getSortValue(b, sortKey);
+                        let cmp = 0;
+                        if (sortKey === 'field') {
+                            cmp = compareFieldValues(String(aVal), String(bVal));
+                        } else {
+                            cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                        }
+
+                        if (cmp === 0) {
+                            const facilityCmp = (a.getAttribute('data-facility') || '')
+                                .localeCompare(b.getAttribute('data-facility') || '', undefined, { sensitivity: 'base' });
+                            if (facilityCmp !== 0) {
+                                return facilityCmp;
+                            }
+                            return compareFieldValues(
+                                a.getAttribute('data-field') || '',
+                                b.getAttribute('data-field') || '');
+                        }
+
+                        return sortDir === 'asc' ? cmp : -cmp;
+                    });
+
+                    rows.forEach(function(row) {
+                        tbody.appendChild(row);
+                    });
+
+                    applyFieldLoadingVisibility();
+                    updateSortIcons();
+                }
+
+                sortButtons.forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        const sortKey = button.getAttribute('data-sort-key');
+                        if (!sortKey) {
+                            return;
+                        }
+
+                        if (activeSortKey === sortKey) {
+                            activeSortDir = activeSortDir === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            activeSortKey = sortKey;
+                            activeSortDir = (sortKey === 'status' || sortKey === 'field') ? 'asc' : 'desc';
+                        }
+
+                        sortFieldLoadingRows(activeSortKey, activeSortDir);
+                    });
+                });
+
+                if (tbody && sortButtons.length > 0) {
+                    updateSortIcons();
                 }
 
                 const compliantPercent = @Model.IrrigationCompliance.CompliantPercent;

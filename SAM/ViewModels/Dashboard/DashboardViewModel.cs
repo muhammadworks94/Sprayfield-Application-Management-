@@ -51,7 +51,27 @@ public class DashboardViewModel
     // Phase 2: NDAR operator decision support (live-source, field-wise)
     public List<FieldLoadingProgressViewModel> FieldLoadingProgress { get; set; } = new();
 
+    /// <summary>0 = Real-Time (current month); 1–3 = prior calendar months.</summary>
+    public int LoadingOffset { get; set; }
+
+    public bool IsRealTimeLoadingPeriod { get; set; } = true;
+
+    public string SelectedLoadingPeriodLabel { get; set; } = "Real-Time";
+
+    public string CurrentMonthLoadingColumnHeader { get; set; } = "Current Month Loading (in)";
+
+    public List<LoadingPeriodOptionViewModel> LoadingPeriodOptions { get; set; } = new();
+
+    /// <summary>Warning when the selected historical window includes months before company coverage.</summary>
+    public string? IncompleteHistoryWarning { get; set; }
+
     public List<PermitAlertViewModel> PermitAlerts { get; set; } = new();
+}
+
+public class LoadingPeriodOptionViewModel
+{
+    public int Offset { get; set; }
+    public string Label { get; set; } = string.Empty;
 }
 
 public class PermitAlertViewModel

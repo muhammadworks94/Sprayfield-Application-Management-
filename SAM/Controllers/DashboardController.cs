@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,7 @@ using SAM.Controllers.Base;
 using SAM.Domain.Entities;
 using SAM.Domain.Enums;
 using SAM.Infrastructure.Authorization;
+using SAM.Services.Helpers;
 using SAM.Services.Interfaces;
 using SAM.Services.Models;
 using SAM.ViewModels.Dashboard;
@@ -278,7 +280,27 @@ public class DashboardController : BaseController
         }
         viewModel.ComplianceSummaries = complianceSummaries;
 
-        var rollingAsOfDate = new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month));
+        var loadingOffset = 0;
+        if (int.TryParse(Request.Query["loadingOffset"].FirstOrDefault(), out var parsedOffset))
+        {
+            loadingOffset = Math.Clamp(parsedOffset, 0, 3);
+        }
+
+        var asOfMonthStart = new DateTime(now.Year, now.Month, 1).AddMonths(-loadingOffset);
+        var rollingAsOfDate = new DateTime(
+            asOfMonthStart.Year,
+            asOfMonthStart.Month,
+            DateTime.DaysInMonth(asOfMonthStart.Year, asOfMonthStart.Month));
+
+        viewModel.LoadingOffset = loadingOffset;
+        viewModel.IsRealTimeLoadingPeriod = loadingOffset == 0;
+        viewModel.LoadingPeriodOptions = BuildLoadingPeriodOptions(now);
+        viewModel.SelectedLoadingPeriodLabel = viewModel.LoadingPeriodOptions
+            .First(o => o.Offset == loadingOffset).Label;
+        viewModel.CurrentMonthLoadingColumnHeader = loadingOffset == 0
+            ? "Current Month Loading (in)"
+            : $"{asOfMonthStart.ToString("MMMM yyyy", CultureInfo.InvariantCulture)} Loading (in)";
+
         var visibleFacilityIds = facilities.Select(f => f.Id).ToHashSet();
         sprayfields = sprayfields.Where(s => s.FacilityId.HasValue && visibleFacilityIds.Contains(s.FacilityId.Value)).ToList();
         var facilityNameById = facilities.ToDictionary(f => f.Id, f => f.Name);
@@ -329,6 +351,20 @@ public class DashboardController : BaseController
             });
         }
 
+        viewModel.FieldLoadingProgress = viewModel.FieldLoadingProgress
+            .OrderBy(x => StatusSortRank(x.AnnualStatus))
+            .ThenBy(x => x.FacilityName)
+            .ThenBy(x => x.FieldCode, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (loadingOffset > 0)
+        {
+            viewModel.IncompleteHistoryWarning = await BuildIncompleteHistoryWarningAsync(
+                orderedSprayfields,
+                asOfMonthStart,
+                companyId);
+        }
+
         ViewBag.IsGlobalAdmin = isGlobalAdmin;
         ViewBag.SelectedCompanyId = companyId;
 
@@ -374,5 +410,106 @@ public class DashboardController : BaseController
         }
 
         return "Normal";
+    }
+
+    private static int StatusSortRank(string status) => status switch
+    {
+        "Critical" => 0,
+        "Warning" => 1,
+        _ => 2
+    };
+
+    private static List<LoadingPeriodOptionViewModel> BuildLoadingPeriodOptions(DateTime now)
+    {
+        var options = new List<LoadingPeriodOptionViewModel>
+        {
+            new() { Offset = 0, Label = "Real-Time" }
+        };
+
+        var currentMonthStart = new DateTime(now.Year, now.Month, 1);
+        for (var offset = 1; offset <= 3; offset++)
+        {
+            var month = currentMonthStart.AddMonths(-offset);
+            options.Add(new LoadingPeriodOptionViewModel
+            {
+                Offset = offset,
+                Label = month.ToString("MMMM yyyy", CultureInfo.InvariantCulture)
+            });
+        }
+
+        return options;
+    }
+
+    private async Task<string?> BuildIncompleteHistoryWarningAsync(
+        IReadOnlyList<Sprayfield> sprayfields,
+        DateTime asOfMonthStart,
+        Guid? scopedCompanyId)
+    {
+        var companyIds = scopedCompanyId.HasValue
+            ? new List<Guid> { scopedCompanyId.Value }
+            : sprayfields.Select(s => s.CompanyId).Distinct().ToList();
+
+        if (companyIds.Count == 0)
+        {
+            return null;
+        }
+
+        var includeCompanyNames = companyIds.Count > 1;
+        var segments = new List<string>();
+
+        foreach (var id in companyIds)
+        {
+            var company = await _companyService.GetByIdAsync(id);
+            if (company?.FirstReportingMonth is not int firstMonth
+                || company.FirstReportingYear is not int firstYear
+                || firstMonth < 1
+                || firstMonth > 12)
+            {
+                continue;
+            }
+
+            var missingMonths = GetMonthsBeforeCoverage(asOfMonthStart, firstYear, firstMonth);
+            if (missingMonths.Count == 0)
+            {
+                continue;
+            }
+
+            var monthList = string.Join(", ", missingMonths);
+            segments.Add(includeCompanyNames
+                ? $"{company.Name}: {monthList}"
+                : monthList);
+        }
+
+        if (segments.Count == 0)
+        {
+            return null;
+        }
+
+        var detail = string.Join("; ", segments);
+        var noun = includeCompanyNames ? "these clients'" : "this client's";
+        return $"Incomplete 12-month history: {detail} are outside {noun} covered period.";
+    }
+
+    private static List<string> GetMonthsBeforeCoverage(
+        DateTime asOfMonthStart,
+        int firstReportingYear,
+        int firstReportingMonth)
+    {
+        var coverageStart = new DateTime(firstReportingYear, firstReportingMonth, 1)
+            .AddMonths(-BaselineWindowHelper.HistoricalMonthCount);
+        var coverageStartKey = coverageStart.Year * 12 + coverageStart.Month;
+
+        var missing = new List<string>();
+        for (var i = 11; i >= 0; i--)
+        {
+            var monthDate = asOfMonthStart.AddMonths(-i);
+            var monthKey = monthDate.Year * 12 + monthDate.Month;
+            if (monthKey < coverageStartKey)
+            {
+                missing.Add(monthDate.ToString("MMMM yyyy", CultureInfo.InvariantCulture));
+            }
+        }
+
+        return missing;
     }
 }
