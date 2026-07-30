@@ -3019,19 +3019,19 @@ public class ReportsController : BaseController
                 Draw(certGfx, markNonCompliant ? "X" : string.Empty, certFont, map.Certification.Q5NonCompliant);
 
                 Draw(certGfx, string.Empty, certFont, map.Certification.NonComplianceReasonStart);
-                Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.OrcName);
-                Draw(certGfx, string.Empty, certFont, map.Certification.OrcCertificationNo);
-                Draw(certGfx, string.Empty, certFont, map.Certification.OrcGrade);
-                Draw(certGfx, string.Empty, certFont, map.Certification.OrcPhone);
-                Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedYes);
-                Draw(certGfx, string.Empty, certFont, map.Certification.OrcChangedNo);
+                Draw(certGfx, facility?.OrcName ?? string.Empty, certFont, map.Certification.OrcName);
+                Draw(certGfx, facility?.OperatorNumber ?? string.Empty, certFont, map.Certification.OrcCertificationNo);
+                Draw(certGfx, facility?.OperatorGrade ?? string.Empty, certFont, map.Certification.OrcGrade);
+                Draw(certGfx, facility?.OperatorPhone ?? string.Empty, certFont, map.Certification.OrcPhone);
+                Draw(certGfx, facility?.ChangeInOrc == true ? "X" : string.Empty, certFont, map.Certification.OrcChangedYes);
+                Draw(certGfx, facility?.ChangeInOrc == true ? string.Empty : "X", certFont, map.Certification.OrcChangedNo);
                 Draw(certGfx, string.Empty, certFont, map.Certification.OrcSignature);
-                Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.OrcDate);
+                Draw(certGfx, string.Empty, certFont, map.Certification.OrcDate);
 
-                Draw(certGfx, report.Facility?.Permittee, certFont, map.Certification.PermitteeName);
-                Draw(certGfx, string.IsNullOrWhiteSpace(report.CreatedBy) ? string.Empty : report.CreatedBy, certFont, map.Certification.SigningOfficial);
+                Draw(certGfx, facility?.Permittee, certFont, map.Certification.PermitteeName);
+                Draw(certGfx, facility?.OrcName ?? string.Empty, certFont, map.Certification.SigningOfficial);
                 Draw(certGfx, "Authorized Agent", certFont, map.Certification.SigningOfficialTitle);
-                Draw(certGfx, string.Empty, certFont, map.Certification.PermitteePhone);
+                Draw(certGfx, facility?.PermitPhone ?? string.Empty, certFont, map.Certification.PermitteePhone);
                 Draw(certGfx, ndarPermitExpiration?.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitExp);
                 Draw(certGfx, string.Empty, certFont, map.Certification.PermitteeSignature);
                 Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitteeDate);
@@ -4479,12 +4479,12 @@ public class ReportsController : BaseController
                 Q4NonCompliant: new NdarPdfPoint(679, 111),
                 Q5NonCompliant: new NdarPdfPoint(679, 133),
                 NonComplianceReasonStart: new NdarPdfPoint(30, 180),
-                OrcName: new NdarPdfPoint(50, 313),
-                OrcCertificationNo: new NdarPdfPoint(100, 338),
-                OrcGrade: new NdarPdfPoint(60, 360),
-                OrcPhone: new NdarPdfPoint(200, 362),
-                OrcChangedYes: new NdarPdfPoint(251, 386),
-                OrcChangedNo: new NdarPdfPoint(287, 388),
+                OrcName: new NdarPdfPoint(50, 315),
+                OrcCertificationNo: new NdarPdfPoint(92, 338),
+                OrcGrade: new NdarPdfPoint(52, 360),
+                OrcPhone: new NdarPdfPoint(200, 360),
+                OrcChangedYes: new NdarPdfPoint(251, 385),
+                OrcChangedNo: new NdarPdfPoint(287, 385),
                 OrcSignature: new NdarPdfPoint(100, 410),
                 OrcDate: new NdarPdfPoint(320, 420),
                 PermitteeName: new NdarPdfPoint(448, 314),
