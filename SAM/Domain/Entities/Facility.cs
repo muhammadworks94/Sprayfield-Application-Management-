@@ -45,6 +45,16 @@ public class Facility : CompanyScopedEntity
     public string? FacilityContactPersonPhone { get; set; }
 
     /// <summary>
+    /// Permittee certification signing official name (NDAR-1 / similar reports).
+    /// </summary>
+    public string? SigningOfficial { get; set; }
+
+    /// <summary>
+    /// Signing official's title for permittee certification (e.g. Public Works Director).
+    /// </summary>
+    public string? FacilityContactPersonTitle { get; set; }
+
+    /// <summary>
     /// Operator in Responsible Charge (ORC) name.
     /// </summary>
     public string? OrcName { get; set; } = string.Empty;

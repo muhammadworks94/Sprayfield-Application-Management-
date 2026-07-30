@@ -3029,12 +3029,12 @@ public class ReportsController : BaseController
                 Draw(certGfx, string.Empty, certFont, map.Certification.OrcDate);
 
                 Draw(certGfx, facility?.Permittee, certFont, map.Certification.PermitteeName);
-                Draw(certGfx, facility?.OrcName ?? string.Empty, certFont, map.Certification.SigningOfficial);
-                Draw(certGfx, "Authorized Agent", certFont, map.Certification.SigningOfficialTitle);
+                Draw(certGfx, facility?.SigningOfficial ?? string.Empty, certFont, map.Certification.SigningOfficial);
+                Draw(certGfx, facility?.FacilityContactPersonTitle ?? string.Empty, certFont, map.Certification.SigningOfficialTitle);
                 Draw(certGfx, facility?.PermitPhone ?? string.Empty, certFont, map.Certification.PermitteePhone);
                 Draw(certGfx, ndarPermitExpiration?.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitExp);
                 Draw(certGfx, string.Empty, certFont, map.Certification.PermitteeSignature);
-                Draw(certGfx, report.CreatedDate.ToString("MM/dd/yyyy"), certFont, map.Certification.PermitteeDate);
+                Draw(certGfx, string.Empty, certFont, map.Certification.PermitteeDate);
 
                 if (showGrid)
                 {
@@ -4487,11 +4487,11 @@ public class ReportsController : BaseController
                 OrcChangedNo: new NdarPdfPoint(287, 385),
                 OrcSignature: new NdarPdfPoint(100, 410),
                 OrcDate: new NdarPdfPoint(320, 420),
-                PermitteeName: new NdarPdfPoint(448, 314),
-                SigningOfficial: new NdarPdfPoint(460, 335),
-                SigningOfficialTitle: new NdarPdfPoint(490, 360),
-                PermitteePhone: new NdarPdfPoint(460, 382),
-                PermitExp: new NdarPdfPoint(630, 382),
+                PermitteeName: new NdarPdfPoint(438, 314),
+                SigningOfficial: new NdarPdfPoint(458, 336.5),
+                SigningOfficialTitle: new NdarPdfPoint(485, 360),
+                PermitteePhone: new NdarPdfPoint(458, 383),
+                PermitExp: new NdarPdfPoint(630, 383),
                 PermitteeSignature: new NdarPdfPoint(490, 411),
                 PermitteeDate: new NdarPdfPoint(700, 420)));
     }

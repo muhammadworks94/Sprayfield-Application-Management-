@@ -85,6 +85,8 @@ public class FacilityService : IFacilityService
         existing.FacilityPhone = facility.FacilityPhone;
         existing.FacilityContactPerson = facility.FacilityContactPerson;
         existing.FacilityContactPersonPhone = facility.FacilityContactPersonPhone;
+        existing.SigningOfficial = facility.SigningOfficial;
+        existing.FacilityContactPersonTitle = facility.FacilityContactPersonTitle;
         existing.OrcName = facility.OrcName;
         existing.OperatorGrade = facility.OperatorGrade;
         existing.OperatorNumber = facility.OperatorNumber;

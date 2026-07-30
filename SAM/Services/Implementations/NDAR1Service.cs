@@ -2019,8 +2019,8 @@ public class NDAR1Service : INDAR1Service
         certificationWorksheet.Cell("K14").Value = DateTime.Today.ToString("MM/dd/yyyy");
 
         certificationWorksheet.Cell("O10").Value = facility.Permittee ?? string.Empty;
-        certificationWorksheet.Cell("O11").Value = facility.OrcName ?? string.Empty;
-        certificationWorksheet.Cell("P12").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("O11").Value = facility.SigningOfficial ?? string.Empty;
+        certificationWorksheet.Cell("P12").Value = facility.FacilityContactPersonTitle ?? string.Empty;
         certificationWorksheet.Cell("O13").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("T13").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("U14").Value = DateTime.Today.ToString("MM/dd/yyyy");

@@ -44,6 +44,8 @@ public partial class SystemAdminController
             FacilityPhone = facility.FacilityPhone,
             FacilityContactPerson = facility.FacilityContactPerson,
             FacilityContactPersonPhone = facility.FacilityContactPersonPhone,
+            SigningOfficial = facility.SigningOfficial,
+            FacilityContactPersonTitle = facility.FacilityContactPersonTitle,
             OrcName = facility.OrcName,
             OperatorGrade = facility.OperatorGrade,
             OperatorNumber = facility.OperatorNumber,
@@ -122,6 +124,8 @@ public partial class SystemAdminController
                 FacilityPhone = viewModel.FacilityPhone,
                 FacilityContactPerson = viewModel.FacilityContactPerson,
                 FacilityContactPersonPhone = viewModel.FacilityContactPersonPhone,
+                SigningOfficial = viewModel.SigningOfficial,
+                FacilityContactPersonTitle = viewModel.FacilityContactPersonTitle,
                 OrcName = viewModel.OrcName,
                 OperatorGrade = viewModel.OperatorGrade,
                 OperatorNumber = viewModel.OperatorNumber,
@@ -181,6 +185,8 @@ public partial class SystemAdminController
             FacilityPhone = facility.FacilityPhone,
             FacilityContactPerson = facility.FacilityContactPerson,
             FacilityContactPersonPhone = facility.FacilityContactPersonPhone,
+            SigningOfficial = facility.SigningOfficial,
+            FacilityContactPersonTitle = facility.FacilityContactPersonTitle,
             OrcName = facility.OrcName,
             OperatorGrade = facility.OperatorGrade,
             OperatorNumber = facility.OperatorNumber,
@@ -233,6 +239,8 @@ public partial class SystemAdminController
             facility.FacilityPhone = viewModel.FacilityPhone;
             facility.FacilityContactPerson = viewModel.FacilityContactPerson;
             facility.FacilityContactPersonPhone = viewModel.FacilityContactPersonPhone;
+            facility.SigningOfficial = viewModel.SigningOfficial;
+            facility.FacilityContactPersonTitle = viewModel.FacilityContactPersonTitle;
             facility.OrcName = viewModel.OrcName;
             facility.OperatorGrade = viewModel.OperatorGrade;
             facility.OperatorNumber = viewModel.OperatorNumber;

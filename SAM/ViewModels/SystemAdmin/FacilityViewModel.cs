@@ -73,6 +73,14 @@ public class FacilityViewModel
     public string FacilityContactPersonPhone { get; set; } = string.Empty;
 
     [StringLength(200)]
+    [Display(Name = "Signing Official")]
+    public string? SigningOfficial { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Signing Official's Title")]
+    public string? FacilityContactPersonTitle { get; set; }
+
+    [StringLength(200)]
     [Display(Name = "Operator in Responsible Charge (ORC)")]
     public string OrcName { get; set; } = string.Empty;
 
@@ -158,6 +166,14 @@ public class FacilityCreateViewModel
     public string? FacilityContactPersonPhone { get; set; }
 
     [StringLength(200)]
+    [Display(Name = "Signing Official")]
+    public string? SigningOfficial { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Signing Official's Title")]
+    public string? FacilityContactPersonTitle { get; set; }
+
+    [StringLength(200)]
     [Display(Name = "Operator in Responsible Charge (ORC)")]
     public string? OrcName { get; set; }
 
@@ -230,6 +246,14 @@ public class FacilityEditViewModel
     [StringLength(50)]
     [Display(Name = "Facility Contact Person Phone #")]
     public string? FacilityContactPersonPhone { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Signing Official")]
+    public string? SigningOfficial { get; set; }
+
+    [StringLength(200)]
+    [Display(Name = "Signing Official's Title")]
+    public string? FacilityContactPersonTitle { get; set; }
 
     [StringLength(200)]
     [Display(Name = "Operator in Responsible Charge (ORC)")]

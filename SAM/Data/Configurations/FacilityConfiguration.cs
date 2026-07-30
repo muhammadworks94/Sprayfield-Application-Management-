@@ -72,6 +72,18 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
 
 
 
+        builder.Property(f => f.SigningOfficial)
+
+            .HasMaxLength(200);
+
+
+
+        builder.Property(f => f.FacilityContactPersonTitle)
+
+            .HasMaxLength(200);
+
+
+
         builder.Property(f => f.OrcName)
 
             .HasMaxLength(200);
