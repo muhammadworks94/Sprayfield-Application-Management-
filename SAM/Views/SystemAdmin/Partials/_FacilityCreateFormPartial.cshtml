@@ -4,6 +4,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @{
     var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var companyUsers = ViewBag.CompanyUsers as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
     var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
@@ -135,41 +136,54 @@
 
 <div class="form-section">
     <div class="form-section-title">Operator in Responsible Charge (ORC)</div>
-
+    <p class="text-muted small mb-3">Optionally assign a SAM user as ORC with a start date. Cert/grade/phone can be filled now or later on Facility Edit.</p>
     <div class="row">
-        <div class="col-md-3">
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label asp-for="OrcUserId" class="form-label"></label>
+                <select asp-for="OrcUserId" class="form-select" asp-items="companyUsers">
+                    <option value="">-- Select SAM user --</option>
+                </select>
+                <span asp-validation-for="OrcUserId" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label asp-for="OrcAssignmentStartDate" class="form-label"></label>
+                <input asp-for="OrcAssignmentStartDate" type="date" class="form-control" />
+                <span asp-validation-for="OrcAssignmentStartDate" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-4">
             <div class="mb-3">
                 <label asp-for="OrcName" class="form-label"></label>
                 <input asp-for="OrcName" class="form-control" />
                 <span asp-validation-for="OrcName" class="text-danger"></span>
             </div>
         </div>
-        <div class="col-md-3">
+    </div>
+    <div class="row">
+        <div class="col-md-4">
             <div class="mb-3">
                 <label asp-for="OperatorGrade" class="form-label"></label>
                 <input asp-for="OperatorGrade" class="form-control" />
                 <span asp-validation-for="OperatorGrade" class="text-danger"></span>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="mb-3">
                 <label asp-for="OperatorNumber" class="form-label"></label>
                 <input asp-for="OperatorNumber" class="form-control" />
                 <span asp-validation-for="OperatorNumber" class="text-danger"></span>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="mb-3">
                 <label asp-for="OperatorPhone" class="form-label"></label>
                 <input asp-for="OperatorPhone" class="form-control" />
                 <span asp-validation-for="OperatorPhone" class="text-danger"></span>
             </div>
         </div>
-    </div>
-
-    <div class="mb-3 form-check">
-        <input asp-for="ChangeInOrc" type="checkbox" class="form-check-input" />
-        <label asp-for="ChangeInOrc" class="form-check-label"></label>
     </div>
 </div>
 

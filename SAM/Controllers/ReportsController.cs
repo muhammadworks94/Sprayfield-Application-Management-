@@ -2848,6 +2848,17 @@ public class ReportsController : BaseController
         return buffer;
     }
 
+    private async Task<bool> HasOrcChangedForReportAsync(Guid facilityId, int year, int month)
+    {
+        var endDates = await _context.FacilityOrcAssignments
+            .AsNoTracking()
+            .Where(x => x.FacilityId == facilityId && x.EndDate != null)
+            .Select(x => x.EndDate)
+            .ToListAsync();
+
+        return OrcChangeEvaluator.HasOrcChangedSincePrevious(endDates, year, month);
+    }
+
     private async Task<byte[]> RenderNdar1PdfAsync(NDAR1 report, bool showGrid = false)
     {
         var templatePath = Path.Combine(_environment.WebRootPath, "forms", "Non-Discharge Application Report (NDAR-1) Form 131014.pdf");
@@ -2864,6 +2875,7 @@ public class ReportsController : BaseController
             .FirstOrDefaultAsync();
         var facility = report.Facility
             ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId);
+        var orcChanged = await HasOrcChangedForReportAsync(report.FacilityId, report.Year, (int)report.Month);
         var reportDate = new DateTime(report.Year, (int)report.Month, 1);
         var ndarPermit = await ResolvePermitForDateAsync(report.FacilityId, reportDate);
         var ndarExportPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, facility, ndarPermit) ?? ndarPermit;
@@ -3023,8 +3035,8 @@ public class ReportsController : BaseController
                 Draw(certGfx, facility?.OperatorNumber ?? string.Empty, certFont, map.Certification.OrcCertificationNo);
                 Draw(certGfx, facility?.OperatorGrade ?? string.Empty, certFont, map.Certification.OrcGrade);
                 Draw(certGfx, facility?.OperatorPhone ?? string.Empty, certFont, map.Certification.OrcPhone);
-                Draw(certGfx, facility?.ChangeInOrc == true ? "X" : string.Empty, certFont, map.Certification.OrcChangedYes);
-                Draw(certGfx, facility?.ChangeInOrc == true ? string.Empty : "X", certFont, map.Certification.OrcChangedNo);
+                Draw(certGfx, orcChanged ? "X" : string.Empty, certFont, map.Certification.OrcChangedYes);
+                Draw(certGfx, orcChanged ? string.Empty : "X", certFont, map.Certification.OrcChangedNo);
                 Draw(certGfx, string.Empty, certFont, map.Certification.OrcSignature);
                 Draw(certGfx, string.Empty, certFont, map.Certification.OrcDate);
 
@@ -3061,6 +3073,7 @@ public class ReportsController : BaseController
         var monthKeys = BuildDescendingNdmlrWindowMonthKeys(report.Year, report.Month);
         var ndmlrFacility = report.Facility
             ?? await _context.Facilities.AsNoTracking().FirstOrDefaultAsync(f => f.Id == report.FacilityId);
+        var orcChanged = await HasOrcChangedForReportAsync(report.FacilityId, report.Year, (int)report.Month);
         var ndmlrPermit = await ResolvePermitForDateAsync(report.FacilityId, windowEnd);
         var ndmlrExportPermit = await Gw59FacilityFieldResolver.ResolvePreferredPermitAsync(_context, ndmlrFacility, ndmlrPermit) ?? ndmlrPermit;
         var ndmlrHeaderPermitNumber = Gw59FacilityFieldResolver.ResolvePermitNumberForReport(ndmlrFacility, ndmlrExportPermit);
@@ -3342,8 +3355,8 @@ public class ReportsController : BaseController
                 Draw(certGfx, operatorNumber, certFont, new NdarPdfPoint(110, 338));
                 Draw(certGfx, operatorGrade, certFont, new NdarPdfPoint(53, 362));
                 Draw(certGfx, operatorPhone, certFont, new NdarPdfPoint(250, 362));
-                Draw(certGfx, facility?.ChangeInOrc == true ? "X" : string.Empty, certFont, new NdarPdfPoint(313, 377));
-                Draw(certGfx, facility?.ChangeInOrc == true ? string.Empty : "X", certFont, new NdarPdfPoint(340, 385));
+                Draw(certGfx, orcChanged ? "X" : string.Empty, certFont, new NdarPdfPoint(313, 377));
+                Draw(certGfx, orcChanged ? string.Empty : "X", certFont, new NdarPdfPoint(340, 385));
 
                 Draw(certGfx, permittee, certFont, new NdarPdfPoint(473, 315));
                 Draw(certGfx, orcName, certFont, new NdarPdfPoint(499, 338));
@@ -3421,6 +3434,7 @@ public class ReportsController : BaseController
         }
 
         var snapshot = await BuildNdmrPdfSnapshotAsync(report);
+        var orcChanged = await HasOrcChangedForReportAsync(report.FacilityId, report.Year, (int)report.Month);
 
         using var output = new MemoryStream();
         using var document = new PdfDocument();
@@ -3567,8 +3581,8 @@ public class ReportsController : BaseController
             Draw(certGfx, snapshot.Facility.OperatorNumber, font, Point(cert.OrcCertificationNo));
             Draw(certGfx, snapshot.Facility.OperatorGrade, font, Point(cert.OrcGrade));
             Draw(certGfx, snapshot.Facility.OperatorPhone, font, Point(cert.OrcPhone));
-            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? "X" : string.Empty, boldFont, Point(cert.OrcChangedYes));
-            Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? string.Empty : "X", boldFont, Point(cert.OrcChangedNo));
+            Draw(certGfx, orcChanged ? "X" : string.Empty, boldFont, Point(cert.OrcChangedYes));
+            Draw(certGfx, orcChanged ? string.Empty : "X", boldFont, Point(cert.OrcChangedNo));
 
             Draw(certGfx, snapshot.Facility.Permittee, font, Point(cert.Permittee));
             Draw(certGfx, snapshot.Facility.SigningOfficial, font, Point(cert.SigningOfficial));

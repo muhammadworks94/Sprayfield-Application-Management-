@@ -795,7 +795,8 @@ public class NDMRService : INDMRService
             labOption,
             secondaryLabOption,
             wwChar,
-            irrigationReport?.ComplianceStatus);
+            irrigationReport?.ComplianceStatus,
+            await HasOrcChangedAsync(facility.Id, year, month));
 
         // Keep NDMR output focused on PPI 001 chunk pages + required supporting sheets.
         // Remove legacy nitrogen PPI worksheets that are not part of the consolidated layout.
@@ -830,7 +831,8 @@ public class NDMRService : INDMRService
         CompanyLabOption? labOption,
         CompanyLabOption? secondaryLabOption,
         WWChar? wwChar,
-        ComplianceStatusEnum? complianceStatus)
+        ComplianceStatusEnum? complianceStatus,
+        bool orcChanged)
     {
         var certificationWorksheet = workbook.Worksheets
             .FirstOrDefault(ws => string.Equals(ws.Name, "Certification Page", StringComparison.OrdinalIgnoreCase));
@@ -870,7 +872,7 @@ public class NDMRService : INDMRService
         certificationWorksheet.Cell("D10").Value = facility.OperatorNumber ?? string.Empty;
         certificationWorksheet.Cell("C11").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("G11").Value = facility.OperatorPhone ?? string.Empty;
-        certificationWorksheet.Cell("A12").Value = $"Has the ORC changed since the previous NDMR? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
+        certificationWorksheet.Cell("A12").Value = $"Has the ORC changed since the previous NDMR? {(orcChanged ? "Yes" : "No")}";
 
         // Permittee certification section
         certificationWorksheet.Cell("M9").Value = facility.Permittee ?? string.Empty;
@@ -885,5 +887,16 @@ public class NDMRService : INDMRService
         var secondaryLabInfo = Gw59FacilityFieldResolver.ResolveLabInfo(facility, secondaryLabOption);
         certificationWorksheet.Cell("L2").Value = labInfo.LabName;
         certificationWorksheet.Cell("L3").Value = secondaryLabInfo.LabName;
+    }
+
+    private async Task<bool> HasOrcChangedAsync(Guid facilityId, int year, int month)
+    {
+        var endDates = await _context.FacilityOrcAssignments
+            .AsNoTracking()
+            .Where(x => x.FacilityId == facilityId && x.EndDate != null)
+            .Select(x => x.EndDate)
+            .ToListAsync();
+
+        return OrcChangeEvaluator.HasOrcChangedSincePrevious(endDates, year, month);
     }
 }

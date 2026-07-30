@@ -96,6 +96,7 @@ builder.Services.AddScoped<IAuthorizationHandler, CompanyAccessHandler>();
 // Register services
 builder.Services.AddScoped<SAM.Services.Interfaces.ICompanyService, CompanyService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.IFacilityService, FacilityService>();
+builder.Services.AddScoped<SAM.Services.Interfaces.IFacilityOrcAssignmentService, FacilityOrcAssignmentService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ISoilService, SoilService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.INozzleService,NozzleService>();
 builder.Services.AddScoped<SAM.Services.Interfaces.ICropService, CropService>();

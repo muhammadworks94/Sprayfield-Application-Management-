@@ -222,7 +222,8 @@ public class NDMLRService : INDMLRService
             {
                 var certSheetName = $"Certification ({chunkIndex + 1})";
                 var certSheet = certificationTemplate.CopyTo(certSheetName);
-                WriteCertificationPage(certSheet, facility, permit);
+                var orcChanged = await HasOrcChangedAsync(facility.Id, year, (int)ndmlr.Month);
+                WriteCertificationPage(certSheet, facility, permit, orcChanged);
                 certSheet.Position = reportSheet.Position + 1;
             }
         }
@@ -608,21 +609,32 @@ public class NDMLRService : INDMLRService
         sheet?.Delete();
     }
 
-    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility, FacilityPermit? permit)
+    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility, FacilityPermit? permit, bool orcChanged)
     {
         certificationWorksheet.Cell("C6").Value = facility.OrcName ?? string.Empty;
         certificationWorksheet.Cell("E7").Value = facility.OperatorNumber ?? string.Empty;
         certificationWorksheet.Cell("C8").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("I8").Value = facility.OperatorPhone ?? string.Empty;
-        certificationWorksheet.Cell("B9").Value = $"Has the ORC changed since the previous NDMLR? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
+        certificationWorksheet.Cell("B9").Value = $"Has the ORC changed since the previous NDMLR? {(orcChanged ? "Yes" : "No")}";
         certificationWorksheet.Cell("K10").Clear(XLClearOptions.Contents);
 
         certificationWorksheet.Cell("O6").Value = facility.Permittee ?? string.Empty;
-        certificationWorksheet.Cell("P7").Value = facility.OrcName ?? string.Empty;
-        certificationWorksheet.Cell("P8").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("P7").Value = facility.SigningOfficial ?? string.Empty;
+        certificationWorksheet.Cell("P8").Value = facility.FacilityContactPersonTitle ?? string.Empty;
         certificationWorksheet.Cell("O9").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("T9").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("U10").Clear(XLClearOptions.Contents);
+    }
+
+    private async Task<bool> HasOrcChangedAsync(Guid facilityId, int year, int month)
+    {
+        var endDates = await _context.FacilityOrcAssignments
+            .AsNoTracking()
+            .Where(x => x.FacilityId == facilityId && x.EndDate != null)
+            .Select(x => x.EndDate)
+            .ToListAsync();
+
+        return OrcChangeEvaluator.HasOrcChangedSincePrevious(endDates, year, month);
     }
 
     private sealed class NdmlrFieldMeta

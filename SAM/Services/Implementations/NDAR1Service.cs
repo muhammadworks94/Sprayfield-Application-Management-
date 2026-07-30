@@ -1639,7 +1639,8 @@ public class NDAR1Service : INDAR1Service
 
                 var certSheetName = $"Certification ({chunkIndex + 1})";
                 var certSheet = certificationTemplate.CopyTo(certSheetName);
-                WriteCertificationPage(certSheet, facility, permit, irrigationReport?.ComplianceStatus);
+                var orcChanged = await HasOrcChangedAsync(facility.Id, report.Year, (int)report.Month);
+                WriteCertificationPage(certSheet, facility, permit, irrigationReport?.ComplianceStatus, orcChanged);
                 certSheet.Position = ndarSheet.Position + 1;
             }
         }
@@ -2007,7 +2008,7 @@ public class NDAR1Service : INDAR1Service
         public decimal FloatingTotal { get; set; }
     }
 
-    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility, FacilityPermit? permit, ComplianceStatusEnum? complianceStatus)
+    private static void WriteCertificationPage(IXLWorksheet certificationWorksheet, Facility facility, FacilityPermit? permit, ComplianceStatusEnum? complianceStatus, bool orcChanged)
     {
         WriteFacilityStatusComplianceRows(certificationWorksheet, complianceStatus);
 
@@ -2015,7 +2016,7 @@ public class NDAR1Service : INDAR1Service
         certificationWorksheet.Cell("E11").Value = facility.OperatorNumber ?? string.Empty;
         certificationWorksheet.Cell("C12").Value = facility.OperatorGrade ?? string.Empty;
         certificationWorksheet.Cell("I12").Value = facility.OperatorPhone ?? string.Empty;
-        certificationWorksheet.Cell("A13").Value = $"Has the ORC changed since the previous NDAR-1? {(facility.ChangeInOrc == true ? "Yes" : "No")}";
+        certificationWorksheet.Cell("A13").Value = $"Has the ORC changed since the previous NDAR-1? {(orcChanged ? "Yes" : "No")}";
         certificationWorksheet.Cell("K14").Value = DateTime.Today.ToString("MM/dd/yyyy");
 
         certificationWorksheet.Cell("O10").Value = facility.Permittee ?? string.Empty;
@@ -2024,6 +2025,17 @@ public class NDAR1Service : INDAR1Service
         certificationWorksheet.Cell("O13").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("T13").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
         certificationWorksheet.Cell("U14").Value = DateTime.Today.ToString("MM/dd/yyyy");
+    }
+
+    private async Task<bool> HasOrcChangedAsync(Guid facilityId, int year, int month)
+    {
+        var endDates = await _context.FacilityOrcAssignments
+            .AsNoTracking()
+            .Where(x => x.FacilityId == facilityId && x.EndDate != null)
+            .Select(x => x.EndDate)
+            .ToListAsync();
+
+        return OrcChangeEvaluator.HasOrcChangedSincePrevious(endDates, year, month);
     }
 
     private static IXLWorksheet? GetCertificationTemplateSheet(IXLWorkbook workbook)

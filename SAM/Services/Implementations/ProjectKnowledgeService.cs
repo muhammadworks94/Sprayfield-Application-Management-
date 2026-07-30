@@ -12,7 +12,7 @@ public class ProjectKnowledgeService : IProjectKnowledgeService
     {
         var model = new ProjectKnowledgeViewModel
         {
-            Summary = "This page explains how SAM is structured, how major workflows run, how reports are generated, and which formulas and fallback rules are applied. Monthly NDAR-1, NDMR, and NDMLR report records can be auto-created when operational data is saved (bidirectional with manual Generate and NDAR grid edit). Groundwater monitoring uses permit-template PCS rows as the chemistry source of truth, combines GW-59 and GW-59A into one PDF export, and manages VOC attachments through the reports flow. GW and WW template entry support Reporting Detection Limit (RDL) checkboxes: exports prefix values with < and monthly averages count RDL entries as zero."
+            Summary = "This page explains how SAM is structured, how major workflows run, how reports are generated, and which formulas and fallback rules are applied. Monthly NDAR-1, NDMR, and NDMLR report records can be auto-created when operational data is saved (bidirectional with manual Generate and NDAR grid edit). Facility ORC is assigned as a SAM user with start/end tenure dates (FacilityOrcAssignments); “Has the ORC changed?” on NDAR-1/NDMR/NDMLR is computed from the prior month’s ORC end date. Permittee certification uses Facility.SigningOfficial, FacilityContactPersonTitle, and PermitPhone. Groundwater monitoring uses permit-template PCS rows as the chemistry source of truth, combines GW-59 and GW-59A into one PDF export, and manages VOC attachments through the reports flow. GW and WW template entry support Reporting Detection Limit (RDL) checkboxes: exports prefix values with < and monthly averages count RDL entries as zero."
         };
 
         model.Sections.Add(BuildSystemOverview());
@@ -56,6 +56,8 @@ flowchart TD
     Facility --> NDMLR
     Facility --> IrrRprt
     Facility --> FacilityPermit
+    Facility --> FacilityOrcAssignment
+    FacilityOrcAssignment --> Users
     FacilityPermit --> FacilityPermitTemplateParameter
     FacilityPermitTemplateParameter --> WWCharTemplateValue
     FacilityPermitTemplateParameter --> GWMonitTemplateValue
@@ -179,7 +181,8 @@ flowchart TD
                     Rows =
                     {
                         new List<string> { "Company", "Top-level tenant scope", "Facility, Users", "All modules" },
-                        new List<string> { "Facility", "Primary operating site", "Sprayfield, MonitoringWell, MonthlyApplication, WWChar, GWMonit, FacilityPermit", "Operations + Reports" },
+                        new List<string> { "Facility", "Primary operating site; mirrors current ORC + permittee signing fields", "Sprayfield, MonitoringWell, MonthlyApplication, WWChar, GWMonit, FacilityPermit, FacilityOrcAssignment", "Operations + Reports; OrcName/OperatorNumber/Grade/Phone mirror current ORC assignment; SigningOfficial + FacilityContactPersonTitle + PermitPhone feed permittee certification" },
+                        new List<string> { "FacilityOrcAssignment", "ORC tenure history (SAM user + start/end + cert snapshot)", "Facility, Users (optional UserId)", "System Admin > Facilities ORC section; drives computed “Has the ORC changed?” on NDAR-1/NDMR/NDMLR exports via OrcChangeEvaluator" },
                         new List<string> { "Sprayfield", "Irrigation field setup", "Facility, Crop, Nozzle, Soil", "Monthly Apps, NDAR1 calculations" },
                         new List<string> { "FacilityPermit", "Permit version + date range + PDF", "Facility, FacilityPermitTemplateParameter", "WWChar template resolution, NDMR header logic" },
                         new List<string> { "FacilityPermitTemplateParameter", "Permit-bound PCS config", "PcsParameterCatalog, WWCharTemplateValue, GWMonitTemplateValue", "Dynamic template-driven behavior" },
@@ -371,6 +374,21 @@ flowchart TD
                 },
                 new ProjectStepFlowViewModel
                 {
+                    Name = "Facility ORC Assignment (tenure)",
+                    Steps =
+                    {
+                        "System Admin opens Facilities > Edit and uses the Operator in Responsible Charge (ORC) section.",
+                        "Admin selects a company SAM user, optional start date, and cert/grade/phone snapshot fields, then saves to assign or replace the current ORC.",
+                        "Assigning a new ORC closes the previous open assignment (EndDate = day before new start) and creates a FacilityOrcAssignment row; Facility.OrcName/OperatorNumber/Grade/Phone are mirrored from the current open assignment.",
+                        "Ending an ORC without replacement uses “End Current ORC As Of”; history remains on FacilityOrcAssignments for audit.",
+                        "The former Facility.ChangeInOrc checkbox is no longer used on the UI; exports compute the change flag instead.",
+                        "For NDAR-1 / NDMR / NDMLR certification: “Has the ORC changed since the previous …?” is Yes only when an assignment EndDate falls in the calendar month immediately before the report month (OrcChangeEvaluator / FacilityOrcAssignmentService).",
+                        "ORC certification block still exports name/cert/grade/phone from Facility mirrors (current assignment). Permittee block exports SigningOfficial, FacilityContactPersonTitle, and PermitPhone (separate from ORC).",
+                        "GW-59 does not have an ORC-changed question; daily ORC-on-site still comes from OperatorLog (unchanged)."
+                    }
+                },
+                new ProjectStepFlowViewModel
+                {
                     Name = "Groundwater Quality Reports",
                     Steps =
                     {
@@ -413,7 +431,9 @@ flowchart TD
                         "PCS 50050 Flow exports in MGD with daily values formatted 0.000; permit monthly average limit converted from GPD to MGD (e.g. 1076000 → 1.076). Flow does not use RDL checkboxes.",
                         "Non-flow NDMR parameter daily cells export RDL values as text with a leading < (for example <0.02). Monthly average footer uses ReportingDetectionLimitHelper: RDL days count toward the average but contribute 0; daily max/min keep the entered numeric value.",
                         "First two daily columns (ORC Arrival Time, ORC Time On Site) use canonical Operator Logs; footer rows and daily cells are vertically centered.",
-                        "Certification page uses WWChar lab options and sampling persons; compliance checkbox uses IrrRprt.ComplianceStatus.",
+                        "Certification page ORC block uses Facility ORC mirrors (OrcName, OperatorNumber, OperatorGrade, OperatorPhone); “Has the ORC changed?” is computed from FacilityOrcAssignment EndDate in the prior month (not Facility.ChangeInOrc).",
+                        "Permittee certification uses Facility.SigningOfficial, Facility.FacilityContactPersonTitle, and Facility.PermitPhone (not ORC name/grade).",
+                        "Certification page also uses WWChar lab options and sampling persons; compliance checkbox uses IrrRprt.ComplianceStatus.",
                         "Short-month exports only build DateTime values for valid days in the month (no day-31 errors for April, June, September, November, or February)."
                     }
                 },
@@ -491,7 +511,28 @@ flowchart TD
                         new List<string> { "ORC Arrival / Time On Site", "OperatorLog (canonical)", "First log by arrival time; canonical log for time on site." },
                         new List<string> { "Other parameters", "WWChar arrays + GWMonit + WWCharTemplateValue", "Template-driven PCS columns from active permit version." },
                         new List<string> { "RDL (non-flow parameters)", "WWCharTemplateValue.IsReportingDetectionLimit", "Daily cells export <value in PDF/Excel; monthly average counts day but uses 0. Flow PCS 50050 excluded." },
-                        new List<string> { "Compliance (page 2)", "IrrRprt.ComplianceStatus", "Compliant / Non-compliant checkbox marks." }
+                        new List<string> { "Compliance (page 2)", "IrrRprt.ComplianceStatus", "Compliant / Non-compliant checkbox marks." },
+                        new List<string> { "ORC name / cert / grade / phone", "Facility.OrcName, OperatorNumber, OperatorGrade, OperatorPhone", "Mirrored from current FacilityOrcAssignment." },
+                        new List<string> { "Has the ORC changed?", "FacilityOrcAssignment.EndDate via OrcChangeEvaluator", "Yes only if an ORC ended in the month before the report month." },
+                        new List<string> { "Signing Official / Title / Permittee Phone", "Facility.SigningOfficial, FacilityContactPersonTitle, PermitPhone", "Permittee certification; maintained on Facility Edit." }
+                    }
+                },
+                new ProjectTableViewModel
+                {
+                    Caption = "NDAR-1 / NDMR / NDMLR Certification Field Mapping",
+                    Headers = { "Form Label", "Primary Source", "Fallback / Notes" },
+                    Rows =
+                    {
+                        new List<string> { "ORC", "Facility.OrcName", "Synced from current FacilityOrcAssignment.DisplayName (often SAM user FullName)." },
+                        new List<string> { "Certification No.", "Facility.OperatorNumber", "Synced from current assignment snapshot." },
+                        new List<string> { "Grade", "Facility.OperatorGrade", "Synced from current assignment snapshot." },
+                        new List<string> { "ORC Phone Number", "Facility.OperatorPhone", "Synced from current assignment snapshot." },
+                        new List<string> { "Has the ORC changed since the previous NDAR-1/NDMR/NDMLR?", "OrcChangeEvaluator + FacilityOrcAssignments", "Yes iff EndDate is in reportMonth−1; otherwise No. Facility.ChangeInOrc checkbox deprecated for exports." },
+                        new List<string> { "Permittee", "Facility.Permittee", "—" },
+                        new List<string> { "Signing Official", "Facility.SigningOfficial", "Optional facility field; not ORC name." },
+                        new List<string> { "Signing Official's Title", "Facility.FacilityContactPersonTitle", "Optional facility field (e.g. Public Works Director)." },
+                        new List<string> { "Permittee Phone Number", "Facility.PermitPhone", "Permittee certification phone." },
+                        new List<string> { "Permit Exp.", "Resolved FacilityPermit.EffectiveEndDate", "Same permit resolution as report header." }
                     }
                 },
                 new ProjectTableViewModel
@@ -533,12 +574,13 @@ flowchart TD
                     Headers = { "Report", "Primary Source Models", "Header/Permit Logic", "Fallback Notes" },
                     Rows =
                     {
-                        new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication", "Permit number and county from resolved FacilityPermit for report month (Gw59FacilityFieldResolver)", "Auto-created/refreshed from application/operator logs; grid edit can reverse-write operational rows; export layout includes facility/field checkboxes and footer columns through V." },
-                        new List<string> { "NDMR", "IrrRprt + WWChar + GWMonit + OperatorLog + permit template PCS rows", "PPI 002; Flow/Parameter monitoring points from WWChar; permit number/county from FacilityPermit; certification from WWChar labs/sampling persons", "Export uses IrrRprt id directly (NDAR-1 not required); aggregates live operational data; PCS 50050 in MGD 0.000 format including monthly avg limit; PDF checkbox marks via NdmrPdfCalibration." },
-                        new List<string> { "NDMLR (annual)", "NDAR-1 + GWMonit + sprayfield volumes", "Permit number and county from resolved FacilityPermit for report period", "Identity row auto-created from application logs (window end = application month/year); export math runs at export time." },
+                        new List<string> { "NDAR1", "NDAR1 + NDAR1Field + NDAR1FieldDaily + MonthlyApplication + Facility ORC/signing fields + FacilityOrcAssignment", "Permit number and county from resolved FacilityPermit for report month (Gw59FacilityFieldResolver); certification ORC change via OrcChangeEvaluator", "Auto-created/refreshed from application/operator logs; grid edit can reverse-write operational rows; ORC cert from Facility mirrors; permittee signing from SigningOfficial/Title/PermitPhone." },
+                        new List<string> { "NDMR", "IrrRprt + WWChar + GWMonit + OperatorLog + permit template PCS rows + Facility ORC/signing + FacilityOrcAssignment", "PPI 002; Flow/Parameter monitoring points from WWChar; permit number/county from FacilityPermit; certification ORC change computed; labs/sampling from WWChar", "Export uses IrrRprt id directly (NDAR-1 not required); PCS 50050 in MGD 0.000; permittee signing Official/Title/Phone from Facility." },
+                        new List<string> { "NDMLR (annual)", "NDAR-1 + GWMonit + sprayfield volumes + Facility ORC/signing + FacilityOrcAssignment", "Permit number and county from resolved FacilityPermit; ORC change evaluated for NDMLR Month/Year window end", "Identity row auto-created from application logs; export math runs at export time." },
                         new List<string> { "Irrigation Report", "Monthly applications + supporting operational context", "Facility metadata", "Compliance status and summary metrics derive from source entries." },
-                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + CompanyLabOption + MonitoringWell + Facility", "Permit version resolved by facility default selection or sample date; address/county from permit; operation type checkboxes from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. Lab from GWMonit.LabOptionId (CompanyLabOption); no. of wells from permit sprayfield count with monitoring-well fallback." },
-                        new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "No duplicate storage in WWChar/NDAR legacy columns." }
+                        new List<string> { "GW report outputs", "GWMonit + GWMonitTemplateValue + FacilityPermit + CompanyLabOption + MonitoringWell + Facility", "Permit version resolved by facility default selection or sample date; address/county from permit; operation type checkboxes from permit flags; facility block uses Gw59FacilityFieldResolver", "One combined export path produces GW-59 + optional GW-59A + optional VOC PDF. No ORC-changed question on GW-59." },
+                        new List<string> { "ORC tenure (who is ORC)", "FacilityOrcAssignment (+ Facility ORC mirrors)", "Current open assignment EndDate null; history retained", "Assigned in System Admin > Facilities; optional Users FK." },
+                        new List<string> { "ORC/Storage day values", "OperatorLog (canonical) + WWChar/NDAR proxies", "Resolved by facility + exact date", "Daily on-site presence — separate from FacilityOrcAssignment tenure." }
                     }
                 }
             }
@@ -688,13 +730,13 @@ flowchart TD
                 {
                     Id = "trace-orc-storage-canonical",
                     KeywordOrProperty = "ORC On Site / Water Depth / Storage Lagoon Freeboard / ORC Arrival Time / ORC Time on Site",
-                    Aliases = { "ORC", "Lagoon Freeboard", "Water Depth", "Storage Lagoon Freeboard (ft)", "Lagoon Berm Height", "Arrival Time", "Time On Site" },
+                    Aliases = { "ORC On Site", "Lagoon Freeboard", "Water Depth", "Storage Lagoon Freeboard (ft)", "Lagoon Berm Height", "Arrival Time", "Time On Site" },
                     Entity = "OperatorLog",
                     StorageField = "ORCOnSite + WaterDepthFt + StorageFt + ArrivalTime + TimeOnSiteHours (StorageFt calculated from Facility.LagoonBermHeightFeet - WaterDepthFt)",
                     UsedInModule = "Operational Data > Operator Logs / WWChar / NDAR",
                     FormulaOrTransformation = "Freeboard (ft) = Facility.LagoonBermHeightFeet - OperatorLog.WaterDepthFt when water depth is entered; legacy rows may retain StorageFt without WaterDepthFt until re-entered.",
                     ReportOutput = "WWChar daily display and NDAR day-level storage surfaces",
-                    FallbackOrValidation = "If no OperatorLog exists for a date during proxy write, SAM creates one and stores the values.",
+                    FallbackOrValidation = "If no OperatorLog exists for a date during proxy write, SAM creates one and stores the values. This is daily on-site presence — not Facility ORC tenure.",
                     Reference = new TraceReferenceViewModel
                     {
                         Label = "Canonical ORC/Storage Flow",
@@ -713,6 +755,48 @@ flowchart TD
                         new TraceUsageViewModel { Module = "Operational Data", Report = "WWChar", Destination = "Attachment A daily ORC/storage/arrival/time-on-site columns." },
                         new TraceUsageViewModel { Module = "Reports", Report = "NDAR1", Destination = "Day-row storage views/exports via canonical lookup." },
                         new TraceUsageViewModel { Module = "Reports", Report = "NDMR", Destination = "First two day columns export ORC arrival time and time on site from canonical Operator Logs." }
+                    }
+                },
+                new TraceabilityItemViewModel
+                {
+                    Id = "trace-facility-orc-assignment",
+                    KeywordOrProperty = "Facility ORC Assignment / Has the ORC changed",
+                    Aliases =
+                    {
+                        "FacilityOrcAssignment", "OrcChangeEvaluator", "ChangeInOrc", "ORC Start", "ORC End",
+                        "SigningOfficial", "FacilityContactPersonTitle", "OperatorNumber", "Operator Grade"
+                    },
+                    Entity = "FacilityOrcAssignment + Facility",
+                    StorageField = "FacilityOrcAssignments (UserId, StartDate, EndDate, DisplayName, OperatorNumber/Grade/Phone); Facility mirrors OrcName/Operator*; Facility.SigningOfficial + FacilityContactPersonTitle + PermitPhone",
+                    UsedInModule = "System Admin > Facilities + Reports certification pages",
+                    FormulaOrTransformation = "HasOrcChangedSincePrevious = any FacilityOrcAssignment.EndDate in calendar month (reportMonth − 1). Current ORC mirrors Facility fields from open assignment (EndDate null).",
+                    ReportOutput = "NDAR-1 / NDMR / NDMLR certification: ORC block + Yes/No ORC-changed; Permittee Signing Official / Title / Phone",
+                    FallbackOrValidation = "Facility.ChangeInOrc checkbox deprecated for exports. GW-59 has no ORC-changed question. UserId optional when backfilled from free-text ORC name.",
+                    Reference = new TraceReferenceViewModel
+                    {
+                        Label = "ORC Tenure + Change Evaluator",
+                        Location = "Domain/Entities/FacilityOrcAssignment.cs + Services/Implementations/FacilityOrcAssignmentService.cs + Utilities/OrcChangeEvaluator.cs"
+                    },
+                    UsedByReports = { "NDAR1", "NDMR", "NDMLR (annual)" },
+                    Steps =
+                    {
+                        new TraceStepViewModel { Order = 1, Label = "Assign", Detail = "Facility Edit selects SAM user + start date (and cert/grade/phone); service closes prior open assignment and creates FacilityOrcAssignment." },
+                        new TraceStepViewModel { Order = 2, Label = "Mirror", Detail = "Facility.OrcName/OperatorNumber/Grade/Phone updated from current open assignment for legacy export paths." },
+                        new TraceStepViewModel { Order = 3, Label = "Evaluate", Detail = "On export, OrcChangeEvaluator checks EndDates against report year/month." },
+                        new TraceStepViewModel { Order = 4, Label = "Render", Detail = "PDF/Excel certification pages draw ORC mirrors, computed Yes/No, and permittee SigningOfficial/Title/PermitPhone." }
+                    },
+                    Usages =
+                    {
+                        new TraceUsageViewModel { Module = "System Admin", Report = "Facility", Destination = "ORC assignment UI and history on Facility Edit/Details." },
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDAR1", Destination = "Certification PDF/Excel ORC + ORC-changed + permittee signing." },
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDMR", Destination = "Certification PDF/Excel ORC + ORC-changed + permittee signing." },
+                        new TraceUsageViewModel { Module = "Reports", Report = "NDMLR (annual)", Destination = "Certification PDF/Excel ORC + ORC-changed + permittee signing." }
+                    },
+                    FallbackRules =
+                    {
+                        new TraceFallbackRuleViewModel { Condition = "No EndDate in prior month", Behavior = "ORC-changed exports as No." },
+                        new TraceFallbackRuleViewModel { Condition = "No open assignment", Behavior = "Facility ORC mirrors cleared when current ORC is ended without replacement." },
+                        new TraceFallbackRuleViewModel { Condition = "Signing Official blank", Behavior = "Populate Facility.SigningOfficial / FacilityContactPersonTitle / PermitPhone on Facility Edit." }
                     }
                 },
                 new TraceabilityItemViewModel

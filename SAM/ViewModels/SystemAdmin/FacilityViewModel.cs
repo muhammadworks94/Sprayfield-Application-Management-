@@ -96,8 +96,13 @@ public class FacilityViewModel
     [Display(Name = "Operator Phone")]
     public string OperatorPhone { get; set; } = string.Empty;
 
-    [Display(Name = "Change in ORC?")]
-    public bool ChangeInOrc { get; set; }
+    [Display(Name = "Current ORC Start")]
+    public DateTime? CurrentOrcStartDate { get; set; }
+
+    [Display(Name = "Assigned SAM User")]
+    public string? CurrentOrcUserName { get; set; }
+
+    public List<FacilityOrcAssignmentItemViewModel> OrcAssignmentHistory { get; set; } = new();
 
     [StringLength(200)]
     [Display(Name = "Person(s) Collecting Samples")]
@@ -189,8 +194,12 @@ public class FacilityCreateViewModel
     [Display(Name = "Operator Phone")]
     public string? OperatorPhone { get; set; }
 
-    [Display(Name = "Change in ORC?")]
-    public bool ChangeInOrc { get; set; }
+    [Display(Name = "ORC SAM User")]
+    public string? OrcUserId { get; set; }
+
+    [Display(Name = "ORC Assignment Start Date")]
+    [DataType(DataType.Date)]
+    public DateTime? OrcAssignmentStartDate { get; set; }
 
     [StringLength(200)]
     [Display(Name = "Person(s) Collecting Samples")]
@@ -271,8 +280,22 @@ public class FacilityEditViewModel
     [Display(Name = "Operator Phone")]
     public string? OperatorPhone { get; set; }
 
-    [Display(Name = "Change in ORC?")]
-    public bool ChangeInOrc { get; set; }
+    [Display(Name = "ORC SAM User")]
+    public string? OrcUserId { get; set; }
+
+    [Display(Name = "Assign / Replace ORC Start Date")]
+    [DataType(DataType.Date)]
+    public DateTime? OrcAssignmentStartDate { get; set; }
+
+    [Display(Name = "End Current ORC As Of")]
+    [DataType(DataType.Date)]
+    public DateTime? EndCurrentOrcAsOf { get; set; }
+
+    public string? CurrentOrcUserId { get; set; }
+
+    public DateTime? CurrentOrcStartDate { get; set; }
+
+    public List<FacilityOrcAssignmentItemViewModel> OrcAssignmentHistory { get; set; } = new();
 
     [StringLength(200)]
     [Display(Name = "Person(s) Collecting Samples")]
@@ -291,6 +314,19 @@ public class FacilityEditViewModel
 
     [Display(Name = "Lagoon Berm Height (ft)")]
     public decimal? LagoonBermHeightFeet { get; set; }
+}
+
+public class FacilityOrcAssignmentItemViewModel
+{
+    public Guid Id { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string? UserName { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public string? OperatorNumber { get; set; }
+    public string? OperatorGrade { get; set; }
+    public string? OperatorPhone { get; set; }
+    public bool IsCurrent => EndDate == null;
 }
 
 

@@ -25,6 +25,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     // DbSets for all entities
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Facility> Facilities => Set<Facility>();
+    public DbSet<FacilityOrcAssignment> FacilityOrcAssignments => Set<FacilityOrcAssignment>();
     public DbSet<Soil> Soils => Set<Soil>();
     public DbSet<Nozzle> Nozzles => Set<Nozzle>();
     public DbSet<Crop> Crops => Set<Crop>();
@@ -91,6 +92,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // Apply entity configurations
         builder.ApplyConfiguration(new CompanyConfiguration());
         builder.ApplyConfiguration(new FacilityConfiguration());
+        builder.ApplyConfiguration(new FacilityOrcAssignmentConfiguration());
         builder.ApplyConfiguration(new SoilConfiguration());
         builder.ApplyConfiguration(new NozzleConfiguration());
         builder.ApplyConfiguration(new CropConfiguration());

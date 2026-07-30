@@ -91,7 +91,6 @@ public class FacilityService : IFacilityService
         existing.OperatorGrade = facility.OperatorGrade;
         existing.OperatorNumber = facility.OperatorNumber;
         existing.OperatorPhone = facility.OperatorPhone;
-        existing.ChangeInOrc = facility.ChangeInOrc;
         existing.PersonsCollectingSamples = facility.PersonsCollectingSamples;
         existing.MineralizationRatePercent = facility.MineralizationRatePercent;
         existing.VolatilizationRatePercent = facility.VolatilizationRatePercent;

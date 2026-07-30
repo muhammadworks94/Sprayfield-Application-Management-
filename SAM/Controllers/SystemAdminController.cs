@@ -22,6 +22,7 @@ namespace SAM.Controllers;
 public partial class SystemAdminController : BaseController
 {
     private readonly IFacilityService _facilityService;
+    private readonly IFacilityOrcAssignmentService _facilityOrcAssignmentService;
     private readonly ISoilService _soilService;
     private readonly INozzleService _nozzleService;
     private readonly ICropService _cropService;
@@ -37,6 +38,7 @@ public partial class SystemAdminController : BaseController
 
     public SystemAdminController(
         IFacilityService facilityService,
+        IFacilityOrcAssignmentService facilityOrcAssignmentService,
         ISoilService soilService,
         INozzleService nozzleService,
         ICropService cropService,
@@ -54,6 +56,7 @@ public partial class SystemAdminController : BaseController
         : base(userManager, logger)
     {
         _facilityService = facilityService;
+        _facilityOrcAssignmentService = facilityOrcAssignmentService;
         _soilService = soilService;
         _nozzleService = nozzleService;
         _cropService = cropService;

@@ -6,6 +6,7 @@
     ViewData["Title"] = "Edit Facility";
     var companies = ViewBag.Companies as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var facilityPermits = ViewBag.FacilityPermits as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var companyUsers = ViewBag.CompanyUsers as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var user = await UserManager.GetUserAsync(User);
     var isGlobalAdmin = user != null && await UserManager.IsInRoleAsync(user, "admin");
 }
@@ -149,11 +150,54 @@
 
             <div class="form-section">
                 <div class="form-section-title">Operator in Responsible Charge (ORC)</div>
+                <p class="text-muted small mb-3">
+                    Assign a SAM user as the facility ORC with a start date. Ending an ORC sets the end date used to auto-mark
+                    “Has the ORC changed?” on the following month’s NDAR-1 / NDMR / NDMLR reports.
+                </p>
+                @if (Model.CurrentOrcStartDate.HasValue)
+                {
+                    <div class="alert alert-light border py-2 mb-3">
+                        <strong>Current ORC:</strong> @(Model.OrcName ?? "N/A")
+                        since @Model.CurrentOrcStartDate.Value.ToString("MM/dd/yyyy")
+                        @if (!string.IsNullOrWhiteSpace(Model.CurrentOrcUserId))
+                        {
+                            <span class="text-muted">(SAM user assigned)</span>
+                        }
+                    </div>
+                }
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="OrcUserId" class="form-label"></label>
+                            <select asp-for="OrcUserId" class="form-select" asp-items="companyUsers">
+                                <option value="">-- Select SAM user --</option>
+                            </select>
+                            <span asp-validation-for="OrcUserId" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="OrcAssignmentStartDate" class="form-label"></label>
+                            <input asp-for="OrcAssignmentStartDate" type="date" class="form-control" />
+                            <div class="form-text">Required with a user (or ORC name) to assign/replace the current ORC.</div>
+                            <span asp-validation-for="OrcAssignmentStartDate" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="EndCurrentOrcAsOf" class="form-label"></label>
+                            <input asp-for="EndCurrentOrcAsOf" type="date" class="form-control" />
+                            <div class="form-text">Optional. Ends the current ORC without assigning a replacement.</div>
+                            <span asp-validation-for="EndCurrentOrcAsOf" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
                 <div class="row">
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label asp-for="OrcName" class="form-label"></label>
                             <input asp-for="OrcName" class="form-control" />
+                            <div class="form-text">Defaults from the selected SAM user’s full name.</div>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -175,10 +219,34 @@
                         </div>
                     </div>
                 </div>
-                <div class="mb-3 form-check">
-                    <input asp-for="ChangeInOrc" type="checkbox" class="form-check-input" />
-                    <label asp-for="ChangeInOrc" class="form-check-label"></label>
-                </div>
+                @if (Model.OrcAssignmentHistory.Count > 0)
+                {
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ORC</th>
+                                    <th>SAM User</th>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                    <th>Cert / Grade / Phone</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var row in Model.OrcAssignmentHistory)
+                            {
+                                <tr class="@(row.IsCurrent ? "table-success" : null)">
+                                    <td>@row.DisplayName @(row.IsCurrent ? "(current)" : "")</td>
+                                    <td>@(row.UserName ?? "—")</td>
+                                    <td>@row.StartDate.ToString("MM/dd/yyyy")</td>
+                                    <td>@(row.EndDate?.ToString("MM/dd/yyyy") ?? "—")</td>
+                                    <td>@(row.OperatorNumber ?? "—") / @(row.OperatorGrade ?? "—") / @(row.OperatorPhone ?? "—")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
 
             <div class="form-section">

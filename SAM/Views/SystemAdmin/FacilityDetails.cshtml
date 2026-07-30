@@ -108,6 +108,12 @@
                     <dt class="col-sm-5"><i class="bi bi-person-badge me-1"></i>ORC Name:</dt>
                     <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.OrcName) ? Model.OrcName : "N/A")</dd>
 
+                    <dt class="col-sm-5"><i class="bi bi-person-check me-1"></i>ORC SAM User:</dt>
+                    <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.CurrentOrcUserName) ? Model.CurrentOrcUserName : "N/A")</dd>
+
+                    <dt class="col-sm-5"><i class="bi bi-calendar-event me-1"></i>ORC Start:</dt>
+                    <dd class="col-sm-7">@(Model.CurrentOrcStartDate?.ToString("MM/dd/yyyy") ?? "N/A")</dd>
+
                     <dt class="col-sm-5"><i class="bi bi-diagram-3 me-1"></i>Operator Grade:</dt>
                     <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.OperatorGrade) ? Model.OperatorGrade : "N/A")</dd>
 
@@ -116,9 +122,6 @@
 
                     <dt class="col-sm-5"><i class="bi bi-telephone me-1"></i>Operator Phone:</dt>
                     <dd class="col-sm-7">@(!string.IsNullOrWhiteSpace(Model.OperatorPhone) ? Model.OperatorPhone : "N/A")</dd>
-
-                    <dt class="col-sm-5"><i class="bi bi-arrow-repeat me-1"></i>Change in ORC?</dt>
-                    <dd class="col-sm-7">@(Model.ChangeInOrc ? "Yes" : "No")</dd>
 
                 </dl>
             </div>

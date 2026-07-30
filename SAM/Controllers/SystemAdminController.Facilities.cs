@@ -20,7 +20,6 @@ public partial class SystemAdminController
         if (facility == null)
             return NotFound();
 
-        // Check company access
         await EnsureCompanyAccessAsync(facility.CompanyId);
 
         var defaultPermit = facility.DefaultFacilityPermitId.HasValue
@@ -29,6 +28,9 @@ public partial class SystemAdminController
                 .Where(p => p.FacilityId == facility.Id && p.IsActive)
                 .OrderByDescending(p => p.EffectiveStartDate)
                 .FirstOrDefaultAsync();
+
+        var currentOrc = await _facilityOrcAssignmentService.GetCurrentAsync(facility.Id);
+        var history = await _facilityOrcAssignmentService.GetByFacilityIdAsync(facility.Id);
 
         var viewModel = new FacilityViewModel
         {
@@ -50,7 +52,10 @@ public partial class SystemAdminController
             OperatorGrade = facility.OperatorGrade,
             OperatorNumber = facility.OperatorNumber,
             OperatorPhone = facility.OperatorPhone,
-            ChangeInOrc = facility.ChangeInOrc ?? false,
+            CurrentOrcStartDate = currentOrc?.StartDate,
+            CurrentOrcUserName = currentOrc?.User?.FullName
+                ?? (string.IsNullOrWhiteSpace(currentOrc?.User?.Email) ? null : currentOrc.User.Email),
+            OrcAssignmentHistory = history.Select(MapOrcAssignmentItem).ToList(),
             PersonsCollectingSamples = facility.PersonsCollectingSamples,
             MineralizationRatePercent = facility.MineralizationRatePercent,
             VolatilizationRatePercent = facility.VolatilizationRatePercent,
@@ -75,10 +80,8 @@ public partial class SystemAdminController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityCreate(Guid? companyId = null)
     {
-        var isGlobalAdmin = await IsGlobalAdminAsync();
         var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
-        // Set company ID if not provided (respects session selection for admins)
         if (!companyId.HasValue && effectiveCompanyId.HasValue)
         {
             companyId = effectiveCompanyId.Value;
@@ -95,6 +98,7 @@ public partial class SystemAdminController
         };
 
         ViewBag.Companies = await GetCompanySelectListAsync();
+        ViewBag.CompanyUsers = await GetCompanyUserSelectListAsync(viewModel.CompanyId);
         return View(viewModel);
     }
 
@@ -103,12 +107,12 @@ public partial class SystemAdminController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityCreate(FacilityCreateViewModel viewModel)
     {
-        // Ensure company access
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
         if (!ModelState.IsValid)
         {
             ViewBag.Companies = await GetCompanySelectListAsync();
+            ViewBag.CompanyUsers = await GetCompanyUserSelectListAsync(viewModel.CompanyId);
             return View(viewModel);
         }
 
@@ -130,7 +134,6 @@ public partial class SystemAdminController
                 OperatorGrade = viewModel.OperatorGrade,
                 OperatorNumber = viewModel.OperatorNumber,
                 OperatorPhone = viewModel.OperatorPhone,
-                ChangeInOrc = viewModel.ChangeInOrc,
                 PersonsCollectingSamples = viewModel.PersonsCollectingSamples,
                 MineralizationRatePercent = viewModel.MineralizationRatePercent ?? 40m,
                 VolatilizationRatePercent = viewModel.VolatilizationRatePercent ?? 50m,
@@ -138,6 +141,19 @@ public partial class SystemAdminController
             };
 
             await _facilityService.CreateAsync(facility);
+
+            if (ShouldAssignOrc(viewModel.OrcUserId, viewModel.OrcName, viewModel.OrcAssignmentStartDate))
+            {
+                var displayName = await ResolveOrcDisplayNameAsync(viewModel.OrcUserId, viewModel.OrcName);
+                await _facilityOrcAssignmentService.AssignAsync(
+                    facility.Id,
+                    viewModel.OrcUserId,
+                    viewModel.OrcAssignmentStartDate!.Value,
+                    displayName,
+                    viewModel.OperatorNumber,
+                    viewModel.OperatorGrade,
+                    viewModel.OperatorPhone);
+            }
 
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
@@ -153,12 +169,13 @@ public partial class SystemAdminController
 
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-                // Return partial form with validation errors for modal
                 ViewBag.Companies = await GetCompanySelectListAsync();
+                ViewBag.CompanyUsers = await GetCompanyUserSelectListAsync(viewModel.CompanyId);
                 return PartialView("Partials/_FacilityCreateFormPartial", viewModel);
             }
 
             ViewBag.Companies = await GetCompanySelectListAsync();
+            ViewBag.CompanyUsers = await GetCompanyUserSelectListAsync(viewModel.CompanyId);
             return View(viewModel);
         }
     }
@@ -171,41 +188,12 @@ public partial class SystemAdminController
         if (facility == null)
             return NotFound();
 
-        // Check company access
         await EnsureCompanyAccessAsync(facility.CompanyId);
 
-        var viewModel = new FacilityEditViewModel
-        {
-            Id = facility.Id,
-            CompanyId = facility.CompanyId,
-            Name = facility.Name,
-            Permittee = facility.Permittee,
-            FacilityClass = facility.FacilityClass,
-            PermitPhone = facility.PermitPhone,
-            FacilityPhone = facility.FacilityPhone,
-            FacilityContactPerson = facility.FacilityContactPerson,
-            FacilityContactPersonPhone = facility.FacilityContactPersonPhone,
-            SigningOfficial = facility.SigningOfficial,
-            FacilityContactPersonTitle = facility.FacilityContactPersonTitle,
-            OrcName = facility.OrcName,
-            OperatorGrade = facility.OperatorGrade,
-            OperatorNumber = facility.OperatorNumber,
-            OperatorPhone = facility.OperatorPhone,
-            ChangeInOrc = facility.ChangeInOrc ?? false,
-            PersonsCollectingSamples = facility.PersonsCollectingSamples,
-            MineralizationRatePercent = facility.MineralizationRatePercent,
-            VolatilizationRatePercent = facility.VolatilizationRatePercent,
-            DefaultFacilityPermitId = facility.DefaultFacilityPermitId,
-            LagoonBermHeightFeet = facility.LagoonBermHeightFeet
-        };
-
-        if (!viewModel.DefaultFacilityPermitId.HasValue)
-        {
-            viewModel.DefaultFacilityPermitId = await ResolveSingleFacilityPermitIdAsync(facility.Id);
-        }
-
+        var viewModel = await BuildFacilityEditViewModelAsync(facility);
         ViewBag.Companies = await GetCompanySelectListAsync();
         ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(facility.Id, viewModel.DefaultFacilityPermitId);
+        ViewBag.CompanyUsers = await GetCompanyUserSelectListAsync(facility.CompanyId);
         return View(viewModel);
     }
 
@@ -214,13 +202,11 @@ public partial class SystemAdminController
     [Authorize(Policy = Policies.RequireCompanyAdmin)]
     public async Task<IActionResult> FacilityEdit(FacilityEditViewModel viewModel)
     {
-        // Ensure company access
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
         if (!ModelState.IsValid)
         {
-            ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(viewModel.Id, viewModel.DefaultFacilityPermitId);
+            await PopulateFacilityEditLookupsAsync(viewModel);
             return View(viewModel);
         }
 
@@ -245,7 +231,6 @@ public partial class SystemAdminController
             facility.OperatorGrade = viewModel.OperatorGrade;
             facility.OperatorNumber = viewModel.OperatorNumber;
             facility.OperatorPhone = viewModel.OperatorPhone;
-            facility.ChangeInOrc = viewModel.ChangeInOrc;
             facility.PersonsCollectingSamples = viewModel.PersonsCollectingSamples;
             facility.MineralizationRatePercent = viewModel.MineralizationRatePercent;
             facility.VolatilizationRatePercent = viewModel.VolatilizationRatePercent;
@@ -253,14 +238,41 @@ public partial class SystemAdminController
             facility.LagoonBermHeightFeet = viewModel.LagoonBermHeightFeet;
 
             await _facilityService.UpdateAsync(facility);
+
+            if (viewModel.EndCurrentOrcAsOf.HasValue && !ShouldAssignOrc(viewModel.OrcUserId, viewModel.OrcName, viewModel.OrcAssignmentStartDate))
+            {
+                await _facilityOrcAssignmentService.EndCurrentAsync(facility.Id, viewModel.EndCurrentOrcAsOf.Value);
+            }
+
+            if (ShouldAssignOrc(viewModel.OrcUserId, viewModel.OrcName, viewModel.OrcAssignmentStartDate))
+            {
+                var displayName = await ResolveOrcDisplayNameAsync(viewModel.OrcUserId, viewModel.OrcName);
+                await _facilityOrcAssignmentService.AssignAsync(
+                    facility.Id,
+                    viewModel.OrcUserId,
+                    viewModel.OrcAssignmentStartDate!.Value,
+                    displayName,
+                    viewModel.OperatorNumber,
+                    viewModel.OperatorGrade,
+                    viewModel.OperatorPhone);
+            }
+            else
+            {
+                await _facilityOrcAssignmentService.UpdateCurrentSnapshotAsync(
+                    facility.Id,
+                    viewModel.OperatorNumber,
+                    viewModel.OperatorGrade,
+                    viewModel.OperatorPhone,
+                    viewModel.OrcName);
+            }
+
             TempData["SuccessMessage"] = $"Facility '{facility.Name}' updated successfully.";
             return RedirectToAction("SystemAdmin", new { tab = "facilities" });
         }
         catch (Infrastructure.Exceptions.BusinessRuleException ex)
         {
             ModelState.AddModelError("", ex.Message);
-            ViewBag.Companies = await GetCompanySelectListAsync();
-            ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(viewModel.Id, viewModel.DefaultFacilityPermitId);
+            await PopulateFacilityEditLookupsAsync(viewModel);
             return View(viewModel);
         }
     }
@@ -290,14 +302,128 @@ public partial class SystemAdminController
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        var facility = await _facilityService.GetByIdAsync(id);
-        var companyId = facility?.CompanyId;
-        return RedirectToAction("SystemAdmin", new { tab = "facilities"});
+        return RedirectToAction("SystemAdmin", new { tab = "facilities" });
     }
 
+    private async Task<FacilityEditViewModel> BuildFacilityEditViewModelAsync(Facility facility)
+    {
+        var currentOrc = await _facilityOrcAssignmentService.GetCurrentAsync(facility.Id);
+        var history = await _facilityOrcAssignmentService.GetByFacilityIdAsync(facility.Id);
+
+        var viewModel = new FacilityEditViewModel
+        {
+            Id = facility.Id,
+            CompanyId = facility.CompanyId,
+            Name = facility.Name,
+            Permittee = facility.Permittee,
+            FacilityClass = facility.FacilityClass,
+            PermitPhone = facility.PermitPhone,
+            FacilityPhone = facility.FacilityPhone,
+            FacilityContactPerson = facility.FacilityContactPerson,
+            FacilityContactPersonPhone = facility.FacilityContactPersonPhone,
+            SigningOfficial = facility.SigningOfficial,
+            FacilityContactPersonTitle = facility.FacilityContactPersonTitle,
+            OrcName = facility.OrcName,
+            OperatorGrade = facility.OperatorGrade,
+            OperatorNumber = facility.OperatorNumber,
+            OperatorPhone = facility.OperatorPhone,
+            CurrentOrcUserId = currentOrc?.UserId,
+            CurrentOrcStartDate = currentOrc?.StartDate,
+            OrcAssignmentHistory = history.Select(MapOrcAssignmentItem).ToList(),
+            PersonsCollectingSamples = facility.PersonsCollectingSamples,
+            MineralizationRatePercent = facility.MineralizationRatePercent,
+            VolatilizationRatePercent = facility.VolatilizationRatePercent,
+            DefaultFacilityPermitId = facility.DefaultFacilityPermitId,
+            LagoonBermHeightFeet = facility.LagoonBermHeightFeet
+        };
+
+        if (!viewModel.DefaultFacilityPermitId.HasValue)
+        {
+            viewModel.DefaultFacilityPermitId = await ResolveSingleFacilityPermitIdAsync(facility.Id);
+        }
+
+        return viewModel;
+    }
+
+    private async Task PopulateFacilityEditLookupsAsync(FacilityEditViewModel viewModel)
+    {
+        var history = await _facilityOrcAssignmentService.GetByFacilityIdAsync(viewModel.Id);
+        var current = history.FirstOrDefault(x => x.EndDate == null);
+        viewModel.OrcAssignmentHistory = history.Select(MapOrcAssignmentItem).ToList();
+        viewModel.CurrentOrcUserId = current?.UserId;
+        viewModel.CurrentOrcStartDate = current?.StartDate;
+
+        ViewBag.Companies = await GetCompanySelectListAsync();
+        ViewBag.FacilityPermits = await GetFacilityPermitSelectListAsync(viewModel.Id, viewModel.DefaultFacilityPermitId);
+        ViewBag.CompanyUsers = await GetCompanyUserSelectListAsync(viewModel.CompanyId);
+    }
+
+    private async Task<SelectList> GetCompanyUserSelectListAsync(Guid companyId)
+    {
+        if (companyId == Guid.Empty)
+        {
+            return new SelectList(Enumerable.Empty<SelectListItem>());
+        }
+
+        var users = await _context.Users.AsNoTracking()
+            .Where(u => u.CompanyId == companyId && u.IsActive)
+            .OrderBy(u => u.FullName)
+            .ThenBy(u => u.Email)
+            .Select(u => new
+            {
+                u.Id,
+                Label = string.IsNullOrWhiteSpace(u.FullName)
+                    ? u.Email
+                    : $"{u.FullName} ({u.Email})"
+            })
+            .ToListAsync();
+
+        return new SelectList(users, "Id", "Label");
+    }
+
+    private async Task<string> ResolveOrcDisplayNameAsync(string? userId, string? fallbackName)
+    {
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user != null)
+            {
+                if (!string.IsNullOrWhiteSpace(user.FullName))
+                {
+                    return user.FullName.Trim();
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.Email))
+                {
+                    return user.Email.Trim();
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(fallbackName))
+        {
+            return fallbackName.Trim();
+        }
+
+        throw new Infrastructure.Exceptions.BusinessRuleException("ORC name or SAM user is required to create an assignment.");
+    }
+
+    private static bool ShouldAssignOrc(string? userId, string? orcName, DateTime? startDate)
+        => startDate.HasValue && (!string.IsNullOrWhiteSpace(userId) || !string.IsNullOrWhiteSpace(orcName));
+
+    private static FacilityOrcAssignmentItemViewModel MapOrcAssignmentItem(FacilityOrcAssignment row)
+        => new()
+        {
+            Id = row.Id,
+            DisplayName = row.DisplayName,
+            UserName = row.User?.FullName
+                ?? (string.IsNullOrWhiteSpace(row.User?.Email) ? null : row.User.Email),
+            StartDate = row.StartDate,
+            EndDate = row.EndDate,
+            OperatorNumber = row.OperatorNumber,
+            OperatorGrade = row.OperatorGrade,
+            OperatorPhone = row.OperatorPhone
+        };
+
     #endregion
-
 }
-
-
-
