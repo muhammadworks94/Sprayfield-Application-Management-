@@ -3571,8 +3571,8 @@ public class ReportsController : BaseController
             Draw(certGfx, snapshot.Facility.ChangeInOrc == true ? string.Empty : "X", boldFont, Point(cert.OrcChangedNo));
 
             Draw(certGfx, snapshot.Facility.Permittee, font, Point(cert.Permittee));
-            Draw(certGfx, snapshot.Facility.OrcName, font, Point(cert.SigningOfficial));
-            Draw(certGfx, snapshot.Facility.OperatorGrade, font, Point(cert.SigningOfficialTitle));
+            Draw(certGfx, snapshot.Facility.SigningOfficial, font, Point(cert.SigningOfficial));
+            Draw(certGfx, snapshot.Facility.FacilityContactPersonTitle, font, Point(cert.SigningOfficialTitle));
             Draw(certGfx, snapshot.Facility.PermitPhone, font, Point(cert.PermitteePhone));
             Draw(certGfx, snapshot.ResolvedPermitExpiration?.ToString("MM/dd/yyyy"), font, Point(cert.PermitExpiration));
 

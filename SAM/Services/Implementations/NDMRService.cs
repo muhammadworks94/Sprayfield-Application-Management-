@@ -874,8 +874,8 @@ public class NDMRService : INDMRService
 
         // Permittee certification section
         certificationWorksheet.Cell("M9").Value = facility.Permittee ?? string.Empty;
-        certificationWorksheet.Cell("M10").Value = facility.OrcName ?? string.Empty;
-        certificationWorksheet.Cell("N11").Value = facility.OperatorGrade ?? string.Empty;
+        certificationWorksheet.Cell("M10").Value = facility.SigningOfficial ?? string.Empty;
+        certificationWorksheet.Cell("N11").Value = facility.FacilityContactPersonTitle ?? string.Empty;
         certificationWorksheet.Cell("M12").Value = facility.PermitPhone ?? string.Empty;
         certificationWorksheet.Cell("R12").Value = permit?.EffectiveEndDate?.ToString("MM/dd/yyyy") ?? string.Empty;
 
