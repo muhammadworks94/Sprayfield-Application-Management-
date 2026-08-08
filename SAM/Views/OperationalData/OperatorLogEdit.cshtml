@@ -26,6 +26,17 @@
 
                     <div class="form-section">
                         <div class="form-section-title">Basic Information</div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="OperatorName" class="form-label"></label>
+                                    <div class="form-control-plaintext">
+                                        @Model.OperatorName
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div class="row">
                             <div class="col-md-6">
@@ -37,11 +48,20 @@
                                     <span asp-validation-for="FacilityId" class="text-danger"></span>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-3">
                                 <div class="mb-3">
                                     <label asp-for="LogDate" class="form-label required"></label>
                                     <input asp-for="LogDate" type="date" class="form-control" />
                                     <span asp-validation-for="LogDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label asp-for="ORCOnSite" class="form-label required"></label>
+                                    <select asp-for="ORCOnSite" asp-items="orcOnSiteOptions" class="form-select">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                    <span asp-validation-for="ORCOnSite" class="text-danger"></span>
                                 </div>
                             </div>
                         </div>
@@ -56,22 +76,10 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label asp-for="ORCOnSite" class="form-label"></label>
-                                    <select asp-for="ORCOnSite" asp-items="orcOnSiteOptions" class="form-select">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                    <span asp-validation-for="ORCOnSite" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label asp-for="OperatorName" class="form-label"></label>
-                                    <div class="form-control-plaintext">
-                                        @Model.OperatorName
-                                    </div>
+                                    <label asp-for="TimeOnSiteHours" class="form-label"></label>
+                                    <input asp-for="TimeOnSiteHours" type="number" step="0.01" class="form-control" />
+                                    <span asp-validation-for="TimeOnSiteHours" class="text-danger"></span>
+                                    <small class="form-text text-muted">Enter total time on site as hours in decimal format (e.g., 1.5 for 1½ hours).</small>
                                 </div>
                             </div>
                         </div>
@@ -90,14 +98,6 @@
                                         <option value="SN">Snow (SN)</option>
                                     </select>
                                     <span asp-validation-for="WeatherConditions" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label asp-for="TimeOnSiteHours" class="form-label"></label>
-                                    <input asp-for="TimeOnSiteHours" type="number" step="0.01" class="form-control" />
-                                    <span asp-validation-for="TimeOnSiteHours" class="text-danger"></span>
-                                    <small class="form-text text-muted">Enter total time on site as hours in decimal format (e.g., 1.5 for 1½ hours).</small>
                                 </div>
                             </div>
                         </div>
@@ -201,25 +201,5 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script id="facilityLagoonContextJson" type="application/json">@Html.Raw(ViewBag.FacilityLagoonContextJson ?? "{}")</script>
     @await Html.PartialAsync("Partials/_OperatorLogLagoonFieldsScriptPartial")
-    <script>
-        (function () {
-            document.addEventListener('DOMContentLoaded', function () {
-                var arrivalInput = document.querySelector('input[name="ArrivalTime"]');
-
-                if (!arrivalInput) {
-                    return;
-                }
-
-                if (typeof flatpickr === 'function') {
-                    flatpickr(arrivalInput, {
-                        enableTime: true,
-                        noCalendar: true,
-                        dateFormat: "H:i",
-                        time_24hr: true,
-                        allowInput: true
-                    });
-                }
-            });
-        })();
-    </script>
+    @await Html.PartialAsync("Partials/_OperatorLogOrcOnSiteScriptPartial")
 }

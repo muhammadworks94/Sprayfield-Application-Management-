@@ -707,8 +707,15 @@ public class NDMRService : INDMRService
                         .ThenByDescending(o => o.CreatedDate)
                         .First();
 
-                    worksheet.Cell($"B{row}").Value = firstLog.ArrivalTime;
-                    worksheet.Cell($"B{row}").Style.NumberFormat.Format = "hh:mm";
+                    if (firstLog.ArrivalTime != TimeSpan.Zero)
+                    {
+                        worksheet.Cell($"B{row}").Value = firstLog.ArrivalTime;
+                        worksheet.Cell($"B{row}").Style.NumberFormat.Format = "hh:mm";
+                    }
+                    else
+                    {
+                        worksheet.Cell($"B{row}").Clear(XLClearOptions.Contents);
+                    }
 
                     worksheet.Cell($"C{row}").Value = canonicalLog.TimeOnSiteHours;
                     worksheet.Cell($"C{row}").Style.NumberFormat.Format = "0.00";

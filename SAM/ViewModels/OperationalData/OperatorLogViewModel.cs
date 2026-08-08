@@ -120,6 +120,7 @@ public class OperatorLogCreateViewModel : IOperatorLogLagoonFields
     [Display(Name = "Precipitation (in)")]
     public decimal? PrecipitationIn { get; set; }
 
+    [Required]
     [Display(Name = "ORC On Site")]
     public ORCOnSiteEnum? ORCOnSite { get; set; }
 
@@ -201,6 +202,7 @@ public class OperatorLogEditViewModel : IOperatorLogLagoonFields
     [Display(Name = "Precipitation (in)")]
     public decimal? PrecipitationIn { get; set; }
 
+    [Required]
     [Display(Name = "ORC On Site")]
     public ORCOnSiteEnum? ORCOnSite { get; set; }
 

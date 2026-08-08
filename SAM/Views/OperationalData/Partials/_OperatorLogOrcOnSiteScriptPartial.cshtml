@@ -1,0 +1,96 @@
+<script>
+    (function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            var orcSelect = document.querySelector('select[name="ORCOnSite"]');
+            var arrivalInput = document.querySelector('input[name="ArrivalTime"]');
+            var timeOnSiteInput = document.querySelector('input[name="TimeOnSiteHours"]');
+            var arrivalLabel = document.querySelector('label[for="ArrivalTime"]');
+            var form = arrivalInput ? arrivalInput.closest('form') : null;
+            var arrivalPicker = null;
+
+            if (!orcSelect || !arrivalInput || !timeOnSiteInput) {
+                return;
+            }
+
+            if (typeof flatpickr === 'function') {
+                arrivalPicker = flatpickr(arrivalInput, {
+                    enableTime: true,
+                    noCalendar: true,
+                    dateFormat: "H:i",
+                    time_24hr: true,
+                    allowInput: true
+                });
+            }
+
+            function isOrcNo() {
+                return orcSelect.value === 'N';
+            }
+
+            function setArrivalRequired(required) {
+                if (arrivalLabel) {
+                    arrivalLabel.classList.toggle('required', required);
+                }
+
+                if (required) {
+                    arrivalInput.setAttribute('data-val', 'true');
+                    arrivalInput.setAttribute('data-val-required', 'The Arrival Time field is required.');
+                } else {
+                    arrivalInput.removeAttribute('data-val-required');
+                }
+
+                if (window.jQuery && window.jQuery.validator && window.jQuery(arrivalInput).rules) {
+                    try {
+                        var $arrival = window.jQuery(arrivalInput);
+                        $arrival.rules('remove', 'required');
+                        if (required) {
+                            $arrival.rules('add', { required: true });
+                        }
+                    } catch (e) {
+                        // Validator may not be bound yet; data-val attributes still drive unobtrusive rules.
+                    }
+                }
+            }
+
+            function applyOrcOnSiteUi() {
+                var orcNo = isOrcNo();
+
+                arrivalInput.disabled = orcNo;
+                timeOnSiteInput.disabled = orcNo;
+
+                if (orcNo) {
+                    if (arrivalPicker) {
+                        arrivalPicker.clear();
+                    } else {
+                        arrivalInput.value = '';
+                    }
+                    timeOnSiteInput.value = '0';
+                    setArrivalRequired(false);
+                } else {
+                    setArrivalRequired(true);
+                }
+            }
+
+            orcSelect.addEventListener('change', applyOrcOnSiteUi);
+
+            if (form) {
+                form.addEventListener('submit', function () {
+                    if (!isOrcNo()) {
+                        return;
+                    }
+
+                    // Disabled fields do not post; re-enable with forced values for model binding.
+                    arrivalInput.disabled = false;
+                    timeOnSiteInput.disabled = false;
+                    if (arrivalPicker) {
+                        arrivalPicker.clear();
+                    } else {
+                        arrivalInput.value = '';
+                    }
+                    timeOnSiteInput.value = '0';
+                });
+            }
+
+            applyOrcOnSiteUi();
+        });
+    })();
+</script>

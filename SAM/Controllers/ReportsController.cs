@@ -3738,7 +3738,9 @@ public class ReportsController : BaseController
                 .OrderByDescending(o => o.UpdatedDate ?? o.CreatedDate)
                 .ThenByDescending(o => o.CreatedDate)
                 .First();
-            orcArrival[day - 1] = firstLog.ArrivalTime;
+            orcArrival[day - 1] = firstLog.ArrivalTime == TimeSpan.Zero
+                ? null
+                : firstLog.ArrivalTime;
             orcTimeOnSite[day - 1] = canonicalLog.TimeOnSiteHours;
         }
 

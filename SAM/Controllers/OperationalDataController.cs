@@ -189,7 +189,7 @@ namespace SAM.Controllers;
             WaterDepthFt = l.WaterDepthFt,
             StorageFt = l.StorageFt,
             FiveDayUpsetFt = l.FiveDayUpsetFt,
-            ArrivalTime = l.ArrivalTime.ToString(@"hh\:mm"),
+            ArrivalTime = FormatOperatorLogArrivalTime(l.ArrivalTime),
             TimeOnSiteHours = l.TimeOnSiteHours,
             MaintenancePerformed = l.MaintenancePerformed,
             EquipmentInspected = l.EquipmentInspected,
@@ -280,7 +280,7 @@ namespace SAM.Controllers;
             WaterDepthFt = log.WaterDepthFt,
             StorageFt = log.StorageFt,
             FiveDayUpsetFt = log.FiveDayUpsetFt,
-            ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
+            ArrivalTime = FormatOperatorLogArrivalTime(log.ArrivalTime),
             TimeOnSiteHours = log.TimeOnSiteHours,
             MaintenancePerformed = log.MaintenancePerformed,
             EquipmentInspected = log.EquipmentInspected,
@@ -365,6 +365,8 @@ namespace SAM.Controllers;
 
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
 
+        ApplyOperatorLogOrcOnSiteOverrides(viewModel);
+
         await PopulateOperatorLogLagoonFieldsAsync(viewModel, viewModel.FacilityId);
         if (!ValidateOperatorLogWaterDepth(viewModel))
         {
@@ -389,6 +391,8 @@ namespace SAM.Controllers;
                 ? null
                 : (string.IsNullOrWhiteSpace(currentUser.FullName) ? currentUser.UserName : currentUser.FullName);
 
+            var (arrivalTime, timeOnSiteHours) = ResolveOperatorLogArrivalAndTimeOnSite(viewModel.ORCOnSite, viewModel.ArrivalTime, viewModel.TimeOnSiteHours);
+
             var operatorLog = new OperatorLog
             {
                 CompanyId = viewModel.CompanyId,
@@ -400,8 +404,8 @@ namespace SAM.Controllers;
                 PrecipitationIn = viewModel.PrecipitationIn,
                 ORCOnSite = viewModel.ORCOnSite,
                 FiveDayUpsetFt = viewModel.FiveDayUpsetFt,
-                ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime),
-                TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0,
+                ArrivalTime = arrivalTime,
+                TimeOnSiteHours = timeOnSiteHours,
                 MaintenancePerformed = viewModel.MaintenancePerformed ?? string.Empty,
                 EquipmentInspected = viewModel.EquipmentInspected ?? string.Empty,
                 IssuesNoted = viewModel.IssuesNoted ?? string.Empty,
@@ -452,7 +456,7 @@ namespace SAM.Controllers;
             WaterDepthFt = log.WaterDepthFt,
             StorageFt = log.StorageFt,
             FiveDayUpsetFt = log.FiveDayUpsetFt,
-            ArrivalTime = log.ArrivalTime.ToString(@"hh\:mm"),
+            ArrivalTime = FormatOperatorLogArrivalTime(log.ArrivalTime),
             TimeOnSiteHours = log.TimeOnSiteHours,
             MaintenancePerformed = log.MaintenancePerformed,
             EquipmentInspected = log.EquipmentInspected,
@@ -474,6 +478,8 @@ namespace SAM.Controllers;
     public async Task<IActionResult> OperatorLogEdit(OperatorLogEditViewModel viewModel)
     {
         await EnsureCompanyAccessAsync(viewModel.CompanyId);
+
+        ApplyOperatorLogOrcOnSiteOverrides(viewModel);
 
         await PopulateOperatorLogLagoonFieldsAsync(viewModel, viewModel.FacilityId);
         if (!ValidateOperatorLogWaterDepth(viewModel))
@@ -498,6 +504,8 @@ namespace SAM.Controllers;
             if (operatorLog == null)
                 return NotFound();
 
+            var (arrivalTime, timeOnSiteHours) = ResolveOperatorLogArrivalAndTimeOnSite(viewModel.ORCOnSite, viewModel.ArrivalTime, viewModel.TimeOnSiteHours);
+
             var existingStorageFt = operatorLog.StorageFt;
             operatorLog.LogDate = viewModel.LogDate;
             operatorLog.WeatherConditions = viewModel.WeatherConditions ?? string.Empty;
@@ -506,8 +514,8 @@ namespace SAM.Controllers;
             operatorLog.ORCOnSite = viewModel.ORCOnSite;
             ApplyWaterDepthToOperatorLog(operatorLog, viewModel.WaterDepthFt, viewModel.LagoonBermHeightFeet, existingStorageFt);
             operatorLog.FiveDayUpsetFt = viewModel.FiveDayUpsetFt;
-            operatorLog.ArrivalTime = TimeSpan.Parse(viewModel.ArrivalTime);
-            operatorLog.TimeOnSiteHours = viewModel.TimeOnSiteHours ?? 0;
+            operatorLog.ArrivalTime = arrivalTime;
+            operatorLog.TimeOnSiteHours = timeOnSiteHours;
             operatorLog.MaintenancePerformed = viewModel.MaintenancePerformed ?? string.Empty;
             operatorLog.EquipmentInspected = viewModel.EquipmentInspected ?? string.Empty;
             operatorLog.IssuesNoted = viewModel.IssuesNoted ?? string.Empty;
@@ -4939,6 +4947,46 @@ namespace SAM.Controllers;
         ModelState.AddModelError(nameof(viewModel.WaterDepthFt), LagoonFreeboardCalculationHelper.MissingBermHeightMessage);
         return false;
     }
+
+    private void ApplyOperatorLogOrcOnSiteOverrides(OperatorLogCreateViewModel viewModel)
+    {
+        if (viewModel.ORCOnSite != ORCOnSiteEnum.N)
+        {
+            return;
+        }
+
+        viewModel.ArrivalTime = string.Empty;
+        viewModel.TimeOnSiteHours = 0;
+        ModelState.Remove(nameof(viewModel.ArrivalTime));
+    }
+
+    private void ApplyOperatorLogOrcOnSiteOverrides(OperatorLogEditViewModel viewModel)
+    {
+        if (viewModel.ORCOnSite != ORCOnSiteEnum.N)
+        {
+            return;
+        }
+
+        viewModel.ArrivalTime = string.Empty;
+        viewModel.TimeOnSiteHours = 0;
+        ModelState.Remove(nameof(viewModel.ArrivalTime));
+    }
+
+    private static (TimeSpan ArrivalTime, decimal TimeOnSiteHours) ResolveOperatorLogArrivalAndTimeOnSite(
+        ORCOnSiteEnum? orcOnSite,
+        string? arrivalTime,
+        decimal? timeOnSiteHours)
+    {
+        if (orcOnSite == ORCOnSiteEnum.N)
+        {
+            return (TimeSpan.Zero, 0m);
+        }
+
+        return (TimeSpan.Parse(arrivalTime!), timeOnSiteHours ?? 0m);
+    }
+
+    private static string FormatOperatorLogArrivalTime(TimeSpan arrivalTime) =>
+        arrivalTime == TimeSpan.Zero ? string.Empty : arrivalTime.ToString(@"hh\:mm");
 
     private void ApplyWaterDepthToOperatorLog(OperatorLog log, decimal? waterDepthFt, decimal? lagoonBermHeightFeet, decimal? existingStorageFt)
     {

@@ -21,11 +21,22 @@ public static class WWCharCompletenessCalculator
         for (var day = 1; day <= daysInMonth; day++)
         {
             var index = day - 1;
-            var hasOrcOnSite = index < orcOnSite.Count && orcOnSite[index].HasValue;
+            if (index >= orcOnSite.Count || !orcOnSite[index].HasValue)
+            {
+                continue;
+            }
+
+            // Days off (ORC On Site = No) count complete without arrival/time.
+            if (orcOnSite[index] == ORCOnSiteEnum.N)
+            {
+                count++;
+                continue;
+            }
+
             var hasArrivalTime = index < orcArrivalTime.Count && !string.IsNullOrWhiteSpace(orcArrivalTime[index]);
             var hasTimeOnSite = index < orcTimeOnSiteHours.Count && orcTimeOnSiteHours[index].HasValue;
 
-            if (hasOrcOnSite && hasArrivalTime && hasTimeOnSite)
+            if (hasArrivalTime && hasTimeOnSite)
             {
                 count++;
             }
