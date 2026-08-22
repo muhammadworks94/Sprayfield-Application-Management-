@@ -371,4 +371,4 @@ FodyWeavers.xsd
 /.vs
 /SAM/SAM.csproj.user
 config.bat
-/SAM/App_Data/DataProtectionKeys/key-a0065453-d8ba-43ec-96da-0f412e186b16.xml
+SAM/App_Data/DataProtectionKeys/*.xml
